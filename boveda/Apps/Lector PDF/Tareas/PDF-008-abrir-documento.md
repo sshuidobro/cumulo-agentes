@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-008
 titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados de carga y error
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -108,3 +108,8 @@ Decisiones menores del programador (ronda 1) aceptadas: `closeDocument` cancela 
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK (en un primer intento falló en `tests/helpers/fake-platform.ts` por el `closeWindow` obligatorio que añadió el trabajo paralelo de COM-013; en la segunda ejecución ya pasaba, y no he tocado ese fichero en esta ronda); `pnpm test` 60 ficheros / 778 tests OK; `pnpm coverage` OK (líneas 89,1 % en total; un primer intento chocó con otro proceso de Vitest que usaba el mismo directorio de cobertura, y en el segundo pasó); `pnpm --filter lector-pdf e2e`: **5 de 5 OK** (los 4 de `open.spec.ts` y el de `smoke.spec.ts`).
 - Tiempo de `pages-100000.pdf`: **444 ms** desde `setInputFiles` hasta «100.000 páginas» (medido con la anotación `rendimiento` de `open.spec.ts`, presupuesto < 5 000 ms; en las tres ejecuciones del E2E de 100 000 páginas el test pasó). Presupuesto cumplido.
 - Dudas o cosas que no he podido hacer: no he tocado los criterios marcados `[ ]`; los verificará el tester. Commit de la ronda con solo mis ficheros (fuentes de `engine/` y esta ficha).
+
+### [revisor] ronda 2 — 2026-10-17 — APROBADO
+- Comprobado: `pnpm lint` y `pnpm typecheck` OK; `pnpm test` 63 ficheros / 834 tests OK (una primera ejecución falló sin que pudiera reproducirlo en tres repeticiones; probable interferencia de trabajo paralelo); `pnpm coverage` código 0 (líneas 98,9 %); `pnpm --filter lector-pdf e2e` 5/5 OK (100 000 páginas en 1,4 s de test completo).
+- `grep pdfjs-dist src`: solo `engine/pdfjs.ts` (legacy), `engine/worker.ts` (legacy) y el CSS; conforme a ADR-0013. Lógica de `document-actions.ts` correcta (última apertura gana, destrucción de resultados obsoletos, cancelación, límite de escaneo). Tests cubren los criterios (T).
+1. (opcional) `document-actions.ts:110` — si se cancela durante `getPage(1)` el resultado se descarta solo por el contador; funciona, sin acción.
