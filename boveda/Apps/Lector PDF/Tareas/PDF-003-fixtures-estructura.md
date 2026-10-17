@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-003
 titulo: Generador de fixtures (índice, enlaces, etiquetas, xref comprimido, actualizaciones, anotaciones, formulario)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-002]
 intentos: 0
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -71,3 +71,14 @@ Comprobado: `pnpm lint` (0 avisos), `pnpm typecheck` OK, `pnpm test` 44 ficheros
 1. (opcional) `apps/lector-pdf/tests/fixtures/pdf-builder.ts:214` — la ficha pedía `/ID` "derivado del nombre"; se usa MD5 del contenido (también determinista). Anotarlo como decisión de detalle.
 2. (opcional) `apps/lector-pdf/tests/unit/fixtures-structure.test.ts` — no se asserta que `Capítulo 3` esté cerrado (`/Count` negativo); útil para PDF-016. Se deja para esa ficha.
 3. Nota: validación con `qpdf` sin ejecutar (no instalado); queda para PDF-029 como ya indicó el programador.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Los 7 criterios (T) de fixtures | OK | `pnpm exec vitest run` 514/514 (incluye `fixtures-structure.test.ts`) |
+| lint / typecheck | OK | `pnpm lint && pnpm typecheck` código 0 |
+| Generación < 15 s | OK | `pnpm --filter lector-pdf fixtures` 17 en 3,44 s (4,0 s reloj) |
+| Validación qpdf (pendiente del programador) | OK | `qpdf --check` sin errores ni avisos en los 13 PDF válidos (outline, links, page-labels, compressed, incremental-updates, annotated, form, basic-5, images-200, sizes-mixed, pages-5000/20000-flat/100000); `--show-npages` 30/5/12/50/5/3/1 |
+| Estructura compressed / incremental | OK | `compressed.pdf`: 0 apariciones de `trailer`, 1 `/Type /ObjStm`; `incremental-updates.pdf`: 3 `%%EOF` |
+Los 4 `corrupt-*` fallan en qpdf a propósito (reconstrucción/sin trailer), como se espera.
+Tests añadidos: ninguno (un test que dependa de qpdf fallaría en máquinas sin él; la comprobación queda como paso manual aquí). Rendimiento: generación 3,4 s.

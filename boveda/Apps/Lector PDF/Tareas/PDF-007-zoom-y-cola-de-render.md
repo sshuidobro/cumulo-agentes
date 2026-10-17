@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-007
 titulo: Núcleo - zoom, cola de render con prioridades y tamaño de lienzo
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -102,3 +102,17 @@ Tres módulos puros: cálculo de zoom (pasos, ajustar ancho/página, rueda, text
 - `pnpm coverage` falla solo por bloqueo del directorio `coverage/` por otro proceso vitest; con directorio propio, los tres módulos: líneas 100 %, ramas 98,3 %.
 - Cumple cada criterio (T); cola correcta (concurrencia con abortados, reemplazo de pendientes, microtarea, logger); sin `skip`/`only`; nada fuera de alcance.
 - (opcional) El tester debe repetir `pnpm coverage` cuando no haya otro vitest en marcha.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios (T) de zoom, fitZoom/resolveZoom, formato/parse, rueda | OK | `vitest run`: zoom.test.ts en verde; recorrido completo de ZOOM_STEPS arriba y abajo en el test QA |
+| Cola: prioridades, concurrencia ≤ 2, abort, cancel, cancelAll, onIdle, logger | OK | render-queue.test.ts en verde; QA: 20 requests con claves repetidas + cancelAll, máx. 2 simultáneos |
+| planCanvas | OK | canvas-size.test.ts en verde; QA: 0×0 y 10×40000 a dpr 3 |
+| lint / typecheck / test | código 0 | `pnpm lint`, `pnpm typecheck`; `pnpm test`: 44 ficheros, 514 tests |
+| Cobertura ≥ 95 % | OK | directorio propio: líneas 100 %, ramas 98,3 % (los 3 ficheros) |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/pdf007-qa.test.ts` (8 tests: entradas raras de parseZoomInput, setPriority, run síncrono que lanza, concurrencia inválida, extremos).
+Rendimiento: no aplica (núcleo puro).
+Observación no bloqueante: `wheelZoom` lanza RangeError si `deltaY` finito es enorme (|deltaY| > ~3,5e5 px desborda `exp`); irreal con una rueda real, pero conviene acotar `deltaY` en PDF-011.
+`pnpm coverage` estándar no se ejecutó por el bloqueo de `coverage/`; se usó directorio propio.
