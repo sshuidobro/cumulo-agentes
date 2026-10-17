@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-028
 titulo: Escritor incremental - anexar las anotaciones al PDF sin reescribirlo
 app: pdf
-estado: bloqueada
+estado: en-revision
 depende_de: [PDF-068, PDF-027, PDF-024]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -54,6 +54,13 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
    6. Sección xref: `'table'` → `xref\n` + subsecciones contiguas ordenadas + `trailer\n<< /Size /Root /Info? /ID /Prev lastXrefOffset >>\nstartxref\n<off>\n%%EOF\n`. `'stream'` → objeto nuevo `/Type /XRef /W [1 4 2] /Index [...] /Size /Root /Info? /ID /Prev` sin comprimir, que se incluye a sí mismo.
    7. `/ID`: `[ id0 original, id1 nuevo ]`; si no había, ambos nuevos. `id1` = 16 bytes FNV-1a de `now + source.size + número de objetos` (determinista para tests).
    8. Errores: `PdfSyntaxError('encrypted')` → `err(pdfError('save-encrypted'))`; cualquier otro `PdfSyntaxError` (incluido `page-not-found` de `pageRef`) → `err(pdfError('save-unreadable', e))`. Nunca lanza.
+   9. Apertura para guardar (añadido por el líder, ronda 2), en el mismo `incremental.ts`, exportada desde `src/core/pdf/index.ts`:
+      ```ts
+      /** Abre el lector para guardar. Nunca lanza: cifrado → `save-encrypted`; cualquier otro fallo → `save-unreadable`. */
+      export async function openForSave(source: ByteSource): Promise<Result<ObjectReader>>;
+      // try { return ok(await ObjectReader.open(source)); } catch (e: unknown) { return err(toSaveError(e)); }
+      ```
+      Es la **única** forma en que la app abre un lector para guardar (PDF-037 la usa). `ObjectReader.open` no cambia.
 4. Tests `tests/unit/pdf/incremental.test.ts`: con `basic-5.pdf`, `compressed.pdf`, `annotated.pdf` y `incremental-updates.pdf` (`memorySource`), concatena `original + delta`, lo abre con pdf.js *legacy* y comprueba `getAnnotations()`.
 
 ## Criterios de aceptación
@@ -62,7 +69,9 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
 - [ ] (T) `compressed.pdf` (xref stream) → el incremento contiene `/Type /XRef` y no `trailer`; `basic-5.pdf` → contiene `trailer` y `/Prev`.
 - [ ] (T) `annotated.pdf`: borrar el `Highlight` de p1 → pdf.js ya no ve ni él ni su `Popup` en p1; el `Underline` sigue. Modificar el `contents` de la nota de p2 → `contentsObj.str` nuevo y el `Square` de p3 intacto. Añadir en p2 (que tiene `/Annots` indirecto) → reescribe el array y no la página (comprueba que el objeto página no aparece en el delta).
 - [ ] (T) Guardar dos veces seguidas (segundo incremento sobre el resultado del primero) → pdf.js lee el estado final correcto y hay 2 `%%EOF` más que en el original.
-- [ ] (T) Un trailer con `/Encrypt` → `err` `save-encrypted`; `corrupt-bad-startxref.pdf` → `err` `save-unreadable`; ninguna excepción escapa.
+- [ ] (T) ~~Un trailer con `/Encrypt` → `err` `save-encrypted`; `corrupt-bad-startxref.pdf` → `err` `save-unreadable`; ninguna excepción escapa.~~ (sustituido en ronda 2 por los dos siguientes)
+- [ ] (T) `openForSave`: `corrupt-bad-startxref.pdf` → `{ ok: false, error.code: 'save-unreadable' }`; `corrupt-empty.pdf` → `save-unreadable`; `appendIncrementalUpdate(basic-5.pdf, new Map([[1, '<< /Type /Catalog /Pages 2 0 R >>']]), '/Encrypt 9 0 R')` (de `tests/fixtures/pdf-builder.ts`) → `save-encrypted`; `basic-5.pdf` → `ok` y `value.xref.size > 0`. Ninguna promesa rechaza (`await` sin `expect(...).rejects`).
+- [ ] (T) `buildIncrementalUpdate` con trailer `/Encrypt` simulado sobre un lector válido → `save-encrypted` (test ya existente, se conserva); `page-not-found` y `/Annots` inválido → `save-unreadable`; ninguna excepción escapa.
 - [ ] (T) `pages-5000.pdf` + 10 anotaciones en páginas distintas → `delta` < 50 KB y bytes leídos (`countingSource`, incluido `ObjectReader.open`) < 35 % del fichero (la xref ya es el 13,6 %). `pages-100000.pdf` + 10 anotaciones en las páginas `[0, 12345, 25000, 37777, 50000, 62500, 75000, 87654, 99000, 99999]` → bytes leídos < 16 %. Anota las medidas.
 - [ ] (T, perf) `tests/perf/incremental.perf.test.ts`: `pages-5000.pdf` + 10 anotaciones → `buildIncrementalUpdate` < 1 s; `pages-100000.pdf` (página 99 999) → `ObjectReader.open` + `buildIncrementalUpdate` < 3 s (mejor de 5).
 - [ ] (T) Determinismo: misma entrada y mismo `now` → mismos bytes.
@@ -88,3 +97,22 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
   3. Criterio tomado dentro de la ficha: cualquier error (no solo `PdfSyntaxError`) devuelve `save-unreadable` para cumplir «nunca lanza». El `/ID` nuevo usa 4 pasadas de FNV-1a de 32 bits (16 bytes).
   4. pdf.js entrega los popups al final de la lista de `/Annots`; los tests comparan subtipos ordenados.
   5. En el árbol hay cambios sin commitear de otros agentes (viewer, ui, state, `object-reader.test.ts`, `xref-robustness.test.ts`, `annotation-qa.test.ts`). No los he incluido en el commit.
+
+### [líder] replanificación (desbloqueo) — 2026-10-17
+- Problema: el criterio `corrupt-bad-startxref.pdf` → `save-unreadable` no era cumplible: `ObjectReader.open` lanza `xref-unreadable` antes de que exista lector (error de la ficha). Lo mismo pasaba con PDF-037 y su criterio de PDF cifrado: `open` lanza `encrypted` y `save-actions` habría tenido que traducirlo a mano.
+- Decisión técnica: opción (a), nueva `openForSave(source): Promise<Result<ObjectReader>>` en `incremental.ts` (paso 3.9) que reutiliza `toSaveError`. Se descarta cambiar `ObjectReader.open` a `Result` (lo usan PDF-068 y sus tests; el visor no lo necesita) y se descarta solo relajar el criterio (el error se tiene que traducir en algún sitio del núcleo y con test). No es un rechazo: `intentos` sigue en 0.
+- Dudas 2-5 del programador aceptadas (encriptado simulado en `buildIncrementalUpdate`, cualquier error → `save-unreadable`, `/ID` con 4 pasadas FNV-1a de 32 bits, comparar subtipos ordenados, no commitear cambios ajenos).
+- **Pasos exactos para la ronda 2:**
+  1. `src/core/pdf/incremental.ts`: añade `openForSave` tal como en el paso 3.9 (import de `ObjectReader` como valor, no solo tipo). JSDoc en español.
+  2. `src/core/pdf/index.ts`: exporta `openForSave` junto a `buildIncrementalUpdate`.
+  3. `tests/unit/pdf/incremental.test.ts`: sustituye el test «un PDF con startxref dañado no llega a tener lector…» por un `describe('openForSave')` con los 4 casos del criterio nuevo (`corrupt-bad-startxref`, `corrupt-empty`, cifrado real con `appendIncrementalUpdate`, `basic-5` ok). Conserva el test de `/Encrypt` simulado.
+  4. Usa `openForSave` (desenvolviendo el `Result`) en el helper `save()` de los tests para no duplicar caminos.
+  5. Ejecuta `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` (`incremental.ts` ≥ 90 %) y `pnpm perf`; anota resultados. Commit solo de los ficheros de esta ficha.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/incremental.ts`, `apps/lector-pdf/src/core/pdf/index.ts`, `apps/lector-pdf/tests/unit/pdf/incremental.test.ts`, `boveda/Apps/Lector PDF/Tareas/PDF-028-escritor-incremental.md`.
+- Qué he hecho: añadido `openForSave(source)` (import de `ObjectReader` como valor, reutiliza `toSaveError`) y exportado desde `src/core/pdf/index.ts`. En los tests, el helper `save()` abre con `openForSave`; el test de `startxref` dañado se sustituye por `describe('openForSave')` con los 4 casos (`corrupt-bad-startxref`, `corrupt-empty`, cifrado real con `appendIncrementalUpdate`, `basic-5` ok). Se conserva el test de `/Encrypt` simulado.
+- Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm test` 1086/1087 tests OK, los tests de `incremental.test.ts` y `to-pdf.test.ts` pasan (28/28) de forma aislada; `pnpm coverage` con `incremental.ts` 97,1 % y `to-pdf.ts` 100 % de líneas; `pnpm perf` OK (`incremental.perf.test.ts` incluido, con sus umbrales de tiempo y de lectura).
+- Dudas o cosas que no he podido hacer:
+  1. **Fallos ajenos a esta ficha:** `pnpm typecheck` falla en `apps/lector-pdf/tests/e2e/zoom.spec.ts` (líneas 63-64, `Property 'top' does not exist`), fichero sin commitear de otro agente. `pnpm test` y `pnpm coverage` tienen un test rojo: `tests/ui/open.test.tsx` › «con la carga pendiente muestra el estado de carga con el nombre y Cancelar», que importa `src/ui/App`, en edición por el agente del visor. No lo he tocado (no toco `src/ui`). Mis ficheros no provocan ninguno de los dos fallos.
+  2. Las medidas numéricas de lectura y tiempo no se han vuelto a extraer en esta ronda: el código de escritura no ha cambiado y los umbrales de `incremental.perf.test.ts` y del test de lectura pasan.

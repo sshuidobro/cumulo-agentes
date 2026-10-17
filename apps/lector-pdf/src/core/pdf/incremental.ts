@@ -25,7 +25,7 @@ import {
   type PdfString,
   type PdfValue,
 } from './objects';
-import type { ObjectReader } from './object-reader';
+import { ObjectReader } from './object-reader';
 import { serializeIndirect, serializeValue } from './serialize';
 
 export interface IncrementalInput {
@@ -89,6 +89,18 @@ export async function buildIncrementalUpdate(input: IncrementalInput): Promise<R
 function toSaveError(error: unknown): AppError {
   if (error instanceof PdfSyntaxError && error.message === 'encrypted') return pdfError('save-encrypted', error);
   return pdfError('save-unreadable', error);
+}
+
+/**
+ * Abre el lector para guardar: única forma en que la app abre un lector para escribir (PDF-037).
+ * Nunca lanza: cifrado → `save-encrypted`; cualquier otro fallo → `save-unreadable`.
+ */
+export async function openForSave(source: ByteSource): Promise<Result<ObjectReader>> {
+  try {
+    return ok(await ObjectReader.open(source));
+  } catch (error: unknown) {
+    return err(toSaveError(error));
+  }
 }
 
 async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> {

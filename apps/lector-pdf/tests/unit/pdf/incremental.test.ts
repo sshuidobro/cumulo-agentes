@@ -8,10 +8,11 @@ import {
   type AnnotationDiff,
   type AnnotationEdits,
 } from '../../../src/core/annotations';
-import { buildIncrementalUpdate, type IncrementalOutput } from '../../../src/core/pdf/incremental';
+import { buildIncrementalUpdate, openForSave, type IncrementalOutput } from '../../../src/core/pdf/incremental';
 import { ObjectReader } from '../../../src/core/pdf/object-reader';
 import { dict, dictGet, name, withEntries, type PdfRef } from '../../../src/core/pdf/objects';
 import { loadPdf, readPageAnnotations, type LoadedPdf } from '../../../src/engine';
+import { appendIncrementalUpdate } from '../../fixtures/pdf-builder';
 import { FIXTURES_DIR } from '../../fixtures/paths';
 import { countingSource, nodeAssetBase } from '../../helpers/pdfjs-node';
 import { fileAnnotation, newAnnotation, T0 } from '../annotations/factories';
@@ -40,8 +41,9 @@ function diffOf(
 
 async function save(data: Uint8Array, diff: AnnotationDiff): Promise<IncrementalOutput> {
   const source = memorySource(data);
-  const reader = await ObjectReader.open(source);
-  const result = await buildIncrementalUpdate({ source, reader, diff, now: NOW });
+  const opened = await openForSave(source);
+  if (!opened.ok) throw new Error(`openForSave: ${opened.error.code}`);
+  const result = await buildIncrementalUpdate({ source, reader: opened.value, diff, now: NOW });
   if (!result.ok) throw new Error(`save: ${result.error.code}`);
   return result.value;
 }
@@ -313,9 +315,34 @@ describe('buildIncrementalUpdate · errores', () => {
     expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-encrypted' }) });
   });
 
-  it('un PDF con startxref dañado no llega a tener lector: ObjectReader.open lo rechaza', async () => {
-    const data = fixtureBytes('corrupt-bad-startxref.pdf');
-    await expect(ObjectReader.open(memorySource(data))).rejects.toMatchObject({ message: 'xref-unreadable' });
+});
+
+describe('openForSave', () => {
+  it('corrupt-bad-startxref.pdf → save-unreadable, sin excepción', async () => {
+    const result = await openForSave(memorySource(fixtureBytes('corrupt-bad-startxref.pdf')));
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-unreadable' }) });
+  });
+
+  it('corrupt-empty.pdf → save-unreadable, sin excepción', async () => {
+    const result = await openForSave(memorySource(fixtureBytes('corrupt-empty.pdf')));
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-unreadable' }) });
+  });
+
+  it('un PDF cifrado de verdad (trailer /Encrypt) → save-encrypted, sin excepción', async () => {
+    const encrypted = appendIncrementalUpdate(
+      fixtureBytes('basic-5.pdf'),
+      new Map([[1, '<< /Type /Catalog /Pages 2 0 R >>']]),
+      '/Encrypt 9 0 R',
+    );
+    const result = await openForSave(memorySource(encrypted));
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-encrypted' }) });
+  });
+
+  it('basic-5.pdf → ok, con la xref leída', async () => {
+    const result = await openForSave(memorySource(fixtureBytes('basic-5.pdf')));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.xref.size).toBeGreaterThan(0);
   });
 });
 
