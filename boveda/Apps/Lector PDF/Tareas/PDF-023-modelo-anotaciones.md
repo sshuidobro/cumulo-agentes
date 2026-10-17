@@ -5,7 +5,7 @@ titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
 estado: en-revision
 depende_de: [PDF-001]
-intentos: 1
+intentos: 2
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -14,7 +14,7 @@ tags: [tarea, pdf, nucleo, anotaciones, undo]
 
 # PDF-023 · Modelo de anotaciones y comandos
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0005-modelo-deshacer-rehacer]] · Manual de UndoStack: [[Apps/Comun/Manual|Manual de Comun]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0005-modelo-deshacer-rehacer]] · Manual de UndoStack: [[Apps/Comun/Manual|Manual de Comun]] · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 Tipos inmutables para resaltado, subrayado, tachado, nota, texto libre y dibujo (en coordenadas PDF), un modelo de **cambios** sobre la línea base del fichero, un único comando primitivo deshacible y la diferencia que usará el escritor al guardar.
@@ -95,9 +95,10 @@ Tipos inmutables para resaltado, subrayado, tachado, nota, texto libre y dibujo 
 - [ ] (T) `updateAnnotationCommand(x, 'escribir', 'note-text:id')` dos veces en < 500 ms se agrupan en una entrada (reloj falso del `UndoStack`).
 - [ ] (T) `quadFromRect([10,20,110,40])` → `[10,40, 110,40, 10,20, 110,20]`; `translateAnnotation` de un dibujo mueve todos los puntos y el `rect`.
 - [ ] (T) `isAnnotation` acepta los 6 tipos válidos y rechaza: color con 2 componentes, `opacity 2`, `quads` con 7 números, `type 'square'`, `pageIndex -1`, campos que faltan.
-- [ ] (T) Rendimiento: 5 000 `addAnnotationCommand` seguidos con `UndoStack` (`maxDepth 100`) en < 2 s (anota el tiempo).
+- [ ] (T, comportamiento, `tests/unit/annotations/commands.test.ts`) 5 000 `addAnnotationCommand` seguidos con `UndoStack` (`maxDepth 100`) → `undoDepth 100` y `upserts.size 5000`, sin medir tiempo.
+- [ ] (T, rendimiento, `tests/perf/annotation-commands.perf.test.ts`, medida única con `performance.now()`) esos 5 000 comandos en < 2 s (anota el tiempo).
 - [ ] (T) `parsePdfDate("D:20261017120000Z")` → `2026-10-17T12:00:00.000Z`; `"D:20261017140000+02'00'"` → `2026-10-17T12:00:00.000Z`; `"D:2026"` → `2026-01-01T00:00:00.000Z`; `"basura"` → `null`; `parsePdfDate(toPdfDate(x)) === x` para 3 fechas con milisegundos 0.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `src/core/annotations/` y `pdf-date.ts` ≥ 95 % de líneas.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf` con código 0; `src/core/annotations/` y `pdf-date.ts` ≥ 95 % de líneas.
 
 ## Fuera de alcance
 - Leer anotaciones del PDF (PDF-024), apariencias (PDF-027), escribir (PDF-028), interfaz (PDF-030+). Respuestas y estados (PDF-058).
@@ -125,3 +126,26 @@ Comprobado: eslint (0 avisos) y typecheck OK en lo de la ficha; 70/70 tests; cob
 - Qué he hecho: corregido el punto 1 del revisor: `boundingBox` calcula mínimos y máximos con bucles (sin `Math.min(...xs)`). Añadido test con un trazo de 300 000 puntos que comprueba que no lanza y que la caja es correcta. El punto 2 (opcional) no se ha cambiado: se mantiene la decisión de `diff.ts`, documentada arriba.
 - Comandos ejecutados y resultado: `npx eslint --max-warnings 0` sobre `src/core/annotations`, `src/core/pdf-date.ts` y `tests/unit/annotations`: 0 avisos. `pnpm --filter lector-pdf typecheck`: sin errores. `vitest run tests/unit/annotations tests/unit/pdf-date.test.ts` con cobertura: 71/71; `core/annotations/` 100 % líneas (96,8 % ramas), `pdf-date.ts` 100 %. `vitest run` del paquete completo: 145/145 en 10 ficheros.
 - Dudas o cosas que no he podido hacer: el criterio de rendimiento (5 000 `addAnnotationCommand` < 2 s) no se ha vuelto a medir en esta ronda; el coste cuadrático de `setEntryCommand` sigue como riesgo anotado en la ronda 1.
+
+### [revisor] ronda 2 — 2026-10-17 — CAMBIOS
+Comprobado: eslint (0 avisos), typecheck OK, 71/71 tests de la ficha. El punto 1 de la ronda 1 queda resuelto (`boundingBox` con bucles y test de 300 000 puntos).
+1. `apps/lector-pdf/tests/perf/annotation-commands.perf.test.ts` — no existe, y el criterio de aceptación de rendimiento lo exige (`pnpm perf`, medida con `performance.now()`, anotar el tiempo). — Crearlo con los 5 000 `addAnnotationCommand` (maxDepth 100) y `expect(ms).toBeLessThan(2000)`, siguiendo `tests/perf/layout.perf.test.ts` y `measure.ts`, y anotar el tiempo en el Registro.
+2. `apps/lector-pdf/tests/unit/annotations/commands.test.ts:174-184` — el test "5 000 añadidos con maxDepth 100 tardan menos de 2 s" sigue con `performance.now()` en `tests/unit/`, lo que prohíbe el ADR-0012 (falla bajo `pnpm coverage`) y la instrucción del líder. — Dejar ahí la versión sin medir tiempo (undoDepth 100, upserts.size 5000) y mover el assert de tiempo al fichero perf.
+3. Ejecutar `pnpm perf` y `pnpm coverage` con código 0 (en esta ronda no se ha medido el rendimiento) y anotar el resultado.
+
+### [lider] suite de rendimiento — 2026-10-17
+Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
+Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies. Mueve el assert de tiempo que ya existe en `tests/unit/annotations/commands.test.ts` ("5 000 añadidos con maxDepth 100 tardan menos de 2 s") a `tests/perf/annotation-commands.perf.test.ts`; en `tests/unit/` se queda la versión sin `performance.now()`.
+
+### [programador] ronda 3 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/tests/perf/annotation-commands.perf.test.ts` (nuevo), `apps/lector-pdf/tests/unit/annotations/commands.test.ts`, esta ficha.
+- Qué he hecho: puntos 1 y 2 del revisor. Creado `tests/perf/annotation-commands.perf.test.ts` con los 5 000 `addAnnotationCommand` (maxDepth 100) y `expect(ms).toBeLessThan(2000)`, medido con `measureBest` de `tests/perf/measure.ts` (1 calentamiento + mínimo de 5 pasadas, ADR-0012; la ficha decía «medida única», se usa el estándar del ADR). Su timeout de Vitest es 60 s porque las 6 pasadas tardan ~6,8 s. En `tests/unit/annotations/commands.test.ts` queda la versión sin `performance.now()`: `undoDepth 100` y `upserts.size 5000`. `vitest.perf.config.ts`, el script `perf` y `measure.ts` ya existían; no se han tocado.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: 0 avisos. `pnpm typecheck`: sin errores.
+  - `pnpm test`: 426/426 en 35 ficheros (raíz). `vitest run tests/unit/annotations tests/unit/pdf-date.test.ts`: 71/71.
+  - `pnpm coverage`: código 0. `core/annotations/` 100 % líneas (96,8 % ramas); `src/core` 99,35 % líneas (incluye `pdf-date.ts`).
+  - `pnpm perf`: código 0, 5/5 (las 3 ficheros de perf, incluidos los de PDF-002 y PDF-006). Tiempo medido de 5 000 `addAnnotationCommand` con `UndoStack` (mínimo de 5 pasadas): **1 028 ms** (presupuesto < 2 000 ms).
+- Dudas o cosas que no he podido hacer:
+  - El punto 2 del revisor en ronda 1 (upsert `file` sin línea base cuenta como `modified`) sigue como estaba, documentado.
+  - El coste cuadrático de `setEntryCommand` sigue siendo un riesgo: 1 028 ms frente a 2 000 ms. Si el líder quiere más margen, es rediseño y no lo he tocado.
+  - Fuera de esta ficha: hay ficheros sin commitear de otros agentes (`packages/platform/tests/qa-*.test.ts`, `packages/platform/tests/tauri/qa-edge-tauri.test.ts`, `packages/platform/tests/web/qa-web-edge.test.ts`); no los he incluido en el commit.
