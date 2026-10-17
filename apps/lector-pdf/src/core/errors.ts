@@ -1,6 +1,15 @@
 import type { AppError } from '@suite/shared';
 
-export type PdfErrorCode = 'empty' | 'not-pdf' | 'corrupt' | 'password-required' | 'password-incorrect' | 'io' | 'cancelled';
+export type PdfErrorCode =
+  | 'empty'
+  | 'not-pdf'
+  | 'corrupt'
+  | 'password-required'
+  | 'password-incorrect'
+  | 'io'
+  | 'cancelled'
+  | 'save-encrypted'
+  | 'save-unreadable';
 
 export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
@@ -10,6 +19,8 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'password-incorrect': 'La contraseña no es correcta.',
   'io': 'No se ha podido leer el fichero. Comprueba que sigue en su sitio.',
   'cancelled': 'Apertura cancelada.',
+  'save-encrypted': 'No se pueden guardar anotaciones en este PDF porque está cifrado. Llegará en una próxima versión.',
+  'save-unreadable': 'No se pueden guardar las anotaciones: la estructura interna del PDF está dañada.',
 };
 
 /** Crea un error de PDF con mensaje en español. `cause` conserva el error original para diagnóstico. */

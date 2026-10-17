@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-028
 titulo: Escritor incremental - anexar las anotaciones al PDF sin reescribirlo
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-068, PDF-027, PDF-024]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -77,3 +77,14 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
 ### [líder] ajuste por replanificación de PDF-026 — 2026-10-17
 - Depende ahora de [[PDF-068-lector-objetos]] (el `ObjectReader` sale de PDF-026). Las páginas tocadas se localizan con `pageRef(index)` ([[ADR-0014-localizar-paginas-por-count]]).
 - Criterio de lectura corregido: < 10 % era imposible (la xref de `pages-5000.pdf` ya es el 13,6 %). Nuevos umbrales: < 35 % en `pages-5000.pdf`, < 16 % en `pages-100000.pdf`. Los tiempos pasan a `tests/perf/` (ADR-0012).
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/errors.ts`, `src/core/annotations/to-pdf.ts` (nuevo), `src/core/annotations/index.ts`, `src/core/pdf/incremental.ts` (nuevo), `src/core/pdf/index.ts`, `tests/unit/annotations/to-pdf.test.ts` (nuevo), `tests/unit/pdf/incremental.test.ts` (nuevo), `tests/perf/incremental.perf.test.ts` (nuevo).
+- Qué he hecho: códigos `save-encrypted` y `save-unreadable`; `to-pdf.ts` (`annotationDict`, `popupDict`, `updatedDict`) y `buildIncrementalUpdate` (xref de tabla o de stream según el último tipo del original, `/ID` con id0 original, `/Annots` directo, indirecto o ausente, popups solo de notas). Medidas: `pages-5000` + 10 anotaciones → delta 7 385 B, lee el 31,9 % del fichero (límite 35 %); `pages-100000` con las 10 páginas → delta 7 501 B, lee el 14,3 % (límite 16 %); página 99 999 → lee el 13,7 %, 85 ms.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (83 ficheros, 1058 tests); `pnpm coverage` OK (`to-pdf.ts` 100 % líneas, `incremental.ts` 97 %); `pnpm perf` OK (incluye `incremental.perf.test.ts`).
+- Dudas o cosas que no he podido hacer:
+  1. **Criterio `corrupt-bad-startxref.pdf` → `err` `save-unreadable` no cumplible con la firma actual.** `ObjectReader.open` rechaza ese fichero, así que `buildIncrementalUpdate` nunca recibe lector. El test solo comprueba que `open` rechaza con `xref-unreadable`. Opciones para el líder: (a) una función `openForSave(source)` que devuelva `Result<ObjectReader>` y que use PDF-037; (b) cambiar el criterio. Decisión pendiente.
+  2. `/Encrypt`: `ObjectReader.open` ya rechaza los cifrados, así que el test simula el trailer cifrado sobre un lector válido.
+  3. Criterio tomado dentro de la ficha: cualquier error (no solo `PdfSyntaxError`) devuelve `save-unreadable` para cumplir «nunca lanza». El `/ID` nuevo usa 4 pasadas de FNV-1a de 32 bits (16 bytes).
+  4. pdf.js entrega los popups al final de la lista de `/Annots`; los tests comparan subtipos ordenados.
+  5. En el árbol hay cambios sin commitear de otros agentes (viewer, ui, state, `object-reader.test.ts`, `xref-robustness.test.ts`, `annotation-qa.test.ts`). No los he incluido en el commit.
