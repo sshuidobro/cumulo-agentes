@@ -9,6 +9,8 @@ Tú (la sesión principal) eres el **coordinador**: no escribes código de produ
 
 Objetivo recibido: $ARGUMENTS
 
+**Lanza SIEMPRE a los subagentes en primer plano** (`run_in_background: false`) y espera su resultado en el mismo turno; para paralelizar, varias llamadas Agent en el mismo mensaje. Nunca termines tu turno "esperando a que acabe" un agente: en modo sin supervisión eso mata al agente y detiene todo el trabajo. Igual con comandos largos (instalaciones, builds): en primer plano con un timeout amplio.
+
 **Regla del usuario: no pares hasta que todas las fichas estén en `hecha`.** No termines el turno para informar de progreso ni para pedir permiso. Las preguntas de producto que surjan se anotan en la bitácora, la ficha afectada queda `bloqueada` y sigues con el resto; las presentas todas juntas al final.
 
 ## 0. Bitácora
