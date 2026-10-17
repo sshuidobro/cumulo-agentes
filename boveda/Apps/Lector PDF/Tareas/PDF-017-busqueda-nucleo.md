@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-017
 titulo: Núcleo de búsqueda - normalización, coincidencias y sesión incremental cancelable
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-005]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -91,3 +91,14 @@ Lógica de búsqueda pura y probada: normaliza texto (mayúsculas, tildes, ligad
 ### [lider] suite de rendimiento — 2026-10-17
 Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
 Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/search/{normalize,page-text,find,session}.ts`, `apps/lector-pdf/src/engine/text.ts` (PDF-013 paso 1, solo constante y `getPageTextContent`), `apps/lector-pdf/src/engine/search-source.ts`, `apps/lector-pdf/tests/unit/search-{normalize,find,session,engine}.test.ts`, `apps/lector-pdf/tests/unit/search.bench.ts`, `apps/lector-pdf/tests/perf/search.perf.test.ts`, esta ficha.
+- Qué he hecho: núcleo de búsqueda pura (normalización con mapa a posiciones originales, `buildPageText`/`rawOffsetToPos`, `findInPage` con palabra completa, `SearchSession` con orden desde `startPage`, lecturas con concurrencia 4 procesadas en orden, cesión cada 8 ms, progreso ≤ 1 cada 100 ms, cancelación y tope de 100 000) y fuente pdf.js. Caché `PageTextCache` FIFO. Criterios (T) cubiertos por tests unitarios, motor real con `basic-5.pdf` y `pages-5000.pdf` y tests de rendimiento. `PDF-013` sigue pendiente; su dueño debe conservar `src/engine/text.ts` tal como está.
+- Comandos ejecutados y resultado: `pnpm lint` 0 (tras cambios de otros agentes en tests/ui); `pnpm typecheck` 0; `pnpm test` 60 ficheros / 772 tests OK; `pnpm coverage` OK, `src/core/search/` líneas 98,89 % (ramas 88,07 %); `pnpm perf` 0 (12 tests), tiempos: búsqueda completa de 5 000 páginas 1 766,8 ms, primera coincidencia 547,9 ms, hueco máximo del bucle de eventos 26,5 ms; segunda búsqueda con caché 95,3 ms. Bench `pnpm exec vitest bench --run tests/unit/search.bench.ts` ejecutado (informativo).
+- Decisiones de implementación que conviene revisar (no cambian firmas):
+  1. Fin de una coincidencia que cae justo al inicio de un ítem: se expresa como final del ítem anterior (`{ item: i, offset: len }`) en lugar de `{ item: i+1, offset: 0 }`, para que una coincidencia dentro de un ítem tenga `start.item === end.item`. Resto de casos: `rawOffsetToPos(map[i+len])` tal cual.
+  2. `findInPage` recibe la consulta ya normalizada con `normalizeQuery` (no tiene las opciones de tildes/mayúsculas).
+  3. Vitest 5 no exporta `bench`: el benchmark sigue el patrón de `layout.bench.ts` (`test` con contexto `{ bench }`).
+  4. Consulta vacía: `onDone` se llama de forma síncrona dentro de `start()`.
+- Dudas o cosas que no he podido hacer: nada pendiente. Expresiones regulares y multi-PDF quedan fuera de alcance, como indica la ficha.
