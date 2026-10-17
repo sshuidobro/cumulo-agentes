@@ -46,4 +46,5 @@ Hechos comprobados por el líder el 2026-10-17 con `pdfjs-dist@6.4.299` (borrado
 - Hay que construir y probar: layout, cola de render, búsqueda incremental, enlaces, índice y miniaturas (fichas PDF-006 a PDF-018).
 - Por encima de 10 000 páginas no hay cambio de modo; el precio es que con el scroll escalado un píxel de barra equivale a varios de contenido (la rueda del ratón sigue moviendo lo esperado).
 - Con zoom muy alto la página se ve algo borrosa (límite de lienzo) hasta que exista el "lienzo de detalle" (ficha PDF-051).
+- Build: se usa `pdfjs-dist/legacy/build/*` en todas partes, ver [[ADR-0013-pdfjs-build-legacy]].
 - Vigilar actualizaciones de pdf.js: la API `TextLayer`, `annotationStorage` y `pageColors` se fijan con versión exacta y se cubren con tests.

@@ -64,3 +64,6 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-fichero
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] nota — 2026-10-17
+Por [[ADR-0013-pdfjs-build-legacy]] el motor usa la build `legacy` de pdf.js (página y worker), también en el webview de Tauri (WebKitGTK/WKWebView/WebView2 no tienen `Map.prototype.getOrInsertComputed`). No cambia nada de esta ficha: la CSP (`script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:`) vale igual. Si en el webview aparece «El PDF está dañado…» con PDFs válidos, comprobar primero que `src/engine/worker.ts` apunta a `legacy/build/pdf.worker.min.mjs`.

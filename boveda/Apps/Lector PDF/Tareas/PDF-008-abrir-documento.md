@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-008
 titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados de carga y error
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]

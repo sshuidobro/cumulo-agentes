@@ -108,7 +108,7 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 | [[PDF-005-motor-carga-por-rangos]] | Motor: carga por rangos y errores | PDF-002, COM-005 | pendiente |
 | [[PDF-006-layout-virtual]] | Núcleo: dimensiones y layout virtual | PDF-001 | cambios-pedidos (replanificada, [[ADR-0012-suite-de-rendimiento]]) |
 | [[PDF-007-zoom-y-cola-de-render]] | Núcleo: zoom, cola de render y tamaño de lienzo | PDF-001 | pendiente |
-| [[PDF-008-abrir-documento]] | Abrir documento en la app | PDF-005, PDF-006, COM-006, COM-011 | pendiente |
+| [[PDF-008-abrir-documento]] | Abrir documento en la app | PDF-005, PDF-006, COM-006, COM-011 | cambios-pedidos (desbloqueada, [[ADR-0013-pdfjs-build-legacy]]) |
 | [[PDF-009-visor-virtualizado]] | Visor virtualizado (marcos y scroll) | PDF-008, PDF-007 | pendiente |
 | [[PDF-010-render-de-paginas]] | Render de páginas en lienzos | PDF-009 | pendiente |
 | [[PDF-011-zoom-y-rotacion-ui]] | Zoom y rotación de vista en la interfaz | PDF-010 | pendiente |
@@ -133,7 +133,7 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[COM-013-cerrar-ventana]] | `Platform.closeWindow()` | COM-007, COM-010 | pendiente |
 | [[PDF-023-modelo-anotaciones]] | Modelo de anotaciones, comandos y fechas PDF | PDF-001 | pendiente |
 | [[PDF-024-importar-anotaciones]] | Importar anotaciones existentes | PDF-023, PDF-005, PDF-003 | pendiente |
-| [[PDF-025-objetos-pdf]] | Léxico, analizador y serializador de objetos PDF | PDF-023 | pendiente |
+| [[PDF-025-objetos-pdf]] | Léxico, analizador y serializador de objetos PDF | PDF-023 | en-revision (criterio corregido por el líder) |
 | [[PDF-026-lector-xref]] | Lector de xref y objetos por rangos | PDF-025, PDF-003 | pendiente |
 | [[PDF-027-apariencias]] | Apariencias /AP de anotaciones | PDF-023, PDF-026 | pendiente |
 | [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-026, PDF-027, PDF-024 | pendiente |

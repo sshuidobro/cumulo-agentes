@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-004
 titulo: Añadir el corpus público (veraPDF) y PDFs exportados con LibreOffice
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-005]
 intentos: 0
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -75,3 +75,13 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0011-documentos-de-prue
 - Procedencia y licencia: `FUENTES.md` lista los 10 ficheros con commit fijado, licencia CC BY 4.0 (veraPDF) y atribución con enlace. Comprobados por SHA-256 3 de los 7 PDF contra la descarga del commit `bb75f4f`: idénticos. Metadatos de los veraPDF: autor "veraPDF Consortium". Los 3 de LibreOffice no contienen autor ni rutas personales. Sin documentos personales.
 - Tamaño 836 620 bytes (< 1,5 MB); 10 PDF versionados (`git ls-files`). `corpus.test.ts` 15/15 verde; typecheck OK; HTML de origen cumplen la ficha (3×8 párrafos, 40 capítulos, `lang`/`dir`).
 - (opcional) El test del árabe no comprueba texto; aceptable, la ficha no lo exige.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 10 PDFs, < 1,5 MB | OK | `find ... -name '*.pdf' \| wc -l` = 10; `du -sb` = 836620 |
+| Los 10 abren con loadPdf | OK | `vitest run corpus.test.ts` 15/15 |
+| informe / largo / multilingue / Highlight | OK | mismos 15 tests (sin skip/only) |
+| FUENTES.md con 10 ficheros, licencia, Generados | OK | revisado; PDFs en `git ls-files`, sin `check-ignore` |
+| lint, typecheck, test | OK | lint 0; typecheck 0; 60 ficheros / 773 tests verdes; build web OK |
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: no aplica.

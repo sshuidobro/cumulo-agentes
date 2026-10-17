@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-017
 titulo: Núcleo de búsqueda - normalización, coincidencias y sesión incremental cancelable
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-005]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -106,3 +106,15 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 ### [revisor] ronda 1 — 2026-10-17 — APROBADO
 Lint, typecheck, test (773), coverage (`core/search` 96,13 % sentencias, 98,89 % líneas) y perf (12 tests; búsqueda completa 1 838 ms, hueco máx. 29 ms, con caché 50 ms) en verde. Criterios cubiertos; sin `skip`/`only`; `core/` sin pdfjs.
 1. (opcional) `session.ts` `#pageOrder` — un `startPage` NaN produce un recorrido vacío; sanear a 0 con `Number.isFinite`.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Normalización (tildes, ligadura, espacios, guion blando) | OK | `search-normalize.test.ts` en `pnpm test` |
+| basic-5 / murciélago / cruce de ítems | OK | `search-find.test.ts`, `search-engine.test.ts` |
+| Sesión: orden, cancelar, consulta vacía, página que falla | OK | `search-session.test.ts` |
+| pages-5000 `aguja` → 1233 y 4998 | OK | `search-engine.test.ts` |
+| Caché sin nuevas lecturas | OK | `search-engine.test.ts` |
+| Rendimiento | OK | total 1752 ms (<10 s), hueco máx. 28,1 ms (<50), con caché 61,3 ms (<1 s) |
+| lint, typecheck, test (773), coverage, perf | OK, código 0 | `core/search` 98,89 % líneas |
+Sin `skip`/`only`/`expect(true)`. Tests añadidos: ninguno (la cobertura existente es suficiente). Nota opcional del revisor (startPage NaN) sigue abierta, no bloqueante.

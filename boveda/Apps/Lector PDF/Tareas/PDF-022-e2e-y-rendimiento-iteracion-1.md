@@ -47,3 +47,6 @@ Una batería E2E que demuestra que la iteración 1 cumple lo prometido al usuari
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] nota — 2026-10-17
+Por [[ADR-0013-pdfjs-build-legacy]] la app usa la build `legacy` de pdf.js (~+120 KB de JS en total entre página y worker). Los presupuestos del Plan **no cambian**: esta batería mide ya con la build legacy. En la entrada del tester, anotar el tamaño de `dist/assets/pdf.worker*.mjs` y del chunk principal para tener referencia.
