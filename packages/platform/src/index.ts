@@ -12,5 +12,7 @@ export { PLATFORM_MESSAGES } from './messages';
 export { PlatformIoError, platformError } from './errors';
 export { memorySource, blobSource, readAll } from './byte-source';
 export { createStorageStore } from './prefs';
+export type { DraftStore } from './drafts';
+export { createIdbDraftStore } from './drafts';
 export { isTauri } from './detect';
 export { loadPlatform } from './detect';

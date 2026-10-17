@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-010
 titulo: Implementar Platform para Tauri (TypeScript) con mocks
 app: comun
-estado: en-curso
+estado: en-revision
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react, pruebas-calidad]
@@ -69,3 +69,9 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `packages/platform/src/tauri/tauri-api.ts` y `platform-tauri.ts` (nuevos), `packages/platform/src/tauri/index.ts` (nuevo, reexporta `createTauriPlatform`), `packages/platform/src/detect.ts` (rama Tauri en `loadPlatform`), `packages/platform/package.json` (`@tauri-apps/api@2.12.4`, `@tauri-apps/plugin-opener@2.7.2`), `pnpm-lock.yaml`, `tests/tauri/platform-tauri.test.ts`, `tests/tauri/mock-ipc.test.ts`, `tests/tauri/load-platform.test.ts` (nuevos).
+- Qué he hecho: `createTauriPlatform(options, api)` implementa `Platform` sobre los comandos `suite_*` de COM-009 (lectura por rangos con `suite_read_range`, guardado `bytes`/`append` con las cabeceras exactas, diálogos, `suite_take_pending_opens` + evento `suite://file-opened`, enlaces con la misma lista blanca de protocolos que web, título y cierre). `realTauriApi()` es el único código que importa `@tauri-apps/*`. `loadPlatform` elige Tauri si hay `__TAURI_INTERNALS__`.
+- Comandos ejecutados y resultado: `pnpm install` → ok. `pnpm lint` → 0. `pnpm typecheck` → 0. `pnpm test` → 24 ficheros, 257 tests en verde. `pnpm coverage` → 0 (97,06 % líneas globales). `src/tauri/platform-tauri.ts` 97,4 % líneas (requisito ≥ 85 %). `mockIPC` de `suite_read_range` devuelve los 3 bytes.
+- Dudas o cosas que no he podido hacer: (1) `depende_de` solo lista COM-005, pero `loadPlatform` y la rama web dependen de COM-006; lo he tomado de COM-006 ya commiteado (ac6e184). Conviene añadirlo a `depende_de`. (2) `TauriApi.listen`/`onCloseRequested` devuelven la baja de forma síncrona; si la baja llega antes de que resuelva el registro, se quita al resolver. (3) `drain()` no entrega ficheros si ya se dio de baja, pero una recogida en vuelo en ese instante se pierde; anotado para revisión. (4) `closeFile` deja propagar un rechazo de `suite_close` (la ficha no dice otra cosa). (5) `realTauriApi()` queda sin cubrir salvo `invoke` (solo `mock-ipc` lo ejercita; el umbral de la ficha solo aplica a `platform-tauri.ts`). (6) La ruta real de Tauri (ventana, plugins) se verificará con la app PDF-021.
