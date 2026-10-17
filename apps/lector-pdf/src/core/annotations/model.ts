@@ -149,14 +149,22 @@ export function isAnnotation(v: unknown): v is Annotation {
 const NOTE_ICONS: readonly unknown[] = ['Comment', 'Note', 'Key', 'Help', 'NewParagraph', 'Paragraph', 'Insert'];
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
+/** Bucle explícito (sin spread): los trazos pueden tener cientos de miles de puntos. */
 function boundingBox(xs: readonly number[], ys: readonly number[], pad: number): RectPt {
   if (xs.length === 0 || ys.length === 0) return [0, 0, 0, 0];
-  return [
-    Math.min(...xs) - pad,
-    Math.min(...ys) - pad,
-    Math.max(...xs) + pad,
-    Math.max(...ys) + pad,
-  ];
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const x of xs) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+  }
+  for (const y of ys) {
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return [minX - pad, minY - pad, maxX + pad, maxY + pad];
 }
 
 function shiftRect(r: RectPt, dx: number, dy: number): RectPt {

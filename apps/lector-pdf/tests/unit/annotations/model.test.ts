@@ -43,6 +43,19 @@ describe('rectFromQuads y rectFromPaths', () => {
   it('rectFromPaths sin puntos devuelve un rectángulo vacío', () => {
     expect(rectFromPaths([], 2)).toEqual([0, 0, 0, 0]);
   });
+
+  it('rectFromPaths no lanza con un trazo de 300 000 puntos y calcula la caja', () => {
+    const n = 300_000;
+    const trazo: number[] = [];
+    for (let i = 0; i < n; i++) {
+      trazo.push(i, -i);
+    }
+    let rect: readonly number[] = [];
+    expect(() => {
+      rect = rectFromPaths([trazo], 1);
+    }).not.toThrow();
+    expect(rect).toEqual([-1, -(n - 1) - 1, n - 1 + 1, 1]);
+  });
 });
 
 describe('translateAnnotation', () => {
