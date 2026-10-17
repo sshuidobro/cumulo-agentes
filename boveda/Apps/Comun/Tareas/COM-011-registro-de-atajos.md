@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-011
 titulo: Crear el registro único de atajos de teclado en @suite/shared
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
