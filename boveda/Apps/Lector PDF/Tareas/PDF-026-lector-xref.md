@@ -5,7 +5,7 @@ titulo: Lector de la tabla de referencias cruzadas (xref) y filtros de streams
 app: pdf
 estado: en-revision
 depende_de: [PDF-025, PDF-003]
-intentos: 0
+intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -99,5 +99,33 @@ Estado: `bloqueada` a la espera de la decisión sobre el criterio de rango.
   1. Decisiones menores que he tomado y conviene validar: (a) una entrada `1` de xref stream con offset 0 se conserva como `offset` (la regla de offset 0 solo se aplica a la tabla clásica); (b) tipos desconocidos en xref stream → `free`; (c) xref stream sin `/Type /XRef` → `xref-unreadable`; (d) filas incompletas al final de un xref stream se ignoran en silencio; (e) `/Filter` con más de un filtro → `Filtro no soportado` con la lista.
   2. Las fichas PDF-009 y PDF-021, mencionadas en el encargo en paralelo, no las he tocado: no son de esta ficha.
   3. El fichero `apps/lector-pdf/tests/ui/tauri-integration.test.tsx` (sin commit, de otro agente) dio un error de tipos en una pasada anterior; en la última pasada `pnpm typecheck` salió limpio. No lo he modificado.
+
+Estado: `en-revision`.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck, tests de xref/filters (35/35) y `pnpm perf` (14/14) en verde. Cobertura: `xref.ts` 92,5 % y `filters.ts` 94,0 % de líneas. Cada criterio de la ficha tiene su test. La lectura de `pages-100000.pdf` cumple el límite del 14 % (13,51 % según el programador). Las decisiones menores del programador (tipos desconocidos → `free`, filas incompletas ignoradas, varios filtros → error) son razonables.
+1. (opcional) `filters.ts:54` — `unzlibSync` no limita el tamaño descomprimido, así que un xref stream malicioso podría hacer una bomba de descompresión — poner un tope cuando llegue el endurecimiento (PDF-052 o similar).
+2. (opcional) `tests/perf/xref.perf.test.ts` — duplica `measureBest` en versión asíncrona — extraer una variante asíncrona a `tests/perf/measure.ts`.
+
+### [tester] ronda 1 — 2026-10-17 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Comparación con qpdf | PASA | Script temporal: `readXref` vs `qpdf --show-xref` (qpdf 11.9.0) sobre los 23 PDF no corruptos de generated/, verapdf y libreoffice: mismas entradas (offset/gen y objStm/index) en los 23 |
+| Criterios (T) de la ficha, lint, typecheck, `pnpm test` | PASA | lint y typecheck OK; 69 ficheros / 892 tests OK |
+| `pnpm perf` | PASA | 9 ficheros / 14 tests OK |
+| Robustez: truncados, bytes corrompidos (1 200 casos), vacío, 1 byte | PASA | `xref-robustness.test.ts`: solo `PdfSyntaxError`, sin cuelgues |
+| Robustez: bomba de descompresión | FALLA | defecto de seguridad (abajo) |
+
+**Defecto (seguridad, rechazo según el encargo):** `filters.ts` `inflate()` llama a `unzlibSync` sin límite de tamaño de salida.
+Reproducir: `pnpm exec vitest run apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts`. Un PDF de ~1 MB con un xref stream cuyo Flate expande a 1 GiB de ceros: `readXref` reserva 1 GiB, tarda ~16 s y devuelve un resultado en lugar de rechazar. Con unos 4 MB se agotaría la memoria del proceso. Lo mismo ocurre con `decodeStreamData`.
+Arreglo esperado: tope de salida en `decodeStreamData` (para xref, p. ej. `size * suma(W)` según `/Index`/`/Size`, o un máximo absoluto) con `PdfSyntaxError`. Usar `Inflate`/`Zlib` en streaming de fflate o `unzlibSync` con `out` acotado. Ambos tests rojos están escritos y deben pasar.
+Tests añadidos: `apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts` (5 tests; 2 rojos a propósito por la bomba).
+Rendimiento: `pnpm perf` OK; el programador anotó 13,51 % de bytes y ~142 ms para `pages-100000.pdf`.
+
+### [programador] ronda 3 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/filters.ts` (tope de descompresión), `apps/lector-pdf/src/core/pdf/xref.ts` (tope por xref stream), `apps/lector-pdf/tests/unit/pdf/filters.test.ts` (3 tests del tope), `apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts` (test del revisor-tester, sin cambios; ahora pasa).
+- Qué he hecho: arreglo de la bomba de descompresión (defecto del tester). `inflate` pasa a ser en streaming (`Unzlib`/`Inflate` de fflate) y corta en cuanto la salida supera el tope, con `PdfSyntaxError('Flujo descomprimido demasiado grande (más de N bytes)')`; ya no se reserva el total antes de comprobarlo. **Límite elegido:** `MAX_DECODED_BYTES = 64 MiB` como tope absoluto de `decodeStreamData(s, maxBytes?)`. Para xref stream el tope es más estricto: (suma de `/W` + 1 byte de predictor) × número de entradas de `/Index` (o `/Size`), con un mínimo de una fila, y nunca más que el absoluto. Los tests de robustez no se han debilitado.
+- Comandos ejecutados y resultado: `pnpm exec vitest run` sobre `filters`, `xref`, `xref-robustness` → 40/40 OK (la bomba de 1 GiB ahora da error controlado); `pnpm lint` OK; `pnpm typecheck` de `apps/lector-pdf` OK (la raíz falló una vez por `src/state/annotation-actions.ts`, fichero de otro agente en curso, no tocado); `pnpm test` 899/900, el único fallo (`tests/ui/open.test.tsx`, «scanAnnotations» no definido en el mock) es de código de PDF-030 en curso en el mismo árbol y pasa 10/10 aislado; `pnpm perf` `xref.perf` 1/1 OK; cobertura (`filters.test` + `xref.test`): `filters.ts` 95,0 % y `xref.ts` 93,0 % de líneas.
+- Dudas o cosas que no he podido hacer: (1) el tope de 64 MiB es un criterio mío para documentar; si el líder prefiere otro valor, es una constante. (2) `PDF-010` y `PDF-030` (encargados en paralelo) no los he tocado: sus ficheros (`engine/render.ts`, `ui/viewer/PageView.tsx`, `state/annotation-actions.ts`, etc.) ya están en el árbol sin commit de otro agente y no los he modificado para no pisar ese trabajo. (3) El commit incluye solo los ficheros de esta ficha.
 
 Estado: `en-revision`.

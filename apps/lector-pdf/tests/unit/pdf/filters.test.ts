@@ -145,3 +145,22 @@ describe('decodeStreamData · predictores', () => {
     ).toThrow('Predictor no soportado: 5');
   });
 });
+
+describe('decodeStreamData · tope de descompresión', () => {
+  it('acepta una salida igual al tope y rechaza una de un byte más', () => {
+    const plain = sample(1000);
+    const s = flowWith({ Filter: name('FlateDecode') }, flateEncode(plain));
+    expect(decodeStreamData(s, 1000)).toEqual(plain);
+    expect(() => decodeStreamData(s, 999)).toThrow(PdfSyntaxError);
+  });
+
+  it('el tope por defecto (64 MiB) no rechaza un flujo normal', () => {
+    const plain = sample(200_000);
+    expect(decodeStreamData(flowWith({ Filter: name('FlateDecode') }, flateEncode(plain)))).toEqual(plain);
+  });
+
+  it('el mensaje indica que la salida es demasiado grande', () => {
+    const s = flowWith({ Filter: name('FlateDecode') }, flateEncode(sample(2000)));
+    expect(() => decodeStreamData(s, 100)).toThrow(/demasiado grande/);
+  });
+});

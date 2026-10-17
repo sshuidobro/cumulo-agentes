@@ -2,10 +2,24 @@
  * Filtros de flujos PDF (ISO 32000-1 §7.4): FlateDecode con predictores TIFF (2) y PNG (10-15).
  * Cualquier otro filtro se rechaza con `PdfSyntaxError`; no se inventan datos.
  */
-import { inflateSync, unzlibSync, zlibSync } from 'fflate';
+import { Inflate, Unzlib, zlibSync } from 'fflate';
 import { dictGet, PdfSyntaxError, type PdfDict, type PdfStream, type PdfValue } from './objects';
 
 const FLATE_DECODE = 'FlateDecode';
+
+/**
+ * Tope absoluto de bytes descomprimidos de un flujo (64 MiB). Un flujo que lo supera se rechaza
+ * con `PdfSyntaxError`: evita que un PDF de pocos KB reserve gigabytes (bomba de descompresión).
+ * Los llamantes pueden pedir un tope menor (p. ej. el xref stream, según su `/W` y `/Index`).
+ */
+export const MAX_DECODED_BYTES = 64 * 1024 * 1024;
+
+/** Error interno: la salida descomprimida supera el tope. No escapa de este módulo. */
+class OutputLimitError extends Error {}
+
+function overflowError(maxBytes: number): PdfSyntaxError {
+  return new PdfSyntaxError(`Flujo descomprimido demasiado grande (más de ${maxBytes} bytes)`, 0);
+}
 
 function isName(v: PdfValue | undefined): v is { readonly kind: 'name'; readonly value: string } {
   return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'name';
@@ -50,16 +64,38 @@ function intParm(parms: PdfDict | null, key: string, fallback: number): number {
   throw new PdfSyntaxError(`/DecodeParms /${key} no válido`, 0);
 }
 
+/** Descomprime en streaming (zlib o deflate crudo) y corta en cuanto la salida supera `maxBytes`. */
+function inflateStream(data: Uint8Array, maxBytes: number, zlib: boolean): Uint8Array {
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  const onData = (chunk: Uint8Array): void => {
+    total += chunk.length;
+    if (total > maxBytes) throw new OutputLimitError();
+    parts.push(chunk);
+  };
+  const stream = zlib ? new Unzlib({}, onData) : new Inflate({}, onData);
+  stream.push(data, true);
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
+  return out;
+}
+
 /** Descomprime zlib; si la cabecera no es válida, reintenta con deflate crudo. */
-function inflate(data: Uint8Array): Uint8Array {
+function inflate(data: Uint8Array, maxBytes: number): Uint8Array {
   try {
-    return unzlibSync(data);
-  } catch {
-    try {
-      return inflateSync(data);
-    } catch {
-      throw new PdfSyntaxError('Flujo FlateDecode dañado', 0);
-    }
+    return inflateStream(data, maxBytes, true);
+  } catch (e) {
+    if (e instanceof OutputLimitError) throw overflowError(maxBytes);
+  }
+  try {
+    return inflateStream(data, maxBytes, false);
+  } catch (e) {
+    if (e instanceof OutputLimitError) throw overflowError(maxBytes);
+    throw new PdfSyntaxError('Flujo FlateDecode dañado', 0);
   }
 }
 
@@ -143,12 +179,13 @@ function unpredict(data: Uint8Array, parms: PdfDict | null): Uint8Array {
 /**
  * Datos decodificados de un flujo: sin `/Filter` se devuelven tal cual; con `/FlateDecode`
  * (único filtro) se descomprimen y se les aplica el predictor de `/DecodeParms`.
+ * `maxBytes` acota la salida descomprimida (por defecto `MAX_DECODED_BYTES`).
  */
-export function decodeStreamData(s: PdfStream): Uint8Array {
+export function decodeStreamData(s: PdfStream, maxBytes: number = MAX_DECODED_BYTES): Uint8Array {
   const names = filterNames(dictGet(s.dict, 'Filter'));
   if (names.length === 0) return s.data;
   if (names.length !== 1 || names[0] !== FLATE_DECODE) throw unsupported(names);
-  const inflated = inflate(s.data);
+  const inflated = inflate(s.data, maxBytes);
   return unpredict(inflated, decodeParms(dictGet(s.dict, 'DecodeParms')));
 }
 
