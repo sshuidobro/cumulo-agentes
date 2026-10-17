@@ -1,0 +1,34 @@
+.viewer {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  background: var(--color-viewer-bg);
+  outline: none;
+}
+
+.viewer:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.spacer {
+  position: relative;
+}
+
+.page {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  box-shadow: var(--shadow-page);
+}
+
+.marker {
+  color: #8e8e93;
+  font-size: 1.25rem;
+  user-select: none;
+}
