@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas (xref) y filtros de streams
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-025, PDF-003]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -101,3 +101,8 @@ Estado: `bloqueada` a la espera de la decisión sobre el criterio de rango.
   3. El fichero `apps/lector-pdf/tests/ui/tauri-integration.test.tsx` (sin commit, de otro agente) dio un error de tipos en una pasada anterior; en la última pasada `pnpm typecheck` salió limpio. No lo he modificado.
 
 Estado: `en-revision`.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck, tests de xref/filters (35/35) y `pnpm perf` (14/14) en verde. Cobertura: `xref.ts` 92,5 % y `filters.ts` 94,0 % de líneas. Cada criterio de la ficha tiene su test. La lectura de `pages-100000.pdf` cumple el límite del 14 % (13,51 % según el programador). Las decisiones menores del programador (tipos desconocidos → `free`, filas incompletas ignoradas, varios filtros → error) son razonables.
+1. (opcional) `filters.ts:54` — `unzlibSync` no limita el tamaño descomprimido, así que un xref stream malicioso podría hacer una bomba de descompresión — poner un tope cuando llegue el endurecimiento (PDF-052 o similar).
+2. (opcional) `tests/perf/xref.perf.test.ts` — duplica `measureBest` en versión asíncrona — extraer una variante asíncrona a `tests/perf/measure.ts`.
