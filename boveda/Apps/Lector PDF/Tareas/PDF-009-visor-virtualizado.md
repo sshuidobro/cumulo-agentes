@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-008, PDF-007]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
