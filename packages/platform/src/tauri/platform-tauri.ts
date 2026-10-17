@@ -218,5 +218,13 @@ export function createTauriPlatform(
         if (!cb()) preventDefault();
       }), 'el cierre de la ventana');
     },
+
+    async closeWindow(): Promise<void> {
+      try {
+        await api.destroyWindow();
+      } catch (cause) {
+        log.error('No se ha podido cerrar la ventana.', cause);
+      }
+    },
   };
 }

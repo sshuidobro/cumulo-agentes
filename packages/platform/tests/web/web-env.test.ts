@@ -15,6 +15,12 @@ describe('defaultWebEnv', () => {
     expect(env.storage).toBe(window.localStorage);
   });
 
+  it('closeWindow por defecto llama a window.close', () => {
+    const close = vi.spyOn(window, 'close').mockImplementation(() => undefined);
+    defaultWebEnv().closeWindow();
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it('sin File System Access no ofrece selectores', () => {
     const env = defaultWebEnv();
     expect(env.showOpenFilePicker).toBeUndefined();

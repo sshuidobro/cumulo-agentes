@@ -16,6 +16,8 @@ export interface TauriApi {
   listen(event: string, handler: () => void): Promise<() => void>;
   setTitle(title: string): Promise<void>;
   onCloseRequested(handler: (preventDefault: () => void) => void): Promise<() => void>;
+  /** Destruye la ventana: no emite `close-requested`. */
+  destroyWindow(): Promise<void>;
   openUrl(url: string): Promise<void>;
 }
 
@@ -35,6 +37,9 @@ export function realTauriApi(): TauriApi {
       return getCurrentWindow().onCloseRequested((event) => {
         handler(() => { event.preventDefault(); });
       });
+    },
+    destroyWindow(): Promise<void> {
+      return getCurrentWindow().destroy();
     },
     openUrl(url: string): Promise<void> {
       return pluginOpenUrl(url);

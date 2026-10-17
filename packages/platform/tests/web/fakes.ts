@@ -23,6 +23,7 @@ export function fakeEnv(overrides: Partial<WebEnv> = {}): WebEnv {
     showSaveFilePicker: undefined,
     pickWithInput: vi.fn(async (): Promise<File | null> => null),
     download: vi.fn(),
+    closeWindow: vi.fn(),
     ...overrides,
   };
 }
