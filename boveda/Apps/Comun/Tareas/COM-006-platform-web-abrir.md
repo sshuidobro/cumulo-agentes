@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-006
 titulo: Implementar Platform para navegador (abrir, soltar, enlaces, título, cierre)
 app: comun
-estado: en-curso
+estado: en-revision
 depende_de: [COM-005]
 intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -119,3 +119,9 @@ Lint, typecheck, test (257) y coverage en verde; `src/web` 98,3 % de líneas. To
 
 Tests añadidos: `packages/platform/tests/web/qa-web-edge.test.ts` (8 tests: Unicode/RTL/vacío, picker vacío, getFile fallido, drop con handle fallido o carpeta, URLs peligrosas, listeners, tokens). Revisado y conservado `packages/platform/tests/qa-edge.test.ts` (4 tests válidos: prefs Unicode/circular, fuentes vacías/NaN, readAll de 10 MB).
 Rendimiento: sin presupuesto aplicable a esta ficha.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: ninguno de código; `packages/platform/tests/web/qa-web-edge.test.ts` (test del tester, sin cambios, ahora versionado) y esta ficha. La implementación ya estaba en `ac6e184`.
+- Qué he hecho: el bloqueo era el de los tests de tiempo de `apps/lector-pdf`, ya movidos a `pnpm perf` (ADR-0012). Verificado que `pnpm test` y `pnpm coverage` salen con 0 sin tocar `lector-pdf`. Ficha pasada a `en-revision`.
+- Comandos ejecutados y resultado: `pnpm lint` 0; `pnpm typecheck` 0; `pnpm test` 0 (35 ficheros, 426 tests en verde); `pnpm coverage` 0 (`packages/platform/src/web` 98,3 % líneas; global 99,14 % líneas en la raíz).
+- Dudas o cosas que no he podido hacer: los ficheros `packages/platform/tests/qa-edge.test.ts`, `qa-drafts.test.ts` y `tests/tauri/qa-edge-tauri.test.ts` siguen sin versionar porque pertenecen a COM-005, COM-012 y COM-010; no los he tocado. Pendiente de otro: `pnpm perf` no se ha ejecutado aquí (no es criterio de COM-006).
