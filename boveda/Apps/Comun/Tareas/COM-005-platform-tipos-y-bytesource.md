@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-005
 titulo: Crear @suite/platform con tipos, ByteSource y preferencias
 app: comun
-estado: pendiente
+estado: en-revision
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -118,3 +118,9 @@ Existe el paquete `@suite/platform` con la interfaz `Platform` (sin implementaci
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `packages/platform/package.json`, `packages/platform/tsconfig.json`, `packages/platform/vitest.config.ts`, `packages/platform/src/{types,messages,errors,byte-source,prefs,detect,index}.ts`, `packages/platform/tests/{byte-source,prefs,errors,detect}.test.ts`, `pnpm-lock.yaml` (solo `jsdom@30.1.3` y el importer de `@suite/platform`).
+- Qué he hecho: paquete `@suite/platform` con la interfaz `Platform` y `ByteSource` tal cual la ficha; `memorySource`, `blobSource` y `readAll` con validación de rangos (`out-of-range`) y envoltorio `io` sobre `arrayBuffer`; `createStorageStore` sobre `Storage` (prefijo, JSON roto y guard falso borran la clave, cuota sin propagar y con aviso por el logger, modo memoria con `null`); `isTauri`, mensajes en español y `PlatformIoError`/`platformError`.
+- Comandos ejecutados y resultado: `pnpm install` OK; `pnpm lint` 0 avisos; `pnpm typecheck` OK (incluye `packages/platform`); `pnpm test` 138 tests en verde (13 ficheros, incluye `|platform|` con 33 tests); `pnpm coverage` exit 0, cobertura 100 % de líneas global (ficheros de platform sin líneas sin cubrir).
+- Dudas o cosas que no he podido hacer: en el test de cuota no uso `vi.spyOn(localStorage, 'setItem')` porque jsdom no lo intercepta; se usa un `Storage` falso que lanza en `setItem`. En un primer `pnpm test` apareció un fallo en `packages/shared/tests/shortcuts/chord.test.ts` (trabajo en curso de COM-011, ajeno); en la siguiente ejecución estaba en verde. No he tocado ficheros de otros programadores (`packages/platform/rust/`, `packages/shared/src/index.ts`, fichas COM-004/008/011).
