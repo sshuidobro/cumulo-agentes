@@ -18,15 +18,15 @@ Alternativa de uso personal a Word, Excel, PowerPoint y Adobe Reader, construida
 ## Aplicaciones
 | App | Prefijo | Plan | Estado |
 |---|---|---|---|
-| Lector PDF | `PDF` | — | sin empezar |
+| Lector PDF | `PDF` | [[Apps/Lector PDF/Plan\|Plan]] | planificado (iteraciones 1-2 detalladas, 3-6 en fichas por detallar) |
 | Procesador de texto | `TXT` | — | sin empezar |
 | Hoja de cálculo | `CAL` | — | sin empezar |
 | Presentaciones | `PRE` | — | sin empezar |
-| Paquetes comunes | `COM` | [[Apps/Comun/Plan\|Plan]] · [[Apps/Comun/Manual\|Manual]] | iteración 1 cerrada (monorepo + UndoStack) |
+| Paquetes comunes | `COM` | [[Apps/Comun/Plan\|Plan]] · [[Apps/Comun/Manual\|Manual]] | iteración 1 cerrada (monorepo + UndoStack); iteración 2 planificada (platform, atajos, borradores) |
 
 ## Conocimiento
 - [[Indice investigacion]] · todo lo que ha investigado el equipo
-- Decisiones (ADR): [[ADR-0001-tecnologia]] · [[ADR-0002-documentacion-obsidian]] · [[ADR-0003-composicion-del-equipo]] · [[ADR-0004-herramientas-monorepo]] · [[ADR-0005-modelo-deshacer-rehacer]] · [[ADR-0006-eslint]]
+- Decisiones (ADR): [[ADR-0001-tecnologia]] · [[ADR-0002-documentacion-obsidian]] · [[ADR-0003-composicion-del-equipo]] · [[ADR-0004-herramientas-monorepo]] · [[ADR-0005-modelo-deshacer-rehacer]] · [[ADR-0006-eslint]] · [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]]
 - Bitácora: carpeta `Bitacora/`, una nota por día de trabajo
 
 ## Cómo usar esta bóveda
