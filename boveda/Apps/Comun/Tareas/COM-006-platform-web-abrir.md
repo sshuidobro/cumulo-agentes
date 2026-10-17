@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-006
 titulo: Implementar Platform para navegador (abrir, soltar, enlaces, título, cierre)
 app: comun
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [COM-005]
 intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
