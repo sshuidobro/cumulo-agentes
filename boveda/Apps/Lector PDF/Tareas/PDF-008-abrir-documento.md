@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-008
 titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados de carga y error
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -81,3 +81,10 @@ El usuario abre un PDF con el botón «Abrir…», Ctrl+O, arrastrándolo a la v
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/state/{services,viewer-store,document-actions}.ts` (nuevos); `src/ui/{shortcuts,use-shortcuts}.ts` (nuevos); `src/ui/open/{EmptyState,LoadingState,ErrorState,DropOverlay,IoErrorBanner}.tsx` y `open.module.css` (nuevos); `src/ui/App.tsx`, `App.module.css` (quitadas las clases de la cabecera antigua), `messages.ts`, `src/main.tsx`; tests `tests/unit/document-actions.test.ts`, `tests/unit/services.test.ts`, `tests/ui/open.test.tsx`, `tests/e2e/open.spec.ts`, `tests/helpers/fake-platform.ts` (nuevos); `tests/ui/app.test.tsx` y `tests/e2e/smoke.spec.ts` (ahora buscan «Abrir…» dentro de la barra, porque el estado vacío tiene otro botón con ese nombre, y el `title` de la barra es «Abrir… (Ctrl+O)»).
+- Qué he hecho: store zustand con las acciones de apertura (cola de aperturas: la última gana, las anteriores se destruyen al terminar; cancelación; escaneo de dimensiones hasta 20 000 páginas; `onIoError`), atajo Mod+O en el registro único (`Mod` también en campos de texto), estados vacío/carga/error/superposición de arrastre (web) y aviso de error de lectura, `<input type=file>` y arranque en `main.tsx`. Decisiones menores que tomé y conviene revisar: `closeDocument` también cancela una apertura en curso; un fallo del selector o de `openDropped` sustituye el documento actual por el error (como dice la ficha); `openShortcutHint` es una función `(atajo) => texto`.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 60 ficheros / 773 tests OK; `pnpm coverage` OK (líneas 97,5 % en total); `pnpm --filter lector-pdf e2e`: **2 OK, 2 KO** (`basic-5` y `pages-100000`, que no llegan a mostrar el recuento; el medidor de 100 000 no se ha podido tomar).
+- Bloqueo (técnico, decide el líder): pdf.js 6.4 (build principal que usa `src/engine/pdfjs.ts`) llama a `Map.prototype.getOrInsertComputed`. El Chromium de `/opt/pw-browsers` (chromium-1194, Playwright 1.56.1) no lo tiene: `UnknownErrorException: this._requestsByChunk.getOrInsertComputed is not a function`, `loadPdf` lo devuelve como `corrupt` y la UI muestra «El PDF está dañado…». Los tests de node pasan porque el alias de Vitest usa `pdfjs-dist/legacy/build`, que incluye polyfills. Opciones: (a) usar también la build `legacy` en el navegador (toca `engine/pdfjs.ts`, `engine/worker.ts` y `scripts/copy-pdfjs-assets.mjs`, ficheros de PDF-005/PDF-001); (b) añadir un polyfill como dependencia nueva (decisión del líder); (c) actualizar Chromium (no posible con `/opt/pw-browsers`). Probé a inyectar un polyfill en la página y no basta, así que no es un arreglo pequeño. No he tocado el motor.
+- Dudas o cosas que no he podido hacer: falta confirmar la opción de motor (arriba) para cerrar los dos E2E y anotar el tiempo de `pages-100000`. Pendiente tras eso: el criterio de rendimiento E2E y la revisión de textos de los estados.
