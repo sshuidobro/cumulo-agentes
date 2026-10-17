@@ -18,6 +18,12 @@ export interface NavRequest {
   readonly xFraction: number | null;
 }
 
+/**
+ * Punto que no debe moverse al cambiar el layout: píxeles desde el borde superior del visor, o `'center'`
+ * (el centro del visor, el valor por defecto de los controles de zoom y rotación).
+ */
+export type ZoomFocus = number | 'center';
+
 export interface ViewerState {
   readonly status: DocStatus;
   readonly file: OpenedFile | null;
@@ -36,6 +42,8 @@ export interface ViewerState {
   readonly zoom: number;
   /** Rotación de vista (se suma a la de cada página). */
   readonly rotation: Rotation;
+  /** Punto fijo del próximo cambio de layout (zoom o giro). `null`: el visor conserva el borde superior. */
+  readonly zoomFocusY: ZoomFocus | null;
   readonly navRequest: NavRequest | null;
 }
 
@@ -53,6 +61,7 @@ export const initialViewerState: ViewerState = {
   zoomMode: DEFAULT_ZOOM_MODE,
   zoom: 1,
   rotation: 0,
+  zoomFocusY: null,
   navRequest: null,
 };
 

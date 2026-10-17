@@ -28,6 +28,7 @@ import type { PageDimsTable } from '../../core/page-dims';
 import type { Rotation } from '../../core/rotation';
 import { msg } from '../messages';
 import { setCurrentPage } from '../../state/navigation';
+import { zoomWithWheel } from '../../state/view-actions';
 import { useViewer } from '../../state/viewer-store';
 import { PageView } from './PageView';
 import { useViewportSize } from './use-viewport-size';
@@ -57,6 +58,14 @@ interface ZoomRefState {
   readonly width: number;
   readonly height: number;
   readonly page: number;
+}
+
+/** En Mac el gesto de zoom es Cmd+rueda; en el resto, Ctrl+rueda. */
+const IS_MAC = typeof navigator !== 'undefined' && /Macintosh|iPhone|iPad|iPod/.test(navigator.userAgent);
+
+/** Rueda con el modificador de zoom (Ctrl, o Cmd en Mac). */
+function isZoomWheel(event: globalThis.WheelEvent): boolean {
+  return event.ctrlKey || (IS_MAC && event.metaKey);
 }
 
 function clampY(y: number, maxY: number): number {
@@ -177,15 +186,33 @@ export function Viewer() {
   );
 
   // Al cambiar el layout (zoom, rotación, dimensiones) la vista se recoloca en la misma página y posición.
+  // Si lo pide una acción de zoom o giro (`zoomFocusY`), el punto indicado es el que no se mueve.
   useLayoutEffect(() => {
     const prev = prevLayoutRef.current;
     prevLayoutRef.current = layout;
     if (layout === null || prev === null || prev === layout) return;
-    const anchor = anchorAt(prev, contentYRef.current);
-    contentYRef.current = clampY(contentYForAnchor(layout, anchor), maxY);
+    const focus = useViewer.getState().zoomFocusY;
+    const focusPx = focus === null ? 0 : focus === 'center' ? vh / 2 : focus;
+    const anchor = anchorAt(prev, contentYRef.current + focusPx);
+    contentYRef.current = clampY(contentYForAnchor(layout, anchor) - focusPx, maxY);
+    const el = ref.current;
+    if (el !== null && focus !== null) {
+      // Horizontal: el centro del visor conserva su posición relativa al contenido.
+      const oldWidth = Math.max(prev.maxWidth + 2 * DEFAULT_PADDING, el.clientWidth);
+      const newWidth = Math.max(layout.maxWidth + 2 * DEFAULT_PADDING, el.clientWidth);
+      const centerX = el.scrollLeft + el.clientWidth / 2;
+      el.scrollLeft = (centerX * newWidth) / oldWidth - el.clientWidth / 2;
+    }
+    if (focus !== null) useViewer.setState({ zoomFocusY: null });
     syncScrollTop();
     setContentY(contentYRef.current);
-  }, [layout, maxY, syncScrollTop]);
+  }, [layout, maxY, vh, syncScrollTop]);
+
+  // Un cambio de zoom o giro sin cambio de layout (p. ej. ya en el máximo) no debe dejar un foco pendiente
+  // que se aplique a un cambio posterior. Este efecto corre después del de layout, que es el que consume el foco.
+  useEffect(() => {
+    if (useViewer.getState().zoomFocusY !== null) useViewer.setState({ zoomFocusY: null });
+  }, [zoomMode, rotation, zoom]);
 
   // Ir a una página pedida: se atiende una vez por `seq`.
   useEffect(() => {
@@ -216,7 +243,7 @@ export function Viewer() {
     const el = ref.current;
     if (el === null || !scaled) return undefined;
     const onWheel = (event: globalThis.WheelEvent): void => {
-      if (event.ctrlKey) return;
+      if (isZoomWheel(event)) return;
       event.preventDefault();
       const unit = event.deltaMode === 1 ? LINE_PX : event.deltaMode === 2 ? vh : 1;
       applyContentY(contentYRef.current + event.deltaY * unit);
@@ -224,6 +251,20 @@ export function Viewer() {
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [scaled, vh, applyContentY]);
+
+  // Ctrl+rueda acerca o aleja centrado en el cursor, y no hace el zoom del navegador.
+  useEffect(() => {
+    const el = ref.current;
+    if (el === null) return undefined;
+    const onZoomWheel = (event: globalThis.WheelEvent): void => {
+      if (!isZoomWheel(event)) return;
+      event.preventDefault();
+      const mode = event.deltaMode === 1 ? 1 : event.deltaMode === 2 ? 2 : 0;
+      zoomWithWheel(event.deltaY, mode, event.clientY - el.getBoundingClientRect().top);
+    };
+    el.addEventListener('wheel', onZoomWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onZoomWheel);
+  }, []);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (!scaled || event.ctrlKey || event.altKey || event.metaKey) return;

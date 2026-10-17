@@ -25,4 +25,17 @@ export const msg = {
   undoWith: (label: string): string => `Deshacer ${label}`,
   redoWith: (label: string): string => `Rehacer ${label}`,
   cancelTool: 'Dejar la herramienta de anotación',
+  zoomIn: 'Ampliar',
+  zoomOut: 'Reducir',
+  zoomInput: 'Zoom',
+  zoomPresets: 'Ajuste de zoom',
+  zoomAuto: 'Automático',
+  fitWidth: 'Ajustar al ancho',
+  fitPage: 'Ajustar a la página',
+  actualSize: 'Tamaño real',
+  /** Opción de porcentaje fijo de la lista de zoom (p. ej. «125 %»). */
+  zoomPercent: (percent: number): string => `${String(percent)} %`,
+  rotateLeft: 'Girar a la izquierda',
+  rotateRight: 'Girar a la derecha',
+  zoomInvalid: 'Escribe un porcentaje entre 10 y 800',
 } as const;
