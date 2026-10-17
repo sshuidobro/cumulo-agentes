@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-001
 titulo: Crear el esqueleto de la app lector-pdf
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, formatos-ofimatica, calidad-profesional]
@@ -87,3 +87,14 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]
 Verificado: lint, typecheck, test (5 tests `|lector-pdf|`), coverage (100 % líneas), build con CSP en `dist/index.html`, `public/pdfjs/` ignorado por git, e2e 1 verde. Sin cadenas de interfaz fuera de `messages.ts`; capas respetadas (`core/` sin imports de `ui/`).
 1. (opcional) `apps/lector-pdf/src/ui/theme.css` — los bloques oscuro y claro están duplicados (media query y `data-theme`); valorar unificarlos en PDF-020.
 2. (opcional) `apps/lector-pdf/vite.config.ts` — el aviso de chunk > 500 kB se atenderá al añadir el visor (carga dinámica).
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| install/lint/typecheck/test/coverage | OK | lint exit 0; typecheck OK; test verbose: 17 ficheros, 162 tests, 5 `\|lector-pdf\|`; coverage líneas 100 % |
+| build + CSP + assets sin git | OK | build exit 0; meta CSP en `dist/index.html`; `public/pdfjs/{cmaps,wasm,iccs,standard_fonts}` ignorado (`.gitignore:8`), 0 entradas en git status |
+| e2e | OK | `1 passed (4.3s)` |
+| windowTitle 3 casos | OK | tests/unit/title.test.ts verde |
+| botón Abrir… con title | OK | tests/ui/app.test.tsx verde |
+| Sin cadenas fuera de messages.ts / pdfjs solo en engine | OK | grep sin resultados |
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: e2e de carga 351 ms. Nota: aviso de chunk > 500 kB (conocido, para el visor).

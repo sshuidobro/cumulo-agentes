@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-012
 titulo: Crear el almacén de borradores en IndexedDB (DraftStore)
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
