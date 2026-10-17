@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-002
 titulo: Generador de fixtures PDF (páginas, tamaños, imágenes y ficheros dañados)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-001]
 intentos: 1
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -98,4 +98,10 @@ Lint y typecheck OK; `fixtures.test.ts` pasa aislado (17/17), el diseño del gen
 
 ### [lider] suite de rendimiento — 2026-10-17
 [[ADR-0012-suite-de-rendimiento]]: los asserts de tiempo de reloj pasan a `tests/perf/` (`pnpm perf`). Los dos de esta ficha en `tests/unit/fixtures.test.ts` (generación de `pages-5000.pdf` < 1 s y de `pages-100000.pdf` < 10 s) **no son motivo de rechazo** en esta revisión: hoy pasan también bajo `pnpm coverage`. Para no tocar un fichero en revisión, el traslado se hace en [[PDF-022-e2e-y-rendimiento-iteracion-1]] (paso 0). Revisor y tester: el fallo de `pnpm coverage` anotado en la ronda del programador es de PDF-006 y queda resuelto allí; valorad la cobertura con `pnpm coverage` una vez PDF-006 vuelva a verde o con `vitest run --coverage --project lector-pdf` excluyendo `layout.test.ts`.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/tests/unit/fixtures.test.ts` (quitados los asserts de tiempo de `pages-5000.pdf` y `pages-100000.pdf`; timeout `HEAVY_TEST_MS` en el test del árbol de 100 000 páginas y en el de 5 000); `apps/lector-pdf/tests/perf/fixtures.perf.test.ts` (nuevo: generación de `pages-5000.pdf` < 1 s y de `pages-100000.pdf` < 10 s con `measureBest`, umbrales de la ficha sin cambios); esta ficha.
+- Qué he hecho: atendidos los dos puntos del revisor. Los asserts de tiempo de reloj se han movido a `tests/perf/` según ADR-0012 y el resto de `fixtures.test.ts` (tamaños, contenido, árbol, dañados) se queda en `tests/unit/`. Los tests pesados del fichero llevan timeout propio.
+- Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm typecheck` OK; `pnpm test` OK (35 ficheros, 426 tests); `pnpm perf` OK (3 ficheros, 5 tests, incluidos los 2 nuevos de generación). `pnpm perf` ejecutado a la vez con trabajo de otra ficha en curso: un test de `annotation-commands.perf.test.ts` (PDF-023, no tocado por mí) superó el timeout de 5 s en una pasada con carga y pasó en la siguiente.
+- Dudas o cosas que no he podido hacer: no he ejecutado `pnpm coverage` (lo bloquea el fallo de PDF-006 anotado por el líder). El fichero `commands.test.ts` de PDF-023 y `annotation-commands.perf.test.ts` están sin commitear; no son de esta ficha y no los he incluido en el commit.
 
