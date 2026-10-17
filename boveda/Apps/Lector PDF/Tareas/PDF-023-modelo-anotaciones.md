@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-023
 titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-001]
 intentos: 2
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]
@@ -136,3 +136,16 @@ Comprobado: eslint (0 avisos), typecheck OK, 71/71 tests de la ficha. El punto 1
 ### [lider] suite de rendimiento — 2026-10-17
 Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
 Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies. Mueve el assert de tiempo que ya existe en `tests/unit/annotations/commands.test.ts` ("5 000 añadidos con maxDepth 100 tardan menos de 2 s") a `tests/perf/annotation-commands.perf.test.ts`; en `tests/unit/` se queda la versión sin `performance.now()`.
+
+### [programador] ronda 3 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/tests/perf/annotation-commands.perf.test.ts` (nuevo), `apps/lector-pdf/tests/unit/annotations/commands.test.ts`, esta ficha.
+- Qué he hecho: puntos 1 y 2 del revisor. Creado `tests/perf/annotation-commands.perf.test.ts` con los 5 000 `addAnnotationCommand` (maxDepth 100) y `expect(ms).toBeLessThan(2000)`, medido con `measureBest` de `tests/perf/measure.ts` (1 calentamiento + mínimo de 5 pasadas, ADR-0012; la ficha decía «medida única», se usa el estándar del ADR). Su timeout de Vitest es 60 s porque las 6 pasadas tardan ~6,8 s. En `tests/unit/annotations/commands.test.ts` queda la versión sin `performance.now()`: `undoDepth 100` y `upserts.size 5000`. `vitest.perf.config.ts`, el script `perf` y `measure.ts` ya existían; no se han tocado.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: 0 avisos. `pnpm typecheck`: sin errores.
+  - `pnpm test`: 426/426 en 35 ficheros (raíz). `vitest run tests/unit/annotations tests/unit/pdf-date.test.ts`: 71/71.
+  - `pnpm coverage`: código 0. `core/annotations/` 100 % líneas (96,8 % ramas); `src/core` 99,35 % líneas (incluye `pdf-date.ts`).
+  - `pnpm perf`: código 0, 5/5 (las 3 ficheros de perf, incluidos los de PDF-002 y PDF-006). Tiempo medido de 5 000 `addAnnotationCommand` con `UndoStack` (mínimo de 5 pasadas): **1 028 ms** (presupuesto < 2 000 ms).
+- Dudas o cosas que no he podido hacer:
+  - El punto 2 del revisor en ronda 1 (upsert `file` sin línea base cuenta como `modified`) sigue como estaba, documentado.
+  - El coste cuadrático de `setEntryCommand` sigue siendo un riesgo: 1 028 ms frente a 2 000 ms. Si el líder quiere más margen, es rediseño y no lo he tocado.
+  - Fuera de esta ficha: hay ficheros sin commitear de otros agentes (`packages/platform/tests/qa-*.test.ts`, `packages/platform/tests/tauri/qa-edge-tauri.test.ts`, `packages/platform/tests/web/qa-web-edge.test.ts`); no los he incluido en el commit.

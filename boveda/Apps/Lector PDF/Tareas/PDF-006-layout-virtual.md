@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-006
 titulo: Núcleo - tabla de dimensiones y layout virtual con escalado de scroll
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -178,3 +178,9 @@ Pasos exactos (ronda 2):
   - Para PDF-002 (app `lector-pdf`): **mecanismo exacto**. Su assert de tiempo va en `apps/lector-pdf/tests/perf/<nombre>.perf.test.ts` (patrón `tests/perf/**/*.perf.test.ts`), se ejecuta con `pnpm perf` y reutiliza el proyecto `lector-pdf-perf` de `vitest.perf.config.ts`, sin tocar la config. Medir con `measureBest(fn)` importado de `./measure` (`apps/lector-pdf/tests/perf/measure.ts`). Sin `performance.now()` en `tests/unit/`.
   - Para un paquete (p. ej. COM-002 en `packages/shared`): la config solo tiene un proyecto, el de `lector-pdf`. Haría falta añadir un proyecto `{ test: { name, root: './packages/<pkg>', include: ['tests/perf/**/*.perf.test.ts'], environment: 'node', fileParallelism: false } }` y decidir dónde vive `measureBest` (hoy está en `apps/lector-pdf`; no lo he movido a `packages/`, porque no está decidido).
 - Estado: `en-revision`.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- `vitest.perf.config.ts` coincide literalmente con el del paso 1 del líder (proyecto `lector-pdf-perf`, `root`, alias pdf.js, `globalSetup`, `fileParallelism: false`, cobertura desactivada). `package.json` (`perf`) y `tsconfig.json` (include) correctos.
+- Ejecutado: `pnpm lint`, `pnpm typecheck` y `pnpm test` (426 en verde) con código 0; `pnpm coverage` sin `layout.perf.test.ts`, `layout.ts` 98,7 % líneas; `grep performance.now` en `layout.test.ts` vacío. `layout.perf.test.ts` aislado: 4/4 ejecuciones en verde.
+- `pnpm perf` completo: 1 ejecución falló y 3 posteriores pasaron. La suite ya incluye `annotation-commands.perf.test.ts` y `fixtures.perf.test.ts` (otras fichas) y se ejecutó con carga de otros agentes. No atribuible a PDF-006 (el layout pasa siempre aislado). El tester debe repetir `pnpm perf` x3 sin carga concurrente.
+- (opcional) `pageAtY` con `y` NaN devuelve 0 sin error; no bloquea.
