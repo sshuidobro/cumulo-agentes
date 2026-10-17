@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-007
 titulo: Núcleo - zoom, cola de render con prioridades y tamaño de lienzo
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -95,4 +95,10 @@ Tres módulos puros: cálculo de zoom (pasos, ajustar ancho/página, rueda, text
   - Cobertura de los tres módulos (`--coverage.include` sobre `core/zoom.ts`, `core/render-queue.ts`, `core/canvas-size.ts`): líneas 100 %, ramas 98,3 %. El informe se escribió en un directorio propio porque otro proceso de vitest tenía bloqueado `coverage/`.
   - ESLint sobre mis ficheros: limpio. Prettier con el estilo del repo (`--single-quote --print-width 120`): limpio.
   - `pnpm lint` y `pnpm typecheck` del proyecto fallan por ficheros que no son míos y están sin commitear de otro programador (PDF-005): `tests/unit/engine-load.test.ts` (import type) y `src/engine/load.ts` / `src/engine/range-transport.ts` (propiedad inexistente y falta `override`). En mis ficheros no hay errores.
-- Dudas o cosas que no he podido hacer: `pnpm lint` y `pnpm typecheck` a nivel de repo no pasan hasta que PDF-005 corrija sus ficheros. Los criterios de cobertura se han comprobado solo para los tres módulos. Decisiones menores tomadas dentro de la ficha: `parseZoomInput` redondea a 10 decimales para evitar ruido de coma flotante; `planCanvas` acepta `devicePixelRatio` no finito o menor que 1 como 1; `clampZoom`, `fitZoom` y `planCanvas` lanzan `RangeError` ante valores no finitos (bug del llamante).
+- Dudas o cosas que no he podido hacer (ver revisión posterior: lint y typecheck ya pasan): `pnpm lint` y `pnpm typecheck` a nivel de repo no pasan hasta que PDF-005 corrija sus ficheros. Los criterios de cobertura se han comprobado solo para los tres módulos. Decisiones menores tomadas dentro de la ficha: `parseZoomInput` redondea a 10 decimales para evitar ruido de coma flotante; `planCanvas` acepta `devicePixelRatio` no finito o menor que 1 como 1; `clampZoom`, `fitZoom` y `planCanvas` lanzan `RangeError` ante valores no finitos (bug del llamante).
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- `pnpm lint` y `pnpm typecheck` de la raíz: código 0. `pnpm test`: 44 ficheros, 514 tests en verde.
+- `pnpm coverage` falla solo por bloqueo del directorio `coverage/` por otro proceso vitest; con directorio propio, los tres módulos: líneas 100 %, ramas 98,3 %.
+- Cumple cada criterio (T); cola correcta (concurrencia con abortados, reemplazo de pendientes, microtarea, logger); sin `skip`/`only`; nada fuera de alcance.
+- (opcional) El tester debe repetir `pnpm coverage` cuando no haya otro vitest en marcha.
