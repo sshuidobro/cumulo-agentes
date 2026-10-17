@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-027
 titulo: Generar la apariencia (/AP) de cada tipo de anotación
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-023, PDF-026]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -73,3 +73,16 @@ Para cada `Annotation` del modelo, producir el Form XObject de su apariencia nor
 - Criterios revisados: anchos, WinAnsi, wrap, BBox=rect sin Matrix, GS0/Multiply, grosor y posición de subrayado y tachado, `Tj` por línea e ink `1 J 1 j`. Todos cubiertos con tests que comprueban el contenido.
 - (opcional) `appearance.ts` (ink): los extremos y el grosor del trazo se recortan en el borde del BBox si el `rect` de la anotación no incluye `width/2` de margen. El `rect` lo calcula quien crea el ink, así que hay que asegurarlo allí (PDF-030/herramienta de dibujo).
 - (opcional) `pnpm coverage` global depende de que se arregle el test ajeno `viewer.test.tsx`. El tester debe volver a ejecutarlo.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios (T) anchos, wrap, WinAnsi, 6 tipos, pdf.js `hasAppearance`+`beginAnnotation` | OK | `vitest run tests/unit/annotations` 187/187 |
+| lint, typecheck, test | OK | 0 avisos; 81 ficheros, 1019 tests |
+| coverage (dir propio) | OK, código 0 | global 98,7 % líneas; appearance/winansi/wrap 100 % líneas |
+| Render real | OK | PDF con los 6 tipos, `qpdf --check` sin errores; `pdftoppm -r 110` |
+
+Render (leí la imagen): highlight amarillo al 60 % en 2 quads con el texto base visible bajo él (Multiply); subrayado rojo y tachado azul con su color, 1 pt; nota con bocadillo naranja y 3 líneas; freetext con borde rojo, texto azul con ñ, tildes, ¿ y €, palabra larga partida y `\n` respetado, CJK sale `?` (según ficha); ink verde al 50 % con extremos redondeados y trazo de un punto visible como punto.
+Observación menor (no bloquea): el borde de 1 pt del freetext y el trazo ink quedan medio recortados en el borde del BBox (ya anotado por el revisor).
+Tests añadidos: ninguno nuevo (los existentes cubren los criterios); el script de render fue temporal y se borró.
+Rendimiento: no aplica.
