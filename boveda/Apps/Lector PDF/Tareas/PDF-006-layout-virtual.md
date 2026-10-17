@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-006
 titulo: Núcleo - tabla de dimensiones y layout virtual con escalado de scroll
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -120,15 +120,27 @@ Respuesta a las dudas:
 5. Margen estrecho de `pageAtY`: anotado; no se toca el umbral. Si falla en otra máquina, se optimiza el algoritmo en una ficha nueva.
 
 Pasos exactos (ronda 2):
-1. **Nuevo** `vitest.perf.config.ts` en la raíz del repo, con este contenido literal (si ya existe porque otra ficha lo creó antes, no lo cambies):
+1. **Nuevo** `vitest.perf.config.ts` en la raíz del repo, con este contenido literal (si ya existe porque otra ficha lo creó antes, no lo cambies). Comprobado por el líder con Vitest 5.0.5: un proyecto en línea (no `extends`, porque `extends` **suma** el `include` de la app y metería todos los tests unitarios):
    ```ts
    import { defineConfig } from 'vitest/config';
 
-   // Suite de rendimiento (ADR-0012): asserts de tiempo de reloj, sin cobertura y en serie.
+   // Suite de rendimiento (ADR-0012): solo asserts de tiempo de reloj, sin cobertura y un fichero cada vez.
+   // Un proyecto por app/paquete con tests/perf/. Mantener alias y globalSetup iguales que en el vitest.config.ts de la app.
    export default defineConfig({
      test: {
-       include: ['apps/*/tests/perf/**/*.perf.test.ts', 'packages/*/tests/perf/**/*.perf.test.ts'],
-       environment: 'node',
+       projects: [
+         {
+           test: {
+             name: 'lector-pdf-perf',
+             root: './apps/lector-pdf',
+             include: ['tests/perf/**/*.perf.test.ts'],
+             environment: 'node',
+             globalSetup: ['tests/setup/global-setup.ts'],
+             alias: [{ find: /^pdfjs-dist$/, replacement: 'pdfjs-dist/legacy/build/pdf.mjs' }],
+             fileParallelism: false,
+           },
+         },
+       ],
        fileParallelism: false,
        coverage: { enabled: false },
      },

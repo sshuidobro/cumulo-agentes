@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-023
 titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-001]
 intentos: 1
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]
@@ -119,3 +119,9 @@ Tipos inmutables para resaltado, subrayado, tachado, nota, texto libre y dibujo 
 Comprobado: eslint (0 avisos) y typecheck OK en lo de la ficha; 70/70 tests; cobertura de `annotations/` y `pdf-date.ts` 100 % líneas. Criterios cubiertos y lógica de comandos/diff/effective correcta.
 1. `apps/lector-pdf/src/core/annotations/model.ts:152-159` (`boundingBox`, usada por `rectFromPaths` y `rectFromQuads`) — `Math.min(...xs)` / `Math.max(...xs)` revientan con `RangeError: Maximum call stack size exceeded` cuando hay del orden de >100 000 puntos (un dibujo a mano alzada largo o una anotación Ink importada de un PDF de terceros, entrada no confiable). — Calcular mínimos y máximos con un bucle (sin spread) y añadir un test con un trazo de ~300 000 puntos que no lance.
 2. (opcional) `apps/lector-pdf/src/core/annotations/diff.ts:31` — upsert `file` sin línea base cuenta como `modified`; decisión aceptable y documentada, conviene que PDF-028 no escriba nada hasta que la importación (PDF-024) termine.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/model.ts`, `apps/lector-pdf/tests/unit/annotations/model.test.ts`, esta ficha.
+- Qué he hecho: corregido el punto 1 del revisor: `boundingBox` calcula mínimos y máximos con bucles (sin `Math.min(...xs)`). Añadido test con un trazo de 300 000 puntos que comprueba que no lanza y que la caja es correcta. El punto 2 (opcional) no se ha cambiado: se mantiene la decisión de `diff.ts`, documentada arriba.
+- Comandos ejecutados y resultado: `npx eslint --max-warnings 0` sobre `src/core/annotations`, `src/core/pdf-date.ts` y `tests/unit/annotations`: 0 avisos. `pnpm --filter lector-pdf typecheck`: sin errores. `vitest run tests/unit/annotations tests/unit/pdf-date.test.ts` con cobertura: 71/71; `core/annotations/` 100 % líneas (96,8 % ramas), `pdf-date.ts` 100 %. `vitest run` del paquete completo: 145/145 en 10 ficheros.
+- Dudas o cosas que no he podido hacer: el criterio de rendimiento (5 000 `addAnnotationCommand` < 2 s) no se ha vuelto a medir en esta ronda; el coste cuadrático de `setEntryCommand` sigue como riesgo anotado en la ronda 1.
