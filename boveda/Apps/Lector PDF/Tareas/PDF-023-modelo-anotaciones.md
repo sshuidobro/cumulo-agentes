@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-023
 titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-001]
-intentos: 1
+intentos: 2
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -126,6 +126,12 @@ Comprobado: eslint (0 avisos) y typecheck OK en lo de la ficha; 70/70 tests; cob
 - Qué he hecho: corregido el punto 1 del revisor: `boundingBox` calcula mínimos y máximos con bucles (sin `Math.min(...xs)`). Añadido test con un trazo de 300 000 puntos que comprueba que no lanza y que la caja es correcta. El punto 2 (opcional) no se ha cambiado: se mantiene la decisión de `diff.ts`, documentada arriba.
 - Comandos ejecutados y resultado: `npx eslint --max-warnings 0` sobre `src/core/annotations`, `src/core/pdf-date.ts` y `tests/unit/annotations`: 0 avisos. `pnpm --filter lector-pdf typecheck`: sin errores. `vitest run tests/unit/annotations tests/unit/pdf-date.test.ts` con cobertura: 71/71; `core/annotations/` 100 % líneas (96,8 % ramas), `pdf-date.ts` 100 %. `vitest run` del paquete completo: 145/145 en 10 ficheros.
 - Dudas o cosas que no he podido hacer: el criterio de rendimiento (5 000 `addAnnotationCommand` < 2 s) no se ha vuelto a medir en esta ronda; el coste cuadrático de `setEntryCommand` sigue como riesgo anotado en la ronda 1.
+
+### [revisor] ronda 2 — 2026-10-17 — CAMBIOS
+Comprobado: eslint (0 avisos), typecheck OK, 71/71 tests de la ficha. El punto 1 de la ronda 1 queda resuelto (`boundingBox` con bucles y test de 300 000 puntos).
+1. `apps/lector-pdf/tests/perf/annotation-commands.perf.test.ts` — no existe, y el criterio de aceptación de rendimiento lo exige (`pnpm perf`, medida con `performance.now()`, anotar el tiempo). — Crearlo con los 5 000 `addAnnotationCommand` (maxDepth 100) y `expect(ms).toBeLessThan(2000)`, siguiendo `tests/perf/layout.perf.test.ts` y `measure.ts`, y anotar el tiempo en el Registro.
+2. `apps/lector-pdf/tests/unit/annotations/commands.test.ts:174-184` — el test "5 000 añadidos con maxDepth 100 tardan menos de 2 s" sigue con `performance.now()` en `tests/unit/`, lo que prohíbe el ADR-0012 (falla bajo `pnpm coverage`) y la instrucción del líder. — Dejar ahí la versión sin medir tiempo (undoDepth 100, upserts.size 5000) y mover el assert de tiempo al fichero perf.
+3. Ejecutar `pnpm perf` y `pnpm coverage` con código 0 (en esta ronda no se ha medido el rendimiento) y anotar el resultado.
 
 ### [lider] suite de rendimiento — 2026-10-17
 Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
