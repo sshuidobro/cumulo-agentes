@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-025
 titulo: Objetos PDF - analizador léxico, analizador y serializador
 app: pdf
-estado: en-curso
+estado: bloqueada
 depende_de: [PDF-023]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -89,3 +89,19 @@ d(e)f)` → bytes `a`, LF, `b\c)` `d(e)f`.
 ### [lider] suite de rendimiento — 2026-10-17
 Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
 Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/objects.ts`, `text-string.ts`, `lexer.ts`, `parser.ts`, `serialize.ts`, `index.ts` (nuevos); `apps/lector-pdf/tests/unit/pdf/{helpers,objects,lexer,parser,serialize,text-string}.test.ts` (nuevos); `apps/lector-pdf/tests/perf/pdf-objects.perf.test.ts` (nuevo); esta ficha.
+- Qué he hecho: implementados objetos, texto (PDFDocEncoding completo y UTF-16BE/UTF-8 con BOM, `pdfDate`), léxico, analizador (refs `n g R`, streams con `/Length` directo/resuelto o búsqueda de `endstream`, profundidad máxima 100) y serializador determinista. 137 tests unitarios y 1 de rendimiento; cobertura de `src/core/pdf/` 97,5 % de líneas.
+- **Bloqueo (criterio (T) de `parseValue`):** la entrada literal `<< ... /N#20a /H <4E6F> /O true /Z null >>` no es PDF válido: `/N#20a` es una clave con valor `/H`, y luego `<4E6F>` ocupa una posición de clave (ISO 32000-1 §7.3.7 exige nombres). El analizador la rechaza con `PdfSyntaxError` (test de rechazo explícito). No he inventado una interpretación. Para el resto del criterio he usado una variante válida (`/N /a#20b`) en los tests del diccionario y del benchmark de 10 000 anotaciones. **Pregunta para el líder:** ¿qué debe ser `/N#20a`? Si se corrige la entrada de la ficha, basta con cambiar un test.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: código 0 (repo entero).
+  - `pnpm typecheck`: código 1 por **ficheros ajenos** a esta ficha: `tests/ui/open.test.tsx` (tipo de callback) y `tests/unit/search.bench.ts` (`bench` no exportado por `vitest`). Mis ficheros: sin errores.
+  - `pnpm test`: código 0 en el momento de la ejecución (53 ficheros, 694 tests).
+  - `pnpm coverage`: código 1 por dos tests de `tests/ui/app.test.tsx` (`Servicios no inicializados` en `App.tsx`, en edición de otro agente). `src/core/pdf/`: 97,5 % líneas con `tests/unit/pdf` (`vitest run tests/unit/pdf --coverage`).
+  - `pnpm perf` (filtro `pdf-objects`): código 0. Mejor de 5 pasadas (`measureBest`) para 10 000 anotaciones: 46-52 ms (presupuesto 300 ms).
+- Dudas o cosas que no he podido hacer:
+  1. El bloqueo de arriba (criterio con entrada inválida).
+  2. `dict({...})` con un `Record` recibe las claves en el orden de `Object.entries`, que en JS pone primero las claves enteras (`'1'`). Los nombres PDF con dígitos solos son raros; no he tocado el caso.
+  3. Decisiones de robustez no especificadas: nombres decodificados como UTF-8 (bytes no UTF-8 se pierden); tras `stream` se acepta también un CR suelto; `endobj` es obligatorio.
+- Estado: `bloqueada` (pendiente de la decisión del punto 1).
