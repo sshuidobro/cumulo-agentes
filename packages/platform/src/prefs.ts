@@ -15,7 +15,14 @@ export function createStorageStore(storage: Storage | null, prefix: string): Key
 
   return {
     get<T>(key: string, guard: (v: unknown) => v is T): T | null {
-      const raw = backend.getItem(fullKey(key));
+      let raw: string | null;
+      try {
+        raw = backend.getItem(fullKey(key));
+      } catch (cause) {
+        // P. ej. SecurityError con cookies bloqueadas: la preferencia no está disponible.
+        log.warn(`No se ha podido leer la preferencia «${key}».`, cause);
+        return null;
+      }
       if (raw === null) return null;
       let parsed: unknown;
       try {

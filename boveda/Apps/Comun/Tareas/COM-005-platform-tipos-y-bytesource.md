@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-005
 titulo: Crear @suite/platform con tipos, ByteSource y preferencias
 app: comun
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [COM-004]
 intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -130,3 +130,9 @@ Lint, typecheck y `pnpm test` en verde (`|platform|` aparece, 33 tests); el cód
 1. `vitest.config.ts` (raíz) / `packages/platform/vitest.config.ts` — la cobertura de `packages/platform/src` NO se mide: `pnpm coverage` sale con 0, pero el informe solo lista `shared/src`; `pnpm vitest run --coverage --project platform` da 0/0 ficheros. El "100 % global" del Registro no incluye platform, así que el criterio "cobertura de `packages/platform/src` ≥ 90 %" no está demostrado. Hay que averiguar por qué el proyecto jsdom no aporta cobertura v8 (p. ej. inclusión/raíz del proyecto, o configuración de `coverage.include`/`root`), arreglarlo sin tocar el umbral y comprobar que el informe muestra `byte-source.ts`, `prefs.ts`, `errors.ts`, `detect.ts`, `messages.ts` con ≥ 90 % de líneas.
 2. `packages/platform/src/byte-source.ts:42` (opcional) — `readAll` con `chunkSize` ≤ 0 o no entero entra en bucle infinito; validar y lanzar un error claro.
 3. `packages/platform/src/prefs.ts:19` (opcional) — `getItem` puede lanzar (SecurityError con cookies bloqueadas); envolverlo para devolver `null`.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `vitest.config.ts` (raíz), `packages/platform/src/byte-source.ts`, `packages/platform/src/prefs.ts`, `packages/platform/tests/byte-source.test.ts`, `packages/platform/tests/prefs.test.ts`, esta ficha.
+- Qué he hecho: (1) Cobertura: la medición ya incluía `packages/platform/src` en `pnpm coverage`, pero el reporte de texto oculta los ficheros al 100 % y `--project platform` daba 0/0 porque el `include` se resolvía contra la raíz del proyecto. Ahora el `include` admite ambas raíces (`src/**/*.ts` además de `packages/*/src/**/*.ts`) y el reporte incluye `json-summary`; `packages/platform/vitest.config.ts` queda como en la ficha (la cobertura a nivel de proyecto se ignora). Umbral sin tocar. (2) `readAll` rechaza `chunkSize` no entero o ≤ 0 con `RangeError` antes de leer (es un error de programación). (3) `createStorageStore.get` envuelve `getItem`: si lanza, avisa por el logger y devuelve `null`. Tests nuevos para los tres casos (`chunkSize` inválido ×5, `getItem` que lanza).
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK (incluye `packages/platform`); `pnpm test` 14 ficheros, 153 tests en verde (`|platform|` incluido); `pnpm coverage` exit 0 con `packages/platform/src` al 100 % de líneas (ver `coverage/coverage-summary.json`); `pnpm vitest run --coverage --project platform` exit 0, 50/50 líneas.
+- Dudas o cosas que no he podido hacer: ninguna. No he tocado ficheros de COM-009, COM-011 ni los cambios en curso de otros agentes (`packages/platform/rust/`, `packages/shared/tests/logger.test.ts`, otras fichas).
