@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-028
 titulo: Escritor incremental - anexar las anotaciones al PDF sin reescribirlo
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-068, PDF-027, PDF-024]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -109,3 +109,10 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
   4. Usa `openForSave` (desenvolviendo el `Result`) en el helper `save()` de los tests para no duplicar caminos.
   5. Ejecuta `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` (`incremental.ts` ≥ 90 %) y `pnpm perf`; anota resultados. Commit solo de los ficheros de esta ficha.
 
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/incremental.ts`, `apps/lector-pdf/src/core/pdf/index.ts`, `apps/lector-pdf/tests/unit/pdf/incremental.test.ts`, `boveda/Apps/Lector PDF/Tareas/PDF-028-escritor-incremental.md`.
+- Qué he hecho: añadido `openForSave(source)` (import de `ObjectReader` como valor, reutiliza `toSaveError`) y exportado desde `src/core/pdf/index.ts`. En los tests, el helper `save()` abre con `openForSave`; el test de `startxref` dañado se sustituye por `describe('openForSave')` con los 4 casos (`corrupt-bad-startxref`, `corrupt-empty`, cifrado real con `appendIncrementalUpdate`, `basic-5` ok). Se conserva el test de `/Encrypt` simulado.
+- Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm test` 1086/1087 tests OK, los tests de `incremental.test.ts` y `to-pdf.test.ts` pasan (28/28) de forma aislada; `pnpm coverage` con `incremental.ts` 97,1 % y `to-pdf.ts` 100 % de líneas; `pnpm perf` OK (`incremental.perf.test.ts` incluido, con sus umbrales de tiempo y de lectura).
+- Dudas o cosas que no he podido hacer:
+  1. **Fallos ajenos a esta ficha:** `pnpm typecheck` falla en `apps/lector-pdf/tests/e2e/zoom.spec.ts` (líneas 63-64, `Property 'top' does not exist`), fichero sin commitear de otro agente. `pnpm test` y `pnpm coverage` tienen un test rojo: `tests/ui/open.test.tsx` › «con la carga pendiente muestra el estado de carga con el nombre y Cancelar», que importa `src/ui/App`, en edición por el agente del visor. No lo he tocado (no toco `src/ui`). Mis ficheros no provocan ninguno de los dos fallos.
+  2. Las medidas numéricas de lectura y tiempo no se han vuelto a extraer en esta ronda: el código de escritura no ha cambiado y los umbrales de `incremental.perf.test.ts` y del test de lectura pasan.
