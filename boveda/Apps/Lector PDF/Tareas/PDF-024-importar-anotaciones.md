@@ -25,7 +25,7 @@ Leer con pdf.js las anotaciones que ya tiene el PDF (de Adobe, de otros programa
 - Tipos soportados: `Highlight`, `Underline`, `StrikeOut`, `Text`, `FreeText`, `Ink`. Se ignoran del todo: `Popup` (se asocia vía `popupRef`), `Link` y `Widget` (tienen su propia capa). El resto son "ajenas".
 
 ## Qué hay que hacer
-1. `src/core/pdf-date.ts`: `export function parsePdfDate(s: string | null | undefined): string | null` (`D:YYYYMMDDHHmmSSOHH'mm'` con partes opcionales → ISO 8601 en UTC; inválida → `null`) y `export function toPdfDate(iso: string): string` (`D:YYYYMMDDHHmmSSZ`, UTC).
+1. (Usa `parsePdfDate` de `src/core/pdf-date.ts`, creado en PDF-023.)
 2. `src/core/annotations/import.ts` (puro, recibe objetos planos):
    ```ts
    export interface RawAnnotation { readonly [k: string]: unknown }   // lo que devuelve pdf.js
@@ -40,15 +40,14 @@ Leer con pdf.js las anotaciones que ya tiene el PDF (de Adobe, de otros programa
    export async function scanAnnotations(doc: PDFDocumentProxy, opts: { readonly signal?: AbortSignal; readonly batchSize?: number; readonly fallbackDate: string; readonly onBatch: (pages: readonly ImportedPage[]) => void }): Promise<'done' | 'cancelled'>;
      // mismo patrón que scanPageDims (lotes de 50 páginas, cede el hilo entre lotes)
    ```
-4. Tests: `tests/unit/pdf-date.test.ts`, `tests/unit/annotations/import.test.ts` (objetos crudos sintéticos, incluidos inválidos) y `tests/unit/annotations/engine-import.test.ts` (motor real con `annotated.pdf` y el corpus `7.18.1-t02-pass-a.pdf`).
+4. Tests: `tests/unit/annotations/import.test.ts` (objetos crudos sintéticos, incluidos inválidos) y `tests/unit/annotations/engine-import.test.ts` (motor real con `annotated.pdf` y el corpus `7.18.1-t02-pass-a.pdf`).
 
 ## Criterios de aceptación
-- [ ] (T) `parsePdfDate("D:20261017120000Z")` → `2026-10-17T12:00:00.000Z`; `"D:20261017140000+02'00'"` → `2026-10-17T12:00:00.000Z`; `"D:2026"` → `2026-01-01T00:00:00.000Z`; `"basura"` → `null`; `toPdfDate` ida y vuelta.
 - [ ] (T) `annotated.pdf`: p1 → 2 soportadas (`highlight` con `contents 'Comentario previo'`, autor `Otra persona`, `origin.popupRef` no nulo; `underline` azul `[0,0,1]`); p2 → `note` (`icon 'Comment'`, `contents 'Nota previa'`), `freetext` (`fontSize 12`, `contents 'Texto libre previo'`), `ink` con 2 trazos; p3 → 1 ajena `Square` y ningún `Link` en ninguna lista.
 - [ ] (T) Un `Highlight` crudo con `quadPoints` de 7 números o `color` de tipo cadena → no lanza y queda como ajena; uno con la bandera *Hidden* se ignora.
 - [ ] (T) `scanAnnotations` sobre `pages-5000.pdf` (sin anotaciones) termina en < 10 s con lotes de 50 y ningún lote > 100 ms; abortar → `'cancelled'`.
 - [ ] (T) Corpus veraPDF `7.18.1-t02-pass-a.pdf` → 1 `highlight` importado.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `import.ts` y `pdf-date.ts` ≥ 95 % de líneas.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `import.ts` ≥ 95 % de líneas.
 
 ## Fuera de alcance
 - Guardar en el store y mostrar (PDF-030/031). Respuestas (`/IRT`) y estados (PDF-058).

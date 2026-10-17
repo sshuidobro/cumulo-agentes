@@ -83,7 +83,8 @@ Tipos inmutables para resaltado, subrayado, tachado, nota, texto libre y dibujo 
      // added: upserts con origin 'new' (en orden); modified: upserts con origin 'file' distintos de su línea base; removed: entradas de la línea base cuyo id está en removed
    export function isEmptyDiff(d: AnnotationDiff): boolean;
    ```
-5. `src/core/annotations/index.ts` reexporta todo. Tests en `tests/unit/annotations/` con un `UndoStack<AnnotationEdits>` real de `@suite/shared`.
+5. `src/core/pdf-date.ts`: `export function parsePdfDate(s: string | null | undefined): string | null` (`D:YYYYMMDDHHmmSSOHH'mm'` con partes opcionales → ISO 8601 en UTC; inválida → `null`) y `export function toPdfDate(iso: string): string` (`D:YYYYMMDDHHmmSSZ`, UTC). Test `tests/unit/pdf-date.test.ts`.
+6. `src/core/annotations/index.ts` reexporta todo. Tests en `tests/unit/annotations/` con un `UndoStack<AnnotationEdits>` real de `@suite/shared`.
 
 ## Criterios de aceptación
 - [ ] (T) Para cada uno de los 3 creadores: `apply` y luego `invert(before).apply` devuelve un estado igual al de partida (`upserts` y `removed` iguales en contenido) — con anotaciones nuevas y del fichero.
@@ -95,7 +96,8 @@ Tipos inmutables para resaltado, subrayado, tachado, nota, texto libre y dibujo 
 - [ ] (T) `quadFromRect([10,20,110,40])` → `[10,40, 110,40, 10,20, 110,20]`; `translateAnnotation` de un dibujo mueve todos los puntos y el `rect`.
 - [ ] (T) `isAnnotation` acepta los 6 tipos válidos y rechaza: color con 2 componentes, `opacity 2`, `quads` con 7 números, `type 'square'`, `pageIndex -1`, campos que faltan.
 - [ ] (T) Rendimiento: 5 000 `addAnnotationCommand` seguidos con `UndoStack` (`maxDepth 100`) en < 2 s (anota el tiempo).
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `src/core/annotations/` ≥ 95 % de líneas.
+- [ ] (T) `parsePdfDate("D:20261017120000Z")` → `2026-10-17T12:00:00.000Z`; `"D:20261017140000+02'00'"` → `2026-10-17T12:00:00.000Z`; `"D:2026"` → `2026-01-01T00:00:00.000Z`; `"basura"` → `null`; `parsePdfDate(toPdfDate(x)) === x` para 3 fechas con milisegundos 0.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `src/core/annotations/` y `pdf-date.ts` ≥ 95 % de líneas.
 
 ## Fuera de alcance
 - Leer anotaciones del PDF (PDF-024), apariencias (PDF-027), escribir (PDF-028), interfaz (PDF-030+). Respuestas y estados (PDF-058).
