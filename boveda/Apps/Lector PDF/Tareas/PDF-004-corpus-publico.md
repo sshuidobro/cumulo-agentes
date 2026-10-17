@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-004
 titulo: Añadir el corpus público (veraPDF) y PDFs exportados con LibreOffice
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-005]
 intentos: 0
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -70,3 +70,8 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0011-documentos-de-prue
   - `pnpm lint` → código 1 por un fichero ajeno: 5 errores `no-console` en `apps/lector-pdf/tests/unit/pdf/zz-debug.test.ts` (sin versionar, de otro programador). Mis ficheros pasan ESLint sin avisos. No lo he tocado.
   - `git check-ignore` de los PDF → sin coincidencias: se añaden como nuevos.
 - Dudas o cosas que no he podido hacer: `pnpm lint` queda en rojo hasta que se corrija `zz-debug.test.ts`. Chino, griego y ruso se extraen bien. El árabe se extrae en orden visual (bidi); el test no lo comprueba. Sin dudas de producto.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- Procedencia y licencia: `FUENTES.md` lista los 10 ficheros con commit fijado, licencia CC BY 4.0 (veraPDF) y atribución con enlace. Comprobados por SHA-256 3 de los 7 PDF contra la descarga del commit `bb75f4f`: idénticos. Metadatos de los veraPDF: autor "veraPDF Consortium". Los 3 de LibreOffice no contienen autor ni rutas personales. Sin documentos personales.
+- Tamaño 836 620 bytes (< 1,5 MB); 10 PDF versionados (`git ls-files`). `corpus.test.ts` 15/15 verde; typecheck OK; HTML de origen cumplen la ficha (3×8 párrafos, 40 capítulos, `lang`/`dir`).
+- (opcional) El test del árabe no comprueba texto; aceptable, la ficha no lo exige.

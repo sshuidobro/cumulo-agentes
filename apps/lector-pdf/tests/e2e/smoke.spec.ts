@@ -10,6 +10,6 @@ test('la app carga sin errores y muestra el estado vacío', async ({ page }) => 
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Abre un PDF para empezar' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Abrir…' })).toBeVisible();
+  await expect(page.getByRole('toolbar').getByRole('button', { name: 'Abrir…' })).toBeVisible();
   expect(errors).toEqual([]);
 });
