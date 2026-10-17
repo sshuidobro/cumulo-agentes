@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas (xref) y filtros de streams
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-025, PDF-003]
 intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -121,3 +121,11 @@ Reproducir: `pnpm exec vitest run apps/lector-pdf/tests/unit/pdf/xref-robustness
 Arreglo esperado: tope de salida en `decodeStreamData` (para xref, p. ej. `size * suma(W)` según `/Index`/`/Size`, o un máximo absoluto) con `PdfSyntaxError`. Usar `Inflate`/`Zlib` en streaming de fflate o `unzlibSync` con `out` acotado. Ambos tests rojos están escritos y deben pasar.
 Tests añadidos: `apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts` (5 tests; 2 rojos a propósito por la bomba).
 Rendimiento: `pnpm perf` OK; el programador anotó 13,51 % de bytes y ~142 ms para `pages-100000.pdf`.
+
+### [programador] ronda 3 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/filters.ts` (tope de descompresión), `apps/lector-pdf/src/core/pdf/xref.ts` (tope por xref stream), `apps/lector-pdf/tests/unit/pdf/filters.test.ts` (3 tests del tope), `apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts` (test del revisor-tester, sin cambios; ahora pasa).
+- Qué he hecho: arreglo de la bomba de descompresión (defecto del tester). `inflate` pasa a ser en streaming (`Unzlib`/`Inflate` de fflate) y corta en cuanto la salida supera el tope, con `PdfSyntaxError('Flujo descomprimido demasiado grande (más de N bytes)')`; ya no se reserva el total antes de comprobarlo. **Límite elegido:** `MAX_DECODED_BYTES = 64 MiB` como tope absoluto de `decodeStreamData(s, maxBytes?)`. Para xref stream el tope es más estricto: (suma de `/W` + 1 byte de predictor) × número de entradas de `/Index` (o `/Size`), con un mínimo de una fila, y nunca más que el absoluto. Los tests de robustez no se han debilitado.
+- Comandos ejecutados y resultado: `pnpm exec vitest run` sobre `filters`, `xref`, `xref-robustness` → 40/40 OK (la bomba de 1 GiB ahora da error controlado); `pnpm lint` OK; `pnpm typecheck` de `apps/lector-pdf` OK (la raíz falló una vez por `src/state/annotation-actions.ts`, fichero de otro agente en curso, no tocado); `pnpm test` 899/900, el único fallo (`tests/ui/open.test.tsx`, «scanAnnotations» no definido en el mock) es de código de PDF-030 en curso en el mismo árbol y pasa 10/10 aislado; `pnpm perf` `xref.perf` 1/1 OK; cobertura (`filters.test` + `xref.test`): `filters.ts` 95,0 % y `xref.ts` 93,0 % de líneas.
+- Dudas o cosas que no he podido hacer: (1) el tope de 64 MiB es un criterio mío para documentar; si el líder prefiere otro valor, es una constante. (2) `PDF-010` y `PDF-030` (encargados en paralelo) no los he tocado: sus ficheros (`engine/render.ts`, `ui/viewer/PageView.tsx`, `state/annotation-actions.ts`, etc.) ya están en el árbol sin commit de otro agente y no los he modificado para no pisar ese trabajo. (3) El commit incluye solo los ficheros de esta ficha.
+
+Estado: `en-revision`.

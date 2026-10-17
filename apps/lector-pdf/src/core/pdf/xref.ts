@@ -5,7 +5,7 @@
  */
 import type { ByteSource } from '@suite/platform';
 import { isWhitespace } from './lexer';
-import { decodeStreamData } from './filters';
+import { decodeStreamData, MAX_DECODED_BYTES } from './filters';
 import { dictGet, PdfSyntaxError, type PdfDict, type PdfStream, type PdfValue } from './objects';
 import { parseIndirectObject, parseValue } from './parser';
 
@@ -322,12 +322,35 @@ function parseStreamEntries(stream: PdfStream, size: number, data: Uint8Array, o
   return out;
 }
 
+/**
+ * Tope de bytes descomprimidos para un xref stream: una fila de `/W` (más el byte de filtro
+ * de predictor) por entrada de `/Index` (o de `/Size`). Sin `/W` o `/Index` válidos se usa el tope general.
+ */
+function xrefOutputLimit(dict: PdfDict, size: number): number {
+  const widths = dictGet(dict, 'W');
+  const indexValue = dictGet(dict, 'Index');
+  if (!isArray(widths) || widths.length !== 3) return MAX_DECODED_BYTES;
+  if (!widths.every((w) => typeof w === 'number' && Number.isSafeInteger(w) && w >= 0)) return MAX_DECODED_BYTES;
+  const rowLength = widths.reduce<number>((n, w) => n + (typeof w === 'number' ? w : 0), 0) + 1;
+  let count = size;
+  if (indexValue !== undefined) {
+    if (!isArray(indexValue)) return MAX_DECODED_BYTES;
+    count = 0;
+    for (let p = 1; p < indexValue.length; p += 2) {
+      const n = indexValue[p];
+      if (typeof n !== 'number' || !Number.isSafeInteger(n) || n < 0) return MAX_DECODED_BYTES;
+      count += n;
+    }
+  }
+  return Math.min(MAX_DECODED_BYTES, rowLength * count + rowLength);
+}
+
 /** Sección en xref stream: analiza el objeto, decodifica el flujo (los errores de filtro se conservan) y lo convierte en entradas. */
 async function readXrefStreamSection(src: ByteSource, offset: number): Promise<Section> {
   const stream = await readXrefStreamObject(src, offset);
   const size = intValue(stream.dict, 'Size');
   if (size === undefined) throw xrefError(offset);
-  const data = decodeStreamData(stream);
+  const data = decodeStreamData(stream, xrefOutputLimit(stream.dict, size));
   return { kind: 'stream', trailer: stream.dict, entries: parseStreamEntries(stream, size, data, offset) };
 }
 
