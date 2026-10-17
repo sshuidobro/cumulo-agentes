@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-008
 titulo: Crear el crate Rust suite-platform con registro de ficheros y E/S atómica
 app: comun
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-tauri, pruebas-calidad]
@@ -102,3 +102,25 @@ Existe el crate `packages/platform/rust` (`suite-platform`, solo `std`, sin Taur
 - Qué he hecho: crate `suite-platform` solo con `std` (sin Tauri). Registro de tokens `t1..tN` con `Mutex` (poison-safe), `read_range` con recorte y límite de 16 MiB, `atomic_write` y `atomic_copy_append` con temporal `.{nombre}.suite-tmp-{pid}-{n}` en el mismo directorio, borrado del temporal ante error y copia de permisos en `atomic_write`. Mensajes de error en español y códigos estables. 15 tests de integración cubren todos los criterios (T).
 - Comandos ejecutados y resultado: `cargo fmt --check -p suite-platform` → 0; `cargo clippy -p suite-platform --all-targets -- -D warnings` → 0; `cargo test -p suite-platform` → 15 passed, 0 failed. Tiempo de `atomic_copy_append` con base de 50 MiB + 1 KiB: **65 ms** (límite 3 s). `target/` aparece ignorado por `.gitignore` (la entrada ya estaba en el working tree, editada por COM-004; no la he tocado). Todos los comandos se ejecutaron desde la raíz del repo.
 - Dudas o cosas que no he podido hacer: el test de permisos (`atomic_write` conserva modo) va con `#[cfg(unix)]` porque el crate debe compilar también en Windows; en Windows no se ejecuta. No he hecho `fsync` del directorio tras el `rename` (no lo pide la ficha; anotado por si el tester lo quiere como mejora de durabilidad).
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Verificado desde la raíz: `cargo fmt --check` 0, `cargo clippy -p suite-platform --all-targets -- -D warnings` 0, `cargo test -p suite-platform` 15/15. `git status` limpio (`target/` ignorado). Sin `unwrap`/`expect` fuera de tests, mutex tolerante a envenenamiento, temporal borrado ante error, comprobación de tamaño y `base == target` correctos. Cada criterio (T) tiene su test.
+1. `packages/platform/rust/src/files.rs:190` (opcional) — hacer `fsync` del directorio tras `rename` mejoraría la durabilidad ante corte de corriente; no bloquea.
+2. `packages/platform/rust/src/files.rs:225` (opcional) — `copy_append_temp` podría validar el tamaño antes del `copy` si `base` cambia durante la copia (condición de carrera estrecha); ya queda cubierta por la comprobación final de tamaño.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| read_range (rangos, recorte, vacío, OutOfRange, NotFound) | OK | `cargo test -p suite-platform`: `read_range_*` verdes; más límites extremos (`u64::MAX`, len 0, `MAX_READ_LEN` exacto) en `files_qa.rs` |
+| atomic_write nuevo/reemplazo, sin temporales, dir inexistente → NotFound | OK | tests `atomic_write_*` verdes; destino-directorio falla sin dejar temporal |
+| atomic_copy_append (otro destino, base==target, ChangedOnDisk, sin temporales) | OK | tests `copy_append_*` verdes; añadidos base inexistente, destino inexistente, destino directorio, delta vacío |
+| 50 MiB + 1 KiB < 3 s | OK | test `copy_append_con_base_de_50_mib_es_rapido` verde (0,36 s la suite entera; el programador midió 65 ms) |
+| Registro (rutas, tokens únicos, unregister, 8×1000 hilos) | OK | tests `registro_*` verdes; añadido token desconocido y no reutilización tras unregister |
+| code()/Display/From<io::Error> | OK | `file_error_codigos_y_mensajes`, `file_error_desde_io_error` |
+| fmt, clippy -D warnings, test, `target/` ignorado | OK | los tres con código 0; `git status` no muestra `target/` |
+| Regresión TS | OK | `pnpm lint`, `pnpm typecheck` 0; `pnpm test` 67/67 |
+
+Sin fallos. Casos límite probados: Unicode (ñ, emoji, árabe) y espacios en ruta/nombre, fichero vacío, directorio como origen/destino.
+Tests añadidos: `packages/platform/rust/tests/files_qa.rs` (9 tests, todos verdes; fmt y clippy limpios con ellos).
+Rendimiento: copy+append 50 MiB ≈ 65 ms (presupuesto 3 s).
+Observación no bloqueante: sin `fsync` del directorio tras `rename` (ya anotado por programador/revisor).
