@@ -8,6 +8,7 @@ export default defineProject({
     include: ['tests/unit/**/*.test.ts', 'tests/ui/**/*.test.tsx'],
     environment: 'node',
     setupFiles: ['tests/setup/setup.ts'],
+    globalSetup: ['tests/setup/global-setup.ts'],
     alias: [{ find: /^pdfjs-dist$/, replacement: 'pdfjs-dist/legacy/build/pdf.mjs' }],
   },
 });

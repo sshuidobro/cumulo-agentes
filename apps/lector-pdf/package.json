@@ -6,7 +6,8 @@
     "build": "pnpm assets && vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "typecheck": "tsc -p tsconfig.json",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "fixtures": "node tests/fixtures/cli.ts --force"
   },
   "dependencies": { "@suite/platform": "workspace:*", "@suite/shared": "workspace:*", "pdfjs-dist": "6.4.299",
     "react": "19.3.1", "react-dom": "19.3.1", "zustand": "5.0.15" },

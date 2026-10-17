@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-002
 titulo: Generador de fixtures PDF (páginas, tamaños, imágenes y ficheros dañados)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-001]
 intentos: 0
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -82,3 +82,9 @@ Un generador propio, sin dependencias, crea en `fixtures/pdf/generated/` los PDF
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/tests/fixtures/{paths,pdf-builder,catalog,ensure,cli}.ts` (nuevos); `apps/lector-pdf/tests/setup/global-setup.ts` y `apps/lector-pdf/tests/e2e/global-setup.ts` (nuevos); `apps/lector-pdf/tests/unit/fixtures.test.ts` (nuevo); `apps/lector-pdf/tsconfig.json` (`allowImportingTsExtensions`), `apps/lector-pdf/package.json` (script `fixtures`), `apps/lector-pdf/vitest.config.ts` y `apps/lector-pdf/playwright.config.ts` (globalSetup); esta ficha.
+- Qué he hecho: generador propio de PDF sin dependencias (xref clásica de 20 bytes, árbol de páginas con fanout 32, WinAnsi, imágenes comprimidas) y los 10 fixtures del catálogo en `fixtures/pdf/generated/` (ignorado por git). `ensureFixtures` crea solo los que faltan salvo cambio de `GENERATOR_VERSION` o `--force`; se llama desde los globalSetup de Vitest y Playwright. Tests: 17 en `fixtures.test.ts` que cubren los criterios (T) y acentos, abriendo con pdf.js legacy.
+- Comandos ejecutados y resultado: `pnpm fixtures` OK (10 generados, 2,8 s); `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (32 ficheros, 396 tests) y una segunda ejecución no regenera ningún fixture; `pnpm --filter lector-pdf e2e` 1 passed; `pnpm coverage` falla en `tests/unit/layout.test.ts` (2 tests de tiempo de PDF-006, no tocado por mí; cobertura de `core/` no se ha podido confirmar en esta pasada).
+- Dudas o cosas que no he podido hacer: (1) `images-200.pdf` ocupa 44 MB (la ficha no fija límite; el degradado comprime mal con deflate); no afecta al repo porque va en `generated/`. (2) La ficha separa los ficheros en `tests/fixtures/` y el ADR-0011 cita `generate-fixtures.ts`; he seguido la ficha. (3) `pages-100000.pdf` pesa 31 MB, dentro del límite de 40 MB pero con poco margen si cambia el texto de las páginas.
