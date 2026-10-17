@@ -159,6 +159,9 @@ describe('Viewer · regresión: zoom automático con tamaños mezclados', () => 
       event.preventDefault();
     };
     window.addEventListener('error', onError);
+    // La propiedad protegida: el zoom automático no cambia al desplazarse (la página de referencia no depende de la actual).
+    const zoomAtStart = useViewer.getState().zoom;
+    expect(zoomAtStart).toBeGreaterThan(0);
     try {
       for (let step = 1; step <= 12; step++) {
         const page = step * 3;
@@ -174,12 +177,13 @@ describe('Viewer · regresión: zoom automático con tamaños mezclados', () => 
         Object.defineProperty(region, 'scrollTop', { configurable: true, writable: true, value: target });
         fireEvent.scroll(region);
         await waitFor(() => expect(useViewer.getState().currentPage).toBe(page));
+        expect(useViewer.getState().zoom).toBe(zoomAtStart);
       }
     } finally {
       window.removeEventListener('error', onError);
     }
     expect(errors).toEqual([]);
-    expect(useViewer.getState().zoom).toBeGreaterThan(0);
+    expect(useViewer.getState().zoom).toBe(zoomAtStart);
   });
 });
 

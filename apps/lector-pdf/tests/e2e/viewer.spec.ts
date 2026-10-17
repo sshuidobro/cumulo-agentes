@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
+import { expectViewerReady } from './viewer-ready.ts';
 
 /** Presupuesto de PDF-009: la última página visible tras Fin en 100 000 páginas. */
 const END_BUDGET_MS = 1_500;
@@ -31,10 +32,10 @@ function seeded(seed: number): () => number {
 
 test('en 5 000 páginas la página 1 está visible al abrir y nunca hay más de 12 marcos montados', async ({ page }) => {
   await openFixture(page, 'pages-5000.pdf');
+  await expectViewerReady(page);
   await expect(page.getByRole('group', { name: 'Página 1 de 5000' })).toBeVisible();
 
   const viewer = page.getByTestId('viewer');
-  await viewer.focus();
   const random = seeded(9009);
   for (let jump = 0; jump < 20; jump++) {
     const roll = random();
@@ -50,9 +51,8 @@ test('en 5 000 páginas la página 1 está visible al abrir y nunca hay más de 
 
 test('en 100 000 páginas, Fin muestra la última página en menos de 1,5 s', async ({ page }, testInfo) => {
   await openFixture(page, 'pages-100000.pdf');
+  await expectViewerReady(page);
 
-  const viewer = page.getByTestId('viewer');
-  await viewer.focus();
   const started = Date.now();
   await page.keyboard.press('End');
   const last = page.getByRole('group', { name: 'Página 100000 de 100000' });
@@ -64,8 +64,8 @@ test('en 100 000 páginas, Fin muestra la última página en menos de 1,5 s', as
 
 test('en sizes-mixed, la página 2 es más ancha que alta y la 5 (rotada 90°) también', async ({ page }) => {
   await openFixture(page, 'sizes-mixed.pdf');
+  await expectViewerReady(page);
   const viewer = page.getByTestId('viewer');
-  await viewer.focus();
 
   const pageBox = async (index: number): Promise<{ width: number; height: number }> => {
     const box = await page.locator(`[data-page-index="${index}"]`).boundingBox();
@@ -106,6 +106,7 @@ test('durante un scroll continuo no hay tareas largas de más de 100 ms', async 
     }).observe({ type: 'longtask', buffered: true });
   });
   await openFixture(page, 'pages-100000.pdf');
+  await expectViewerReady(page);
 
   const viewer = page.getByTestId('viewer');
   await viewer.hover();
