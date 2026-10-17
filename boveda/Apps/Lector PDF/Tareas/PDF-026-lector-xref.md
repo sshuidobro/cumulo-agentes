@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas y de objetos por rangos
 app: pdf
-estado: en-curso
+estado: bloqueada
 depende_de: [PDF-025, PDF-003]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -79,3 +79,15 @@ Dado un `ByteSource`, encontrar la última sección xref, recorrer la cadena `/P
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/package.json` (añadida `"fflate": "0.8.3"` en `dependencies`, según ADR-0009), `pnpm-lock.yaml`. Sin código de `src/core/pdf/` todavía (ficha bloqueada antes de implementar).
+- Qué he hecho: (1) Lint y typecheck de `tests/unit/pdf/fuzz-roundtrip.test.ts` no reproducen errores (`eslint --max-warnings 0` y `tsc` salen con 0; el test pasa 4/4); lo he commiteado como `ecf7c2a` ("PDF-025: Tests de ida y vuelta (fuzz)..."). (2) Preparé PDF-026 (`en-curso`) y comprobé el criterio de rango sobre el fixture real.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm exec vitest run .../fuzz-roundtrip.test.ts` 4/4 OK; medición con node sobre `fixtures/pdf/generated/pages-100000.pdf` (31 101 661 bytes): 100 000 páginas hoja (`/Type /Page`) ocupan 11 788 910 bytes (**37,9 %** del fichero); tabla xref 13,1 %; 3 228 nodos `/Pages`.
+- Dudas o cosas que no he podido hacer:
+  1. **Criterio imposible tal como está escrito.** El criterio (T) "`ObjectReader.open` + `pageRefs()` + `getDict` de la página 99 999 leen < 25 % del fichero" no se puede cumplir con un `pageRefs` correcto. Para saber si un `Kid` es hoja o nodo hay que leer su diccionario (`/Kids` solo aparece en los nodos), y solo las hojas ya suman el 37,9 % del fichero (más la tabla xref, 13,1 %). Cualquier implementación que lea las hojas incumple el 25 %; clasificar sin leerlas sería adivinar.
+  2. Opciones para el líder (decisión de criterio, no mía): (a) cambiar el presupuesto (p. ej. medir solo los bytes de `pageRefs` y de la página 99 999 y dar otro umbral); (b) regenerar `pages-100000.pdf` con las páginas dentro de object streams comprimidos (PDF-003), con lo que el coste medido baja mucho; (c) aceptar que `pageRefs` lea las hojas y medir el presupuesto solo sobre `getDict` de la página 99 999.
+  3. Dudas de diseño menores que tomaría si se confirma la ficha (las anoto para que el líder las valide): `getDict` de un stream devuelve su diccionario; una referencia con `gen` distinto del de la entrada `offset` se trata como `null`; una entrada `n` con offset 0 se trata como libre; `/Prev` roto o más de 1 000 secciones → `PdfSyntaxError`.
+  4. No he escrito `filters.ts`, `xref.ts` ni `object-reader.ts`, porque el criterio de rango debe decidirse antes de implementar el lector por rangos. Cambios sin commit (dependencia `fflate` ya aprobada en ADR-0009; si el líder prefiere, se revierte).
+
+Estado: `bloqueada` a la espera de la decisión sobre el criterio de rango.

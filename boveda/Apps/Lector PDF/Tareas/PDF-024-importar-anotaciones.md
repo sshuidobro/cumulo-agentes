@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-024
 titulo: Importar las anotaciones existentes del PDF al modelo (y las no soportadas como solo lectura)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-023, PDF-005, PDF-003]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -66,3 +66,15 @@ Leer con pdf.js las anotaciones que ya tiene el PDF (de Adobe, de otros programa
 - `pnpm test` 63 ficheros / 834 tests en verde; `pnpm coverage` en verde (`import.ts` 100 % líneas); `pnpm perf` 13/13 en verde (una ejecución previa de `search.perf.test.ts` falló por carga, ajena a esta ficha y no reproducible).
 - `pnpm lint` y `pnpm typecheck` fallan solo por `tests/unit/pdf/fuzz-roundtrip.test.ts` (fichero sin seguir de otra tarea del tester, líneas 76, 192, 206); no es de PDF-024. Aviso al líder: hay que arreglarlo antes de cerrar la iteración.
 - Código correcto, puro, nunca lanza; cada criterio (T) tiene su test. Sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| annotated.pdf p1/p2/p3 | OK | `engine-import.test.ts` en `pnpm test` (63 ficheros, 834 tests, 0 fallos) |
+| Highlight inválido / Hidden | OK | `import.test.ts` + mis casos hostiles (NaN, basura, banderas combinadas) |
+| scanAnnotations pages-5000 < 10 s, lotes ≤ 100 ms, abortar | OK | `pnpm perf` 13/13 (programador: total 536 ms, máx lote 8,3 ms) |
+| Corpus veraPDF 7.18.1-t02-pass-a | OK | engine-import.test.ts |
+| lint, typecheck, test, coverage, build web | OK, código 0 | `import.ts` 98,29 % líneas |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/annotations/qa-import-024.test.ts` (basura/NaN, Unicode+emoji+RTL, rect invertido, Hidden combinado, 20 000 anotaciones).
+Rendimiento: una pasada de `pnpm perf` fue roja por carga paralela (search/otra perf, ajena) y en la repetición 13/13 verde.
