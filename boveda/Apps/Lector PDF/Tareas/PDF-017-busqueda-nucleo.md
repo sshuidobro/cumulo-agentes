@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-017
 titulo: Núcleo de búsqueda - normalización, coincidencias y sesión incremental cancelable
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-005]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -102,3 +102,7 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
   3. Vitest 5 no exporta `bench`: el benchmark sigue el patrón de `layout.bench.ts` (`test` con contexto `{ bench }`).
   4. Consulta vacía: `onDone` se llama de forma síncrona dentro de `start()`.
 - Dudas o cosas que no he podido hacer: nada pendiente. Expresiones regulares y multi-PDF quedan fuera de alcance, como indica la ficha.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck, test (773), coverage (`core/search` 96,13 % sentencias, 98,89 % líneas) y perf (12 tests; búsqueda completa 1 838 ms, hueco máx. 29 ms, con caché 50 ms) en verde. Criterios cubiertos; sin `skip`/`only`; `core/` sin pdfjs.
+1. (opcional) `session.ts` `#pageOrder` — un `startPage` NaN produce un recorrido vacío; sanear a 0 con `Number.isFinite`.
