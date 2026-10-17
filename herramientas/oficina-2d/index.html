@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Oficina de agentes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  /* Una pantalla de juego de noche: la oficina manda, el panel lateral es la ficha del equipo. Diseño oscuro a propósito. */
+  :root {
+    --fondo: #141826;
+    --panel: #1c2234;
+    --panel-alto: #242b42;
+    --borde: #333d5c;
+    --texto: #ece6d6;
+    --texto-suave: #a3a9c2;
+    --acento: #ecc85e;
+    --trabaja: #7dffa1;
+    --parado: #8d93ab;
+    --aviso: #ff8a65;
+    --display: 'Silkscreen', 'Courier New', monospace;
+    --cuerpo: 'Atkinson Hyperlegible', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    color-scheme: dark;
+  }
+  html, body { background: var(--fondo); color: var(--texto); }
+  body {
+    font-family: var(--cuerpo);
+    font-size: 15px;
+    line-height: 1.45;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 16px 24px;
+  }
+  .marco { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: 1.6rem; letter-spacing: 0.02em; margin: 0; text-wrap: balance; }
+  h1 span { color: var(--acento); }
+  .sub { margin: 2px 0 0; color: var(--texto-suave); font-size: 0.9rem; }
+  .modo { display: inline-flex; border: 2px solid var(--borde); background: var(--panel); }
+  .modo button {
+    font: inherit; font-family: var(--display); font-size: 0.8rem; letter-spacing: 0.04em;
+    background: transparent; color: var(--texto-suave); border: 0; padding: 8px 12px; cursor: pointer;
+  }
+  .modo button[aria-pressed="true"] { background: var(--acento); color: var(--fondo); }
+  .modo button:disabled { cursor: not-allowed; opacity: 0.45; }
+  button:focus-visible, li:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+  .juego { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .juego { grid-template-columns: minmax(0, 1fr); } }
+
+  .pantalla { min-width: 0; display: grid; gap: 10px; }
+  .cristal { background: #0b0d16; border: 4px solid var(--borde); box-shadow: 0 0 0 4px #0b0d16, 0 12px 30px rgba(0, 0, 0, 0.45); }
+  canvas#oficina { display: block; width: 100%; height: auto; aspect-ratio: 320 / 200; max-width: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .fuente { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; color: var(--texto-suave); font-size: 0.85rem; }
+  .punto { display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--parado); vertical-align: 1px; }
+  .punto.vivo { background: var(--trabaja); }
+
+  .contadores { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .contadores li {
+    font-family: var(--mono); font-size: 0.78rem; font-variant-numeric: tabular-nums;
+    background: var(--panel); border: 1px solid var(--borde); padding: 3px 8px; color: var(--texto-suave);
+  }
+  .contadores li b { color: var(--texto); font-weight: 500; margin-left: 4px; }
+  .contadores li.alerta { border-color: var(--aviso); }
+  .contadores li.alerta b { color: var(--aviso); }
+
+  aside { background: var(--panel); border: 2px solid var(--borde); min-width: 0; }
+  aside h2 {
+    font-family: var(--display); font-weight: 400; font-size: 0.85rem; letter-spacing: 0.08em;
+    margin: 0; padding: 10px 14px; border-bottom: 2px solid var(--borde); display: flex; justify-content: space-between; gap: 8px;
+  }
+  aside h2 small { font-family: var(--mono); font-size: 0.75rem; color: var(--texto-suave); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  #equipo { list-style: none; margin: 0; padding: 4px 0; }
+  #equipo li {
+    display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
+    padding: 8px 14px; cursor: pointer; border-left: 3px solid transparent;
+  }
+  #equipo li:hover { background: var(--panel-alto); }
+  #equipo li[aria-current="true"] { background: var(--panel-alto); border-left-color: var(--acento); }
+  #equipo canvas { width: 20px; height: 34px; image-rendering: pixelated; grid-row: span 2; justify-self: center; }
+  .nombre { font-weight: 700; }
+  .estado { font-family: var(--display); font-size: 0.7rem; letter-spacing: 0.06em; padding: 2px 6px; border: 1px solid currentColor; }
+  .estado.trabajando { color: var(--trabaja); }
+  .estado.parado { color: var(--parado); }
+  .tarea { grid-column: 2 / 4; color: var(--texto-suave); font-size: 0.85rem; overflow-wrap: anywhere; }
+  .tarea code { font-family: var(--mono); font-size: 0.78rem; color: var(--texto); }
+  .pie { margin: 0; padding: 10px 14px; border-top: 2px solid var(--borde); color: var(--texto-suave); font-size: 0.8rem; }
+  .pie code { font-family: var(--mono); font-size: 0.75rem; color: var(--texto); overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div class="marco">
+  <header>
+    <div>
+      <h1>Oficina <span>de agentes</span></h1>
+      <p class="sub">Quien tiene una ficha entre manos se mueve; quien está parado espera quieto en su mesa.</p>
+    </div>
+    <div class="modo" role="group" aria-label="Datos que se muestran">
+      <button id="modo-ejemplo" type="button" aria-pressed="false">Ejemplo</button>
+      <button id="modo-real" type="button" aria-pressed="false">Equipo real</button>
+    </div>
+  </header>
+
+  <div class="juego">
+    <section class="pantalla" aria-label="Oficina">
+      <div class="cristal">
+        <canvas id="oficina" width="320" height="200" role="img" aria-label="Oficina en pixel art con los agentes del equipo"></canvas>
+      </div>
+      <div class="fuente"><span id="fuente"><span class="punto"></span>Cargando…</span></div>
+      <ul class="contadores" id="contadores" aria-label="Fichas por estado"></ul>
+    </section>
+
+    <aside aria-labelledby="titulo-equipo">
+      <h2 id="titulo-equipo">EQUIPO <small id="ocupados">0/7 trabajando</small></h2>
+      <ul id="equipo"></ul>
+      <p class="pie" id="pie"></p>
+    </aside>
+  </div>
+</div>
+
+<script type="module">
+import { ROLES } from './derivar.mjs';
+import { Simulacion } from './simulacion.mjs';
+import { crearOficina, dibujarRetrato } from './oficina.mjs';
+
+const ESTADOS_FICHA = [
+  ['pendiente', 'Pendientes'],
+  ['en-curso', 'En curso'],
+  ['en-revision', 'En revisión'],
+  ['en-test', 'En test'],
+  ['cambios-pedidos', 'Cambios pedidos'],
+  ['bloqueada', 'Bloqueadas'],
+  ['hecha', 'Hechas'],
+];
+const SEGUNDOS_SIMULACION = 3.5;
+const SEGUNDOS_SONDEO = 3;
+
+const instantanea = globalThis.ESTADO_INSTANTANEA ?? null;
+const $ = (id) => document.getElementById(id);
+const botonEjemplo = $('modo-ejemplo');
+const botonReal = $('modo-real');
+let seleccionado = null;
+let temporizador = 0;
+let modo = null;
+
+const oficina = crearOficina($('oficina'), { roles: ROLES, alPulsar: seleccionar });
+const simulacion = new Simulacion();
+// Empieza a media iteración para que la primera vista ya tenga movimiento.
+for (let i = 0; i < 5; i++) simulacion.paso();
+
+// Lista del equipo con el retrato de cada personaje.
+const filas = new Map();
+for (const r of ROLES) {
+  const li = document.createElement('li');
+  li.tabIndex = 0;
+  li.innerHTML = '<canvas aria-hidden="true"></canvas><span class="nombre"></span><span class="estado"></span><span class="tarea"></span>';
+  dibujarRetrato(li.querySelector('canvas'), r.id);
+  li.querySelector('.nombre').textContent = r.nombre;
+  li.addEventListener('click', () => seleccionar(r.id));
+  li.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      seleccionar(r.id);
+    }
+  });
+  $('equipo').append(li);
+  filas.set(r.id, li);
+}
+
+function seleccionar(id) {
+  seleccionado = seleccionado === id ? null : id;
+  oficina.seleccionar(seleccionado);
+  for (const [rid, li] of filas) li.setAttribute('aria-current', String(rid === seleccionado));
+}
+
+function hora(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function pintarEstado(estado) {
+  oficina.actualizar(estado);
+  let ocupados = 0;
+  for (const a of estado.agentes) {
+    const li = filas.get(a.id);
+    if (!li) continue;
+    const trabaja = a.estado === 'trabajando';
+    if (trabaja) ocupados += 1;
+    const chip = li.querySelector('.estado');
+    chip.className = `estado ${a.estado}`;
+    chip.textContent = trabaja ? 'TRABAJA' : 'PARADO';
+    const tarea = li.querySelector('.tarea');
+    tarea.replaceChildren();
+    if (trabaja && a.tarea) {
+      const code = document.createElement('code');
+      code.textContent = a.tarea.id;
+      tarea.append(code, ` ${a.tarea.titulo ? `· ${a.tarea.titulo}` : ''}`);
+      if (a.detalle) tarea.append(document.createElement('br'), a.detalle);
+    } else {
+      tarea.textContent = trabaja ? a.detalle || 'Trabajando' : 'Sin tarea asignada';
+    }
+  }
+  $('ocupados').textContent = `${ocupados}/${estado.agentes.length} trabajando`;
+
+  const lista = $('contadores');
+  lista.replaceChildren();
+  for (const [clave, nombre] of ESTADOS_FICHA) {
+    const n = estado.fichas?.[clave] ?? 0;
+    if (!n && clave !== 'pendiente' && clave !== 'hecha') continue;
+    const li = document.createElement('li');
+    if ((clave === 'bloqueada' || clave === 'cambios-pedidos') && n) li.className = 'alerta';
+    const b = document.createElement('b');
+    b.textContent = String(n);
+    li.append(nombre, b);
+    lista.append(li);
+  }
+
+  const fuente = $('fuente');
+  const vivo = estado.fuente === 'boveda' && modo === 'servidor';
+  let textoFuente;
+  if (estado.fuente === 'ejemplo') textoFuente = 'Datos de ejemplo: un equipo imaginario haciendo el lector PDF';
+  else if (vivo) textoFuente = `En directo desde la bóveda · ${hora(estado.generado)}`;
+  else textoFuente = `Instantánea del repositorio · ${new Date(estado.generado).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`;
+  fuente.innerHTML = `<span class="punto${vivo || estado.fuente === 'ejemplo' ? ' vivo' : ''}"></span>`;
+  fuente.append(textoFuente);
+
+  $('pie').innerHTML = estado.fuente === 'ejemplo'
+    ? 'Para ver al equipo de verdad, en el repositorio: <code>node herramientas/oficina-2d/estado.mjs --servir</code>'
+    : `${estado.total ?? 0} fichas en la bóveda. Se deduce de su <code>estado</code>; el líder y el investigador, del Plan y de la investigación.`;
+}
+
+async function leerServidor() {
+  if (location.protocol === 'file:') return null;
+  try {
+    const r = await fetch('estado.json', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const datos = await r.json();
+    return Array.isArray(datos?.agentes) ? datos : null;
+  } catch {
+    return null;
+  }
+}
+
+function fijarModo(nuevo) {
+  clearInterval(temporizador);
+  modo = nuevo;
+  botonEjemplo.setAttribute('aria-pressed', String(nuevo === 'ejemplo'));
+  botonReal.setAttribute('aria-pressed', String(nuevo !== 'ejemplo'));
+  if (nuevo === 'ejemplo') {
+    pintarEstado(simulacion.estado());
+    temporizador = setInterval(() => {
+      simulacion.paso();
+      pintarEstado(simulacion.estado());
+    }, SEGUNDOS_SIMULACION * 1000);
+  } else if (nuevo === 'servidor') {
+    const sondear = async () => {
+      const datos = await leerServidor();
+      if (datos) pintarEstado(datos);
+    };
+    sondear();
+    temporizador = setInterval(sondear, SEGUNDOS_SONDEO * 1000);
+  } else if (instantanea) {
+    pintarEstado(instantanea);
+  }
+}
+
+const servidor = await leerServidor();
+const modoReal = servidor ? 'servidor' : instantanea ? 'instantanea' : null;
+if (!modoReal) {
+  botonReal.disabled = true;
+  botonReal.title = 'Arranca el servidor con node herramientas/oficina-2d/estado.mjs --servir';
+}
+botonEjemplo.addEventListener('click', () => fijarModo('ejemplo'));
+botonReal.addEventListener('click', () => modoReal && fijarModo(modoReal));
+fijarModo(servidor ? 'servidor' : 'ejemplo');
+</script>
+</body>
+</html>
