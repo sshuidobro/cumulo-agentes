@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-002
 titulo: Generador de fixtures PDF (páginas, tamaños, imágenes y ficheros dañados)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-001]
 intentos: 0
 skills: [pruebas-calidad, formatos-ofimatica]
