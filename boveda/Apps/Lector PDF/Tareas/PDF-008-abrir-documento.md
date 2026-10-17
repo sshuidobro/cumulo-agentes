@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-008
 titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados de carga y error
 app: pdf
-estado: en-test
+estado: cambios-pedidos
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -113,3 +113,19 @@ Decisiones menores del programador (ronda 1) aceptadas: `closeDocument` cancela 
 - Comprobado: `pnpm lint` y `pnpm typecheck` OK; `pnpm test` 63 ficheros / 834 tests OK (una primera ejecución falló sin que pudiera reproducirlo en tres repeticiones; probable interferencia de trabajo paralelo); `pnpm coverage` código 0 (líneas 98,9 %); `pnpm --filter lector-pdf e2e` 5/5 OK (100 000 páginas en 1,4 s de test completo).
 - `grep pdfjs-dist src`: solo `engine/pdfjs.ts` (legacy), `engine/worker.ts` (legacy) y el CSS; conforme a ADR-0013. Lógica de `document-actions.ts` correcta (última apertura gana, destrucción de resultados obsoletos, cancelación, límite de escaneo). Tests cubren los criterios (T).
 1. (opcional) `document-actions.ts:110` — si se cancela durante `getPage(1)` el resultado se descarta solo por el contador; funciona, sin acción.
+
+### [tester] ronda 1 — 2026-10-17 — FALLA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) unit/UI de apertura (basic-5, sizes-mixed, A lento/B rápido, corrupt, cancelar, Ctrl+O, tooltip) | OK | `pnpm test`: 63 ficheros / 834 tests OK |
+| E2E basic-5, corrupt-not-pdf, corrupt-empty | OK | `pnpm --filter lector-pdf e2e`: 5/5 OK |
+| E2E rendimiento 100 000 páginas | OK | 936 ms (anotación `rendimiento`, ejecución con 2 workers); presupuesto < 5 000 ms |
+| Estados navegables con teclado, foco visible | OK | `open-qa.spec.ts` (Tab llega a «Abrir…» con foco visible) |
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` código 0 (sin fallos ajenos) |
+| coverage | OK | `pnpm coverage` chocó con el proceso de otro agente (mismo directorio); repetido con `--coverage.reportsDirectory` propio: código 0, líneas 98,9 % |
+| Arrastrar y soltar (Objetivo de la ficha) | FALLA | `pnpm exec playwright test open-qa -g arrastrar` |
+
+**Fallo (arrastrar y soltar silencioso).** Pasos: abrir la app; soltar un PDF cuyo `DataTransferItem.getAsFileSystemHandle()` resuelve a `undefined` en lugar de `null` (Chromium lo hace con un `DataTransfer` sintético y, según la fuente del arrastre, puede ocurrir con arrastres reales que no son ficheros del disco). La superposición «Suelta el PDF para abrirlo» sale bien, pero al soltar no pasa nada: ni documento ni mensaje de error. Causa: `packages/platform/src/web/platform-web.ts:119` hace `handle !== null && isFileHandle(handle)`; con `undefined`, `handle.kind` lanza `TypeError`, `openDropped` rechaza y `document-actions.ts:186 openDropped` no captura la excepción (promesa rechazada sin tratar). Arreglo esperado: tratar `undefined` igual que `null` (`handle != null`, usando la copia `dt.files[0]`) en la plataforma, y que `openDropped` de la app convierta una excepción en estado `error` con mensaje en español. Test que lo reproduce (rojo): `apps/lector-pdf/tests/e2e/open-qa.spec.ts` «arrastrar y soltar un PDF…». Conviene además un test unitario en `packages/platform` (COM-006) con `getAsFileSystemHandle` devolviendo `undefined`.
+
+Tests añadidos: `apps/lector-pdf/tests/e2e/open-qa.spec.ts` (9: nombre con espacios/ñ/emoji, texto con extensión .pdf, PDF truncado sin errores de consola, recuperarse tras un error, B sobre A, arrastrar y soltar [rojo], Tab y foco, Ctrl+O con selector simulado, tooltip). Nota: la plataforma captura `showOpenFilePicker` al arrancar, por lo que el test lo sustituye con `addInitScript`.
+Rendimiento: 100 000 páginas visibles en 936 ms. Bundle (`pnpm --filter lector-pdf build`, `dist` 9,2 MB en total): JS principal `index-*.js` 724,8 kB (221 kB gzip), `pdf.worker.min-*.mjs` 1 321 kB (392 kB gzip), CSS 233,5 kB (42 kB gzip), chunk `tauri` 18,8 kB (5,3 kB gzip), `web` 5,5 kB; Vite avisa de chunk > 500 kB (informativo, no rechazo; el CSS de 233 kB viene del visor de pdf.js).
