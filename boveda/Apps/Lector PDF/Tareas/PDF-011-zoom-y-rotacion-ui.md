@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-011
 titulo: Zoom y rotación de vista en la interfaz (barra, atajos, Ctrl+rueda, anclaje)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-010]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -73,3 +73,9 @@ El usuario cambia el zoom con botones, un campo editable («125 %»), una lista 
   - Al perder el foco, el campo de zoom descarta lo escrito (la ficha no lo dice).
   - La captura de la página girada se adjunta al test E2E, pero no la he comparado con una referencia visual ni la he revisado a mano.
   - Ctrl+1/Ctrl+2 en navegador no se han probado (Chrome puede capturarlos, como indica la ficha).
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Verificado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (87 ficheros, 1092 tests) y `pnpm coverage` (98,8 % líneas) con código 0. `pnpm --filter lector-pdf e2e`: 29/29 en la segunda pasada; en la primera falló `viewer-stress.spec.ts` (pages-5000) y pasó en aislamiento (flaky por carga, ya visto por el programador en `sizes-mixed`). Criterios cubiertos; `zoomFocusY` con `'center'` está justificado. Sin bloqueos.
+1. (opcional) `apps/lector-pdf/src/ui/use-shortcuts.ts` — dentro del campo de zoom los atajos Ctrl++/-/0 no hacen `preventDefault` (por `ALLOW_IN_EDITABLE`) y en navegador disparan el zoom del navegador; valorar permitir los de zoom en editables.
+2. (opcional) `tests/e2e/zoom.spec.ts` — la captura del giro solo se adjunta, no se compara con referencia; el tester debe revisarla a mano.
+3. (opcional) Estabilizar `viewer-stress.spec.ts` / `viewer.spec.ts` (tiempos de espera bajo carga) en una ficha aparte.
