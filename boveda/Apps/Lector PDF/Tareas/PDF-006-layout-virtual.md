@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-006
 titulo: Núcleo - tabla de dimensiones y layout virtual con escalado de scroll
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -161,3 +161,20 @@ Pasos exactos (ronda 2):
 5. **Nuevo** `apps/lector-pdf/tests/perf/layout.perf.test.ts`: mueve aquí los dos `it` de tiempo de `layout.test.ts` ("calcula 1 000 000 de páginas en menos de 100 ms" y "1 000 000 de consultas aleatorias en menos de 300 ms"), usando `measureBest(fn)` en vez de `bestOf(3, fn)`. Copia el generador `seeded` (semilla 42). Mismos umbrales: `100` y `300`. Mantén `expect(value.count).toBe(1_000_000)` y `expect(checksum).toBeGreaterThan(0)`.
 6. `apps/lector-pdf/tests/unit/layout.test.ts`: borra esos dos `it` y la función `bestOf`; añade un `describe('1 000 000 de páginas')` con los asserts de comportamiento del criterio correspondiente (sin medir tiempo). `seeded` solo se queda si algún test de `tests/unit/` lo sigue usando (lint `no-unused-vars`).
 7. Comprueba: `pnpm lint && pnpm typecheck && pnpm test && pnpm coverage` y `pnpm perf` tres veces. Anota en el Registro los tiempos que muestre el fallo o, si pasan, los de `pnpm exec vitest bench --run` y la duración de `pnpm perf`.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `vitest.perf.config.ts` (nuevo, con la versión corregida de la ronda del líder: proyecto `lector-pdf-perf`); `package.json` (raíz, script `perf`); `tsconfig.json` (raíz, include); `apps/lector-pdf/tests/perf/measure.ts` (nuevo, `measureBest`); `apps/lector-pdf/tests/perf/layout.perf.test.ts` (nuevo, los dos asserts de tiempo); `apps/lector-pdf/tests/unit/layout.test.ts` (quitados `bestOf`, `seeded` y los dos `it` de tiempo; añadido `describe('1 000 000 de páginas')` con asserts de comportamiento); esta ficha.
+- Qué he hecho: separados los tests de tiempo de `pnpm test`/`pnpm coverage` en la suite `pnpm perf` (ADR-0012), con los mismos umbrales (100 ms y 300 ms) y `measureBest` (1 calentamiento + mínimo de 5). Los asserts de comportamiento de 1 000 000 de páginas quedan en `tests/unit/` y sin `performance.now()`. Ningún test saltado ni presupuesto relajado.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: código 0, sin avisos.
+  - `pnpm typecheck`: código 0.
+  - `pnpm test`: 35 ficheros, 426 tests en verde; `layout.perf.test.ts` no se ejecuta.
+  - `pnpm coverage`: código 0; `layout.ts` 98,7 % líneas (100 % en `page-dims.ts` y `rotation.ts` según `coverage-summary.json`); `layout.perf.test.ts` no aparece.
+  - `pnpm perf` × 3 seguidas: código 0 las tres; duración del comando 2,85 s, 2,90 s y 2,84 s (el reporte interno de Vitest: 2,03 s). Los tiempos exactos por assert no se han extraído en esta ronda; ambos pasan.
+  - `grep -rn "performance.now" apps/lector-pdf/tests/unit/layout.test.ts`: sin resultados.
+  - `pnpm exec vitest bench --run apps/lector-pdf/tests/unit/layout.bench.ts`: ejecuta el benchmark (1 test en verde), pero esta versión no imprime tabla ni genera JSON; no tengo cifras nuevas de bench. Las de la ronda 1 se mantienen como referencia.
+- Dudas o cosas que no he podido hacer:
+  - Ninguna bloqueante. Margen de `pageAtY` sin cambios desde la ronda 1 (duda 5, ya anotada por el líder).
+  - Para PDF-002 (app `lector-pdf`): **mecanismo exacto**. Su assert de tiempo va en `apps/lector-pdf/tests/perf/<nombre>.perf.test.ts` (patrón `tests/perf/**/*.perf.test.ts`), se ejecuta con `pnpm perf` y reutiliza el proyecto `lector-pdf-perf` de `vitest.perf.config.ts`, sin tocar la config. Medir con `measureBest(fn)` importado de `./measure` (`apps/lector-pdf/tests/perf/measure.ts`). Sin `performance.now()` en `tests/unit/`.
+  - Para un paquete (p. ej. COM-002 en `packages/shared`): la config solo tiene un proyecto, el de `lector-pdf`. Haría falta añadir un proyecto `{ test: { name, root: './packages/<pkg>', include: ['tests/perf/**/*.perf.test.ts'], environment: 'node', fileParallelism: false } }` y decidir dónde vive `measureBest` (hoy está en `apps/lector-pdf`; no lo he movido a `packages/`, porque no está decidido).
+- Estado: `en-revision`.

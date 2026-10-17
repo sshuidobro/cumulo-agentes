@@ -19,32 +19,6 @@ import type { Rotation } from '../../src/core/rotation';
 
 const base: LayoutParams = { scale: 1, rotation: 0, gap: DEFAULT_GAP, padding: DEFAULT_PADDING };
 
-/**
- * Ejecuta `fn` `runs` veces y devuelve el resultado y el tiempo de la mejor pasada.
- * El mínimo descarta el ruido de otros procesos (los tests corren en paralelo) sin relajar el presupuesto.
- */
-function bestOf<T>(runs: number, fn: () => T): { readonly value: T; readonly ms: number } {
-  let best = Number.POSITIVE_INFINITY;
-  let value: T | undefined;
-  for (let r = 0; r < runs; r++) {
-    const start = performance.now();
-    const result = fn();
-    best = Math.min(best, performance.now() - start);
-    value = result;
-  }
-  if (value === undefined) throw new Error('bestOf requiere al menos una pasada');
-  return { value, ms: best };
-}
-
-/** Generador pseudoaleatorio determinista (Park-Miller): los tests no dependen del azar real. */
-function seeded(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return s / 2147483647;
-  };
-}
-
 describe('DEFAULT_GAP y DEFAULT_PADDING', () => {
   it('valen 12 y 16 px', () => {
     expect(DEFAULT_GAP).toBe(12);
@@ -106,12 +80,23 @@ describe('computeLayout', () => {
     expect(() => computeLayout(dims, { ...base, padding: -1 })).toThrow(RangeError);
     expect(() => computeLayout(dims, { ...base, rotation: badRotation as Rotation })).toThrow(RangeError);
   });
+});
 
-  it('calcula 1 000 000 de páginas en menos de 100 ms', () => {
-    const dims = PageDimsTable.uniform(1_000_000, 612, 792, 0);
-    const { value, ms } = bestOf(3, () => computeLayout(dims, base));
-    expect(value.count).toBe(1_000_000);
-    expect(ms).toBeLessThan(100);
+describe('1 000 000 de páginas (comportamiento; los tiempos están en tests/perf)', () => {
+  const layout = computeLayout(PageDimsTable.uniform(1_000_000, 612, 792, 0), base);
+
+  it('tiene 1 000 000 de páginas y la última termina donde indica el layout', () => {
+    expect(layout.count).toBe(1_000_000);
+    expect(layout.tops[1_000_000]).toBe(804_000_016);
+    expect(layout.totalHeight).toBe(804_000_020);
+  });
+
+  it('pageAtY encuentra la página exacta en mitad del documento', () => {
+    expect(pageAtY(layout, layout.tops[123_456] ?? Number.NaN)).toBe(123_456);
+  });
+
+  it('pageAtY justo tras el inicio de la última página da la última página', () => {
+    expect(pageAtY(layout, (layout.tops[999_999] ?? Number.NaN) + 1)).toBe(999_999);
   });
 });
 
@@ -136,22 +121,6 @@ describe('pageAtY', () => {
 
   it('sin páginas da -1', () => {
     expect(pageAtY(computeLayout(new PageDimsTable(0), base), 100)).toBe(-1);
-  });
-
-  it('1 000 000 de consultas aleatorias en menos de 300 ms', () => {
-    const big = computeLayout(PageDimsTable.uniform(1_000_000, 612, 792, 0), base);
-    const random = seeded(42);
-    const ys = new Float64Array(1_000_000);
-    for (let i = 0; i < ys.length; i++) ys[i] = random() * big.totalHeight;
-    // Referencia local: evita el coste de acceder al export en cada iteración.
-    const lookup = pageAtY;
-    const { value: checksum, ms } = bestOf(3, () => {
-      let sum = 0;
-      for (let i = 0; i < ys.length; i++) sum += lookup(big, ys[i] ?? 0);
-      return sum;
-    });
-    expect(checksum).toBeGreaterThan(0);
-    expect(ms).toBeLessThan(300);
   });
 });
 
