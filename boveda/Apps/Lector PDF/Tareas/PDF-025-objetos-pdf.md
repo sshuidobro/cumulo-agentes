@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-025
 titulo: Objetos PDF - analizador léxico, analizador y serializador
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-023]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -111,3 +111,8 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 - El código ya cumple: `tests/unit/pdf/parser.test.ts` comprueba las 9 entradas y el orden de claves con la variante válida, la clave `'N a'`, y rechaza la entrada antigua con `PdfSyntaxError` (se mantiene como test de robustez). Comprobado por el líder: `pnpm typecheck` del repo con código 0 (los errores ajenos de la ronda 1 ya no están) y `vitest run tests/unit/pdf --coverage` con `src/core/pdf/` al 97,5 % de líneas. Por eso pasa a `en-revision` sin otra ronda (no cuenta como rechazo).
 - Para el revisor: el comentario de las líneas 47-48 de `parser.test.ts` («La ficha PDF-025 pide…») ha quedado obsoleto; pedir que se reescriba es una sugerencia menor, no motivo de rechazo. Ejecutar `pnpm test`, `pnpm coverage` y `pnpm perf` completos, que en la ronda 1 fallaron por ficheros de otra ficha (PDF-008).
 - Dudas 2 y 3 del programador aceptadas: claves solo numéricas en `dict(Record)` sin tratar (usar `Map` si hiciera falta); nombres decodificados como UTF-8, CR suelto tras `stream` aceptado, `endobj` obligatorio.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Ejecutado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (778), `pnpm coverage` y `pnpm perf` (12) con código 0; `src/core/pdf/` 97,5 % de líneas. Criterios cubiertos con tests; sin dependencias ni fugas del núcleo.
+1. `tests/unit/pdf/parser.test.ts:47-48` (opcional) — el comentario «La ficha PDF-025 pide…» está obsoleto; reescribirlo.
+2. `src/core/pdf/parser.ts` `parseObject` (opcional) — la mirada de 2 tokens puede lanzar error léxico en un delimitador suelto situado tras un número final (p. ej. `parseValue("5 )")`); inocuo en uso real.
