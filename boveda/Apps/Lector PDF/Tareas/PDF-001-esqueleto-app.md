@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-001
 titulo: Crear el esqueleto de la app lector-pdf
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, formatos-ofimatica, calidad-profesional]
@@ -76,3 +76,9 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/` (package.json, tsconfig.json, vite.config.ts, vitest.config.ts, playwright.config.ts, index.html, scripts/copy-pdfjs-assets.mjs, src/main.tsx, src/core/title.ts, src/engine/{styles,worker}.ts, src/ui/{App.tsx,App.module.css,icons.tsx,messages.ts,theme.css,kit/IconButton.tsx,kit/IconButton.module.css}, tests/setup/setup.ts, tests/unit/title.test.ts, tests/ui/app.test.tsx, tests/e2e/smoke.spec.ts); `pnpm-lock.yaml`; esta ficha.
+- Qué he hecho: esqueleto de la app con Vite 8 + React 19.3.1 y las versiones del ADR-0010; `@suite/platform` se declara como dependencia (COM-005 ya está en el repo) aunque aún no se importa. Pantalla vacía en español con tema claro/oscuro (variables CSS y `data-theme`), botón «Abrir…» con `title` y `aria-label`, meta CSP inyectada en el build, copia de recursos de pdf.js a `public/pdfjs/` (ignorada por git).
+- Comandos ejecutados y resultado: `pnpm install` OK; `pnpm lint` exit 0; `pnpm typecheck` exit 0; `pnpm test` exit 0 (158 tests en el monorepo, 5 de `|lector-pdf|`); `pnpm coverage` exit 0 (99,7 % líneas globales); `pnpm --filter lector-pdf assets` OK; `pnpm --filter lector-pdf build` exit 0 y `dist/index.html` contiene la CSP; `pnpm --filter lector-pdf e2e` 1 passed.
+- Dudas o cosas que no he podido hacer: (1) `core/title.ts` no puede importar de `ui/messages.ts` (la regla de capas de `core/` lo prohíbe), así que la constante `APP_NAME` vive en `core/title.ts` y `msg.appName` la reexporta; el texto no cambia. (2) `pnpm test` solo muestra `|lector-pdf|` con `--reporter=verbose`; con el reporter por defecto no aparece. (3) El build avisa de chunks > 500 kB (pdf.js); no lo he silenciado, queda para revisar al añadir el visor. (4) `windowTitle`, `IconButton` y `App` no tienen aún más pruebas de las que pide la ficha.

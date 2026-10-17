@@ -1,0 +1,27 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-surface-2);
+}
+
+.pressed {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
