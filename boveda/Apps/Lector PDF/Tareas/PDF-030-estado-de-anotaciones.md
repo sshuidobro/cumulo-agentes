@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-030
 titulo: Estado de anotaciones por documento, deshacer/rehacer y atajos
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-023, PDF-024, PDF-009, COM-011]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -112,3 +112,8 @@ Al abrir un PDF se importan sus anotaciones (todas si tiene ≤ 20 000 páginas,
   - Cursor del visor por herramienta y `ensurePageAnnotations` al hacerse visible una página → [[PDF-031-capa-de-anotaciones]] (ya toca `PageView`; gana `PDF-010` en `depende_de`). Así PDF-031 no espera a PDF-020.
 - Decisiones menores del programador aceptadas: grosor por defecto 2 pt; `setCommentBarOpen(open)` en las acciones; botones Deshacer/Rehacer provisionales en la cabecera de `App.tsx` (PDF-069 los mueve); tests de acciones en `tests/unit/annotations/` (`vitest.config.ts` incluye `tests/unit/**/*.test.ts`); si el escaneo falla, `scan 'done'` + aviso en el log (el panel de comentarios de PDF-036 mostrará lo importado; no bloquea guardar porque el escritor solo escribe los cambios).
 - Para el revisor: criterios a comprobar = todos menos el de `CommentToolbar` (tachado). El fallo de `pnpm coverage` en `tests/unit/pdf/xref-robustness.test.ts` es de [[PDF-026-lector-xref]], no de esta ficha: si sigue fallando, comprobar la cobertura con `pnpm exec vitest run --coverage --exclude '**/xref-robustness.test.ts'` en la raíz y anotarlo; no rechazar PDF-030 por ello. La línea `pageRenderFailed` de `messages.ts` es de PDF-010.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Comprobado: `pnpm lint`, `pnpm typecheck` y `pnpm test` (74 ficheros, 923 tests) con código 0. `pnpm coverage` completo no se ha usado; con `--exclude xref-robustness` pasa (918 tests): `core/annotations` 96,2 % ramas / 97,5 % líneas, `palette.ts` 91,7 %. Todos los criterios vigentes (menos el tachado de `CommentToolbar`) tienen test que falla si se rompen: importación real de `annotated.pdf`, modo lazy con una sola llamada a `getAnnotations`, undo/redo/título, agrupación, atajos con `textarea`, preferencias y aborto sin `set`.
+1. (opcional) `annotation-actions.ts:141-143` — si el escaneo falla, `scan` queda en `done` sin aviso al usuario; aceptado por el líder, valorar un estado de error en PDF-036.
+2. (opcional) `tests/ui/annotation-shortcuts.test.tsx` — prueba `useShortcuts` con un arnés, no el cableado de `App.tsx`; PDF-069 debería cubrirlo al mover los botones.
