@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-005
 titulo: Motor PDF - carga por rangos, errores tipados y escaneo de dimensiones
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-002, COM-005]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -110,3 +110,11 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
   - Contraseña (`password-required`/`password-incorrect`) no está cubierta por tests: no hay fixture cifrado; corresponde a PDF-046.
   - `onIoError` (error de lectura después de abrir) no tiene test propio; el criterio de la ficha solo cubre el fallo antes de abrir.
   - Los tests de tiempo que pide la ficha en `tests/unit` están en `tests/perf` por la regla del Registro del líder (ADR-0012).
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Comprobado: lint, typecheck, test (514), coverage y perf (9) en verde; 100 % de líneas en `errors.ts`. Cada criterio tiene test y no hay tests vacíos.
+Decisión sobre `isEvalSupported`: **se acepta la omisión**. La opción no existe en pdfjs-dist 6.4.299 (ni en `DocumentInitParameters` ni en el build) y el build no usa `eval` ni `new Function`; el objetivo de seguridad de la ficha (sin eval) se cumple sin ella. Tampoco hay `eval` en `src/`. Si una versión futura reintroduce la opción o un camino con eval, habrá que revisarlo al actualizar pdfjs-dist.
+Sugerencias (opcional, no bloquean):
+1. `apps/lector-pdf/src/engine/load.ts:91` — dejar un comentario junto a `enableXfa: false` explicando que `isEvalSupported` no existe en esta versión de pdf.js, para que nadie la reañada.
+2. `apps/lector-pdf/src/engine/page-dims.ts:40` — en documentos de 100 000 páginas conviene llamar a `page.cleanup()` tras leer cada tamaño para no retener memoria; valorar en PDF-008.
+3. `onIoError` (error de lectura tras abrir) no tiene test; añadirlo en una ficha posterior.

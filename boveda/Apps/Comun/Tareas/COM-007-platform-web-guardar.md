@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-007
 titulo: Implementar guardar y guardar como en la Platform web
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-006]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad, calidad-profesional]
