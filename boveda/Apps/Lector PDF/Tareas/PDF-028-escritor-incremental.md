@@ -4,7 +4,7 @@ id: PDF-028
 titulo: Escritor incremental - anexar las anotaciones al PDF sin reescribirlo
 app: pdf
 estado: pendiente
-depende_de: [PDF-026, PDF-027, PDF-024]
+depende_de: [PDF-068, PDF-027, PDF-024]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-17
@@ -14,13 +14,13 @@ tags: [tarea, pdf, nucleo, anotaciones, formato]
 
 # PDF-028 · Escritor incremental de anotaciones
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0014-localizar-paginas-por-count]] · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incremento** (bytes que se anexan tras el `%%EOF`) que añade, modifica y borra anotaciones estándar, sin tocar ni cargar el resto del fichero. Función pura respecto a la UI: recibe un `ByteSource` y devuelve bytes.
 
 ## Contexto
-- Leer: [[ADR-0009-anotaciones-escritor-incremental]], `src/core/pdf/*` (PDF-025/026), `src/core/annotations/{model,diff,appearance}.ts`, `src/core/errors.ts`, ISO 32000-1 §7.5.6 (actualización incremental), §12.5.2 (claves comunes: `/Type /Annot /Subtype /Rect /Contents /P /NM /M /F /AP /C`), §12.5.6.2 (marcado: `/T /Popup /CA /CreationDate`), §12.5.6.4 (Text: `/Open /Name`), §12.5.6.6 (FreeText: `/DA` obligatorio), §12.5.6.10 (`/QuadPoints`), §12.5.6.13 (Ink: `/InkList`), §12.5.6.14 (Popup: `/Parent /Open`).
+- Leer: [[ADR-0009-anotaciones-escritor-incremental]], `src/core/pdf/*` (PDF-025, PDF-026, PDF-068: `ObjectReader.pageRef`), `src/core/annotations/{model,diff,appearance}.ts`, `src/core/errors.ts`, ISO 32000-1 §7.5.6 (actualización incremental), §12.5.2 (claves comunes: `/Type /Annot /Subtype /Rect /Contents /P /NM /M /F /AP /C`), §12.5.6.2 (marcado: `/T /Popup /CA /CreationDate`), §12.5.6.4 (Text: `/Open /Name`), §12.5.6.6 (FreeText: `/DA` obligatorio), §12.5.6.10 (`/QuadPoints`), §12.5.6.13 (Ink: `/InkList`), §12.5.6.14 (Popup: `/Parent /Open`).
 - El incremento se escribe con el **mismo tipo de xref** que la última sección (`xref.lastKind`). Nunca se modifica un byte existente.
 
 ## Qué hay que hacer
@@ -48,12 +48,12 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
    Algoritmo:
    1. Diff vacío → `ok` con `delta` vacío.
    2. `next = reader.xref.size`; asigna números a: cada anotación añadida, su apariencia, el popup de cada nota nueva, y la apariencia nueva de cada modificada.
-   3. Agrupa por página (`reader.pageRefs()[pageIndex]`). Para cada página tocada lee su diccionario y `/Annots`: (a) ausente → array nuevo directo en la página reescrita; (b) array directo → reescribe la página con el array nuevo (resto de claves intactas); (c) referencia a array → reescribe **solo** ese objeto array. Quita las refs de las borradas y de sus popups (`origin.popupRef` y `/Popup` del dict); añade al final las nuevas (anotación y después su popup).
+   3. Agrupa por página con `await reader.pageRef(pageIndex)` (**nunca** `pageRefs()`, que lee todas las hojas; ver ADR-0014). Para cada página tocada lee su diccionario y `/Annots`: (a) ausente → array nuevo directo en la página reescrita; (b) array directo → reescribe la página con el array nuevo (resto de claves intactas); (c) referencia a array → reescribe **solo** ese objeto array. Quita las refs de las borradas y de sus popups (`origin.popupRef` y `/Popup` del dict); añade al final las nuevas (anotación y después su popup).
    4. Modificadas: `reader.getDict(origin.ref)` → `updatedDict` → reescribe el objeto con el **mismo** número y generación.
    5. Serializa cada objeto con `serializeIndirect`, acumulando offsets = `source.size + posición` (si el último byte del fichero no es `\n` ni `\r`, el delta empieza por `\n`).
    6. Sección xref: `'table'` → `xref\n` + subsecciones contiguas ordenadas + `trailer\n<< /Size /Root /Info? /ID /Prev lastXrefOffset >>\nstartxref\n<off>\n%%EOF\n`. `'stream'` → objeto nuevo `/Type /XRef /W [1 4 2] /Index [...] /Size /Root /Info? /ID /Prev` sin comprimir, que se incluye a sí mismo.
    7. `/ID`: `[ id0 original, id1 nuevo ]`; si no había, ambos nuevos. `id1` = 16 bytes FNV-1a de `now + source.size + número de objetos` (determinista para tests).
-   8. Errores: `PdfSyntaxError('encrypted')` → `err(pdfError('save-encrypted'))`; cualquier otro `PdfSyntaxError` o página inexistente → `err(pdfError('save-unreadable', e))`. Nunca lanza.
+   8. Errores: `PdfSyntaxError('encrypted')` → `err(pdfError('save-encrypted'))`; cualquier otro `PdfSyntaxError` (incluido `page-not-found` de `pageRef`) → `err(pdfError('save-unreadable', e))`. Nunca lanza.
 4. Tests `tests/unit/pdf/incremental.test.ts`: con `basic-5.pdf`, `compressed.pdf`, `annotated.pdf` y `incremental-updates.pdf` (`memorySource`), concatena `original + delta`, lo abre con pdf.js *legacy* y comprueba `getAnnotations()`.
 
 ## Criterios de aceptación
@@ -63,12 +63,17 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
 - [ ] (T) `annotated.pdf`: borrar el `Highlight` de p1 → pdf.js ya no ve ni él ni su `Popup` en p1; el `Underline` sigue. Modificar el `contents` de la nota de p2 → `contentsObj.str` nuevo y el `Square` de p3 intacto. Añadir en p2 (que tiene `/Annots` indirecto) → reescribe el array y no la página (comprueba que el objeto página no aparece en el delta).
 - [ ] (T) Guardar dos veces seguidas (segundo incremento sobre el resultado del primero) → pdf.js lee el estado final correcto y hay 2 `%%EOF` más que en el original.
 - [ ] (T) Un trailer con `/Encrypt` → `err` `save-encrypted`; `corrupt-bad-startxref.pdf` → `err` `save-unreadable`; ninguna excepción escapa.
-- [ ] (T) `pages-5000.pdf` + 10 anotaciones en páginas distintas → `delta` < 50 KB, generado en < 1 s, leyendo < 10 % del fichero (anota las tres medidas).
+- [ ] (T) `pages-5000.pdf` + 10 anotaciones en páginas distintas → `delta` < 50 KB y bytes leídos (`countingSource`, incluido `ObjectReader.open`) < 35 % del fichero (la xref ya es el 13,6 %). `pages-100000.pdf` + 10 anotaciones en las páginas `[0, 12345, 25000, 37777, 50000, 62500, 75000, 87654, 99000, 99999]` → bytes leídos < 16 %. Anota las medidas.
+- [ ] (T, perf) `tests/perf/incremental.perf.test.ts`: `pages-5000.pdf` + 10 anotaciones → `buildIncrementalUpdate` < 1 s; `pages-100000.pdf` (página 99 999) → `ObjectReader.open` + `buildIncrementalUpdate` < 3 s (mejor de 5).
 - [ ] (T) Determinismo: misma entrada y mismo `now` → mismos bytes.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `incremental.ts` y `to-pdf.ts` ≥ 90 % de líneas.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm perf`, `pnpm coverage` con código 0; `incremental.ts` y `to-pdf.ts` ≥ 90 % de líneas.
 
 ## Fuera de alcance
 - Validación con qpdf y corpus (PDF-029). Escribir en disco (PDF-037). Respuestas `/IRT` (PDF-058). Marcar como libres los objetos borrados (no hace falta: quedan sin referencias).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [líder] ajuste por replanificación de PDF-026 — 2026-10-17
+- Depende ahora de [[PDF-068-lector-objetos]] (el `ObjectReader` sale de PDF-026). Las páginas tocadas se localizan con `pageRef(index)` ([[ADR-0014-localizar-paginas-por-count]]).
+- Criterio de lectura corregido: < 10 % era imposible (la xref de `pages-5000.pdf` ya es el 13,6 %). Nuevos umbrales: < 35 % en `pages-5000.pdf`, < 16 % en `pages-100000.pdf`. Los tiempos pasan a `tests/perf/` (ADR-0012).

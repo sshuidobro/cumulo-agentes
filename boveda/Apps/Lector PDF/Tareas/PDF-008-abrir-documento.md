@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-008
 titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados de carga y error
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
 intentos: 1
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -140,3 +140,15 @@ Rendimiento: 100 000 páginas visibles en 936 ms. Bundle (`pnpm --filter lector-
 - Comprobado: `pnpm lint`, `pnpm typecheck` OK; `pnpm test` 64 ficheros / 841 tests OK; `pnpm --filter lector-pdf e2e` 14/14 OK (incluye arrastrar y soltar).
 - `packages/platform/src/web/platform-web.ts` `openDropped`: `undefined` se trata como `null` y se cae a `dt.files[0]`; el `await` del handle está en try/catch. `document-actions.ts` `openDropped` convierte excepciones en estado `error` con mensaje en español. Dos tests nuevos en platform y uno en la app reproducen el fallo; el cambio en platform es mínimo y no amplía permisos.
 - Sin problemas bloqueantes.
+
+### [tester] ronda 2 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) unit/UI de apertura | OK | `pnpm test`: 64 ficheros / 841 tests OK |
+| E2E basic-5, corruptos, 100 000 páginas | OK | `pnpm --filter lector-pdf e2e`: 14/14 OK; 100 000 páginas en 1,2 s de test |
+| Arrastrar y soltar (fallo ronda 1) | OK | `open-qa.spec.ts:59` verde |
+| Teclado, foco, Ctrl+O, tooltip | OK | `open-qa.spec.ts` 83, 106, 125 verdes |
+| lint / typecheck | OK | código 0 |
+| coverage | OK | código 0, líneas 98,91 % |
+
+Tests añadidos: `apps/lector-pdf/tests/e2e/open-qa.spec.ts` (commiteado) y los `qa-*` sin seguir de lector-pdf y platform.

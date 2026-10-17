@@ -26,7 +26,7 @@ Alternativa de uso personal a Word, Excel, PowerPoint y Adobe Reader, construida
 
 ## Conocimiento
 - [[Indice investigacion]] · todo lo que ha investigado el equipo
-- Decisiones (ADR): [[ADR-0001-tecnologia]] · [[ADR-0002-documentacion-obsidian]] · [[ADR-0003-composicion-del-equipo]] · [[ADR-0004-herramientas-monorepo]] · [[ADR-0005-modelo-deshacer-rehacer]] · [[ADR-0006-eslint]] · [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0012-suite-de-rendimiento]] · [[ADR-0013-pdfjs-build-legacy]]
+- Decisiones (ADR): [[ADR-0001-tecnologia]] · [[ADR-0002-documentacion-obsidian]] · [[ADR-0003-composicion-del-equipo]] · [[ADR-0004-herramientas-monorepo]] · [[ADR-0005-modelo-deshacer-rehacer]] · [[ADR-0006-eslint]] · [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0012-suite-de-rendimiento]] · [[ADR-0013-pdfjs-build-legacy]] · [[ADR-0014-localizar-paginas-por-count]]
 - Bitácora: carpeta `Bitacora/`, una nota por día de trabajo
 
 ## Cómo usar esta bóveda

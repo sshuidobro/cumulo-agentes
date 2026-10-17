@@ -10,7 +10,7 @@ tags: [plan, pdf]
 
 # Plan · Lector PDF
 
-Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]] (se crea al cerrar la iteración 1)
+Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0014-localizar-paginas-por-count]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]] (se crea al cerrar la iteración 1)
 
 ## Objetivo
 Sustituir a Adobe Acrobat Reader (y a lo más usado de Acrobat Pro) para uso personal, en escritorio (Tauri) y navegador.
@@ -134,9 +134,10 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[PDF-023-modelo-anotaciones]] | Modelo de anotaciones, comandos y fechas PDF | PDF-001 | pendiente |
 | [[PDF-024-importar-anotaciones]] | Importar anotaciones existentes | PDF-023, PDF-005, PDF-003 | pendiente |
 | [[PDF-025-objetos-pdf]] | Léxico, analizador y serializador de objetos PDF | PDF-023 | en-revision (criterio corregido por el líder) |
-| [[PDF-026-lector-xref]] | Lector de xref y objetos por rangos | PDF-025, PDF-003 | pendiente |
+| [[PDF-026-lector-xref]] | Lector de xref y filtros (partida, ver [[ADR-0014-localizar-paginas-por-count]]) | PDF-025, PDF-003 | cambios-pedidos |
+| [[PDF-068-lector-objetos]] | Lector de objetos por rangos y `pageRef` por `/Count` | PDF-026 | pendiente |
 | [[PDF-027-apariencias]] | Apariencias /AP de anotaciones | PDF-023, PDF-026 | pendiente |
-| [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-026, PDF-027, PDF-024 | pendiente |
+| [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-068, PDF-027, PDF-024 | pendiente |
 | [[PDF-029-interoperabilidad-anotaciones]] | Interoperabilidad (qpdf, pdf.js, corpus) | PDF-028, PDF-004 | pendiente |
 | [[PDF-030-estado-de-anotaciones]] | Estado de anotaciones, deshacer/rehacer y barra «Comentar» | PDF-023, PDF-024, PDF-009, COM-011 | pendiente |
 | [[PDF-031-capa-de-anotaciones]] | Capa de anotaciones: dibujar, seleccionar, mover, borrar | PDF-030 | pendiente |
@@ -149,7 +150,7 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[PDF-038-recuperar-anotaciones]] | Recuperar anotaciones tras cierre inesperado | PDF-037, COM-012 | pendiente |
 | [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038 | pendiente |
 
-Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → PDF-027 → PDF-028 → PDF-029. Tras PDF-031: PDF-032 a PDF-036 en paralelo.
+Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. Tras PDF-031: PDF-032 a PDF-036 en paralelo.
 
 ### Iteraciones 3-6 (fichas por detallar)
 | Id | Título | Depende de | Estado |
