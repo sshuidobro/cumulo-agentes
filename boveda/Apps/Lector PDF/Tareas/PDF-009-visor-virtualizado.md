@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-008, PDF-007]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -103,3 +103,8 @@ Defecto detectado por el programador de PDF-010: en `viewer.spec.ts` «sizes-mix
 - Qué he hecho: el zoom automático ya no depende de la página actual (causa del bucle: zoom → layout → página actual → zoom). La página de referencia del zoom se fija solo al cambiar el modo, la rotación, el tamaño del visor o el documento (ajuste de estado durante el render, sin efecto). Añadido test de regresión en `tests/ui/viewer.test.tsx` (40 páginas con tamaños alternos, 12 saltos en modo automático, sin errores); falla con el código anterior («Maximum update depth exceeded») y pasa con el arreglo.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 1016/1016 OK; `pnpm coverage` OK (líneas globales 98,51 %); `pnpm --filter lector-pdf e2e` 25/26 OK: el único fallo fue `open-qa.spec.ts` «Ctrl+O» (carga concurrente, ya anotado por el tester); repetido aislado 3 veces 9/9 OK. Los avisos «HTMLCanvasElement.getContext not implemented» de jsdom ya existían con PDF-010 y no proceden de este cambio.
 - Dudas o cosas que no he podido hacer: la ficha original decía que el zoom automático usa la página actual; ahora usa la página de referencia fijada al cambiar de modo/tamaño, tal como propuso el coordinador. Conviene confirmarlo en el revisor. Los criterios de rendimiento de long tasks y el resto de e2e no se han vuelto a medir fuera de la ejecución completa.
+
+### [revisor] ronda 2 — 2026-10-17 — CAMBIOS
+Lint, typecheck, `pnpm test` (1019), coverage (líneas 98,71 %) y e2e (26/26 en esta ejecución) en verde. El arreglo del bucle es correcto: la página de referencia del zoom se fija solo al cambiar documento, modo, rotación o tamaño; el test de regresión cubre el caso. Pero el criterio «e2e con código 0» no es estable por la intermitencia de Ctrl+O:
+1. `apps/lector-pdf/tests/e2e/open-qa.spec.ts:118-120` — **Diagnóstico de la intermitencia de Ctrl+O**: falla ~1 de cada 30 repeticiones con 4 workers (con `--repeat-each=30` y `=60`). Instrumentado: el `keydown` llega (`document.hasFocus()` true, `readyState` complete) pero el selector no se llama ni 1,5 s después. Causa: carrera del test, no defecto del código de la app. `src/main.tsx` usa `await loadPlatform(...)` a nivel de módulo antes de `createRoot(...).render`, así que `page.goto('/')` vuelve (evento `load`) antes de que React monte y `useShortcuts` registre su `keydown`; si la pulsación llega antes, se pierde. Con `await expect(page.getByTitle('Abrir… (Ctrl+O)')).toBeVisible()` antes de pulsar: 60/60 y 40/40 OK. Qué hacer: en ese test esperar a que la app esté montada (el botón Abrir visible) antes de `keyboard.press('Control+o')`. Revisar igual otros e2e que pulsen teclas justo tras `goto` sin esperar a un elemento de la app (p. ej. `viewer-stress.spec.ts`, `viewer.spec.ts`). (Un usuario no puede pulsar en esos milisegundos; no se pide cambio en `main.tsx`.)
+2. (opcional) `tests/ui/viewer.test.tsx:181` — la aserción final `zoom > 0` es débil; la propiedad que protege el arreglo es que el zoom automático no cambia al desplazarse (guardar `zoom` tras el primer salto y comprobar que es el mismo tras los demás).
