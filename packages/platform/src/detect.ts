@@ -6,6 +6,10 @@ export function isTauri(win: object = globalThis): boolean {
 }
 
 export async function loadPlatform(options: { readonly prefsPrefix: string }): Promise<Platform> {
+  if (isTauri()) {
+    const tauri = await import('./tauri/index');
+    return tauri.createTauriPlatform(options);
+  }
   const web = await import('./web/index');
   return web.createWebPlatform(options);
-} // COM-010 añade la rama Tauri
+}
