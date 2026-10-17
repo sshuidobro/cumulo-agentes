@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas (xref) y filtros de streams
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-025, PDF-003]
 intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -133,3 +133,17 @@ Estado: `en-revision`.
 ### [revisor] ronda 2 — 2026-10-17 — APROBADO
 Lint y typecheck en verde; filters, xref y xref-robustness 43/43 (la bomba de 1 GiB ahora da `PdfSyntaxError` controlado). `inflateStream` corta en streaming al pasar el tope (`MAX_DECODED_BYTES` 64 MiB; en xref stream `(suma /W + 1) × entradas`, acotado), también en la reserva con deflate crudo. Los predictores no amplían la salida. Tests del tope en el límite exacto (n y n-1), tope por defecto y mensaje. Sin problemas bloqueantes.
 1. (opcional) `tests/perf/xref.perf.test.ts` — sigue duplicando `measureBest` asíncrono — extraer a `tests/perf/measure.ts`.
+
+### [tester] ronda 2 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Bomba de descompresión (defecto ronda 1) | PASA | `xref-robustness.test.ts` 5/5: `readXref` y `decodeStreamData` lanzan `PdfSyntaxError` ante Flate de 72 MiB de ceros |
+| lint, typecheck | PASA | `pnpm lint` y `pnpm typecheck` con código 0 |
+| `pnpm test` | PASA | 74 ficheros / 923 tests OK |
+| `pnpm perf` | PASA | 9 ficheros / 14 tests OK (incluye `xref.perf`) |
+| Cobertura (directorio propio, filters+xref+robustness) | PASA | `filters.ts` 95,04 % y `xref.ts` 96,51 % de líneas (>= 90 %); 43/43 tests |
+| Criterios (T) de la ficha | PASA | cubiertos por `xref.test.ts`/`filters.test.ts`; 13,51 % de bytes leídos en `pages-100000.pdf` (dato del programador, test < 14 % verde) |
+
+Observación y ajuste mío: el test de la bomba de ronda 1 generaba 1 GiB comprimiéndolo (~13 s + ~15 s) y expiraba (60 s) con `--coverage`. Lo he sustituido por una bomba de 72 MiB (supera el tope de 64 MiB) generada una sola vez; mantiene la comprobación y ahora tarda segundos con cobertura.
+Tests añadidos/modificados: `apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts`.
+Rendimiento: `pnpm perf` OK; `readXref` de `pages-100000.pdf` ≈ 142 ms (programador), presupuesto < 1 s.

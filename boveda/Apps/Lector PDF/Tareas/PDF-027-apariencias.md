@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-027
 titulo: Generar la apariencia (/AP) de cada tipo de anotación
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-023, PDF-026]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
