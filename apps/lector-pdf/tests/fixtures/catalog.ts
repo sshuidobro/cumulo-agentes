@@ -1,56 +1,25 @@
 import { Buffer } from 'node:buffer';
-import { PdfBuilder, buildPageTree, textPage } from './pdf-builder.ts';
+import { buildDocument, type PageSpec } from './document.ts';
+import {
+  buildAnnotated,
+  buildCompressed,
+  buildForm,
+  buildIncrementalUpdates,
+  buildLinks,
+  buildOutline,
+  buildPageLabels,
+} from './structure.ts';
+import { textPage } from './pdf-builder.ts';
 
 /** Subir si cambia la forma de los ficheros generados: fuerza la regeneración en todos los equipos. */
-export const GENERATOR_VERSION = 1;
+export const GENERATOR_VERSION = 2;
 
 export interface FixtureSpec {
   readonly name: string;
   readonly build: () => Uint8Array;
 }
 
-/** Una página del documento: contenido, caja, rotación e imagen RGB opcional (600×400). */
-interface PageSpec {
-  readonly content: string;
-  readonly mediaBox?: readonly [number, number, number, number];
-  readonly rotate?: number;
-  readonly image?: Uint8Array;
-}
-
-const LETTER_BOX: readonly [number, number, number, number] = [0, 0, 612, 792];
-const IMAGE_DICT = '<< /Type /XObject /Subtype /Image /Width 600 /Height 400 /ColorSpace /DeviceRGB /BitsPerComponent 8 >>';
 const IMAGE_DRAW = 'q 400 0 0 267 97 450 cm /Im1 Do Q';
-
-/**
- * Construye un PDF de `pageCount` páginas. `pageAt` recibe el número de página (1-based).
- * Las páginas sin imagen comparten un único diccionario de recursos.
- */
-function buildDocument(pageCount: number, pageAt: (page: number) => PageSpec, fanout = 32): Uint8Array {
-  const b = new PdfBuilder();
-  const catalog = b.alloc();
-  const font = b.addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
-  const sharedResources = b.addObject(`<< /Font << /F1 ${font} 0 R >> >>`);
-  const tree = buildPageTree(b, pageCount, fanout);
-
-  tree.pageRefs.forEach((pageNum, index) => {
-    const spec = pageAt(index + 1);
-    const content = b.addStream('<< >>', spec.content);
-    let resources = sharedResources;
-    if (spec.image !== undefined) {
-      const image = b.addStream(IMAGE_DICT, spec.image, { compress: true });
-      resources = b.addObject(`<< /Font << /F1 ${font} 0 R >> /XObject << /Im1 ${image} 0 R >> >>`);
-    }
-    const box = (spec.mediaBox ?? LETTER_BOX).join(' ');
-    const rotate = spec.rotate === undefined ? '' : ` /Rotate ${spec.rotate}`;
-    b.setObject(
-      pageNum,
-      `<< /Type /Page /Parent ${tree.parentOf(index)} 0 R /MediaBox [${box}]${rotate} /Contents ${content} 0 R /Resources ${resources} 0 R >>`,
-    );
-  });
-
-  b.setObject(catalog, `<< /Type /Catalog /Pages ${tree.root} 0 R >>`);
-  return b.build({ root: catalog });
-}
 
 const BASIC_LINE_3 = [
   'El veloz murciélago hindú comía feliz cardillo y kiwi.',
@@ -65,30 +34,6 @@ function buildBasic5(): Uint8Array {
     content: textPage([`Página ${page} de 5`, `marcador-${page}`, BASIC_LINE_3[page - 1] ?? '']),
   }));
 }
-
-/** Páginas numeradas con una «aguja» en las páginas indicadas (1-based). */
-function buildNumbered(total: number, needles: ReadonlySet<number>, fanout = 32): Uint8Array {
-  return buildDocument(
-    total,
-    (page) => ({
-      content: textPage([
-        `Página ${page} de ${total}`,
-        `marcador-${page}`,
-        ...(needles.has(page) ? ['Aquí hay una aguja.'] : []),
-      ]),
-    }),
-    fanout,
-  );
-}
-
-const SIZES_PAGES: readonly PageSpec[] = [
-  { content: textPage(['Página 1', 'A4 vertical']), mediaBox: [0, 0, 595, 842] },
-  { content: textPage(['Página 2', 'Carta horizontal']), mediaBox: [0, 0, 792, 612] },
-  { content: textPage(['Página 3', 'A3 vertical']), mediaBox: [0, 0, 842, 1191] },
-  { content: textPage(['Página 4', 'A5 vertical']), mediaBox: [0, 0, 420, 595] },
-  { content: textPage(['Página 5', 'A4 con /Rotate 90']), mediaBox: [0, 0, 595, 842], rotate: 90 },
-  { content: textPage(['Página 6', 'A4 con MediaBox desplazada']), mediaBox: [100, 100, 695, 942] },
-];
 
 /** Degradado propio de cada página: r = (x + k) % 256, g = (y * 2) % 256, b = (k * 37) % 256. */
 function gradientImage(page: number): Uint8Array {
@@ -108,11 +53,36 @@ function gradientImage(page: number): Uint8Array {
 }
 
 function buildImages200(): Uint8Array {
-  return buildDocument(200, (page) => ({
+  const pageAt = (page: number): PageSpec => ({
     content: `${textPage([`Página ${page} de 200`])}\n${IMAGE_DRAW}`,
     image: gradientImage(page),
-  }));
+  });
+  return buildDocument(200, pageAt);
 }
+
+/** Páginas numeradas con una «aguja» en las páginas indicadas (1-based). */
+function buildNumbered(total: number, needles: ReadonlySet<number>, fanout = 32): Uint8Array {
+  return buildDocument(
+    total,
+    (page) => ({
+      content: textPage([
+        `Página ${page} de ${total}`,
+        `marcador-${page}`,
+        ...(needles.has(page) ? ['Aquí hay una aguja.'] : []),
+      ]),
+    }),
+    { fanout },
+  );
+}
+
+const SIZES_PAGES: readonly PageSpec[] = [
+  { content: textPage(['Página 1', 'A4 vertical']), mediaBox: [0, 0, 595, 842] },
+  { content: textPage(['Página 2', 'Carta horizontal']), mediaBox: [0, 0, 792, 612] },
+  { content: textPage(['Página 3', 'A3 vertical']), mediaBox: [0, 0, 842, 1191] },
+  { content: textPage(['Página 4', 'A5 vertical']), mediaBox: [0, 0, 420, 595] },
+  { content: textPage(['Página 5', 'A4 con /Rotate 90']), mediaBox: [0, 0, 595, 842], rotate: 90 },
+  { content: textPage(['Página 6', 'A4 con MediaBox desplazada']), mediaBox: [100, 100, 695, 942] },
+];
 
 /** Marcas de «aguja» de los documentos de 5 000 y 20 000 páginas. */
 const NEEDLES_5000: ReadonlySet<number> = new Set([1234, 4999]);
@@ -156,4 +126,11 @@ export const FIXTURES: readonly FixtureSpec[] = [
     },
   },
   { name: 'corrupt-bad-startxref.pdf', build: buildBadStartxref },
+  { name: 'outline.pdf', build: buildOutline },
+  { name: 'links.pdf', build: buildLinks },
+  { name: 'page-labels.pdf', build: buildPageLabels },
+  { name: 'compressed.pdf', build: buildCompressed },
+  { name: 'incremental-updates.pdf', build: () => buildIncrementalUpdates(buildBasic5()) },
+  { name: 'annotated.pdf', build: buildAnnotated },
+  { name: 'form.pdf', build: buildForm },
 ];

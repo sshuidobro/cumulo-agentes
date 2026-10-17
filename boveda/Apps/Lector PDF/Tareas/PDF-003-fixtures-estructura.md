@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-003
 titulo: Generador de fixtures (índice, enlaces, etiquetas, xref comprimido, actualizaciones, anotaciones, formulario)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-002]
 intentos: 0
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -54,3 +54,14 @@ El generador de [[PDF-002-fixtures-paginas]] crea además PDFs con índice, enla
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/tests/fixtures/pdf-builder.ts` (reescrito: xref en stream, object streams, `/ID`, `readTrailer`, `appendIncrementalUpdate`), `apps/lector-pdf/tests/fixtures/document.ts` (nuevo: `buildDocument` movido de `catalog.ts` con hook `setup`, compresión y build options), `apps/lector-pdf/tests/fixtures/structure.ts` (nuevo: outline, links, page-labels, compressed, incremental-updates, annotated, form), `apps/lector-pdf/tests/fixtures/catalog.ts` (`GENERATOR_VERSION` 2 y 7 fixtures nuevos), `apps/lector-pdf/tests/unit/fixtures.test.ts` (recuento 10 → 17), `apps/lector-pdf/tests/unit/fixtures-structure.test.ts` (nuevo, 31 tests con el de PDF-002).
+- Qué he hecho: el constructor escribe xref en stream `/W [1 4 2]` con object streams de 100 objetos (verificados byte a byte en `compressed.pdf`), `/ID` determinista (MD5); la actualización incremental añade xref por subsecciones y `/Prev`. Los 7 fixtures de la tabla se generan con la estructura pedida; el formulario y las anotaciones se verifican con pdf.js.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf fixtures` → 17 generados en 3,06 s (presupuesto < 15 s). `pnpm lint` → sin errores ni avisos. `pnpm typecheck` → OK. `pnpm test` → 44 ficheros, 514 tests en verde. `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/fixtures.perf.test.ts` → 2/2.
+- Dudas o cosas que no he podido hacer:
+  - `qpdf` no está instalado en el equipo: la validación con qpdf de la ficha (y la de PDF-029) queda sin ejecutar.
+  - Decisiones de detalle no especificadas en la ficha, tomadas por mí y revisables: modo de destino `/Fit` en Sección 1.2, 2.1, 3.1, 3.2 y Capítulo 3 (la ficha solo indica página); `/Size` de la actualización = máximo entre el del trailer anterior y mayor número + 1 (ISO exige no reducirlo; coincide con la ficha en el caso habitual); `/ID` con la misma MD5 en ambas mitades; `build` acepta además `version` (1.5 en `compressed.pdf`, la ficha la pide pero no la lista en la firma).
+  - `pdf.js` no devuelve `url` para `javascript:alert(1)` (enlace h de `links.pdf`): el test lo fija como `undefined`, tal como devuelve pdf.js.
+  - `getFieldObjects()` devuelve un `Map` aunque el tipo de pdf.js declare un `Record`: el test comprueba las claves del `Map`. Conviene anotarlo para PDF-041.
+  - `FUENTES.md`: los fixtures son creados por nosotros (no hay corpus externo); no he añadido entradas.
