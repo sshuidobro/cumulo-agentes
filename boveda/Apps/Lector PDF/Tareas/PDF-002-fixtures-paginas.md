@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-002
 titulo: Generador de fixtures PDF (páginas, tamaños, imágenes y ficheros dañados)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-001]
 intentos: 1
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -104,4 +104,9 @@ Lint y typecheck OK; `fixtures.test.ts` pasa aislado (17/17), el diseño del gen
 - Qué he hecho: atendidos los dos puntos del revisor. Los asserts de tiempo de reloj se han movido a `tests/perf/` según ADR-0012 y el resto de `fixtures.test.ts` (tamaños, contenido, árbol, dañados) se queda en `tests/unit/`. Los tests pesados del fichero llevan timeout propio.
 - Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm typecheck` OK; `pnpm test` OK (35 ficheros, 426 tests); `pnpm perf` OK (3 ficheros, 5 tests, incluidos los 2 nuevos de generación). `pnpm perf` ejecutado a la vez con trabajo de otra ficha en curso: un test de `annotation-commands.perf.test.ts` (PDF-023, no tocado por mí) superó el timeout de 5 s en una pasada con carga y pasó en la siguiente.
 - Dudas o cosas que no he podido hacer: no he ejecutado `pnpm coverage` (lo bloquea el fallo de PDF-006 anotado por el líder). El fichero `commands.test.ts` de PDF-023 y `annotation-commands.perf.test.ts` están sin commitear; no son de esta ficha y no los he incluido en el commit.
+
+### [revisor] ronda 2 — 2026-10-17 — APROBADO
+Lint, typecheck y `pnpm test` (35 ficheros, 426 tests, dos ejecuciones) y `pnpm perf` (5 tests) en verde. Los tests pesados llevan `HEAVY_TEST_MS`; los asserts de tiempo viven en `tests/perf/fixtures.perf.test.ts` con los umbrales de la ficha (ADR-0012). Los dos puntos de la ronda 1 quedan resueltos; el 3 era de otras fichas.
+- (opcional) Documentar en el ADR-0011 que `images-200.pdf` pesa 44 MB.
+- (opcional) `pnpm coverage` sin confirmar por el fallo de PDF-006; el tester debe valorarlo según la nota del líder.
 

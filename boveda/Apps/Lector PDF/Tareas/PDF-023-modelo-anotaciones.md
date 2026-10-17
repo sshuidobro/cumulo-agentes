@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-023
 titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-001]
 intentos: 2
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]
@@ -149,3 +149,7 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
   - El punto 2 del revisor en ronda 1 (upsert `file` sin línea base cuenta como `modified`) sigue como estaba, documentado.
   - El coste cuadrático de `setEntryCommand` sigue siendo un riesgo: 1 028 ms frente a 2 000 ms. Si el líder quiere más margen, es rediseño y no lo he tocado.
   - Fuera de esta ficha: hay ficheros sin commitear de otros agentes (`packages/platform/tests/qa-*.test.ts`, `packages/platform/tests/tauri/qa-edge-tauri.test.ts`, `packages/platform/tests/web/qa-web-edge.test.ts`); no los he incluido en el commit.
+
+### [revisor] ronda 3 — 2026-10-17 — APROBADO
+Comprobado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (426/426), `pnpm perf` (5/5, código 0) y `pnpm coverage` (core/annotations 100 % líneas). El test perf existe con `measureBest` y assert < 2000 ms; en `tests/unit/` ya no hay `performance.now()`. Resueltos los puntos 1-3 de la ronda 2.
+1. (opcional) `tests/perf/annotation-commands.perf.test.ts` — 1 028 ms frente a 2 000 ms de presupuesto; el coste cuadrático de `setEntryCommand` deja poco margen en máquinas lentas. Valorar estructura persistente más adelante.
