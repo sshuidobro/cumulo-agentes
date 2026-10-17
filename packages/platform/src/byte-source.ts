@@ -39,6 +39,10 @@ export function blobSource(blob: Blob): ByteSource {
 
 /** Lee la fuente completa en trozos de `chunkSize` bytes. */
 export async function readAll(source: ByteSource, chunkSize = 4 * 1024 * 1024): Promise<Uint8Array> {
+  // Un tamaño no válido haría un bucle infinito: es un error de programación, no de E/S.
+  if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+    throw new RangeError(`chunkSize debe ser un entero mayor que 0 (recibido: ${String(chunkSize)})`);
+  }
   const out = new Uint8Array(source.size);
   for (let offset = 0; offset < source.size; offset += chunkSize) {
     const end = Math.min(offset + chunkSize, source.size);

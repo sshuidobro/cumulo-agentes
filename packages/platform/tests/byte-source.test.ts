@@ -83,6 +83,24 @@ describe('readAll', () => {
     expect(Array.from(await readAll(blobSource(new Blob([bytes]))))).toEqual([1, 2, 3, 4, 5]);
   });
 
+  it.each([
+    ['cero', 0],
+    ['negativo', -2],
+    ['no entero', 1.5],
+    ['NaN', Number.NaN],
+    ['infinito', Number.POSITIVE_INFINITY],
+  ])('rechaza con RangeError si chunkSize es %s, sin leer', async (_caso, chunkSize) => {
+    let reads = 0;
+    const counting: ByteSource = {
+      size: 5,
+      read: (begin, end) => { reads += 1; return memorySource(bytes).read(begin, end); },
+    };
+    const error = await rejectionOf(readAll(counting, chunkSize));
+    expect(error).toBeInstanceOf(RangeError);
+    expect((error as RangeError).message).toContain('chunkSize');
+    expect(reads).toBe(0);
+  });
+
   it('una fuente vacía devuelve un array vacío sin leer', async () => {
     let reads = 0;
     const empty: ByteSource = {

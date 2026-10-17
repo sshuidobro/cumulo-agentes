@@ -85,6 +85,22 @@ describe('createStorageStore', () => {
     expect(logs[0]?.message).toContain('a');
   });
 
+  it('si getItem lanza (p. ej. SecurityError), get devuelve null y avisa por el logger', () => {
+    const blocked: Storage = {
+      length: 0,
+      clear: () => undefined,
+      key: () => null,
+      getItem: () => { throw new DOMException('cookies bloqueadas', 'SecurityError'); },
+      removeItem: () => undefined,
+      setItem: () => undefined,
+    };
+    const prefs = createStorageStore(blocked, 'app.');
+    expect(prefs.get('a', isN)).toBeNull();
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ level: 'warn', scope: 'platform' });
+    expect(logs[0]?.message).toContain('a');
+  });
+
   it('con storage null funciona en memoria', () => {
     const prefs = createStorageStore(null, 'x.');
     expect(prefs.get('a', isN)).toBeNull();
