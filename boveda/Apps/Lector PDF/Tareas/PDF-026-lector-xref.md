@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas (xref) y filtros de streams
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-025, PDF-003]
 intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -129,3 +129,7 @@ Rendimiento: `pnpm perf` OK; el programador anotó 13,51 % de bytes y ~142 ms pa
 - Dudas o cosas que no he podido hacer: (1) el tope de 64 MiB es un criterio mío para documentar; si el líder prefiere otro valor, es una constante. (2) `PDF-010` y `PDF-030` (encargados en paralelo) no los he tocado: sus ficheros (`engine/render.ts`, `ui/viewer/PageView.tsx`, `state/annotation-actions.ts`, etc.) ya están en el árbol sin commit de otro agente y no los he modificado para no pisar ese trabajo. (3) El commit incluye solo los ficheros de esta ficha.
 
 Estado: `en-revision`.
+
+### [revisor] ronda 2 — 2026-10-17 — APROBADO
+Lint y typecheck en verde; filters, xref y xref-robustness 43/43 (la bomba de 1 GiB ahora da `PdfSyntaxError` controlado). `inflateStream` corta en streaming al pasar el tope (`MAX_DECODED_BYTES` 64 MiB; en xref stream `(suma /W + 1) × entradas`, acotado), también en la reserva con deflate crudo. Los predictores no amplían la salida. Tests del tope en el límite exacto (n y n-1), tope por defecto y mensaje. Sin problemas bloqueantes.
+1. (opcional) `tests/perf/xref.perf.test.ts` — sigue duplicando `measureBest` asíncrono — extraer a `tests/perf/measure.ts`.
