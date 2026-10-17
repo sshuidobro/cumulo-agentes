@@ -5,7 +5,7 @@ description: Normas de experto para escribir el frontend de las apps en TypeScri
 
 # TypeScript + React en la suite ofimática
 
-Versiones de referencia (octubre 2026, comprobar con `npm view <paquete> version` antes de fijar): React 19.3, TypeScript 7.0, Vite 8, Vitest 5, ESLint 10. Gestor de paquetes: **pnpm** con workspaces.
+Versiones de referencia (octubre 2026, comprobar con `npm view <paquete> version` antes de fijar): React 19.3, TypeScript 7.0, Vite 8, Vitest 5, ESLint 10. Gestor de paquetes: **pnpm** con workspaces. Herramientas estándar ya aprobadas para todo el monorepo: ESLint (flat config + typescript-eslint + eslint-plugin-react-hooks), Prettier, `@vitest/coverage-v8`, `@testing-library/*`, Playwright.
 
 ## Estructura del monorepo
 ```

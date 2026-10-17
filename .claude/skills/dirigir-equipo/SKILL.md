@@ -9,6 +9,8 @@ Tú (la sesión principal) eres el **coordinador**: no escribes código de produ
 
 Objetivo recibido: $ARGUMENTS
 
+**Regla del usuario: no pares hasta que todas las fichas estén en `hecha`.** No termines el turno para informar de progreso ni para pedir permiso. Las preguntas de producto que surjan se anotan en la bitácora, la ficha afectada queda `bloqueada` y sigues con el resto; las presentas todas juntas al final.
+
 ## 0. Bitácora
 Abre (o crea desde `boveda/Plantillas/Bitacora.md`) la nota del día `boveda/Bitacora/AAAA-MM-DD.md` y ve anotando cada fase: qué se hizo, decisiones y problemas.
 
@@ -19,7 +21,7 @@ Abre (o crea desde `boveda/Plantillas/Bitacora.md`) la nota del día `boveda/Bit
 ## 2. Planificar
 - Lanza `lider` con el objetivo y las rutas de la investigación relevante.
 - Si el líder devuelve preguntas para el investigador, lánzalo y vuelve a llamar al líder.
-- Si devuelve preguntas que solo el usuario puede responder, házselas antes de seguir y no lances programadores sobre tareas afectadas.
+- Si devuelve preguntas que solo el usuario puede responder (de producto: funciones, aspecto, prioridades, licencias, costes), házselas antes de seguir y no lances programadores sobre tareas afectadas. Las decisiones técnicas (librerías, herramientas de desarrollo, valores por defecto razonables) son del líder: no pares por ellas, anótalas en la bitácora y sigue.
 
 ## 3. Bucle de tareas
 Repite hasta que no quede ninguna ficha de la app en `pendiente`, `cambios-pedidos`, `en-revision` ni `en-test`:

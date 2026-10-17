@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es2023", "lib": ["es2023"],
+    "module": "preserve", "moduleResolution": "bundler",
+    "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true, "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true, "isolatedModules": true,
+    "noEmit": true, "skipLibCheck": true, "types": []
+  },
+  "include": ["packages/*/src", "packages/*/tests", "vitest.config.ts"]
+}
