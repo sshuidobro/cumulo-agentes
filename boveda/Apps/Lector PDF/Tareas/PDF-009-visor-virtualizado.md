@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-008, PDF-007]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -117,3 +117,15 @@ Lint, typecheck, `pnpm test` (1019), coverage (líneas 98,71 %) y e2e (26/26 en 
 
 ### [revisor] ronda 3 — 2026-10-17 — APROBADO
 Lint, typecheck, `pnpm test` (1021) y e2e (26/26) en verde; Ctrl+O y Tab con `--repeat-each=20` 40/40. La carrera de Ctrl+O queda corregida (se espera al botón Abrir antes de pulsar, sin bucle de reintentos) y los e2e del visor usan `expectViewerReady`. Sin problemas bloqueantes.
+
+### [tester] ronda 2 — 2026-10-17 — PASA
+Reverificación tras la reapertura (bucle «Maximum update depth» del zoom automático) y la corrección de la carrera de Ctrl+O.
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| T: 5000 págs, goToPage, 100 000 págs, anclaje | OK | `pnpm test` 81 ficheros, 1021/1021 |
+| Regresión zoom auto sin bucle (sizes-mixed) | OK | test de `viewer.test.tsx` + e2e sizes-mixed sin errores |
+| E2E 5000, 100000 (End < 1,5 s), sizes-mixed, Tab/aria-label, long tasks | OK | `pnpm --filter lector-pdf e2e` 26/26 |
+| Estabilidad (carrera) | OK | `playwright test viewer open-qa --repeat-each=5`: 80/80 |
+| lint / typecheck / coverage | OK | lint 0 avisos, typecheck OK, cobertura global líneas 91,21 % |
+Tests añadidos: ninguno nuevo (los de ronda 1 y la regresión del programador cubren los criterios).
+Rendimiento: e2e de long tasks y 100 000 págs dentro de presupuesto (End en 100 000 págs: test de 1,4 s completo).
