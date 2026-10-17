@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-011
 titulo: Crear el registro único de atajos de teclado en @suite/shared
 app: comun
-estado: en-curso
+estado: en-revision
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -69,3 +69,9 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0010-stack-apps-web-y-prueba
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `packages/shared/src/shortcuts/chord.ts`, `packages/shared/src/shortcuts/registry.ts`, `packages/shared/src/shortcuts/index.ts` (nuevos); `packages/shared/src/index.ts` (una línea: `export * from './shortcuts'`); `packages/shared/tests/shortcuts/chord.test.ts` y `registry.test.ts` (nuevos); esta ficha.
+- Qué he hecho: implementado `parseChord`, `chordId`, `matchChord`, `formatChord`, `isEditableTarget` y `ShortcutRegistry` según la ficha, con tests de cada criterio de aceptación y de las ramas de formato y de `isEditableTarget`. Sin dependencias nuevas.
+- Comandos ejecutados y resultado: `pnpm lint` 0 (sin avisos); `pnpm typecheck` 0; `pnpm test` 138 tests en verde (13 ficheros); `pnpm coverage` 0, `src/shortcuts` 100 % líneas (97,82 % ramas), global 99,69 % líneas.
+- Dudas o cosas que no he podido hacer: la ficha no fijaba algunos detalles y he tomado la opción literal: (a) en un atajo `code:X` el campo `key` es `''`, y ahí Mayús se exige siempre; (b) en Mac el orden de modificadores es ⌘ ⇧ ⌥ (el de la ficha); (c) `code:X` sin entrada en la tabla se muestra tal cual (`Numpad5`); (d) las teclas se normalizan solo si tienen un carácter (`F3` se conserva; `f3` no coincidiría con el evento `F3`, lo que sigue la regla "el resto tal cual"). Si el líder quiere que `f3` equivalga a `F3`, es un cambio pequeño en `normalizeKey`.
