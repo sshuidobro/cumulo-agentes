@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present run typecheck",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
+    "perf": "vitest run --config vitest.perf.config.ts",
     "e2e": "pnpm -r --if-present run e2e"
   },
   "devDependencies": {
