@@ -95,3 +95,7 @@ Lint y typecheck OK; `fixtures.test.ts` pasa aislado (17/17), el diseño del gen
 2. `apps/lector-pdf/tests/unit/fixtures.test.ts:~143,~154` — las aserciones de tiempo (`< 1 s` y `< 10 s`) miden la generación bajo la carga paralela de Vitest, lo que las hace frágiles; mantener los umbrales de la ficha pero comprobar que no fallan en `pnpm test` completo (ejecutar 2-3 veces).
 3. Nota (no es de esta ficha): en `pnpm test` también fallan `layout.test.ts` (PDF-006, 300 ms) y `annotations/commands.test.ts` (PDF-023, 2 s) por tiempo bajo carga; avisar al líder, pues impiden el código 0 global.
 4. (opcional) `images-200.pdf` pesa 44 MB; documentarlo en el ADR-0011.
+
+### [lider] suite de rendimiento — 2026-10-17
+[[ADR-0012-suite-de-rendimiento]]: los asserts de tiempo de reloj pasan a `tests/perf/` (`pnpm perf`). Los dos de esta ficha en `tests/unit/fixtures.test.ts` (generación de `pages-5000.pdf` < 1 s y de `pages-100000.pdf` < 10 s) **no son motivo de rechazo** en esta revisión: hoy pasan también bajo `pnpm coverage`. Para no tocar un fichero en revisión, el traslado se hace en [[PDF-022-e2e-y-rendimiento-iteracion-1]] (paso 0). Revisor y tester: el fallo de `pnpm coverage` anotado en la ronda del programador es de PDF-006 y queda resuelto allí; valorad la cobertura con `pnpm coverage` una vez PDF-006 vuelva a verde o con `vitest run --coverage --project lector-pdf` excluyendo `layout.test.ts`.
+

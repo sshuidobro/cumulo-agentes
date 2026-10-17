@@ -23,7 +23,7 @@ tags: [decision, pruebas, rendimiento, cobertura]
 | **Suite aparte `tests/perf/*.perf.test.ts` + `pnpm perf`** sin cobertura y en serie | Presupuestos intactos y medidos en condiciones limpias; cobertura no afectada; regla simple | Un comando más en la comprobación de cada ficha | MIT (Vitest ya instalado) |
 
 ## Decisión
-Los asserts de **tiempo de reloj** (`performance.now()`) viven solo en `apps/<app>/tests/perf/**/*.perf.test.ts` y `packages/<pkg>/tests/perf/**/*.perf.test.ts`, y se ejecutan con `pnpm perf` (configuración `vitest.perf.config.ts` en la raíz: sin cobertura, ficheros en serie). `pnpm test` y `pnpm coverage` no los incluyen. Los presupuestos no cambian. Medición estándar: 1 pasada de calentamiento descartada y el mínimo de 5 pasadas (helper `measureBest`). `pnpm perf` con código 0 pasa a ser parte de la comprobación de toda ficha que tenga criterios de tiempo.
+Los asserts de **tiempo de reloj** (`performance.now()`) viven solo en `apps/<app>/tests/perf/**/*.perf.test.ts` y `packages/<pkg>/tests/perf/**/*.perf.test.ts`, y se ejecutan con `pnpm perf` (configuración `vitest.perf.config.ts` en la raíz: un proyecto en línea por app/paquete con `root`, `include: ['tests/perf/**/*.perf.test.ts']` y los mismos alias/`globalSetup` que su `vitest.config.ts`; sin cobertura, ficheros en serie). Contenido exacto en [[PDF-006-layout-virtual]] (Registro del líder). `pnpm test` y `pnpm coverage` no los incluyen. Los presupuestos no cambian. Medición estándar: 1 pasada de calentamiento descartada y el mínimo de 5 pasadas (helper `measureBest`). `pnpm perf` con código 0 pasa a ser parte de la comprobación de toda ficha que tenga criterios de tiempo.
 
 ## Consecuencias
 - Cobertura y rendimiento se miden por separado y cada uno de forma honesta.

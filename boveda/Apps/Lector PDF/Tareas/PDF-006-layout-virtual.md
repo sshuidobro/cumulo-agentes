@@ -81,6 +81,7 @@ Lógica pura que, dadas las dimensiones de N páginas, el zoom y la rotación de
 - [ ] (T, comportamiento, en `tests/unit/layout.test.ts`) 1 000 000 de páginas 612×792 con `base`: `count === 1_000_000`, `tops[1_000_000] === 804_000_016`, `totalHeight === 804_000_020`; `pageAtY(l, l.tops[123_456])` → `123_456`; `pageAtY(l, l.tops[999_999] + 1)` → `999_999`. Sin `performance.now()` en `tests/unit/`.
 - [ ] (T, rendimiento, en `tests/perf/layout.perf.test.ts`, medido con `measureBest` por defecto: 1 calentamiento + mínimo de 5) `computeLayout` de 1 000 000 de páginas < 100 ms; 1 000 000 de `pageAtY` aleatorios (semilla 42) < 300 ms. Presupuestos sin cambiar. Anota los tiempos de `pnpm perf` en el Registro.
 - [ ] `pnpm perf` con código 0 en **3 ejecuciones seguidas**.
+- [ ] `vitest.perf.config.ts` coincide con el del paso 1 del Registro del líder (proyecto `lector-pdf-perf` con `root`, alias de pdf.js y `globalSetup`).
 - [ ] `grep -rn "performance.now" apps/lector-pdf/tests/unit/layout.test.ts` no devuelve nada; la salida de `pnpm coverage` no lista `layout.perf.test.ts`.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `layout.ts` y `page-dims.ts` ≥ 95 % de líneas.
 
@@ -120,7 +121,7 @@ Respuesta a las dudas:
 5. Margen estrecho de `pageAtY`: anotado; no se toca el umbral. Si falla en otra máquina, se optimiza el algoritmo en una ficha nueva.
 
 Pasos exactos (ronda 2):
-1. **Nuevo** `vitest.perf.config.ts` en la raíz del repo, con este contenido literal (si ya existe porque otra ficha lo creó antes, no lo cambies). Comprobado por el líder con Vitest 5.0.5: un proyecto en línea (no `extends`, porque `extends` **suma** el `include` de la app y metería todos los tests unitarios):
+1. **Nuevo** `vitest.perf.config.ts` en la raíz del repo, con este contenido literal. **Corrección del líder (2026-10-17, misma ronda):** una primera redacción de este paso daba una versión simple con `include: ['apps/*/tests/perf/…', 'packages/*/tests/perf/…']` en la raíz; si ya la has creado, **sustitúyela** por esta, porque la simple no aplica el alias de pdf.js ni el `globalSetup` de fixtures que necesitan PDF-005, PDF-017 y PDF-022. Comprobado por el líder con Vitest 5.0.5: un proyecto en línea (no `extends`, porque `extends` **suma** el `include` de la app y metería todos los tests unitarios):
    ```ts
    import { defineConfig } from 'vitest/config';
 

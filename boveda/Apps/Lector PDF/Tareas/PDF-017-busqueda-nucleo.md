@@ -14,7 +14,7 @@ tags: [tarea, pdf, nucleo, busqueda, rendimiento]
 
 # PDF-017 · Núcleo de búsqueda incremental
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · Investigación: [[Paridad Adobe Acrobat]] (área 3)
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · Investigación: [[Paridad Adobe Acrobat]] (área 3) · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 Lógica de búsqueda pura y probada: normaliza texto (mayúsculas, tildes, ligaduras, espacios) conservando el mapa a posiciones originales, encuentra coincidencias (opción palabra completa) expresadas como posiciones **en los ítems de texto de pdf.js** (para resaltarlas sobre la capa de texto), y una sesión que recorre miles de páginas por lotes sin bloquear, empezando por la página actual, con progreso y cancelación.
@@ -76,12 +76,18 @@ Lógica de búsqueda pura y probada: normaliza texto (mayúsculas, tildes, ligad
 - [ ] (T) Posiciones: la coincidencia de `murciélago` en la p1 empieza y termina en el ítem que contiene ese texto, con `offset` correcto (comprueba `items[start.item].str.slice(start.offset, end.offset) === 'murciélago'` cuando está en un solo ítem).
 - [ ] (T) Una coincidencia que cruza dos ítems (`'kiwi. marcador'` con ítems simulados `['...kiwi.', ' marcador-1']`) da `start.item !== end.item`.
 - [ ] (T) Sesión con 10 páginas falsas, `startPage 7`: orden de `onPageMatches` 7, 8, 9, 0, …, 6; `cancel()` a mitad → `onDone({ cancelled: true })` una vez y ninguna llamada posterior; consulta `'   '` → `onDone` con 0 sin leer páginas; una página que rechaza no detiene la búsqueda.
-- [ ] (T) Motor real, `pages-5000.pdf`, consulta `aguja`, `startPage 0` → coincidencias exactamente en las páginas 1233 y 4998 (0-based); recorrido completo < 10 s; ningún intervalo entre cesiones del hilo > 50 ms (instrumenta con `now`); anota tiempos.
-- [ ] (T) Con `PageTextCache`, una segunda búsqueda en `pages-5000.pdf` no vuelve a llamar a `getPageItems` y termina en < 1 s.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `src/core/search/` ≥ 95 % de líneas.
+- [ ] (T) Motor real, `pages-5000.pdf`, consulta `aguja`, `startPage 0` → coincidencias exactamente en las páginas 1233 y 4998 (0-based).
+- [ ] (T, rendimiento, `tests/perf/search.perf.test.ts`, medida única con el reloj real `performance.now()` como `now`) motor real, `pages-5000.pdf`, `aguja`: recorrido completo < 10 s; ningún intervalo entre cesiones del hilo > 50 ms; anota tiempos.
+- [ ] (T) Con `PageTextCache`, una segunda búsqueda en `pages-5000.pdf` no vuelve a llamar a `getPageItems`.
+- [ ] (T, rendimiento, `tests/perf/search.perf.test.ts`) esa segunda búsqueda con caché termina en < 1 s.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf` con código 0; `src/core/search/` ≥ 95 % de líneas.
 
 ## Fuera de alcance
 - Interfaz y resaltado (PDF-018). Expresiones regulares, búsqueda en varios PDFs (opcionales de la nota de paridad). Texto partido por guiones de fin de línea.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] suite de rendimiento — 2026-10-17
+Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
+Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.

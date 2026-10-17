@@ -14,7 +14,7 @@ tags: [tarea, pdf, nucleo, formato]
 
 # PDF-025 · Objetos PDF: leer y escribir
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 Base del escritor incremental: representar objetos PDF (ISO 32000-1 §7.3), leerlos desde bytes y volver a escribirlos byte a byte de forma determinista, incluidas cadenas de texto en PDFDocEncoding/UTF-16BE y fechas.
@@ -76,11 +76,16 @@ d(e)f)` → bytes `a`, LF, `b\c)` `d(e)f`.
 - [ ] (T) `parseIndirectObject` de un stream con `/Length 5 0 R` usa `resolveLength`; con `/Length` erróneo recupera los datos buscando `endstream`.
 - [ ] (T) `encodeTextString('Comentario é €')` usa PDFDocEncoding (sin BOM); `encodeTextString('Привет')` empieza por `FE FF`; `decodeTextString` invierte ambos; `'•'` se codifica como `0x80`.
 - [ ] (T) Entradas inválidas (`<< /A`, `[1 2`, `(abc`, 101 corchetes anidados) lanzan `PdfSyntaxError` con `offset`; nunca bucle infinito (timeout del test 2 s).
-- [ ] (T) Rendimiento: analizar 10 000 diccionarios de anotación concatenados en < 300 ms.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `src/core/pdf/` ≥ 95 % de líneas.
+- [ ] (T, comportamiento, `tests/unit/`) analizar 10 000 diccionarios de anotación concatenados devuelve 10 000 objetos.
+- [ ] (T, rendimiento, `tests/perf/pdf-objects.perf.test.ts` con `measureBest`) ese análisis en < 300 ms.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf` con código 0; `src/core/pdf/` ≥ 95 % de líneas.
 
 ## Fuera de alcance
 - Xref, filtros y lectura por rangos (PDF-026). Cifrado (PDF-047).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] suite de rendimiento — 2026-10-17
+Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
+Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.

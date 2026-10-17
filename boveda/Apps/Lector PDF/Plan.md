@@ -76,13 +76,14 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 - Requisitos del sistema (una vez, Linux): `apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev qpdf` (WebKitGTK solo para compilar Tauri; `qpdf` para validar PDFs escritos).
 - Instalar: `pnpm install`
 - Lint / typecheck / test / cobertura (raíz): `pnpm lint && pnpm typecheck && pnpm test && pnpm coverage`
+- Rendimiento (raíz, [[ADR-0012-suite-de-rendimiento]]): `pnpm perf` — asserts de tiempo de reloj en `apps/lector-pdf/tests/perf/*.perf.test.ts`, sin cobertura y en serie. Nunca `performance.now()` en `tests/unit/` ni `tests/ui/`. Benchmarks informativos: `pnpm exec vitest bench --run`.
 - Fixtures: `pnpm --filter lector-pdf fixtures` (los tests los generan solos si faltan)
 - Desarrollo web: `pnpm --filter lector-pdf dev` (http://localhost:5173)
 - Build web: `pnpm --filter lector-pdf build` · Previsualizar: `pnpm --filter lector-pdf preview`
 - E2E (web, Chromium de `/opt/pw-browsers`): `pnpm --filter lector-pdf e2e` (o `pnpm e2e` en la raíz)
 - Rust: `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --all-features`
 - Escritorio (solo en la máquina del usuario): `pnpm --filter lector-pdf tauri dev` · `pnpm --filter lector-pdf tauri build`
-- Comprobación completa de una ficha: `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm coverage` + lo que pida la ficha (e2e, cargo).
+- Comprobación completa de una ficha: `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm coverage` + lo que pida la ficha (`pnpm perf`, e2e, cargo).
 
 ## Tareas
 ### Iteración 1 · Base común (en [[Apps/Comun/Plan|Comun]])
@@ -105,7 +106,7 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 | [[PDF-003-fixtures-estructura]] | Generador de fixtures: índice, enlaces, etiquetas, xref comprimido, anotaciones, formulario | PDF-002 | pendiente |
 | [[PDF-004-corpus-publico]] | Corpus público (veraPDF) y de LibreOffice | PDF-005 | pendiente |
 | [[PDF-005-motor-carga-por-rangos]] | Motor: carga por rangos y errores | PDF-002, COM-005 | pendiente |
-| [[PDF-006-layout-virtual]] | Núcleo: dimensiones y layout virtual | PDF-001 | pendiente |
+| [[PDF-006-layout-virtual]] | Núcleo: dimensiones y layout virtual | PDF-001 | cambios-pedidos (replanificada, [[ADR-0012-suite-de-rendimiento]]) |
 | [[PDF-007-zoom-y-cola-de-render]] | Núcleo: zoom, cola de render y tamaño de lienzo | PDF-001 | pendiente |
 | [[PDF-008-abrir-documento]] | Abrir documento en la app | PDF-005, PDF-006, COM-006, COM-011 | pendiente |
 | [[PDF-009-visor-virtualizado]] | Visor virtualizado (marcos y scroll) | PDF-008, PDF-007 | pendiente |

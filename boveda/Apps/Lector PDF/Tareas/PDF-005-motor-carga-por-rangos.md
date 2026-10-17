@@ -14,7 +14,7 @@ tags: [tarea, pdf, motor]
 
 # PDF-005 · Motor: carga por rangos, errores y dimensiones
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · Investigación: [[Librerias y arquitectura PDF]] (secciones 2 y 5)
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · Investigación: [[Librerias y arquitectura PDF]] (secciones 2 y 5) · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 `loadPdf(source, opts)` abre un PDF leyendo **solo los rangos que pide pdf.js** desde un `ByteSource`, con configuración segura, devuelve errores como valores con mensaje en español y permite cancelar. `scanPageDims` recorre las páginas por lotes para conocer su tamaño real.
@@ -87,11 +87,16 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]
 - [ ] (T) Una fuente cuyo `read` rechaza a partir de la 2.ª lectura → `err` `io` en < 5 s.
 - [ ] (T) `AbortController.abort()` justo después de llamar → `err` `cancelled`; `destroy()` dos veces no lanza.
 - [ ] (T) `scanPageDims(sizes-mixed)` da 6 entradas con `(595,842,0) (792,612,0) (842,1191,0) (420,595,0) (595,842,90) (595,842,0)`; con `batchSize 2` → 3 llamadas a `onBatch`; abortando tras el primer lote → `'cancelled'` y 1 llamada.
-- [ ] (T) `scanPageDims` de `pages-5000.pdf` termina en < 10 s y ningún lote tarda > 100 ms (mide el tiempo entre llamadas a `onBatch`; anota máximo y total).
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `src/core/errors.ts` 100 % de líneas.
+- [ ] (T, comportamiento, `tests/unit/engine-page-dims.test.ts`) `scanPageDims` de `pages-5000.pdf` entrega 5 000 entradas en orden, en lotes de `batchSize`.
+- [ ] (T, rendimiento, `tests/perf/engine-page-dims.perf.test.ts`, medida única con `performance.now()`, sin `measureBest`) `scanPageDims` de `pages-5000.pdf` termina en < 10 s y ningún lote tarda > 100 ms (tiempo entre llamadas a `onBatch`; anota máximo y total).
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf` con código 0; `src/core/errors.ts` 100 % de líneas.
 
 ## Fuera de alcance
 - Pedir contraseña (PDF-046). Render (PDF-010). Uso desde la UI (PDF-008).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] suite de rendimiento — 2026-10-17
+Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
+Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.

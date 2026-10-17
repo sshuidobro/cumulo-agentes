@@ -14,7 +14,7 @@ tags: [tarea, pdf, ui, navegacion]
 
 # PDF-016 · Índice (marcadores)
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 La pestaña «Marcadores» del panel lateral muestra el índice del PDF como un árbol accesible (expandir/contraer, negrita/cursiva, teclado completo), virtualizado para índices enormes. Al activar un marcador se va a su destino (con historial atrás/adelante) o, si es una URL, se pide confirmación como en los enlaces.
@@ -52,15 +52,20 @@ La pestaña «Marcadores» del panel lateral muestra el índice del PDF como un 
 
 ## Criterios de aceptación
 - [ ] (T) `outline.pdf` → 5 raíces; `Capítulo 1` `bold`; `Capítulo 3` `initiallyExpanded false`; `Sitio web` → `external`; ids `0`, `0.0`, `0.0.0`…
-- [ ] (T) `flattenVisible` con `Capítulo 1` expandido y `Sección 1.1` contraída → filas `Capítulo 1 (0)`, `Sección 1.1 (1)`, `Sección 1.2 (1)`, `Capítulo 2 (0)`…; un árbol generado de 10 000 nodos se aplana en < 50 ms.
+- [ ] (T) `flattenVisible` con `Capítulo 1` expandido y `Sección 1.1` contraída → filas `Capítulo 1 (0)`, `Sección 1.1 (1)`, `Sección 1.2 (1)`, `Capítulo 2 (0)`…
+- [ ] (T, rendimiento, `tests/perf/outline.perf.test.ts` con `measureBest`) un árbol generado de 10 000 nodos todos expandidos se aplana en < 50 ms (y da 10 000 filas).
 - [ ] (T) Un `RawOutlineItem` con 200 niveles de anidación no lanza y corta en 64.
 - [ ] (T) UI: con foco en `Capítulo 1`, `ArrowRight` expande, otra vez va a `Sección 1.1`; `ArrowLeft` vuelve al padre; `Enter` en `Sección 1.1` llama a `navigateToDest`; con 5 000 nodos visibles hay < 60 `treeitem` en el DOM.
 - [ ] E2E: `outline.pdf` → pestaña Marcadores → clic en `Anexo` → «Página 30 de 30» visible; `Alt+←` → vuelve; `Sección 1.1` deja visible la parte superior del texto situado en y = 500 de la página 3.
 - [ ] E2E: `compressed.pdf` y `libreoffice/informe.pdf` muestran su índice; `basic-5.pdf` muestra «Este documento no tiene marcadores.».
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Crear, renombrar o borrar marcadores (Pro, iteración 6). Resaltar el marcador de la sección actual.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] suite de rendimiento — 2026-10-17
+Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
+Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.
