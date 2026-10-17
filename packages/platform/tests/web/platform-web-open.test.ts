@@ -243,6 +243,24 @@ describe('ventana, cierre y operaciones pendientes', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('closeWindow: tras cerrar, el beforeunload ya no se cancela aunque onCloseRequested devuelva false', async () => {
+    const env = fakeEnv();
+    const platform = platformWith(env);
+    const stop = platform.onCloseRequested(() => false);
+
+    const before = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(before);
+    expect(before.defaultPrevented).toBe(true);
+
+    await platform.closeWindow();
+    const after = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(after);
+
+    expect(after.defaultPrevented).toBe(false);
+    expect(env.closeWindow).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
   it('save de un fichero de <input> da save-in-place-unsupported y saveAs descarga una copia', async () => {
     const platform = platformWith(fakeEnv());
     const file = platform.openBrowserFile(makeFile([1]));

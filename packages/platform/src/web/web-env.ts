@@ -10,6 +10,8 @@ export interface WebEnv {
   readonly pickWithInput: (accept: string) => Promise<File | null>;
   /** Descarga un Blob con un <a download> y URL.createObjectURL (revoca la URL a los 10 s). */
   readonly download: (blob: Blob, name: string) => void;
+  /** Cierra la pestaña o ventana. Por defecto `window.close()`; el navegador puede ignorarlo si no la abrió un script. */
+  readonly closeWindow: () => void;
 }
 
 /** File System Access: solo Chromium lo expone en `window`; lib.dom no lo tipa. */
@@ -64,5 +66,6 @@ export function defaultWebEnv(): WebEnv {
     showSaveFilePicker: win.showSaveFilePicker?.bind(win),
     pickWithInput: createInputPicker(win),
     download: createDownloader(win),
+    closeWindow: () => { win.close(); },
   };
 }

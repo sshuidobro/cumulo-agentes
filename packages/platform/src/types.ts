@@ -44,4 +44,6 @@ export interface Platform {
   setTitle(title: string): void;
   /** cb devuelve true para permitir cerrar, false para cancelar. */
   onCloseRequested(cb: () => boolean): () => void;
+  /** Cierra la ventana sin volver a llamar a onCloseRequested. */
+  closeWindow(): Promise<void>;
 }

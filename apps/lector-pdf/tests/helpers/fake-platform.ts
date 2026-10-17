@@ -34,6 +34,7 @@ export function createFakePlatform(overrides: Partial<Platform> = {}): Platform 
     openExternalUrl: vi.fn(async () => err(platformError('unsupported'))),
     setTitle: vi.fn(),
     onCloseRequested: () => () => undefined,
+    closeWindow: vi.fn(async () => undefined),
     ...overrides,
   };
 }

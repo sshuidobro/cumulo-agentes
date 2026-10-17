@@ -53,6 +53,8 @@ export function createWebPlatform(
 ): Platform {
   const registry = new Map<string, RegisteredFile>();
   let counter = 0;
+  /** Tras `closeWindow` el aviso de `beforeunload` ya no se cancela. */
+  let closing = false;
 
   const describeFile = (token: string, file: File, handle: PermissionHandle | null): OpenedFile => ({
     token,
@@ -254,10 +256,16 @@ export function createWebPlatform(
 
     onCloseRequested(cb: () => boolean): () => void {
       const listener = (event: Event): void => {
+        if (closing) return;
         if (cb() === false) event.preventDefault();
       };
       env.window.addEventListener('beforeunload', listener);
       return () => { env.window.removeEventListener('beforeunload', listener); };
+    },
+
+    async closeWindow(): Promise<void> {
+      closing = true;
+      env.closeWindow();
     },
   };
   return platform;

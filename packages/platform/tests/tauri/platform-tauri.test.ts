@@ -20,6 +20,8 @@ interface FakeTauri {
   requestClose(): { readonly prevented: boolean };
   /** Número de suscriptores de `listen` activos. */
   readonly listeners: number;
+  /** Número de llamadas a `destroyWindow`. */
+  readonly destroys: number;
 }
 
 /** Doble falso de `TauriApi`: registra las llamadas y responde con `respond`. */
@@ -28,6 +30,7 @@ function fakeTauri(respond: Respond = () => undefined): FakeTauri {
   const openedUrls: string[] = [];
   const titles: string[] = [];
   const handlers = new Map<string, Set<() => void>>();
+  let destroyCount = 0;
   let closeHandler: ((preventDefault: () => void) => void) | null = null;
 
   const api: TauriApi = {
@@ -48,6 +51,10 @@ function fakeTauri(respond: Respond = () => undefined): FakeTauri {
     onCloseRequested(handler: (preventDefault: () => void) => void): Promise<() => void> {
       closeHandler = handler;
       return Promise.resolve(() => { closeHandler = null; });
+    },
+    destroyWindow(): Promise<void> {
+      destroyCount += 1;
+      return Promise.resolve();
     },
     openUrl(url: string): Promise<void> {
       openedUrls.push(url);
@@ -72,6 +79,9 @@ function fakeTauri(respond: Respond = () => undefined): FakeTauri {
       let count = 0;
       for (const set of handlers.values()) count += set.size;
       return count;
+    },
+    get destroys() {
+      return destroyCount;
     },
   };
 }
@@ -436,5 +446,40 @@ describe('createTauriPlatform · enlaces, título, cierre y preferencias', () =>
     expect(platform.isMac).toBe(navigator.userAgent.includes('Mac'));
     platform.prefs.set('zoom', 150);
     expect(platform.prefs.get('zoom', (v): v is number => typeof v === 'number')).toBe(150);
+  });
+});
+
+describe('createTauriPlatform · cerrar ventana', () => {
+  it('closeWindow llama a destroyWindow una vez', async () => {
+    const fake = fakeTauri();
+    const platform = createTauriPlatform({ prefsPrefix: 'test:' }, fake.api);
+
+    await platform.closeWindow();
+
+    expect(fake.destroys).toBe(1);
+  });
+
+  it('si destroyWindow rechaza, closeWindow resuelve igualmente y registra el error', async () => {
+    const error = vi.fn();
+    configureLogging({ sink: (level, scope, message, data) => { if (level === 'error') error(scope, message, data); }, minLevel: 'error' });
+    const fake = fakeTauri();
+    const failing: TauriApi = { ...fake.api, destroyWindow: () => Promise.reject(new Error('caído')) };
+    const platform = createTauriPlatform({ prefsPrefix: 'test:' }, failing);
+
+    await expect(platform.closeWindow()).resolves.toBeUndefined();
+
+    expect(error).toHaveBeenCalledWith('platform', expect.stringContaining('cerrar la ventana'), expect.anything());
+  });
+
+  it('closeWindow no vuelve a llamar a onCloseRequested ni se cancela', async () => {
+    const fake = fakeTauri();
+    const platform = createTauriPlatform({ prefsPrefix: 'test:' }, fake.api);
+    const cb = vi.fn(() => false);
+    platform.onCloseRequested(cb);
+
+    await platform.closeWindow();
+
+    expect(fake.destroys).toBe(1);
+    expect(cb).not.toHaveBeenCalled();
   });
 });
