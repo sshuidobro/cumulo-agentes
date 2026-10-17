@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-011
 titulo: Crear el registro único de atajos de teclado en @suite/shared
 app: comun
-estado: en-revision
+estado: hecha
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -75,3 +75,20 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0010-stack-apps-web-y-prueba
 - Qué he hecho: implementado `parseChord`, `chordId`, `matchChord`, `formatChord`, `isEditableTarget` y `ShortcutRegistry` según la ficha, con tests de cada criterio de aceptación y de las ramas de formato y de `isEditableTarget`. Sin dependencias nuevas.
 - Comandos ejecutados y resultado: `pnpm lint` 0 (sin avisos); `pnpm typecheck` 0; `pnpm test` 138 tests en verde (13 ficheros); `pnpm coverage` 0, `src/shortcuts` 100 % líneas (97,82 % ramas), global 99,69 % líneas.
 - Dudas o cosas que no he podido hacer: la ficha no fijaba algunos detalles y he tomado la opción literal: (a) en un atajo `code:X` el campo `key` es `''`, y ahí Mayús se exige siempre; (b) en Mac el orden de modificadores es ⌘ ⇧ ⌥ (el de la ficha); (c) `code:X` sin entrada en la tabla se muestra tal cual (`Numpad5`); (d) las teclas se normalizan solo si tienen un carácter (`F3` se conserva; `f3` no coincidiría con el evento `F3`, lo que sigue la regla "el resto tal cual"). Si el líder quiere que `f3` equivalga a `F3`, es un cambio pequeño en `normalizeKey`.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck y 138 tests en verde. `pnpm coverage` no se pudo repetir (directorio de cobertura en uso por otro revisor); se acepta el 100 % de líneas del programador. Cada criterio tiene su test; código conforme a la ficha, sin DOM.
+1. (opcional) `chord.ts:54` — `f3` no equivale a `F3`; decisión menor, documentada por el programador.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| parseChord (válidos e inválidos) | OK | `chord.test.ts` + QA: `Mod++`, `++`, `Mod+code:`, `Ctrl+S` lanzan `Atajo no válido` |
+| matchChord (Win/Mac, Ctrl+Meta, `+`, `0`, Alt+flecha) | OK | `chord.test.ts`; QA añade Unicode (Ñ, emoji), teclas `Dead`/`Process`, `code:` con Alt |
+| formatChord | OK | tests del programador + `Ctrl+Ñ` |
+| Registro, duplicados | OK | QA: duplicado dentro de un mismo def y con modificadores en distinto orden/mayúsculas; registro vacío |
+| isEditableTarget | OK | QA: textarea, select, input sin type, radio/button/submit/range/color, `undefined`, string, número |
+| lint / typecheck / test / coverage | OK | lint 0, typecheck 0, 147 tests (14 ficheros), `src/shortcuts` 100 % líneas (97,82 % ramas) |
+
+Tests añadidos: `packages/shared/tests/shortcuts/qa.test.ts` (9 tests). Rendimiento: no aplica (funciones puras O(1)).
+Observaciones no bloqueantes: (1) `Mod+Plus` y `Mod+Shift+Plus` tienen distinto `chordId` pero coinciden con los mismos eventos (Mayús se ignora), así que el registro no detecta ese solapamiento; (2) `f3` no equivale a `F3` (ya anotado por el revisor); (3) en Mac, Alt+letra produce caracteres especiales en `e.key` y no coincidiría; usar `code:` en esos casos. En el primer `pnpm coverage` hubo un fallo de carrera con otra ejecución concurrente; repetido, pasa.

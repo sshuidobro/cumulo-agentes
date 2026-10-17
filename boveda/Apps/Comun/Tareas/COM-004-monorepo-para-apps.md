@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-004
 titulo: Preparar el monorepo para apps (proyectos de Vitest, typecheck por paquete, lint de React, Result y logger)
 app: comun
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -154,3 +154,22 @@ Que el monorepo admita paquetes con DOM y apps React: Vitest por proyectos, type
 - Comprobación de capas: fichero temporal `apps/x/src/core/t.ts` con `import 'react'`. Salida: `1:1 error 'react' import is restricted from being used by a pattern. core/ es lógica pura sin React (stack-typescript-react) no-restricted-imports`, exit 1. Fichero y carpeta `apps/x` borrados.
 - `git status`: no aparecen `dist/` ni `target/`. Hay una carpeta `target/` (Cargo, creada a las 17:08 por otro proceso, no por este compilado de TS) que ya está ignorada por `.gitignore`. No la he borrado.
 - Dudas o cosas que no he podido hacer: ninguna de la ficha. Pendiente para el líder: `pnpm e2e` no tiene ningún paquete con script `e2e` todavía (se resolverá con PDF-001).
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Comprobado: `pnpm lint`, `typecheck`, `test` (67 en verde), `coverage` (100 % líneas) con código 0; configuración idéntica a la ficha; `git status` limpio de `target/`/`dist/`. Tests de `Result` y logger cubren cada criterio (T), incluido el logger creado antes de configurar y `sink: null`.
+1. (opcional) criterio `|shared|`: el reporter por defecto de `pnpm test` no imprime el nombre del proyecto; solo aparece con `--reporter=verbose`. El proyecto sí está registrado; el tester debe verificarlo con verbose.
+2. (opcional) `logger.ts`: la desviación del tipo `ConsoleApi` sobre `globalThis` es aceptable dado `types: []`.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| install sin avisos peer; lint, typecheck, test, coverage con código 0; 59 previos en verde | OK | `pnpm install --frozen-lockfile` sin avisos; lint/typecheck/coverage exit 0; 68 tests en 7 ficheros; líneas 100 % |
+| `pnpm test` muestra `\|shared\|` | OK (con `vitest run --reporter=verbose`; el reporter por defecto no lo imprime) | `✓ \|shared\| tests/undo/...` |
+| (T) Result ok/err y estrechamiento | OK | `result.test.ts` con `expectTypeOf`, verificado también por `tsc` (los tests están en `include`) |
+| (T) Logger | OK | `logger.test.ts`: minLevel, sink null, logger creado antes de configurar |
+| Lint de capas | OK, repetido por mí | `apps/x/src/core/t.ts`: react, pdfjs-dist y node:fs dan `no-restricted-imports`; en `ui/`: pdfjs-dist, @tauri-apps, `any`, `console`, `!` dan error (8 errores). Carpeta borrada. |
+| `git status` sin `target/` ni `dist/` | OK | solo aparecen notas de la bóveda y ficheros de COM-008 |
+
+Hallazgo: mutación `minLevel` inicial `warn`→`info` en `logger.ts` sobrevivía a los tests (el `beforeEach` fija la configuración y nunca se probaba el valor inicial). Corregido con test nuevo que recarga el módulo (`vi.resetModules`); ahora la mutación lo hace fallar. Código de producción restaurado intacto.
+Tests añadidos: 1 en `packages/shared/tests/logger.test.ts` (valores iniciales del módulo, con Unicode ñ/emoji/RTL).
+Rendimiento: no aplica (ficha de configuración); suite completa en ~0,5 s.

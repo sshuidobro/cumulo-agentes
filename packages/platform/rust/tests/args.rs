@@ -60,3 +60,14 @@ fn descarta_directorios_aunque_existan() {
 
     assert!(paths_from_args(&args, &cwd).is_empty());
 }
+
+#[test]
+fn admite_rutas_con_espacios_tildes_y_emojis() {
+    let cwd = directorio_temporal("unicode ñ");
+    let nombre = "informe año 2026 😀.pdf";
+    crear_fichero(&cwd.join(nombre));
+
+    let args = texto(&["app", nombre]);
+
+    assert_eq!(paths_from_args(&args, &cwd), vec![cwd.join(nombre)]);
+}
