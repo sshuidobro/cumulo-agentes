@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-008
 titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados de carga y error
 app: pdf
-estado: bloqueada
+estado: en-revision
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -14,7 +14,7 @@ tags: [tarea, pdf, ui, abrir]
 
 # PDF-008 · Abrir documento en la app
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0013-pdfjs-build-legacy]]
 
 ## Objetivo
 El usuario abre un PDF con el botón «Abrir…», Ctrl+O, arrastrándolo a la ventana o (en escritorio) con "Abrir con"; ve un estado de carga con progreso y botón Cancelar, y si falla, un mensaje claro en español. Al terminar, el store tiene el documento, una tabla de dimensiones (supuesta y corregida en segundo plano) y el título de la ventana es «nombre.pdf — Lector PDF».
@@ -88,3 +88,23 @@ El usuario abre un PDF con el botón «Abrir…», Ctrl+O, arrastrándolo a la v
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 60 ficheros / 773 tests OK; `pnpm coverage` OK (líneas 97,5 % en total); `pnpm --filter lector-pdf e2e`: **2 OK, 2 KO** (`basic-5` y `pages-100000`, que no llegan a mostrar el recuento; el medidor de 100 000 no se ha podido tomar).
 - Bloqueo (técnico, decide el líder): pdf.js 6.4 (build principal que usa `src/engine/pdfjs.ts`) llama a `Map.prototype.getOrInsertComputed`. El Chromium de `/opt/pw-browsers` (chromium-1194, Playwright 1.56.1) no lo tiene: `UnknownErrorException: this._requestsByChunk.getOrInsertComputed is not a function`, `loadPdf` lo devuelve como `corrupt` y la UI muestra «El PDF está dañado…». Los tests de node pasan porque el alias de Vitest usa `pdfjs-dist/legacy/build`, que incluye polyfills. Opciones: (a) usar también la build `legacy` en el navegador (toca `engine/pdfjs.ts`, `engine/worker.ts` y `scripts/copy-pdfjs-assets.mjs`, ficheros de PDF-005/PDF-001); (b) añadir un polyfill como dependencia nueva (decisión del líder); (c) actualizar Chromium (no posible con `/opt/pw-browsers`). Probé a inyectar un polyfill en la página y no basta, así que no es un arreglo pequeño. No he tocado el motor.
 - Dudas o cosas que no he podido hacer: falta confirmar la opción de motor (arriba) para cerrar los dos E2E y anotar el tiempo de `pages-100000`. Pendiente tras eso: el criterio de rendimiento E2E y la revisión de textos de los estados.
+
+### [lider] desbloqueo — 2026-10-17
+Decisión técnica: [[ADR-0013-pdfjs-build-legacy]] (opción a: build `legacy` de pdf.js también en navegador y worker). No cuenta como rechazo (`intentos` sigue en 0). Comprobado por el líder con tu código: con este cambio los 4 E2E de `open.spec.ts` pasan; el cambio se revirtió para que lo hagas tú.
+Pasos exactos (se autoriza tocar estos ficheros de PDF-001/PDF-005):
+1. `src/engine/pdfjs.ts`: en las dos líneas `from 'pdfjs-dist'` (el `export {...}` y el `export type {...}`) cambia el módulo a `'pdfjs-dist/legacy/build/pdf.mjs'`. La línea de `pdfjs-dist/types/src/display/api` no cambia. Añade al comentario de cabecera: `Build legacy por ADR-0013 (polyfills para Chromium/webviews sin Map.getOrInsertComputed).`
+2. `src/engine/worker.ts`: `import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';` y `import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';`.
+3. `scripts/copy-pdfjs-assets.mjs`: **no cambia** (`cmaps`, `standard_fonts`, `wasm`, `iccs` están en la raíz del paquete y valen para las dos builds).
+4. No toques los alias de `vitest.config.ts` ni de `vitest.perf.config.ts` (los tests de fixtures importan `pdfjs-dist` directo). `src/engine/styles.ts` (`pdfjs-dist/web/pdf_viewer.css`) tampoco cambia.
+5. Comprueba que ningún otro fichero de `src/` importa `pdfjs-dist/build/...` (`grep -rn "pdfjs-dist/build" src` vacío).
+6. Termina los criterios pendientes: los 4 E2E de `open.spec.ts` en verde, **anota el tiempo** de `pages-100000.pdf` (desde `setInputFiles` hasta «100.000 páginas») en tu entrada, y revisa los textos de los estados.
+7. Pasa todos los comandos de la ficha desde cero (`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e`). Si `tests/ui/app.test.tsx` falla con `Servicios no inicializados` (lo vio PDF-025 bajo `pnpm coverage`), es de esta ficha: el test debe llamar a `initServices` con la `Platform` falsa de `tests/helpers/fake-platform.ts` en su `beforeEach`.
+
+Decisiones menores del programador (ronda 1) aceptadas: `closeDocument` cancela una apertura en curso; un fallo del selector o de `openDropped` sustituye el documento por el error; `openShortcutHint` como función `(atajo) => texto`.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/engine/pdfjs.ts` y `src/engine/worker.ts` (build `legacy` según [[ADR-0013-pdfjs-build-legacy]]); `src/engine/index.ts` (la re-exportación de `getDocument`, `OPS`… sale de `pdfjs-dist` y pasa a `./pdfjs`, para que el bundle no cargue la build principal); ficha `PDF-008` (Registro y estado).
+- Qué he hecho: aplicados los pasos 1 a 5 del desbloqueo del líder. `grep` de `pdfjs-dist/build` en `src/` vacío y ningún otro import directo de `pdfjs-dist` fuera de `engine/pdfjs.ts`. `tests/ui/app.test.tsx` ya llama a `initServices` con `createFakePlatform()` en su `beforeEach`, así que no hizo falta cambiarlo. Revisados los textos de `messages.ts` y de los estados vacío, carga, error y aviso de lectura: se mantienen tal cual.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK (en un primer intento falló en `tests/helpers/fake-platform.ts` por el `closeWindow` obligatorio que añadió el trabajo paralelo de COM-013; en la segunda ejecución ya pasaba, y no he tocado ese fichero en esta ronda); `pnpm test` 60 ficheros / 778 tests OK; `pnpm coverage` OK (líneas 89,1 % en total; un primer intento chocó con otro proceso de Vitest que usaba el mismo directorio de cobertura, y en el segundo pasó); `pnpm --filter lector-pdf e2e`: **5 de 5 OK** (los 4 de `open.spec.ts` y el de `smoke.spec.ts`).
+- Tiempo de `pages-100000.pdf`: **444 ms** desde `setInputFiles` hasta «100.000 páginas» (medido con la anotación `rendimiento` de `open.spec.ts`, presupuesto < 5 000 ms; en las tres ejecuciones del E2E de 100 000 páginas el test pasó). Presupuesto cumplido.
+- Dudas o cosas que no he podido hacer: no he tocado los criterios marcados `[ ]`; los verificará el tester. Commit de la ronda con solo mis ficheros (fuentes de `engine/` y esta ficha).
