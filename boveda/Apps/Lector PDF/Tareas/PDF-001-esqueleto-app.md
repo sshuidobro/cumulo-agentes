@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-001
 titulo: Crear el esqueleto de la app lector-pdf
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, formatos-ofimatica, calidad-profesional]

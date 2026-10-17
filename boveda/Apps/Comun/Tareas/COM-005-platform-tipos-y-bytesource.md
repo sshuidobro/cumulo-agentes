@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-005
 titulo: Crear @suite/platform con tipos, ByteSource y preferencias
 app: comun
-estado: en-revision
+estado: en-test
 depende_de: [COM-004]
 intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -136,3 +136,6 @@ Lint, typecheck y `pnpm test` en verde (`|platform|` aparece, 33 tests); el cód
 - Qué he hecho: (1) Cobertura: la medición ya incluía `packages/platform/src` en `pnpm coverage`, pero el reporte de texto oculta los ficheros al 100 % y `--project platform` daba 0/0 porque el `include` se resolvía contra la raíz del proyecto. Ahora el `include` admite ambas raíces (`src/**/*.ts` además de `packages/*/src/**/*.ts`) y el reporte incluye `json-summary`; `packages/platform/vitest.config.ts` queda como en la ficha (la cobertura a nivel de proyecto se ignora). Umbral sin tocar. (2) `readAll` rechaza `chunkSize` no entero o ≤ 0 con `RangeError` antes de leer (es un error de programación). (3) `createStorageStore.get` envuelve `getItem`: si lanza, avisa por el logger y devuelve `null`. Tests nuevos para los tres casos (`chunkSize` inválido ×5, `getItem` que lanza).
 - Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK (incluye `packages/platform`); `pnpm test` 14 ficheros, 153 tests en verde (`|platform|` incluido); `pnpm coverage` exit 0 con `packages/platform/src` al 100 % de líneas (ver `coverage/coverage-summary.json`); `pnpm vitest run --coverage --project platform` exit 0, 50/50 líneas.
 - Dudas o cosas que no he podido hacer: ninguna. No he tocado ficheros de COM-009, COM-011 ni los cambios en curso de otros agentes (`packages/platform/rust/`, `packages/shared/tests/logger.test.ts`, otras fichas).
+
+### [revisor] ronda 2 — 2026-10-17 — APROBADO
+`pnpm lint` (0 avisos), `pnpm typecheck` (incluye platform), `pnpm test` (153 en verde, `|platform|`) y `pnpm coverage` (exit 0) correctos. `coverage-summary.json` lista los 7 ficheros de `packages/platform/src` al 100 % de líneas; umbral sin tocar. Los dos puntos opcionales de la ronda 1 (`chunkSize` inválido y `getItem` que lanza) están resueltos y con tests. 0 problemas.
