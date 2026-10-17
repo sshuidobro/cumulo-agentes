@@ -1,8 +1,8 @@
 import type { ChangeEvent } from 'react';
 import { IconButton } from './kit/IconButton';
-import { IconOpen } from './icons';
+import { IconOpen, IconRedo, IconUndo } from './icons';
 import { msg } from './messages';
-import { formatOpenShortcut } from './shortcuts';
+import { formatOpenShortcut, formatShortcut } from './shortcuts';
 import { useShortcuts } from './use-shortcuts';
 import { DropOverlay } from './open/DropOverlay';
 import { EmptyState } from './open/EmptyState';
@@ -10,6 +10,8 @@ import { ErrorState } from './open/ErrorState';
 import { IoErrorBanner } from './open/IoErrorBanner';
 import { LoadingState } from './open/LoadingState';
 import { Viewer } from './viewer/Viewer';
+import { redo, setTool, undo } from '../state/annotation-actions';
+import { useAnnotations } from '../state/annotation-store';
 import { openBrowserFile, pickAndOpen } from '../state/document-actions';
 import { services } from '../state/services';
 import { useViewer } from '../state/viewer-store';
@@ -19,8 +21,16 @@ export function App() {
   const { platform } = services();
   const status = useViewer((s) => s.status);
   const numPages = useViewer((s) => s.pdf?.numPages ?? null);
+  const undoState = useAnnotations((s) => s.undo);
+  const tool = useAnnotations((s) => s.tool);
 
-  useShortcuts({ open: () => void pickAndOpen() });
+  // Escape solo se consume si hay una herramienta de anotación activa.
+  useShortcuts({
+    open: () => void pickAndOpen(),
+    undo,
+    redo,
+    ...(tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
+  });
 
   const onBrowserFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.currentTarget.files?.[0];
@@ -37,6 +47,22 @@ export function App() {
           onClick={() => void pickAndOpen()}
         >
           <IconOpen />
+        </IconButton>
+        <IconButton
+          label={undoState.undoLabel === null ? msg.undo : msg.undoWith(undoState.undoLabel)}
+          shortcut={formatShortcut('undo', platform.isMac)}
+          disabled={!undoState.canUndo}
+          onClick={undo}
+        >
+          <IconUndo />
+        </IconButton>
+        <IconButton
+          label={undoState.redoLabel === null ? msg.redo : msg.redoWith(undoState.redoLabel)}
+          shortcut={formatShortcut('redo', platform.isMac)}
+          disabled={!undoState.canRedo}
+          onClick={redo}
+        >
+          <IconRedo />
         </IconButton>
       </header>
       <IoErrorBanner />

@@ -20,6 +20,24 @@ function Svg(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconUndo() {
+  return (
+    <Svg>
+      <path d="M7 5 3.5 8.5 7 12" />
+      <path d="M4 8.5h8.5a4 4 0 0 1 0 8H9" />
+    </Svg>
+  );
+}
+
+export function IconRedo() {
+  return (
+    <Svg>
+      <path d="M13 5l3.5 3.5L13 12" />
+      <path d="M16 8.5H7.5a4 4 0 0 0 0 8H11" />
+    </Svg>
+  );
+}
+
 export function IconOpen() {
   return (
     <Svg>
