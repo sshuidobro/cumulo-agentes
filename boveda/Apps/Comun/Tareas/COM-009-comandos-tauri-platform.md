@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-009
 titulo: Añadir los comandos Tauri de suite-platform (feature tauri)
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-008]
 intentos: 0
 skills: [stack-tauri, pruebas-calidad]
