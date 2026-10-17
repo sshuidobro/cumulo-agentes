@@ -243,13 +243,13 @@ describe('ventana, cierre y operaciones pendientes', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it('save y saveAs son unsupported hasta COM-007', async () => {
+  it('save de un fichero de <input> da save-in-place-unsupported y saveAs descarga una copia', async () => {
     const platform = platformWith(fakeEnv());
     const file = platform.openBrowserFile(makeFile([1]));
     if (!file.ok) throw new Error('se esperaba ok');
     const data = { kind: 'bytes', bytes: new Uint8Array([1]) } as const;
-    expect(await platform.save(file.value, data)).toMatchObject({ ok: false, error: { code: 'unsupported' } });
-    expect(await platform.saveAs('a.pdf', PDF_FILTERS, data)).toMatchObject({ ok: false, error: { code: 'unsupported' } });
+    expect(await platform.save(file.value, data)).toMatchObject({ ok: false, error: { code: 'save-in-place-unsupported' } });
+    expect(await platform.saveAs('a.pdf', PDF_FILTERS, data)).toEqual({ ok: true, value: { kind: 'downloaded', name: 'a.pdf' } });
   });
 
   it('closeFile no lanza y onFileOpenedFromOS devuelve una baja vacía', async () => {
