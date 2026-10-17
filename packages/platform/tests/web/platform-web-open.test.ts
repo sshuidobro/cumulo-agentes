@@ -163,6 +163,29 @@ describe('openBrowserFile y openDropped', () => {
     expect(result.value.canSaveInPlace).toBe(false);
   });
 
+  it('openDropped cae a files si getAsFileSystemHandle devuelve undefined (no null)', async () => {
+    const dt = {
+      items: [{ getAsFileSystemHandle: () => undefined }],
+      files: [makeFile([1, 2])],
+    } as unknown as DataTransfer;
+    const result = await platformWith(fakeEnv()).openDropped(dt);
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.value === null) throw new Error('se esperaba un fichero');
+    expect(result.value.canSaveInPlace).toBe(false);
+    expect(result.value.size).toBe(2);
+  });
+
+  it('openDropped cae a files si el handle resuelve a undefined', async () => {
+    const dt = {
+      items: [{ getAsFileSystemHandle: async () => undefined }],
+      files: [makeFile([1])],
+    } as unknown as DataTransfer;
+    const result = await platformWith(fakeEnv()).openDropped(dt);
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.value === null) throw new Error('se esperaba un fichero');
+    expect(result.value.canSaveInPlace).toBe(false);
+  });
+
   it('openBrowserFile devuelve canSaveInPlace false y ok', () => {
     const result = platformWith(fakeEnv()).openBrowserFile(makeFile([1]));
     expect(result.ok).toBe(true);

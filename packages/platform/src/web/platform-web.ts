@@ -107,16 +107,17 @@ export function createWebPlatform(
   const openDropped = async (dt: DataTransfer): Promise<Result<OpenedFile | null>> => {
     // items y files se leen de forma síncrona: el DataTransfer deja de ser accesible al terminar el evento.
     const item = dt.items[0] as (DataTransferItem & DataTransferItemFsAccess) | undefined;
-    const pendingHandle = item?.getAsFileSystemHandle?.() ?? null;
+    const pendingHandle = item?.getAsFileSystemHandle?.();
     const firstFile = dt.files[0];
-    if (pendingHandle !== null) {
-      let handle: FileSystemHandle | null = null;
+    // Chromium puede devolver `undefined` (no `null`) con DataTransfer sintéticos o arrastres que no son ficheros del disco.
+    if (pendingHandle !== undefined) {
+      let handle: FileSystemHandle | null | undefined = null;
       try {
         handle = await pendingHandle;
       } catch (cause) {
         log.warn('No se ha podido obtener el handle del fichero soltado; se usa la copia.', cause);
       }
-      if (handle !== null && isFileHandle(handle)) return openHandle(handle);
+      if (handle !== null && handle !== undefined && isFileHandle(handle)) return openHandle(handle);
     }
     if (firstFile === undefined) return ok(null);
     return ok(toOpened(firstFile, null));

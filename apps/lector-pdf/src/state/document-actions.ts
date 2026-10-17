@@ -1,5 +1,5 @@
-import { createLogger, type AppError } from '@suite/shared';
-import type { FileFilter, OpenedFile } from '@suite/platform';
+import { createLogger, type AppError, type Result } from '@suite/shared';
+import { platformError, type FileFilter, type OpenedFile } from '@suite/platform';
 import { loadPdf, readPageDims, scanPageDims, type LoadedPdf, type PageDimsEntry } from '../engine';
 import { pdfError } from '../core/errors';
 import { PageDimsTable } from '../core/page-dims';
@@ -184,7 +184,15 @@ export async function pickAndOpen(): Promise<void> {
 
 /** Abre el primer fichero soltado sobre la ventana (web). */
 export async function openDropped(dt: DataTransfer): Promise<void> {
-  const result = await services().platform.openDropped(dt);
+  let result: Result<OpenedFile | null>;
+  try {
+    result = await services().platform.openDropped(dt);
+  } catch (cause) {
+    // Una excepción de la plataforma no debe quedar como promesa rechazada sin tratar: se muestra como error.
+    log.warn('openDropped', cause);
+    await failReplacing(platformError('io', cause));
+    return;
+  }
   if (!result.ok) {
     await failReplacing(result.error);
     return;

@@ -8,6 +8,7 @@ import {
   closeDocument,
   openBrowserFile,
   openDocument,
+  openDropped,
   pickAndOpen,
   reportPageDims,
 } from '../../src/state/document-actions';
@@ -201,6 +202,22 @@ describe('selección de ficheros', () => {
   it('pickAndOpen cancelado por el usuario no cambia el estado', async () => {
     await pickAndOpen();
     expect(useViewer.getState().status).toBe('empty');
+  });
+
+  it('openDropped con una excepción de la plataforma muestra el estado de error en español', async () => {
+    platform = createFakePlatform({
+      openDropped: async () => {
+        throw new Error('fallo inesperado');
+      },
+    });
+    initServices({ platform, assetBaseUrl });
+
+    await expect(openDropped({ items: [], files: [] } as unknown as DataTransfer)).resolves.toBeUndefined();
+
+    const state = useViewer.getState();
+    expect(state.status).toBe('error');
+    expect(state.error?.code).toBe('io');
+    expect(state.error?.message).toBe('No se ha podido leer o escribir el fichero.');
   });
 
   it('openBrowserFile abre el fichero que entrega la plataforma', async () => {
