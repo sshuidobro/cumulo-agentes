@@ -3,9 +3,9 @@ tipo: tarea
 id: COM-005
 titulo: Crear @suite/platform con tipos, ByteSource y preferencias
 app: comun
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [COM-004]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -124,3 +124,9 @@ Existe el paquete `@suite/platform` con la interfaz `Platform` (sin implementaci
 - Qué he hecho: paquete `@suite/platform` con la interfaz `Platform` y `ByteSource` tal cual la ficha; `memorySource`, `blobSource` y `readAll` con validación de rangos (`out-of-range`) y envoltorio `io` sobre `arrayBuffer`; `createStorageStore` sobre `Storage` (prefijo, JSON roto y guard falso borran la clave, cuota sin propagar y con aviso por el logger, modo memoria con `null`); `isTauri`, mensajes en español y `PlatformIoError`/`platformError`.
 - Comandos ejecutados y resultado: `pnpm install` OK; `pnpm lint` 0 avisos; `pnpm typecheck` OK (incluye `packages/platform`); `pnpm test` 138 tests en verde (13 ficheros, incluye `|platform|` con 33 tests); `pnpm coverage` exit 0, cobertura 100 % de líneas global (ficheros de platform sin líneas sin cubrir).
 - Dudas o cosas que no he podido hacer: en el test de cuota no uso `vi.spyOn(localStorage, 'setItem')` porque jsdom no lo intercepta; se usa un `Storage` falso que lanza en `setItem`. En un primer `pnpm test` apareció un fallo en `packages/shared/tests/shortcuts/chord.test.ts` (trabajo en curso de COM-011, ajeno); en la siguiente ejecución estaba en verde. No he tocado ficheros de otros programadores (`packages/platform/rust/`, `packages/shared/src/index.ts`, fichas COM-004/008/011).
+
+### [revisor] ronda 1 — 2026-10-17 — CAMBIOS
+Lint, typecheck y `pnpm test` en verde (`|platform|` aparece, 33 tests); el código y los tests cumplen la ficha. Un problema bloqueante:
+1. `vitest.config.ts` (raíz) / `packages/platform/vitest.config.ts` — la cobertura de `packages/platform/src` NO se mide: `pnpm coverage` sale con 0, pero el informe solo lista `shared/src`; `pnpm vitest run --coverage --project platform` da 0/0 ficheros. El "100 % global" del Registro no incluye platform, así que el criterio "cobertura de `packages/platform/src` ≥ 90 %" no está demostrado. Hay que averiguar por qué el proyecto jsdom no aporta cobertura v8 (p. ej. inclusión/raíz del proyecto, o configuración de `coverage.include`/`root`), arreglarlo sin tocar el umbral y comprobar que el informe muestra `byte-source.ts`, `prefs.ts`, `errors.ts`, `detect.ts`, `messages.ts` con ≥ 90 % de líneas.
+2. `packages/platform/src/byte-source.ts:42` (opcional) — `readAll` con `chunkSize` ≤ 0 o no entero entra en bucle infinito; validar y lanzar un error claro.
+3. `packages/platform/src/prefs.ts:19` (opcional) — `getItem` puede lanzar (SecurityError con cookies bloqueadas); envolverlo para devolver `null`.
