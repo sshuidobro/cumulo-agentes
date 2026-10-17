@@ -1,0 +1,25 @@
+filters:
+  and:
+    - 'tipo == "tarea"'
+    - '!file.inFolder("Plantillas")'
+views:
+  - type: table
+    name: Todas las tareas
+    order:
+      - file.name
+      - app
+      - estado
+      - intentos
+      - depende_de
+      - actualizado
+  - type: table
+    name: Pendientes y en curso
+    filters:
+      and:
+        - 'estado != "hecha"'
+        - 'estado != "sustituida"'
+    order:
+      - file.name
+      - app
+      - estado
+      - intentos

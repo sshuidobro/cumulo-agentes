@@ -1,35 +1,43 @@
 ---
 name: dirigir-equipo
-description: Pone a trabajar al equipo de agentes (lider, programador, revisor, tester) sobre un objetivo de programación. Úsala cuando el usuario pida construir una app o funcionalidad "con el equipo", o escriba /dirigir-equipo seguido del objetivo.
+description: Pone a trabajar al equipo de agentes (investigador, lider, programador, revisor, tester) sobre un objetivo de programación de la suite. Úsala cuando el usuario pida construir una app o funcionalidad "con el equipo", o escriba /dirigir-equipo seguido del objetivo.
 ---
 
 # Dirigir el equipo de agentes
 
-Tú (la sesión principal) eres el **coordinador**: no escribes código. Lanzas a los subagentes con la herramienta Agent y mueves las fichas de `tareas/` por el flujo. Los subagentes no pueden lanzar a otros subagentes, por eso el bucle lo llevas tú.
+Tú (la sesión principal) eres el **coordinador**: no escribes código de producción. Lanzas a los subagentes con la herramienta Agent y mueves las fichas por el flujo. Los subagentes no pueden lanzar a otros subagentes, por eso el bucle lo llevas tú. Lee antes la skill `documentar-obsidian`: todo queda en `boveda/`.
 
 Objetivo recibido: $ARGUMENTS
 
-## 1. Planificar
-- Lanza `lider` con el objetivo y el contenido actual de `PLAN.md` (si existe).
-- Revisa su resumen. Si devuelve preguntas que solo el usuario puede responder, házselas antes de seguir y no lances programadores sobre tareas afectadas.
+## 0. Bitácora
+Abre (o crea desde `boveda/Plantillas/Bitacora.md`) la nota del día `boveda/Bitacora/AAAA-MM-DD.md` y ve anotando cada fase: qué se hizo, decisiones y problemas.
 
-## 2. Bucle de tareas
-Repite hasta que no quede ninguna ficha en `pendiente`, `cambios-pedidos`, `en-revision` ni `en-test`:
+## 1. Investigar
+- Si es una app nueva o una funcionalidad importante y `boveda/Investigacion/` no tiene notas que la cubran, lanza `investigador` con el objetivo. Si el objetivo es pequeño y ya está cubierto, salta este paso.
+- Varias preguntas independientes → varios `investigador` en paralelo, una pregunta cada uno.
 
-1. **Elegir**: fichas en `pendiente` o `cambios-pedidos` cuyas `depende_de` estén todas en `hecha`.
-2. **Programar**: lanza un `programador` por ficha, pasándole solo la ruta de la ficha. Hasta 3 en paralelo si no tocan los mismos ficheros (si se solapan, en serie). Si el proyecto usa git, usa `isolation: "worktree"` para los paralelos y fusiona al aprobar.
-3. **Revisar**: por cada ficha en `en-revision`, lanza `revisor`.
-4. **Probar**: por cada ficha en `en-test`, lanza `tester`.
-5. **Escalar**: si una ficha llega a `intentos: 3`, o queda `bloqueada`, lanza `lider` para replanificarla. Si el líder también la deja `bloqueada`, pregunta al usuario.
+## 2. Planificar
+- Lanza `lider` con el objetivo y las rutas de la investigación relevante.
+- Si el líder devuelve preguntas para el investigador, lánzalo y vuelve a llamar al líder.
+- Si devuelve preguntas que solo el usuario puede responder, házselas antes de seguir y no lances programadores sobre tareas afectadas.
 
-Comprueba el estado leyendo el frontmatter de las fichas (`grep -H '^estado:' tareas/*.md`), no te fíes solo del resumen del subagente.
+## 3. Bucle de tareas
+Repite hasta que no quede ninguna ficha de la app en `pendiente`, `cambios-pedidos`, `en-revision` ni `en-test`:
+1. **Elegir**: fichas en `pendiente` o `cambios-pedidos` con todas sus `depende_de` en `hecha`.
+2. **Programar**: un `programador` por ficha, pasándole solo la ruta de la ficha. Hasta 3 en paralelo si no tocan los mismos ficheros (si se solapan, en serie). Con git, usa `isolation: "worktree"` para los paralelos y fusiona al aprobar.
+3. **Revisar**: `revisor` por cada ficha en `en-revision`.
+4. **Probar**: `tester` por cada ficha en `en-test`.
+5. **Escalar**: ficha con `intentos: 3` o `bloqueada` → `lider` para replanificar (puede pedir `investigador`). Si sigue bloqueada, pregunta al usuario.
 
-## 3. Cerrar
-- Ejecuta tú mismo el build y la batería completa de tests una última vez.
-- Lanza `lider` para que actualice `PLAN.md` (estado de cada tarea y siguiente iteración).
+Comprueba el estado leyendo el frontmatter (`grep -H '^estado:\|^intentos:' boveda/Apps/*/Tareas/*.md`), no te fíes solo del resumen del subagente.
+
+## 4. Cerrar
+- Ejecuta tú mismo build, lint, typecheck y la batería completa de tests una última vez.
+- Lanza `lider` para cerrar la iteración (Plan, nota de paridad, Manual).
+- Completa la bitácora del día (incluye coste y tiempo si los conoces) y haz commit: `docs: bitácora AAAA-MM-DD`.
 - Informa al usuario: qué funciona ya, cómo probarlo (comando exacto) y qué decisiones quedan pendientes.
 
 ## Reglas de coste
-- `lider` (modelo caro) solo al planificar, replanificar y cerrar.
-- `programador` (modelo barato) hace el grueso del trabajo.
-- `revisor` y `tester` (modelo intermedio) en cada ficha, sin excepción: nada se da por hecho sin su visto bueno.
+- `lider` (Opus) solo al planificar, replanificar y cerrar.
+- `programador` (Haiku) hace el grueso del trabajo.
+- `investigador`, `revisor` y `tester` (Sonnet): investigación antes de planificar; revisión y test en cada ficha, sin excepción.

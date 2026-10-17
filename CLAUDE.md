@@ -1,18 +1,18 @@
-# Equipo de agentes: suite ofimática personal
+# cumulo-agentes · suite ofimática personal
 
-Proyecto de uso personal (no comercial): un paquete de aplicaciones tipo procesador de texto, lector de PDF, presentaciones y hoja de cálculo.
+Proyecto de uso personal (no comercial): procesador de texto, lector de PDF, presentaciones y hoja de cálculo que sustituyan de verdad a Word, Adobe Reader, PowerPoint y Excel. Calidad profesional y completa.
 
-## Tecnología (decidida por el usuario)
-- TypeScript + React, empaquetado como app de escritorio con Tauri (también funciona en el navegador).
-- El líder elige las librerías concretas de cada app (p. ej. PDF.js para PDF) y las documenta en `PLAN.md`.
+## Tecnología (ADR-0001, decidida por el usuario)
+TypeScript + React (Vite), empaquetado como escritorio con Tauri 2 y funcionando también en el navegador. Monorepo pnpm: `apps/<app>/`, `packages/`.
 
 ## Cómo se trabaja aquí
-- El trabajo de programación lo hace el equipo de agentes de `.claude/agents/`: `lider` planifica, `programador` implementa, `revisor` revisa el código y `tester` lo prueba.
-- Para arrancar un objetivo: `/dirigir-equipo <objetivo>` (skill en `.claude/skills/dirigir-equipo/`).
-- El plan vive en `PLAN.md`; cada tarea es una ficha en `tareas/` con el formato de `plantillas/tarea.md`.
-- Flujo de estados de una ficha: pendiente → en-curso → en-revision → en-test → hecha. Cualquier rechazo la devuelve a `cambios-pedidos`; a los 3 rechazos se escala al líder.
+- Equipo de agentes en `.claude/agents/`: `investigador`, `lider`, `programador`, `revisor`, `tester`. Skills de experto en `.claude/skills/`.
+- Para arrancar un objetivo: `/dirigir-equipo <objetivo>`.
+- **Toda la documentación va en la bóveda de Obsidian `boveda/`** según la skill `documentar-obsidian`: planes en `boveda/Apps/<App>/Plan.md`, fichas en `boveda/Apps/<App>/Tareas/`, decisiones en `boveda/Decisiones/`, investigación en `boveda/Investigacion/`, bitácora diaria en `boveda/Bitacora/`.
+- Flujo de una ficha: pendiente → en-curso → en-revision → en-test → hecha. Rechazo → `cambios-pedidos`; a los 3 rechazos se escala al líder.
 
 ## Normas para todos los agentes
-- Documentación, fichas y mensajes en español; código e identificadores en inglés.
+- Documentación y textos de la interfaz en español; código e identificadores en inglés.
 - Nunca desactivar ni saltar tests para que pasen.
-- No añadir dependencias que no estén decididas en `PLAN.md`.
+- No añadir dependencias que no estén decididas en un Plan o ADR.
+- Ningún dato del usuario sale del ordenador; nunca subir documentos personales al repositorio.
