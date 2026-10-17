@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-021
 titulo: App de escritorio Tauri del lector (capacidades, CSP, asociación .pdf, instancia única)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-008, COM-009, COM-010]
 intentos: 0
 skills: [stack-tauri, calidad-profesional, pruebas-calidad]
@@ -78,3 +78,14 @@ Por [[ADR-0013-pdfjs-build-legacy]] el motor usa la build `legacy` de pdf.js (p�
 Verificado: `cargo fmt --check`, `clippy -D warnings` y `cargo test --workspace --all-features` (0; 3 tests de `pdf_paths`), `pnpm lint` y `pnpm typecheck` (0), test `tauri-integration` (2 OK), `tauri info` sin errores de configuración. Dependencia `@tauri-apps/api` 2.12.4 en lector-pdf aceptada por el coordinador.
 Seguridad: capacidad `default` solo con `core:default`, `set-title`, `destroy` y `opener:allow-open-url` (ámbito http/https/mailto, según ficha); ningún `fs:`, `dialog:` ni `**`; plugin `fs` no registrado. CSP sin dominios remotos ni `'unsafe-eval'` (solo `'wasm-unsafe-eval'`, que exige la ficha y pdf.js/wasm; un `grep unsafe-eval` literal lo encontrará, es un falso positivo). Sin `unwrap()` en `run()`; instancia única registrada la primera; `pdf_paths` filtra por extensión y fichero existente.
 Sugerencias (opcional): 1. `opener:allow-open-url` con `http://*` permite enlaces sin TLS; valorar limitarlo a `https://*` y `mailto:` si no hace falta. 2. Verificar `RunEvent::Opened` (macOS) cuando haya entorno Mac; queda en la lista manual.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| fmt / clippy -D warnings / cargo test | OK | fmt 0; clippy sin avisos; todos los `test result: ok` (3 de `pdf_paths`, incl. carpeta `.pdf` y vacío) |
+| `pdf_paths` | OK | tests `pdf_paths_*` pasan (a.PDF, b.pdf; descarta c.txt, inexistentes y carpetas) |
+| Test integración TS | OK | `tauri-integration.test.tsx` dentro de 892 tests OK (69 ficheros) |
+| Capacidades/CSP | OK | `grep fs:\|dialog:\|"**"` vacío en `default.json`; en la CSP solo `'wasm-unsafe-eval'` y `http://ipc.localhost` (falso positivo ya señalado) |
+| `tauri info` | OK | sin errores; CSP y frontendDist leídos; avisos informativos de plugins JS no instalados |
+| lint / typecheck / test / coverage | OK | todos 0; cobertura 96,4 % líneas (directorio propio en scratchpad `cov-021`) |
+Sin tests nuevos. Rendimiento: no aplica. Pendiente en máquina del usuario: lista manual (ventana real, doble clic, arrastrar, macOS `Opened`). Sugerencia abierta del revisor: limitar `http://*`.
