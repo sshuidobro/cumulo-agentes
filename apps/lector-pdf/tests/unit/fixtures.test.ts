@@ -83,7 +83,7 @@ describe('PdfBuilder y buildPageTree', () => {
     tree.pageRefs.forEach((pageRef, index) => {
       expect(nodes.get(tree.parentOf(index))?.kids).toContain(pageRef);
     });
-  });
+  }, HEAVY_TEST_MS);
 
   it('con fanout igual al número de páginas, todas son hijos directos de la raíz', () => {
     const b = new PdfBuilder();
@@ -147,25 +147,18 @@ describe('fixtures generados', () => {
     });
   });
 
-  it('pages-5000.pdf: 5 000 páginas, generación < 1 s, tamaño < 3 MB y «aguja» en la página 4999', async () => {
-    const started = performance.now();
-    const built = specOf('pages-5000.pdf').build();
-    const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(1000);
-    expect(built.byteLength).toBeLessThan(3 * MB);
+  // Los presupuestos de tiempo de generación (< 1 s y < 10 s) están en tests/perf/fixtures.perf.test.ts (ADR-0012).
+  it('pages-5000.pdf: 5 000 páginas, tamaño < 3 MB y «aguja» en la página 4999', async () => {
+    expect(specOf('pages-5000.pdf').build().byteLength).toBeLessThan(3 * MB);
 
     await withDocument('pages-5000.pdf', async (doc) => {
       expect(doc.numPages).toBe(5000);
       expect(await textOfPage(doc, 4999)).toContain('aguja');
     });
-  });
+  }, HEAVY_TEST_MS);
 
-  it('pages-100000.pdf: 100 000 páginas, generación < 10 s, tamaño < 40 MB y «aguja» en la 99 999', async () => {
-    const started = performance.now();
-    const built = specOf('pages-100000.pdf').build();
-    const elapsedMs = performance.now() - started;
-    expect(elapsedMs).toBeLessThan(10_000);
-    expect(built.byteLength).toBeLessThan(40 * MB);
+  it('pages-100000.pdf: 100 000 páginas, tamaño < 40 MB y «aguja» en la 99 999', async () => {
+    expect(specOf('pages-100000.pdf').build().byteLength).toBeLessThan(40 * MB);
 
     await withDocument('pages-100000.pdf', async (doc) => {
       expect(doc.numPages).toBe(100000);

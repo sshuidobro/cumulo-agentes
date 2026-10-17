@@ -5,7 +5,7 @@ titulo: Generador de fixtures PDF (páginas, tamaños, imágenes y ficheros dañ
 app: pdf
 estado: en-revision
 depende_de: [PDF-001]
-intentos: 0
+intentos: 1
 skills: [pruebas-calidad, formatos-ofimatica]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -88,3 +88,20 @@ Un generador propio, sin dependencias, crea en `fixtures/pdf/generated/` los PDF
 - Qué he hecho: generador propio de PDF sin dependencias (xref clásica de 20 bytes, árbol de páginas con fanout 32, WinAnsi, imágenes comprimidas) y los 10 fixtures del catálogo en `fixtures/pdf/generated/` (ignorado por git). `ensureFixtures` crea solo los que faltan salvo cambio de `GENERATOR_VERSION` o `--force`; se llama desde los globalSetup de Vitest y Playwright. Tests: 17 en `fixtures.test.ts` que cubren los criterios (T) y acentos, abriendo con pdf.js legacy.
 - Comandos ejecutados y resultado: `pnpm fixtures` OK (10 generados, 2,8 s); `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (32 ficheros, 396 tests) y una segunda ejecución no regenera ningún fixture; `pnpm --filter lector-pdf e2e` 1 passed; `pnpm coverage` falla en `tests/unit/layout.test.ts` (2 tests de tiempo de PDF-006, no tocado por mí; cobertura de `core/` no se ha podido confirmar en esta pasada).
 - Dudas o cosas que no he podido hacer: (1) `images-200.pdf` ocupa 44 MB (la ficha no fija límite; el degradado comprime mal con deflate); no afecta al repo porque va en `generated/`. (2) La ficha separa los ficheros en `tests/fixtures/` y el ADR-0011 cita `generate-fixtures.ts`; he seguido la ficha. (3) `pages-100000.pdf` pesa 31 MB, dentro del límite de 40 MB pero con poco margen si cambia el texto de las páginas.
+
+### [revisor] ronda 1 — 2026-10-17 — CAMBIOS
+Lint y typecheck OK; `fixtures.test.ts` pasa aislado (17/17), el diseño del generador cumple la ficha y `generated/` está ignorado.
+1. `apps/lector-pdf/tests/unit/fixtures.test.ts:63` — el test «árbol de 100 000 páginas con fanout 32» no tiene `timeout` propio (5 s por defecto) y falla en `pnpm test` completo (7,3 s bajo carga; aislado pasa). Criterio «`pnpm test` con código 0» incumplido por un test de esta ficha — pasarle el timeout `HEAVY_TEST_MS` (y revisar los demás tests pesados que no lo llevan, p. ej. el de `pages-5000.pdf`) o aligerar el test.
+2. `apps/lector-pdf/tests/unit/fixtures.test.ts:~143,~154` — las aserciones de tiempo (`< 1 s` y `< 10 s`) miden la generación bajo la carga paralela de Vitest, lo que las hace frágiles; mantener los umbrales de la ficha pero comprobar que no fallan en `pnpm test` completo (ejecutar 2-3 veces).
+3. Nota (no es de esta ficha): en `pnpm test` también fallan `layout.test.ts` (PDF-006, 300 ms) y `annotations/commands.test.ts` (PDF-023, 2 s) por tiempo bajo carga; avisar al líder, pues impiden el código 0 global.
+4. (opcional) `images-200.pdf` pesa 44 MB; documentarlo en el ADR-0011.
+
+### [lider] suite de rendimiento — 2026-10-17
+[[ADR-0012-suite-de-rendimiento]]: los asserts de tiempo de reloj pasan a `tests/perf/` (`pnpm perf`). Los dos de esta ficha en `tests/unit/fixtures.test.ts` (generación de `pages-5000.pdf` < 1 s y de `pages-100000.pdf` < 10 s) **no son motivo de rechazo** en esta revisión: hoy pasan también bajo `pnpm coverage`. Para no tocar un fichero en revisión, el traslado se hace en [[PDF-022-e2e-y-rendimiento-iteracion-1]] (paso 0). Revisor y tester: el fallo de `pnpm coverage` anotado en la ronda del programador es de PDF-006 y queda resuelto allí; valorad la cobertura con `pnpm coverage` una vez PDF-006 vuelva a verde o con `vitest run --coverage --project lector-pdf` excluyendo `layout.test.ts`.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/tests/unit/fixtures.test.ts` (quitados los asserts de tiempo de `pages-5000.pdf` y `pages-100000.pdf`; timeout `HEAVY_TEST_MS` en el test del árbol de 100 000 páginas y en el de 5 000); `apps/lector-pdf/tests/perf/fixtures.perf.test.ts` (nuevo: generación de `pages-5000.pdf` < 1 s y de `pages-100000.pdf` < 10 s con `measureBest`, umbrales de la ficha sin cambios); esta ficha.
+- Qué he hecho: atendidos los dos puntos del revisor. Los asserts de tiempo de reloj se han movido a `tests/perf/` según ADR-0012 y el resto de `fixtures.test.ts` (tamaños, contenido, árbol, dañados) se queda en `tests/unit/`. Los tests pesados del fichero llevan timeout propio.
+- Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm typecheck` OK; `pnpm test` OK (35 ficheros, 426 tests); `pnpm perf` OK (3 ficheros, 5 tests, incluidos los 2 nuevos de generación). `pnpm perf` ejecutado a la vez con trabajo de otra ficha en curso: un test de `annotation-commands.perf.test.ts` (PDF-023, no tocado por mí) superó el timeout de 5 s en una pasada con carga y pasó en la siguiente.
+- Dudas o cosas que no he podido hacer: no he ejecutado `pnpm coverage` (lo bloquea el fallo de PDF-006 anotado por el líder). El fichero `commands.test.ts` de PDF-023 y `annotation-commands.perf.test.ts` están sin commitear; no son de esta ficha y no los he incluido en el commit.
+
