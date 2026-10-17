@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-025
 titulo: Objetos PDF - analizador léxico, analizador y serializador
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-023]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
