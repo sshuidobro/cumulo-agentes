@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-023
 titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]
@@ -104,3 +104,13 @@ Tipos inmutables para resaltado, subrayado, tachado, nota, texto libre y dibujo 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/{model,effective,commands,diff,index}.ts`, `apps/lector-pdf/src/core/pdf-date.ts`, `apps/lector-pdf/tests/unit/annotations/{factories,model,commands,diff}.test.ts`, `apps/lector-pdf/tests/unit/pdf-date.test.ts`.
+- Qué he hecho: modelo de anotaciones (6 tipos, `AnnotationEdits`), `setEntryCommand` como primitivo de `addAnnotationCommand`/`updateAnnotationCommand`/`deleteAnnotationCommand`, `effectiveAnnotations`, `diffAnnotations` y `pdf-date` (parseo y escritura, UTC). Validación `isAnnotation` completa. Tests de todos los criterios (70 tests).
+- Comandos ejecutados y resultado: `npx eslint --max-warnings 0` sobre `src/core/annotations`, `src/core/pdf-date.ts` y `tests/unit/annotations`: 0 avisos. `pnpm --filter lector-pdf typecheck`: sin errores. `vitest run --project lector-pdf tests/unit/annotations tests/unit/pdf-date.test.ts`: 70/70. Cobertura de `src/core/annotations/`: 100 % líneas, 96,7 % ramas; `pdf-date.ts` al 100 %. Rendimiento: 5 000 `addAnnotationCommand` con `UndoStack` (maxDepth 100) en unos 1,1 s en esta máquina (incluye crear las anotaciones).
+- Dudas o cosas que no he podido hacer:
+  - Decisión menor (revisar): un upsert de origen `file` sin entrada en la línea base (aún no importada) cuenta como `modified` en `diffAnnotations`, y en `effectiveAnnotations` va al final como una nueva. El texto no lo cubría; si el líder prefiere otra cosa, es un cambio de una línea.
+  - Validación que añado: `ref.num >= 1`, `gen >= 0`; quads y trazos con al menos uno; cada trazo con longitud par y ≥ 2. `rectFromQuads`/`rectFromPaths` sin puntos devuelven `[0,0,0,0]`.
+  - Riesgo: `setEntryCommand` copia el `Map` en cada operación (inmutabilidad), así que el coste es cuadrático en el número de anotaciones editadas. Holgado para 5 000 (≈1,1 s con el umbral de 2 s), pero el umbral pasa a ser el límite si la máquina es más lenta. No lo he cambiado porque sería un diseño distinto.
+  - Fuera de mi ficha: `pnpm --filter lector-pdf exec vitest run` muestra 8 fallos en `tests/unit/fixtures.test.ts` y 3 errores de lint en `tests/fixtures/pdf-builder.ts` y `tests/unit/fixtures.test.ts`. Son de PDF-002 (trabajo en curso de otro agente, sin commitear); no los he tocado.
