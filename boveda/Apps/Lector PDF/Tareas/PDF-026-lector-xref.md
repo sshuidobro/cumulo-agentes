@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas (xref) y filtros de streams
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-025, PDF-003]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -90,3 +90,14 @@ Estado: `bloqueada` a la espera de la decisión sobre el criterio de rango.
 - Dudas menores del programador resueltas en «Qué hay que hacer» (offset 0 → libre; `/Prev` roto o > 1 000 secciones → `xref-unreadable`; bucle → corta sin error). `getDict` de stream y `gen` distinto → ver PDF-068 (aceptadas tal como las propuso).
 - `fflate@0.8.3` en `package.json`/`pnpm-lock.yaml` se conserva (ADR-0009); se commitea con esta ficha.
 - Estado → `cambios-pedidos` (no cuenta como rechazo; `intentos` sigue en 0).
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/filters.ts` (nuevo), `apps/lector-pdf/src/core/pdf/xref.ts` (nuevo), `apps/lector-pdf/src/core/pdf/index.ts` (exporta ambos), `apps/lector-pdf/tests/unit/pdf/filters.test.ts`, `apps/lector-pdf/tests/unit/pdf/xref.test.ts`, `apps/lector-pdf/tests/perf/xref.perf.test.ts`. Dependencia `fflate` 0.8.3 (`package.json` y `pnpm-lock.yaml`) sin cambios nuevos.
+- Qué he hecho: `filters.ts` con `decodeStreamData` (sin filtro, FlateDecode con zlib y reserva deflate crudo, predictores TIFF 2 y PNG 10-15; otros filtros → `Filtro no soportado: <nombre>`) y `flateEncode` (zlib nivel 6). `xref.ts` con `readXref`: tabla clásica (tolera 19/20/21 bytes), xref stream (`/W`, `/Index`, tipos 0/1/2), híbridos (`/XRefStm`, la tabla gana), cadena `/Prev` con las reglas de la ficha y `/Encrypt` → `encrypted`. Lee por bloques de 64 KB; la ventana crece solo si una estructura no cabe.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 69 ficheros / 892 tests OK; `pnpm coverage` OK (`xref.ts` 92,5 % líneas, `filters.ts` 94,0 %); `pnpm perf` OK (9 ficheros / 14 tests, incluido `xref.perf.test.ts`). Medido con `countingSource` sobre `pages-100000.pdf` (31 101 661 bytes): **4 201 652 bytes leídos (13,51 %)** en 68 lecturas; 203 232 entradas; una pasada de `readXref` ≈ 142 ms.
+- Dudas o cosas que no he podido hacer:
+  1. Decisiones menores que he tomado y conviene validar: (a) una entrada `1` de xref stream con offset 0 se conserva como `offset` (la regla de offset 0 solo se aplica a la tabla clásica); (b) tipos desconocidos en xref stream → `free`; (c) xref stream sin `/Type /XRef` → `xref-unreadable`; (d) filas incompletas al final de un xref stream se ignoran en silencio; (e) `/Filter` con más de un filtro → `Filtro no soportado` con la lista.
+  2. Las fichas PDF-009 y PDF-021, mencionadas en el encargo en paralelo, no las he tocado: no son de esta ficha.
+  3. El fichero `apps/lector-pdf/tests/ui/tauri-integration.test.tsx` (sin commit, de otro agente) dio un error de tipos en una pasada anterior; en la última pasada `pnpm typecheck` salió limpio. No lo he modificado.
+
+Estado: `en-revision`.

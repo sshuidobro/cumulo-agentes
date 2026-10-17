@@ -9,6 +9,7 @@ import { EmptyState } from './open/EmptyState';
 import { ErrorState } from './open/ErrorState';
 import { IoErrorBanner } from './open/IoErrorBanner';
 import { LoadingState } from './open/LoadingState';
+import { Viewer } from './viewer/Viewer';
 import { openBrowserFile, pickAndOpen } from '../state/document-actions';
 import { services } from '../state/services';
 import { useViewer } from '../state/viewer-store';
@@ -39,11 +40,18 @@ export function App() {
         </IconButton>
       </header>
       <IoErrorBanner />
-      <main className={styles.main}>
+      <main className={status === 'ready' ? styles.mainReady : styles.main}>
         {status === 'empty' && <EmptyState />}
         {status === 'loading' && <LoadingState />}
         {status === 'error' && <ErrorState />}
-        {status === 'ready' && numPages !== null && <div data-testid="document-ready">{msg.pageCount(numPages)}</div>}
+        {status === 'ready' && numPages !== null && (
+          <>
+            <div className={styles.srOnly} data-testid="document-ready">
+              {msg.pageCount(numPages)}
+            </div>
+            <Viewer />
+          </>
+        )}
       </main>
       {platform.kind === 'web' && (
         <>

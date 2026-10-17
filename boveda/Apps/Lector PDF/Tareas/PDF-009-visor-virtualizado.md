@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-008, PDF-007]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -66,3 +66,9 @@ Con un documento abierto, el área central muestra una columna de **marcos de p�
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/state/viewer-store.ts`, `src/state/navigation.ts` (nuevo), `src/ui/App.tsx`, `src/ui/App.module.css`, `src/ui/messages.ts`, `src/ui/viewer/{Viewer.tsx, PageFrame.tsx, use-viewport-size.ts, Viewer.module.css}` (nuevos), `tests/setup/setup.ts`, `tests/setup/resize-observer.ts` (nuevo), `tests/unit/navigation.test.ts` (nuevo), `tests/ui/viewer.test.tsx` (nuevo), `tests/e2e/viewer.spec.ts` (nuevo).
+- Qué he hecho: store con `zoomMode`, `zoom`, `rotation` y `navRequest`; `goToPage`/`setCurrentPage` (acotado y con `seq` creciente); visor con scroll escalado (`contentYRef` como fuente de verdad, eco de `scrollTop` ignorado, rueda y teclado solo si `factor > 1`), páginas montadas ± 1, página actual en el tercio superior, anclaje al cambiar layout y foco al abrir. `App` monta `Viewer` y conserva `data-testid="document-ready"` en un texto oculto (lectores de pantalla) con el recuento.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` (raíz) 855 tests OK antes del último ajuste del contenedor; tras él `vitest --project lector-pdf` 580 tests OK; `pnpm coverage` OK (líneas globales 88,26 %); `pnpm --filter lector-pdf e2e` 19/19 OK (incluidos los 5 de visor). Tarea larga máxima en el e2e de scroll: ver anotación del test (≤ 100 ms).
+- Dudas o cosas que no he podido hacer: (1) el ancla se calcula al cambiar el layout a partir del layout anterior y `contentY` (equivalente a guardarla tras cada scroll, pero sin estado extra). (2) Los marcos de página llevan `role="group"`: `aria-label` en un `div` sin rol no es válido. (3) En modo «auto» con documentos de tamaños mezclados, el zoom sigue a la página actual; el ancla evita saltos, pero conviene revisarlo en el e2e de PDF-022 con `sizes-mixed`. (4) PDF-021 y PDF-026 no los he tocado: son fichas distintas y no forman parte de esta.

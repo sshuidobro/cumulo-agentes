@@ -16,4 +16,6 @@ export const msg = {
   closeDocument: 'Cerrar documento',
   pageCount: (n: number): string => (n === 1 ? '1 página' : `${n.toLocaleString('es-ES')} páginas`),
   toolbarLabel: 'Barra de herramientas',
+  documentRegion: (name: string): string => `Documento «${name}»`,
+  pageOf: (n: number, total: number): string => `Página ${n} de ${total}`,
 } as const;
