@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-007
 titulo: Implementar guardar y guardar como en la Platform web
 app: comun
-estado: en-curso
+estado: en-revision
 depende_de: [COM-006]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad, calidad-profesional]
@@ -52,3 +52,10 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `packages/platform/src/web/platform-web.ts`; nuevo `packages/platform/tests/web/platform-web-save.test.ts` (25 tests); `packages/platform/tests/web/platform-web-open.test.ts` (test "save y saveAs son unsupported hasta COM-007" reescrito al nuevo contrato: `save-in-place-unsupported` para `openBrowserFile` y descarga en `saveAs`); esta ficha.
+- Qué he hecho: `save`, `saveAs` y la función interna `writeTo` (permiso, comprobación de `append` contra el registro, `createWritable({ keepExistingData: false })`, `abort()` ante error). El original de un `append` se escribe como `File`; el delta y los bytes se copian con `slice()` por el tipado de TS 7. Los tests usan un handle falso con disco en memoria que solo cambia en `close()`.
+- Comandos ejecutados y resultado: `pnpm lint` 0 avisos; `pnpm typecheck` 0 errores; `pnpm test` 547 tests en verde; `packages/platform/src/web` 99,38 % líneas (`platform-web.ts` 99,18 %). `pnpm coverage` sale con código 1: global 79,98 % frente al 80 % exigido, por `apps/lector-pdf/src/core/pdf/{lexer,objects,parser,text-string}.ts` (trabajo en curso de PDF-025, sin tests todavía); el paquete `platform` no contribuye a la caída.
+- Dudas o cosas que no he podido hacer: (1) Sin `queryPermission` en el handle no se comprueba el permiso y se intenta escribir (lectura literal de la ficha); la escritura fallará si no hay permiso. (2) Errores de `createWritable` y `getFile` se traducen igual que en abrir (`NotAllowedError` → `permission-denied`, resto → `io`); los de `write`/`close` son `io` como pide la ficha. (3) Queda pendiente que el líder confirme la cobertura global cuando PDF-025 aporte sus tests.
+

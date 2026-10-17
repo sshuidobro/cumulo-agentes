@@ -3,7 +3,7 @@ import type { AppError, Result } from '@suite/shared';
 import { blobSource } from '../byte-source';
 import { platformError } from '../errors';
 import { createStorageStore } from '../prefs';
-import type { FileFilter, OpenedFile, Platform } from '../types';
+import type { FileFilter, OpenedFile, Platform, SaveData, SaveOutcome } from '../types';
 import type { DataTransferItemFsAccess, PermissionHandle } from './fs-access';
 import { toAcceptAttribute, toAcceptTypes } from './mime';
 import { defaultWebEnv } from './web-env';
@@ -36,6 +36,16 @@ function failure(cause: unknown): Result<never, AppError> {
   return err(platformError('io', cause));
 }
 
+/** Sin `queryPermission` no hay forma de comprobarlo: se intenta escribir y la escritura falla si no hay permiso. */
+async function hasWritePermission(handle: PermissionHandle): Promise<boolean> {
+  if (handle.queryPermission === undefined) return true;
+  if ((await handle.queryPermission({ mode: 'readwrite' })) === 'granted') return true;
+  if (handle.requestPermission === undefined) return false;
+  return (await handle.requestPermission({ mode: 'readwrite' })) === 'granted';
+}
+
+type AppendData = Extract<SaveData, { readonly kind: 'append' }>;
+
 /** Plataforma para navegador: File System Access si existe, `<input type=file>` si no. */
 export function createWebPlatform(
   options: { readonly prefsPrefix: string },
@@ -44,19 +54,21 @@ export function createWebPlatform(
   const registry = new Map<string, RegisteredFile>();
   let counter = 0;
 
+  const describeFile = (token: string, file: File, handle: PermissionHandle | null): OpenedFile => ({
+    token,
+    name: file.name,
+    path: null,
+    size: file.size,
+    lastModified: file.lastModified,
+    canSaveInPlace: handle !== null,
+    source: blobSource(file),
+  });
+
   const toOpened = (file: File, handle: PermissionHandle | null): OpenedFile => {
     counter += 1;
     const token = `w${counter}`;
     registry.set(token, { file, handle });
-    return {
-      token,
-      name: file.name,
-      path: null,
-      size: file.size,
-      lastModified: file.lastModified,
-      canSaveInPlace: handle !== null,
-      source: blobSource(file),
-    };
+    return describeFile(token, file, handle);
   };
 
   const openHandle = async (handle: FileSystemFileHandle): Promise<Result<OpenedFile>> => {
@@ -108,6 +120,96 @@ export function createWebPlatform(
     return ok(toOpened(firstFile, null));
   };
 
+  /** Fichero registrado para el incremento de un `append`; comprueba que siga con el tamaño esperado. */
+  const appendBase = (data: AppendData): Result<File> => {
+    const entry = registry.get(data.base.token);
+    if (entry === undefined) return err(platformError('not-found'));
+    if (entry.file.size !== data.expectedSize) return err(platformError('changed-on-disk'));
+    return ok(entry.file);
+  };
+
+  /**
+   * Trozos que forman el contenido final. El original de un `append` va como `File` (Blob), no como bytes:
+   * el navegador lo copia por trozos sin cargarlo en memoria. `slice()` copia el delta con ArrayBuffer propio.
+   */
+  const contentParts = (data: SaveData): Result<(Blob | Uint8Array<ArrayBuffer>)[]> => {
+    if (data.kind === 'bytes') return ok([data.bytes.slice()]);
+    const base = appendBase(data);
+    if (!base.ok) return base;
+    return ok([base.value, data.delta.slice()]);
+  };
+
+  /** Escribe `data` en `handle` de forma atómica (`createWritable` confirma al cerrar). */
+  const writeTo = async (handle: PermissionHandle, data: SaveData): Promise<Result<File>> => {
+    if (!(await hasWritePermission(handle))) return err(platformError('permission-denied'));
+    const parts = contentParts(data);
+    if (!parts.ok) return parts;
+
+    let writable: FileSystemWritableFileStream;
+    try {
+      writable = await handle.createWritable({ keepExistingData: false });
+    } catch (cause) {
+      return failure(cause);
+    }
+    try {
+      for (const part of parts.value) await writable.write(part);
+      await writable.close();
+    } catch (cause) {
+      await writable.abort().catch(() => undefined);
+      return err(platformError('io', cause));
+    }
+    try {
+      return ok(await handle.getFile());
+    } catch (cause) {
+      return failure(cause);
+    }
+  };
+
+  const sizeOnDisk = async (handle: FileSystemFileHandle): Promise<Result<number>> => {
+    try {
+      return ok((await handle.getFile()).size);
+    } catch (cause) {
+      return failure(cause);
+    }
+  };
+
+  const save = async (target: OpenedFile, data: SaveData): Promise<Result<OpenedFile>> => {
+    const entry = registry.get(target.token);
+    if (entry === undefined) return err(platformError('not-found'));
+    const { handle } = entry;
+    if (handle === null) return err(platformError('save-in-place-unsupported'));
+    if (data.kind === 'append' && data.base.token === target.token) {
+      const size = await sizeOnDisk(handle);
+      if (!size.ok) return size;
+      if (size.value !== data.expectedSize) return err(platformError('changed-on-disk'));
+    }
+    const written = await writeTo(handle, data);
+    if (!written.ok) return written;
+    registry.set(target.token, { file: written.value, handle });
+    return ok(describeFile(target.token, written.value, handle));
+  };
+
+  const saveAs = async (name: string, filters: readonly FileFilter[], data: SaveData): Promise<Result<SaveOutcome>> => {
+    const picker = env.showSaveFilePicker;
+    if (picker === undefined) {
+      // Sin File System Access el resultado es una descarga: bytes completos o original + incremento.
+      const parts = contentParts(data);
+      if (!parts.ok) return parts;
+      env.download(new Blob(parts.value), name);
+      return ok({ kind: 'downloaded', name });
+    }
+    let handle: FileSystemFileHandle;
+    try {
+      handle = await picker({ suggestedName: name, types: toAcceptTypes(filters) });
+    } catch (cause) {
+      // Cancelar el diálogo no es un error.
+      return errorName(cause) === 'AbortError' ? ok({ kind: 'cancelled' }) : failure(cause);
+    }
+    const written = await writeTo(handle, data);
+    if (!written.ok) return written;
+    return ok({ kind: 'saved', file: toOpened(written.value, handle) });
+  };
+
   const platform: Platform = {
     kind: 'web',
     isMac: /Mac|iPhone|iPad/.test(env.window.navigator.userAgent),
@@ -121,14 +223,9 @@ export function createWebPlatform(
 
     openDropped,
 
-    // Guardar llega en COM-007.
-    async save() {
-      return err(platformError('unsupported'));
-    },
+    save,
 
-    async saveAs() {
-      return err(platformError('unsupported'));
-    },
+    saveAs,
 
     async closeFile(file: OpenedFile): Promise<void> {
       registry.delete(file.token);
