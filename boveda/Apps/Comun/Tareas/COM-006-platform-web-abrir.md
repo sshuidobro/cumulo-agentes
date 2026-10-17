@@ -1,0 +1,91 @@
+---
+tipo: tarea
+id: COM-006
+titulo: Implementar Platform para navegador (abrir, soltar, enlaces, título, cierre)
+app: comun
+estado: pendiente
+depende_de: [COM-005]
+intentos: 0
+skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
+creado: 2026-10-17
+actualizado: 2026-10-17
+tags: [tarea, comun, platform, web]
+---
+
+# COM-006 · Implementar Platform para navegador (abrir)
+
+Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
+
+## Objetivo
+`createWebPlatform()` devuelve una `Platform` que abre ficheros con File System Access (Chromium) o `<input type=file>`, acepta ficheros soltados, abre enlaces externos seguros, cambia el título y avisa al cerrar. `save`/`saveAs` quedan como `err('unsupported')` (los hace COM-007).
+
+## Contexto
+- Leer: `packages/platform/src/types.ts`, `byte-source.ts`, `errors.ts`, `prefs.ts`, [[ADR-0008-plataforma-ficheros]].
+- `lib.dom` no trae `showOpenFilePicker`/`showSaveFilePicker` ni `queryPermission`: decláralos tú (paso 1). Nada de `any`.
+- Todo lo que toca `window` se inyecta (`WebEnv`) para poder probarlo en jsdom con *fakes*.
+
+## Qué hay que hacer
+1. `src/web/fs-access.ts` (solo tipos):
+   ```ts
+   export interface FilePickerAcceptType { readonly description?: string; readonly accept: Record<string, string[]>; }
+   export interface OpenFilePickerOptions { readonly types?: FilePickerAcceptType[]; readonly excludeAcceptAllOption?: boolean; readonly multiple?: boolean; }
+   export interface SaveFilePickerOptions { readonly suggestedName?: string; readonly types?: FilePickerAcceptType[]; }
+   export type ShowOpenFilePicker = (o?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]>;
+   export type ShowSaveFilePicker = (o?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+   export type PermissionHandle = FileSystemFileHandle & {
+     queryPermission?(d: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
+     requestPermission?(d: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
+   };
+   ```
+2. `src/web/mime.ts`: `export function toAcceptTypes(filters: readonly FileFilter[]): FilePickerAcceptType[]` (un tipo por filtro: `description = name`, `accept = { [mime]: extensiones con punto }`; MIME por extensión: pdf `application/pdf`, docx `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, xlsx `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, pptx `application/vnd.openxmlformats-officedocument.presentationml.presentation`, odt `application/vnd.oasis.opendocument.text`, ods `application/vnd.oasis.opendocument.spreadsheet`, odp `application/vnd.oasis.opendocument.presentation`, csv `text/csv`; otra → `application/octet-stream`) y `export function toAcceptAttribute(filters): string` (p. ej. `".pdf,application/pdf"`).
+3. `src/web/web-env.ts`:
+   ```ts
+   export interface WebEnv {
+     readonly window: Window;
+     readonly storage: Storage | null;
+     readonly showOpenFilePicker: ShowOpenFilePicker | undefined;
+     readonly showSaveFilePicker: ShowSaveFilePicker | undefined;
+     /** Crea un <input type=file accept=...>, hace click y resuelve con el fichero o null si llega el evento 'cancel'. */
+     readonly pickWithInput: (accept: string) => Promise<File | null>;
+     /** Descarga un Blob con un <a download> y URL.createObjectURL (revoca la URL a los 10 s). */
+     readonly download: (blob: Blob, name: string) => void;
+   }
+   export function defaultWebEnv(): WebEnv; // lee window.showOpenFilePicker/... si existen; storage = window.localStorage o null si lanza al acceder
+   ```
+4. `src/web/platform-web.ts`: `export function createWebPlatform(options: { readonly prefsPrefix: string }, env: WebEnv = defaultWebEnv()): Platform`.
+   - Registro interno `Map<string, { file: File; handle: PermissionHandle | null }>`; tokens `w1`, `w2`, … (contador por instancia).
+   - `toOpened(file, handle)` → `OpenedFile` con `path: null`, `size: file.size`, `lastModified: file.lastModified`, `canSaveInPlace: handle !== null`, `source: blobSource(file)`.
+   - `openFile(filters)`: con `env.showOpenFilePicker` → `[handle] = await picker({ types: toAcceptTypes(filters), excludeAcceptAllOption: false, multiple: false })`; `DOMException` con `name === 'AbortError'` → `ok(null)`; `NotAllowedError`/`SecurityError` → `err(platformError('permission-denied', e))`; otro → `err(platformError('io', e))`. Sin picker → `env.pickWithInput(toAcceptAttribute(filters))`.
+   - `openBrowserFile(file)` → `ok(toOpened(file, null))`.
+   - `openDropped(dt)`: si `dt.items[0]` tiene `getAsFileSystemHandle` y devuelve un handle `kind === 'file'` → con handle; si no, `dt.files[0]` sin handle; sin ficheros → `ok(null)`.
+   - `onFileOpenedFromOS` → devuelve una función vacía.
+   - `openExternalUrl(url)`: `new URL(url)`; protocolo `http:`, `https:` o `mailto:` → `env.window.open(url, '_blank', 'noopener,noreferrer')` y `ok(undefined)`; URL inválida u otro protocolo → `err(platformError('unsupported'))`.
+   - `setTitle(t)` → `env.window.document.title = t`.
+   - `onCloseRequested(cb)`: escucha `beforeunload`; si `cb()` es `false` → `e.preventDefault()`. Devuelve la función que quita el listener.
+   - `closeFile(f)` → borra el token. `save`/`saveAs` → `err(platformError('unsupported'))` (COM-007).
+   - `isMac`: `/Mac|iPhone|iPad/.test(env.window.navigator.userAgent)`; `prefs: createStorageStore(env.storage, options.prefsPrefix)`.
+5. `src/web/index.ts` reexporta `createWebPlatform`, `defaultWebEnv` y el tipo `WebEnv`. `src/detect.ts` añade:
+   ```ts
+   export async function loadPlatform(options: { readonly prefsPrefix: string }): Promise<Platform> {
+     const web = await import('./web/index');
+     return web.createWebPlatform(options);
+   } // COM-010 añade la rama Tauri
+   ```
+   Exportar `loadPlatform` desde `src/index.ts`.
+6. Tests `tests/web/platform-web-open.test.ts` (jsdom) con un `WebEnv` falso y *handles* falsos.
+
+## Criterios de aceptación
+- [ ] (T) Picker que devuelve un handle con un `File` de 5 bytes → `ok(OpenedFile)` con `name`, `size 5`, `canSaveInPlace true`, `path null`, y `source.read(0,5)` da los bytes.
+- [ ] (T) Picker que rechaza con `AbortError` → `ok(null)`; con `NotAllowedError` → `err` con `code 'permission-denied'`; con `TypeError` → `code 'io'`.
+- [ ] (T) Sin picker: se llama a `pickWithInput('.pdf,application/pdf')` para `[{ name: 'PDF', extensions: ['pdf'] }]`; `null` → `ok(null)`; fichero → `canSaveInPlace false`.
+- [ ] (T) `openDropped` con `getAsFileSystemHandle` → `canSaveInPlace true`; con solo `files` → `false`; vacío → `ok(null)`.
+- [ ] (T) `openExternalUrl('https://example.org')` llama a `window.open` con `'noopener,noreferrer'`; `javascript:alert(1)`, `file:///etc/passwd`, `data:text/html,x` y `'no es url'` → `err` `unsupported` sin llamar a `window.open`.
+- [ ] (T) `onCloseRequested(() => false)` + `dispatchEvent(new Event('beforeunload', { cancelable: true }))` → `defaultPrevented === true`; con `() => true` → `false`; tras darse de baja no se llama al callback.
+- [ ] (T) `setTitle('a.pdf — Lector PDF')` cambia `document.title`; dos `openBrowserFile` dan tokens distintos.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `packages/platform/src/web` ≥ 85 % de líneas (salvo `defaultWebEnv`, que se cubre en e2e de PDF).
+
+## Fuera de alcance
+- Guardar (COM-007). Launch Queue/PWA. Tauri (COM-010).
+
+## Registro
+<!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
