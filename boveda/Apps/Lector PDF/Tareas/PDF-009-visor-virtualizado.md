@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-008, PDF-007]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -72,3 +72,8 @@ Con un documento abierto, el área central muestra una columna de **marcos de p�
 - Qué he hecho: store con `zoomMode`, `zoom`, `rotation` y `navRequest`; `goToPage`/`setCurrentPage` (acotado y con `seq` creciente); visor con scroll escalado (`contentYRef` como fuente de verdad, eco de `scrollTop` ignorado, rueda y teclado solo si `factor > 1`), páginas montadas ± 1, página actual en el tercio superior, anclaje al cambiar layout y foco al abrir. `App` monta `Viewer` y conserva `data-testid="document-ready"` en un texto oculto (lectores de pantalla) con el recuento.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` (raíz) 855 tests OK antes del último ajuste del contenedor; tras él `vitest --project lector-pdf` 580 tests OK; `pnpm coverage` OK (líneas globales 88,26 %); `pnpm --filter lector-pdf e2e` 19/19 OK (incluidos los 5 de visor). Tarea larga máxima en el e2e de scroll: ver anotación del test (≤ 100 ms).
 - Dudas o cosas que no he podido hacer: (1) el ancla se calcula al cambiar el layout a partir del layout anterior y `contentY` (equivalente a guardarla tras cada scroll, pero sin estado extra). (2) Los marcos de página llevan `role="group"`: `aria-label` en un `div` sin rol no es válido. (3) En modo «auto» con documentos de tamaños mezclados, el zoom sigue a la página actual; el ancla evita saltos, pero conviene revisarlo en el e2e de PDF-022 con `sizes-mixed`. (4) PDF-021 y PDF-026 no los he tocado: son fichas distintas y no forman parte de esta.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck, vitest lector-pdf (580), coverage (líneas 98,17 %) y e2e (19/19) en verde. Todos los criterios cubiertos; sin fuera de alcance.
+1. (opcional) `apps/lector-pdf/tests/ui/viewer.test.tsx:125-129` — la comprobación de `currentPage` tras actualizar dims anteriores es síncrona; añadir además que el `contentY`/página 300 sigue montada tras el cambio la haría más robusta.
+2. (opcional) `Viewer.tsx:131` — la ficha pide `round(...)` en `scrollTop`; el código lo deja sin redondear y compara con tolerancia 0,5. Sin impacto funcional.
