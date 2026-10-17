@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-023
 titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]

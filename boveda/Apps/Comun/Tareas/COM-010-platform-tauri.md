@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-010
 titulo: Implementar Platform para Tauri (TypeScript) con mocks
 app: comun
-estado: en-revision
+estado: en-test
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react, pruebas-calidad]
@@ -75,3 +75,9 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 - Qué he hecho: `createTauriPlatform(options, api)` implementa `Platform` sobre los comandos `suite_*` de COM-009 (lectura por rangos con `suite_read_range`, guardado `bytes`/`append` con las cabeceras exactas, diálogos, `suite_take_pending_opens` + evento `suite://file-opened`, enlaces con la misma lista blanca de protocolos que web, título y cierre). `realTauriApi()` es el único código que importa `@tauri-apps/*`. `loadPlatform` elige Tauri si hay `__TAURI_INTERNALS__`.
 - Comandos ejecutados y resultado: `pnpm install` → ok. `pnpm lint` → 0. `pnpm typecheck` → 0. `pnpm test` → 24 ficheros, 257 tests en verde. `pnpm coverage` → 0 (97,06 % líneas globales). `src/tauri/platform-tauri.ts` 97,4 % líneas (requisito ≥ 85 %). `mockIPC` de `suite_read_range` devuelve los 3 bytes.
 - Dudas o cosas que no he podido hacer: (1) `depende_de` solo lista COM-005, pero `loadPlatform` y la rama web dependen de COM-006; lo he tomado de COM-006 ya commiteado (ac6e184). Conviene añadirlo a `depende_de`. (2) `TauriApi.listen`/`onCloseRequested` devuelven la baja de forma síncrona; si la baja llega antes de que resuelva el registro, se quita al resolver. (3) `drain()` no entrega ficheros si ya se dio de baja, pero una recogida en vuelo en ese instante se pierde; anotado para revisión. (4) `closeFile` deja propagar un rechazo de `suite_close` (la ficha no dice otra cosa). (5) `realTauriApi()` queda sin cubrir salvo `invoke` (solo `mock-ipc` lo ejercita; el umbral de la ficha solo aplica a `platform-tauri.ts`). (6) La ruta real de Tauri (ventana, plugins) se verificará con la app PDF-021.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- lint, typecheck y test en verde (257 tests). `pnpm coverage` de la raíz falló por directorio en uso por otro proceso; repetido con `reportsDirectory` propio: 97,06 % global, `platform-tauri.ts` 93,5 % líneas (≥ 85 %).
+- Todos los criterios cubiertos por tests reales; solo `src/tauri/tauri-api.ts` importa `@tauri-apps/*`; lista blanca de protocolos correcta.
+1. (opcional) `platform-tauri.ts:onFileOpenedFromOS` — una recogida en vuelo se pierde si se da de baja justo entonces; aceptable, ya anotado por el programador.
+2. (opcional) Añadir COM-006 a `depende_de` (lo señala el programador).

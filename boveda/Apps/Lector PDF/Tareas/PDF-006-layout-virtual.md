@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-006
 titulo: Núcleo - tabla de dimensiones y layout virtual con escalado de scroll
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]

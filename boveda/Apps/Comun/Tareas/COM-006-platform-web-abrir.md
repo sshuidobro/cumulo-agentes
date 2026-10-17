@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-006
 titulo: Implementar Platform para navegador (abrir, soltar, enlaces, título, cierre)
 app: comun
-estado: en-revision
+estado: en-test
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -95,3 +95,7 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 - Qué he hecho: `createWebPlatform` con File System Access o `<input type=file>`, `openDropped` (lee `items`/`files` de forma síncrona y cae a `files` si el handle es una carpeta o falla), `openExternalUrl` solo `http:`/`https:`/`mailto:`, `setTitle`, `onCloseRequested` con `beforeunload`. `save`/`saveAs` devuelven `unsupported` (COM-007). Los métodos de File System Access se enlazan a `window` en `defaultWebEnv` (si no, Chromium lanza "Illegal invocation"). Tipos de FS Access y `getAsFileSystemHandle` declarados en `fs-access.ts`.
 - Comandos ejecutados y resultado: `pnpm lint` 0; `pnpm typecheck` 0; `pnpm test` 0 (257 tests, 24 ficheros); `pnpm coverage` 0 (`src/web` 98,3 % líneas, global 97,06 %). Cubierto también `defaultWebEnv` (pickWithInput, download, localStorage bloqueado) con jsdom, así que no depende del e2e de PDF.
 - Dudas o cosas que no he podido hacer: en el commit solo entra la rama web de `loadPlatform` y el export de `loadPlatform`; la rama Tauri que ya está en el worktree (COM-010) no se commitea aquí. Sin Playwright: el flujo real de selector de Chromium se verificará en el e2e de PDF.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck, test (257) y coverage en verde; `src/web` 98,3 % de líneas. Todos los criterios cubiertos por tests reales; sin código fuera de alcance; tipos sin `any`; URLs externas filtradas por protocolo.
+1. (opcional) `packages/platform/src/web/platform-web.ts:27` — `registry` se escribe pero aún no se lee; COM-007 lo usará para guardar, sin acción ahora.
