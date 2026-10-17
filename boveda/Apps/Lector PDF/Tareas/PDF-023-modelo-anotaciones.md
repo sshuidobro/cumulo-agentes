@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-023
 titulo: Modelo de anotaciones y comandos deshacibles (núcleo)
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-001]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, formatos-ofimatica, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -114,3 +114,8 @@ Tipos inmutables para resaltado, subrayado, tachado, nota, texto libre y dibujo 
   - Validación que añado: `ref.num >= 1`, `gen >= 0`; quads y trazos con al menos uno; cada trazo con longitud par y ≥ 2. `rectFromQuads`/`rectFromPaths` sin puntos devuelven `[0,0,0,0]`.
   - Riesgo: `setEntryCommand` copia el `Map` en cada operación (inmutabilidad), así que el coste es cuadrático en el número de anotaciones editadas. Holgado para 5 000 (≈1,1 s con el umbral de 2 s), pero el umbral pasa a ser el límite si la máquina es más lenta. No lo he cambiado porque sería un diseño distinto.
   - Fuera de mi ficha: `pnpm --filter lector-pdf exec vitest run` muestra 8 fallos en `tests/unit/fixtures.test.ts` y 3 errores de lint en `tests/fixtures/pdf-builder.ts` y `tests/unit/fixtures.test.ts`. Son de PDF-002 (trabajo en curso de otro agente, sin commitear); no los he tocado.
+
+### [revisor] ronda 1 — 2026-10-17 — CAMBIOS
+Comprobado: eslint (0 avisos) y typecheck OK en lo de la ficha; 70/70 tests; cobertura de `annotations/` y `pdf-date.ts` 100 % líneas. Criterios cubiertos y lógica de comandos/diff/effective correcta.
+1. `apps/lector-pdf/src/core/annotations/model.ts:152-159` (`boundingBox`, usada por `rectFromPaths` y `rectFromQuads`) — `Math.min(...xs)` / `Math.max(...xs)` revientan con `RangeError: Maximum call stack size exceeded` cuando hay del orden de >100 000 puntos (un dibujo a mano alzada largo o una anotación Ink importada de un PDF de terceros, entrada no confiable). — Calcular mínimos y máximos con un bucle (sin spread) y añadir un test con un trazo de ~300 000 puntos que no lance.
+2. (opcional) `apps/lector-pdf/src/core/annotations/diff.ts:31` — upsert `file` sin línea base cuenta como `modified`; decisión aceptable y documentada, conviene que PDF-028 no escriba nada hasta que la importación (PDF-024) termine.
