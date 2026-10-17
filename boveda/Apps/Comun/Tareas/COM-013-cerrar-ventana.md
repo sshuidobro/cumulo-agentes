@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-013
 titulo: Añadir Platform.closeWindow() para cerrar tras confirmar cambios sin guardar
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-007, COM-010]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -51,3 +51,13 @@ Cuando la app cancela el cierre de la ventana para preguntar «¿Guardar los cam
 Comprobado: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 62 ficheros / 830 tests en verde, `pnpm coverage` 0 (una primera ejecución falló, probablemente por colisión con otros Vitest en paralelo; repetida dos veces con exit 0). Cada criterio tiene test que falla si se rompe; el diff no se sale del alcance; el stub en `fake-platform.ts` es necesario para compilar.
 1. `packages/platform/src/web/platform-web.ts:268` (opcional) — si `window.close()` es ignorado (pestaña no abierta por script), `closing` queda en `true` para siempre y se pierde el aviso de `beforeunload` en cambios posteriores (riesgo de pérdida de datos). Restablecer la bandera tras un breve retardo si la página sigue viva, con test. No bloquea porque la ficha prescribe este diseño; el líder puede abrir una ficha de seguimiento.
 2. `core:window:allow-destroy` sigue pendiente en PDF-021 (ya anotado por el programador); sin él `closeWindow` solo registra el error.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Web: beforeunload no cancelado tras closeWindow y env.closeWindow una vez | OK | `tests/web/platform-web-open.test.ts:246-260` en verde; revisado `platform-web.ts:258-269` |
+| Tauri: destroyWindow llamado; si rechaza resuelve y registra | OK | `tests/tauri/platform-tauri.test.ts:453-480` en verde; `platform-tauri.ts:222-228` |
+| lint / typecheck / test / coverage | OK | lint 0, typecheck 0, `pnpm test` 63 ficheros / 834 tests, `pnpm coverage` exit 0 (líneas 98,91 %) |
+
+Observación no bloqueante (ya señalada por el revisor): en web, si `window.close()` se ignora, `closing` queda en true y se pierde el aviso de `beforeunload`; recomendable ficha de seguimiento. `core:window:allow-destroy` pendiente en PDF-021.
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: no aplica.
