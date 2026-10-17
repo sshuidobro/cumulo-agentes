@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-008, PDF-007]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -97,3 +97,9 @@ Rendimiento: 5000 págs 5,6 s y 100 000 págs 7,0 s para todo el escenario de es
 
 ### [coordinador] reapertura — 2026-10-17
 Defecto detectado por el programador de PDF-010: en `viewer.spec.ts` «sizes-mixed» (y `viewer-stress.spec.ts`) aparece «Maximum update depth exceeded»: el zoom automático depende de `currentPage` y se realimenta. Reproducible en el commit de PDF-009 sin cambios de PDF-010. Corregir (el zoom auto no debe depender de la página actual de forma circular; p. ej. basar el ajuste en la página de anclaje fijada al cambiar de modo/redimensionar), añadir test de regresión unitario/UI y que `pnpm --filter lector-pdf e2e` pase completo (26 tests).
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/Viewer.tsx`, `apps/lector-pdf/tests/ui/viewer.test.tsx`, `boveda/Apps/Lector PDF/Tareas/PDF-009-visor-virtualizado.md`.
+- Qué he hecho: el zoom automático ya no depende de la página actual (causa del bucle: zoom → layout → página actual → zoom). La página de referencia del zoom se fija solo al cambiar el modo, la rotación, el tamaño del visor o el documento (ajuste de estado durante el render, sin efecto). Añadido test de regresión en `tests/ui/viewer.test.tsx` (40 páginas con tamaños alternos, 12 saltos en modo automático, sin errores); falla con el código anterior («Maximum update depth exceeded») y pasa con el arreglo.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 1016/1016 OK; `pnpm coverage` OK (líneas globales 98,51 %); `pnpm --filter lector-pdf e2e` 25/26 OK: el único fallo fue `open-qa.spec.ts` «Ctrl+O» (carga concurrente, ya anotado por el tester); repetido aislado 3 veces 9/9 OK. Los avisos «HTMLCanvasElement.getContext not implemented» de jsdom ya existían con PDF-010 y no proceden de este cambio.
+- Dudas o cosas que no he podido hacer: la ficha original decía que el zoom automático usa la página actual; ahora usa la página de referencia fijada al cambiar de modo/tamaño, tal como propuso el coordinador. Conviene confirmarlo en el revisor. Los criterios de rendimiento de long tasks y el resto de e2e no se han vuelto a medir fuera de la ejecución completa.

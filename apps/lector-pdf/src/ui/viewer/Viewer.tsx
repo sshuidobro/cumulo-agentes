@@ -23,8 +23,9 @@ import {
   type Layout,
   type ScrollMap,
 } from '../../core/layout';
-import { resolveZoom, zoomToScale, type Size } from '../../core/zoom';
+import { resolveZoom, zoomToScale, type Size, type ZoomMode } from '../../core/zoom';
 import type { PageDimsTable } from '../../core/page-dims';
+import type { Rotation } from '../../core/rotation';
 import { msg } from '../messages';
 import { setCurrentPage } from '../../state/navigation';
 import { useViewer } from '../../state/viewer-store';
@@ -48,6 +49,16 @@ function rotatedPt(dims: PageDimsTable, i: number, viewRotation: number): Size {
   return swap ? { width: dims.height(i), height: dims.width(i) } : { width: dims.width(i), height: dims.height(i) };
 }
 
+/** Entradas con las que se fijó la página de referencia del zoom automático. */
+interface ZoomRefState {
+  readonly dims: PageDimsTable | null;
+  readonly zoomMode: ZoomMode;
+  readonly rotation: Rotation;
+  readonly width: number;
+  readonly height: number;
+  readonly page: number;
+}
+
 function clampY(y: number, maxY: number): number {
   return Math.min(Math.max(y, 0), maxY);
 }
@@ -59,7 +70,6 @@ export function Viewer() {
   const zoomStored = useViewer((s) => s.zoom);
   const rotation = useViewer((s) => s.rotation);
   const navRequest = useViewer((s) => s.navRequest);
-  const currentPage = useViewer((s) => s.currentPage);
   const name = useViewer((s) => s.file?.name ?? '');
 
   const ref = useRef<HTMLDivElement>(null);
@@ -72,12 +82,35 @@ export function Viewer() {
     [dims, dimsVersion],
   );
 
-  // Zoom efectivo: los modos de ajuste usan el tamaño de la página actual como referencia.
+  // Página de referencia de los modos de ajuste. Se fija al cambiar el modo, la rotación, el tamaño del visor
+  // o el documento, y NO con cada cambio de página: si dependiera de la página actual, el zoom cambiaría el
+  // layout, el layout cambiaría la página actual y el zoom volvería a cambiar (bucle de actualizaciones).
+  const [refState, setRefState] = useState<ZoomRefState>({
+    dims,
+    zoomMode,
+    rotation,
+    width: viewport.width,
+    height: vh,
+    page: 0,
+  });
+  const refStale =
+    refState.dims !== dims ||
+    refState.zoomMode !== zoomMode ||
+    refState.rotation !== rotation ||
+    refState.width !== viewport.width ||
+    refState.height !== vh;
+  const zoomRefPage = refStale ? useViewer.getState().currentPage : refState.page;
+  if (refStale) {
+    // Ajuste de estado durante el render (patrón de React para reaccionar a cambios de props): no hay efecto ni bucle.
+    setRefState({ dims, zoomMode, rotation, width: viewport.width, height: vh, page: zoomRefPage });
+  }
+
+  // Zoom efectivo: los modos de ajuste usan el tamaño de la página de referencia.
   const zoom = useMemo(() => {
     if (snapshot === null || snapshot.table.count === 0 || viewport.width <= 0 || vh <= 0) return zoomStored;
-    const page = Math.min(currentPage, snapshot.table.count - 1);
+    const page = Math.min(zoomRefPage, snapshot.table.count - 1);
     return resolveZoom(zoomMode, rotatedPt(snapshot.table, page, rotation), viewport, FIT_MARGIN);
-  }, [snapshot, zoomMode, zoomStored, rotation, currentPage, viewport, vh]);
+  }, [snapshot, zoomMode, zoomStored, rotation, zoomRefPage, viewport, vh]);
 
   useEffect(() => {
     if (zoom !== zoomStored) useViewer.setState({ zoom });
