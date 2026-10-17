@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-021
 titulo: App de escritorio Tauri del lector (capacidades, CSP, asociación .pdf, instancia única)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-008, COM-009, COM-010]
 intentos: 0
 skills: [stack-tauri, calidad-profesional, pruebas-calidad]
@@ -67,3 +67,9 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-fichero
 
 ### [lider] nota — 2026-10-17
 Por [[ADR-0013-pdfjs-build-legacy]] el motor usa la build `legacy` de pdf.js (página y worker), también en el webview de Tauri (WebKitGTK/WKWebView/WebView2 no tienen `Map.prototype.getOrInsertComputed`). No cambia nada de esta ficha: la CSP (`script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:`) vale igual. Si en el webview aparece «El PDF está dañado…» con PDFs válidos, comprobar primero que `src/engine/worker.ts` apunta a `legacy/build/pdf.worker.min.mjs`.
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `Cargo.toml` (raíz, members); `apps/lector-pdf/src-tauri/` (Cargo.toml, build.rs, tauri.conf.json, capabilities/default.json, src/main.rs, src/lib.rs, icons/); `apps/lector-pdf/app-icon.svg`; `apps/lector-pdf/package.json` (`tauri`, `@tauri-apps/cli` 2.12.3, `@tauri-apps/api` 2.12.4); `pnpm-lock.yaml`, `Cargo.lock`; `apps/lector-pdf/tests/ui/tauri-integration.test.tsx`.
+- Qué he hecho: crate `lector-pdf` con `pdf_paths`, `run()` (instancia única primero, dialog, opener, `SuitePlatformState`, `setup` con argumentos, arrastrar y soltar, `invoke_handler` de suite-platform, `RunEvent::Opened` solo macOS), config Tauri y CSP de la ficha, capacidad `default` con `core:window:allow-destroy` (COM-013). Iconos generados con `tauri icon` desde `app-icon.svg` (letras «PDF» sobre una banda roja en la base de la página). Test de integración con `mockIPC` y `mockWindows`: `loadPlatform` → `kind 'tauri'`, diálogo cancelado, diálogo con `basic-5.pdf` → motor real de pdf.js (legacy) muestra «5 páginas» y `plugin:window|set_title` recibe «basic-5.pdf — Lector PDF».
+- Comandos ejecutados y resultado: `cargo fmt --all -- --check` (0); `cargo clippy --workspace --all-targets --all-features -- -D warnings` (0); `cargo test --workspace --all-features` (0; 36 tests Rust pasan, 3 nuevos de `pdf_paths`); `pnpm --filter lector-pdf exec tauri info` (0, sin errores de configuración; avisa de que `@tauri-apps/api` no está instalado en la app, aviso informativo); `pnpm lint` (0); `pnpm typecheck` (raíz OK en paquetes de `packages/`; en `apps/lector-pdf` mi test pasa, pero **falla** `tests/unit/pdf/xref.test.ts(98)` sin commitear, ajeno a esta ficha); `pnpm test` (69 ficheros, 892 tests OK); `pnpm coverage` (0; 96,4 % líneas).
+- Dudas o cosas que no he podido hacer: (1) Añadido `@tauri-apps/api` 2.12.4 como devDependency de `lector-pdf`: la ficha pide `mockIPC` en la app y sin esa dependencia no resuelve; es la misma versión que usa `@suite/platform`. El líder debe confirmarla. (2) El test usa `import.meta.dirname` para los fixtures porque en jsdom `import.meta.url` no es `file:` y `tests/fixtures/paths.ts` falla; los fixtures los crea `global-setup`. (3) La CSP contiene `http://ipc.localhost` e `ipc:` como pide la ficha (IPC local de Tauri, no dominio remoto). (4) No he podido compilar para macOS (solo Linux): el brazo `RunEvent::Opened` queda sin verificar. (5) `tauri build`, doble clic y arrastrar en ventana real: pendiente en la máquina del usuario (lista manual de la ficha). (6) `generate_context!` exige que exista `apps/lector-pdf/dist` (lo genera el build web). (7) `pnpm-lock.yaml` y `apps/lector-pdf/package.json` contienen además un `fflate` de otro trabajo en curso que no es mío; no lo he commiteado.
