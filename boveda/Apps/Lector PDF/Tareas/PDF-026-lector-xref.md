@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas y de objetos por rangos
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-025, PDF-003]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
