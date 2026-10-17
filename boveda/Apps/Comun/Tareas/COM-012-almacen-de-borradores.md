@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-012
 titulo: Crear el almacén de borradores en IndexedDB (DraftStore)
 app: comun
-estado: pendiente
+estado: en-revision
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -55,3 +55,9 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `packages/platform/src/drafts.ts` (nuevo), `packages/platform/tests/drafts.test.ts` (nuevo), `packages/platform/src/index.ts` (2 exports), `packages/platform/package.json` (devDependency `fake-indexeddb@6.2.6`), `pnpm-lock.yaml` (solo sus entradas).
+- Qué he hecho: `createIdbDraftStore(dbName, factory)` con IndexedDB (base versión 1, store `drafts` sin keyPath, conexión perezosa y reutilizada) y memoria con `factory === null`; errores de E/S, bloqueo y valores no clonables rechazan con `PlatformIoError('io')`. Robustez mínima añadida: si la apertura falla se reintenta en la siguiente operación, y si otra pestaña cambia la versión se cierra la conexión. Tests de los mismos casos contra IDB falso y memoria (`describe.each`) más casos específicos de IDB (persistencia, apertura fallida, bloqueo, versionchange, transacción síncrona fallida).
+- Comandos ejecutados y resultado: `pnpm install` OK; `pnpm lint` 0; `pnpm typecheck` 0; `pnpm test` 0 (208 tests en la ejecución completa, 18 en drafts); `pnpm coverage` 0 (`drafts.ts` 100 % líneas, 82,35 % ramas).
+- Dudas o cosas que no he podido hacer: (1) en `onblocked` el rechazo va **sin** `cause`, porque leer `request.error` con la petición pendiente lanza `InvalidStateError` (detectado por el test). (2) `keys()` ordena por código UTF-16 (orden por defecto de `sort`), no por locale, para que sea determinista. (3) `package.json` y `pnpm-lock.yaml` de la copia de trabajo llevan además dependencias `@tauri-apps/*` de otro programador en curso; no las he commiteado (commit solo con las líneas de `fake-indexeddb`).
