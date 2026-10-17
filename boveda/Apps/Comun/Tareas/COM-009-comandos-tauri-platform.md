@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-009
 titulo: Añadir los comandos Tauri de suite-platform (feature tauri)
 app: comun
-estado: pendiente
+estado: en-revision
 depende_de: [COM-008]
 intentos: 0
 skills: [stack-tauri, pruebas-calidad]
@@ -71,14 +71,20 @@ Con `--features tauri`, el crate exporta los comandos `suite_*` que usa `platfor
 4. Tests: `tests/args.rs` (sin *feature*) y, en `commands.rs`, `#[cfg(test)]` para `From<FileError> for CommandError` y `From<FileInfo> for FileInfoDto` (se ejecutan con `--features tauri`).
 
 ## Criterios de aceptación
-- [ ] (T) `paths_from_args(["app", "-v", "a.pdf", "/abs/b.pdf", "noexiste.pdf"], cwd)` con `a.pdf` y `/abs/b.pdf` creados en un temporal → solo esos dos, `a.pdf` resuelto contra `cwd`.
-- [ ] (T) `CommandError::from(FileError::ChangedOnDisk{..})` → `code "changed-on-disk"` y el mensaje en español; `FileInfoDto` serializa a JSON con claves `token, name, path, size, lastModified` (test con `serde_json` como *dev-dependency* `=1.0.154`).
-- [ ] `cargo test -p suite-platform` (sin *feature*) y `cargo test -p suite-platform --features tauri` con código 0.
-- [ ] `cargo clippy -p suite-platform --all-targets --features tauri -- -D warnings` y `cargo fmt --check` con código 0.
-- [ ] Ningún `unwrap()`/`expect()` en `commands.rs` fuera de `#[cfg(test)]` (`grep` en el Registro).
+- [x] (T) `paths_from_args(["app", "-v", "a.pdf", "/abs/b.pdf", "noexiste.pdf"], cwd)` con `a.pdf` y `/abs/b.pdf` creados en un temporal → solo esos dos, `a.pdf` resuelto contra `cwd`.
+- [x] (T) `CommandError::from(FileError::ChangedOnDisk{..})` → `code "changed-on-disk"` y el mensaje en español; `FileInfoDto` serializa a JSON con claves `token, name, path, size, lastModified` (test con `serde_json` como *dev-dependency* `=1.0.154`).
+- [x] `cargo test -p suite-platform` (sin *feature*) y `cargo test -p suite-platform --features tauri` con código 0.
+- [x] `cargo clippy -p suite-platform --all-targets --features tauri -- -D warnings` y `cargo fmt --check` con código 0.
+- [x] Ningún `unwrap()`/`expect()` en `commands.rs` fuera de `#[cfg(test)]` (`grep` en el Registro).
 
 ## Fuera de alcance
 - Crear la app Tauri (PDF-021). Código TypeScript (COM-010). Impresión.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `packages/platform/rust/Cargo.toml` (feature `tauri`, dependencias y `dev-dependency` serde_json exactas), `packages/platform/rust/src/lib.rs`, `packages/platform/rust/src/args.rs` (nuevo), `packages/platform/rust/src/commands.rs` (nuevo), `packages/platform/rust/tests/args.rs` (nuevo), `Cargo.lock`.
+- Qué he hecho: módulo `args` puro con `paths_from_args` y 4 tests. Módulo `commands` tras la feature `tauri` con los 8 comandos `suite_*` según la tabla, `register_os_paths`, `handler()` y tests de `From<FileError>`, `From<FileInfo>` y serialización camelCase. El registro de rutas de los diálogos y de los ficheros del SO se hace en Rust; JS solo recibe tokens y la ruta que devuelve el propio diálogo.
+- Comandos ejecutados y resultado: `apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev` (no estaba instalado; instalado ahora). `cargo test -p suite-platform` → 0 (args 4, files 15, files_qa 9). `cargo test -p suite-platform --features tauri` → 0 (lib 4 + resto). `cargo clippy -p suite-platform --all-targets --features tauri -- -D warnings` → 0. `cargo fmt --check -p suite-platform` → 0. Búsqueda de `unwrap()`/`expect(` en `commands.rs`: solo aparecen en `#[cfg(test)]` (`serde_json::to_value(...).expect`); el código de comandos usa `unwrap_or_else` y `let else`.
+- Dudas o cosas que no he podido hacer: (1) `generate_handler!` no admite turbofish, así que `handler()` infiere `R` del `Invoke<R>`; compila y clippy pasa. (2) Los comandos de diálogo son genéricos sobre `R` para que `handler<R>()` tenga la firma de la ficha; la app debe registrar `tauri_plugin_dialog::init()` y `invoke_handler(suite_platform::commands::handler())` y gestionar `SuitePlatformState` (PDF-021). (3) Las capabilities de `dialog` quedan para PDF-021. (4) Los comandos son `async` pero llaman a E/S síncrona (`atomic_write`, `read_range`) sin `spawn_blocking`; lo he dejado así por simplicidad y para no copiar el cuerpo binario; a revisar con cargas grandes. (5) `register_os_paths` descarta en silencio las rutas que no se pueden leer y no emite el evento si no hay ninguna válida.
