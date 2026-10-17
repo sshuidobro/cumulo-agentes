@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-004
 titulo: Preparar el monorepo para apps (proyectos de Vitest, typecheck por paquete, lint de React, Result y logger)
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]

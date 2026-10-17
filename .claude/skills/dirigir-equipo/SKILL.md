@@ -41,6 +41,11 @@ Comprueba el estado leyendo el frontmatter (`grep -H '^estado:\|^intentos:' bove
 - Completa la bitácora del día (incluye coste y tiempo si los conoces) y haz commit: `docs: bitácora AAAA-MM-DD`.
 - Informa al usuario: qué funciona ya, cómo probarlo (comando exacto) y qué decisiones quedan pendientes.
 
+## Estado en directo (para la Oficina 2D)
+Al lanzar y al terminar cada subagente, sobrescribe `registros/estado-equipo.json` (ignorado por git) con:
+`{"actualizado":"<ISO>","agentes":{"<id>":{"estado":"trabajando"|"parado","tarea":{"id":"PDF-004","titulo":"..."},"detalle":"..."}}}`
+Ids: `lider`, `investigador`, `programador-1`..`programador-3`, `revisor`, `tester`. Es opcional: si falla, sigue trabajando.
+
 ## Reglas de coste
 - `lider` (Opus) solo al planificar, replanificar y cerrar.
 - `programador` (Haiku) hace el grueso del trabajo.
