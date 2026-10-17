@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-007
 titulo: Núcleo - zoom, cola de render con prioridades y tamaño de lienzo
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -86,3 +86,13 @@ Tres módulos puros: cálculo de zoom (pasos, ajustar ancho/página, rueda, text
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/zoom.ts`, `apps/lector-pdf/src/core/render-queue.ts`, `apps/lector-pdf/src/core/canvas-size.ts`, `apps/lector-pdf/tests/unit/zoom.test.ts`, `apps/lector-pdf/tests/unit/render-queue.test.ts`, `apps/lector-pdf/tests/unit/canvas-size.test.ts` (y esta ficha).
+- Qué he hecho: implementados los tres módulos puros según la ficha. La cola arranca trabajos en microtarea, ordena por prioridad y llegada, cuenta como «en curso» un trabajo abortado hasta que su `run` termina (la concurrencia nunca se supera) y no relanza la misma clave mientras la anterior sigue viva. Los 44 tests cubren todos los criterios (T) de la ficha.
+- Comandos ejecutados y resultado:
+  - `vitest run` (suite completa): 42 ficheros y 493 tests en verde.
+  - Cobertura de los tres módulos (`--coverage.include` sobre `core/zoom.ts`, `core/render-queue.ts`, `core/canvas-size.ts`): líneas 100 %, ramas 98,3 %. El informe se escribió en un directorio propio porque otro proceso de vitest tenía bloqueado `coverage/`.
+  - ESLint sobre mis ficheros: limpio. Prettier con el estilo del repo (`--single-quote --print-width 120`): limpio.
+  - `pnpm lint` y `pnpm typecheck` del proyecto fallan por ficheros que no son míos y están sin commitear de otro programador (PDF-005): `tests/unit/engine-load.test.ts` (import type) y `src/engine/load.ts` / `src/engine/range-transport.ts` (propiedad inexistente y falta `override`). En mis ficheros no hay errores.
+- Dudas o cosas que no he podido hacer: `pnpm lint` y `pnpm typecheck` a nivel de repo no pasan hasta que PDF-005 corrija sus ficheros. Los criterios de cobertura se han comprobado solo para los tres módulos. Decisiones menores tomadas dentro de la ficha: `parseZoomInput` redondea a 10 decimales para evitar ruido de coma flotante; `planCanvas` acepta `devicePixelRatio` no finito o menor que 1 como 1; `clampZoom`, `fitZoom` y `planCanvas` lanzan `RangeError` ante valores no finitos (bug del llamante).
