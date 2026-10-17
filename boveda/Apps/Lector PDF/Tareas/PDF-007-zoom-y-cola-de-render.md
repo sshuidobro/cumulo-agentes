@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-007
 titulo: Núcleo - zoom, cola de render con prioridades y tamaño de lienzo
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]

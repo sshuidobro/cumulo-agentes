@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-005
 titulo: Motor PDF - carga por rangos, errores tipados y escaneo de dimensiones
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-002, COM-005]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad, calidad-profesional]
