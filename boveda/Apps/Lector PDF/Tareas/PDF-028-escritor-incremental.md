@@ -1,0 +1,74 @@
+---
+tipo: tarea
+id: PDF-028
+titulo: Escritor incremental - anexar las anotaciones al PDF sin reescribirlo
+app: pdf
+estado: pendiente
+depende_de: [PDF-026, PDF-027, PDF-024]
+intentos: 0
+skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
+creado: 2026-10-17
+actualizado: 2026-10-17
+tags: [tarea, pdf, nucleo, anotaciones, formato]
+---
+
+# PDF-028 · Escritor incremental de anotaciones
+
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]]
+
+## Objetivo
+Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incremento** (bytes que se anexan tras el `%%EOF`) que añade, modifica y borra anotaciones estándar, sin tocar ni cargar el resto del fichero. Función pura respecto a la UI: recibe un `ByteSource` y devuelve bytes.
+
+## Contexto
+- Leer: [[ADR-0009-anotaciones-escritor-incremental]], `src/core/pdf/*` (PDF-025/026), `src/core/annotations/{model,diff,appearance}.ts`, `src/core/errors.ts`, ISO 32000-1 §7.5.6 (actualización incremental), §12.5.2 (claves comunes: `/Type /Annot /Subtype /Rect /Contents /P /NM /M /F /AP /C`), §12.5.6.2 (marcado: `/T /Popup /CA /CreationDate`), §12.5.6.4 (Text: `/Open /Name`), §12.5.6.6 (FreeText: `/DA` obligatorio), §12.5.6.10 (`/QuadPoints`), §12.5.6.13 (Ink: `/InkList`), §12.5.6.14 (Popup: `/Parent /Open`).
+- El incremento se escribe con el **mismo tipo de xref** que la última sección (`xref.lastKind`). Nunca se modifica un byte existente.
+
+## Qué hay que hacer
+1. `src/core/errors.ts`: añade a `PdfErrorCode` `'save-encrypted'` («No se pueden guardar anotaciones en este PDF porque está cifrado. Llegará en una próxima versión.») y `'save-unreadable'` («No se pueden guardar las anotaciones: la estructura interna del PDF está dañada.»).
+2. `src/core/annotations/to-pdf.ts`:
+   ```ts
+   export function annotationDict(a: Annotation, o: { readonly pageRef: PdfRef; readonly apRef: PdfRef; readonly popupRef: PdfRef | null; readonly now: string }): PdfDict;
+   export function popupDict(parentRef: PdfRef, noteRect: RectPt, open: boolean): PdfDict; // /Rect [x2, y2-100, x2+200, y2], /F 28
+   export function updatedDict(original: PdfDict, a: Annotation, o: { readonly apRef: PdfRef; readonly now: string }): PdfDict;
+   ```
+   - Comunes: `/Type /Annot /Subtype /<Highlight|Underline|StrikeOut|Text|FreeText|Ink> /Rect /Contents (encodeTextString) /T (autor) /NM (id) /M (pdfDate(now)) /CreationDate (created ?? now) /P pageRef /F 4 /C [r g b] /CA opacity /AP << /N apRef >>`.
+   - Marcado: `/QuadPoints` (todos los quads aplanados). Nota: `/Name /<icon> /Open bool /Popup popupRef`. Texto libre: `/DA (/Helv <fs> Tf <r g b> rg)` con `textColor`, `/Q 0`, `/BS << /W 1 >>`. Tinta: `/InkList [[...] ...]`, `/BS << /W width >>`.
+   - `updatedDict`: `withEntries(original, {...})` con `/Rect /Contents /M /C /CA /AP` y las claves propias del tipo; **conserva** todas las demás claves (`/P`, `/Popup`, `/IRT`, `/RC`, claves privadas…). Si cambia `contents` y existe `/RC` (texto enriquecido), bórralo (si no, Adobe mostraría el texto viejo).
+3. `src/core/pdf/incremental.ts`:
+   ```ts
+   export interface IncrementalInput {
+     readonly source: ByteSource;
+     readonly reader: ObjectReader;          // abierto sobre el mismo source
+     readonly diff: AnnotationDiff;
+     readonly now: string;                   // ISO; lo pasa quien llama
+   }
+   export interface IncrementalOutput { readonly delta: Uint8Array; readonly expectedSize: number; readonly written: ReadonlyMap<string, PdfObjRef> } // id de anotación → objeto escrito
+   export async function buildIncrementalUpdate(input: IncrementalInput): Promise<Result<IncrementalOutput>>;
+   ```
+   Algoritmo:
+   1. Diff vacío → `ok` con `delta` vacío.
+   2. `next = reader.xref.size`; asigna números a: cada anotación añadida, su apariencia, el popup de cada nota nueva, y la apariencia nueva de cada modificada.
+   3. Agrupa por página (`reader.pageRefs()[pageIndex]`). Para cada página tocada lee su diccionario y `/Annots`: (a) ausente → array nuevo directo en la página reescrita; (b) array directo → reescribe la página con el array nuevo (resto de claves intactas); (c) referencia a array → reescribe **solo** ese objeto array. Quita las refs de las borradas y de sus popups (`origin.popupRef` y `/Popup` del dict); añade al final las nuevas (anotación y después su popup).
+   4. Modificadas: `reader.getDict(origin.ref)` → `updatedDict` → reescribe el objeto con el **mismo** número y generación.
+   5. Serializa cada objeto con `serializeIndirect`, acumulando offsets = `source.size + posición` (si el último byte del fichero no es `\n` ni `\r`, el delta empieza por `\n`).
+   6. Sección xref: `'table'` → `xref\n` + subsecciones contiguas ordenadas + `trailer\n<< /Size /Root /Info? /ID /Prev lastXrefOffset >>\nstartxref\n<off>\n%%EOF\n`. `'stream'` → objeto nuevo `/Type /XRef /W [1 4 2] /Index [...] /Size /Root /Info? /ID /Prev` sin comprimir, que se incluye a sí mismo.
+   7. `/ID`: `[ id0 original, id1 nuevo ]`; si no había, ambos nuevos. `id1` = 16 bytes FNV-1a de `now + source.size + número de objetos` (determinista para tests).
+   8. Errores: `PdfSyntaxError('encrypted')` → `err(pdfError('save-encrypted'))`; cualquier otro `PdfSyntaxError` o página inexistente → `err(pdfError('save-unreadable', e))`. Nunca lanza.
+4. Tests `tests/unit/pdf/incremental.test.ts`: con `basic-5.pdf`, `compressed.pdf`, `annotated.pdf` y `incremental-updates.pdf` (`memorySource`), concatena `original + delta`, lo abre con pdf.js *legacy* y comprueba `getAnnotations()`.
+
+## Criterios de aceptación
+- [ ] (T) `basic-5.pdf` + 6 anotaciones nuevas (una de cada tipo, p1-p2) → pdf.js ve en p1/p2 los subtipos `Highlight, Underline, StrikeOut, Text, Popup, FreeText, Ink`, todos con `hasAppearance: true` (salvo Popup), `quadPoints`/`inkLists`/`contentsObj` iguales a los del modelo (tolerancia 0,01) y `titleObj.str` = autor.
+- [ ] (T) Los primeros `size` bytes de `original + delta` son idénticos al original (comparación byte a byte).
+- [ ] (T) `compressed.pdf` (xref stream) → el incremento contiene `/Type /XRef` y no `trailer`; `basic-5.pdf` → contiene `trailer` y `/Prev`.
+- [ ] (T) `annotated.pdf`: borrar el `Highlight` de p1 → pdf.js ya no ve ni él ni su `Popup` en p1; el `Underline` sigue. Modificar el `contents` de la nota de p2 → `contentsObj.str` nuevo y el `Square` de p3 intacto. Añadir en p2 (que tiene `/Annots` indirecto) → reescribe el array y no la página (comprueba que el objeto página no aparece en el delta).
+- [ ] (T) Guardar dos veces seguidas (segundo incremento sobre el resultado del primero) → pdf.js lee el estado final correcto y hay 2 `%%EOF` más que en el original.
+- [ ] (T) Un trailer con `/Encrypt` → `err` `save-encrypted`; `corrupt-bad-startxref.pdf` → `err` `save-unreadable`; ninguna excepción escapa.
+- [ ] (T) `pages-5000.pdf` + 10 anotaciones en páginas distintas → `delta` < 50 KB, generado en < 1 s, leyendo < 10 % del fichero (anota las tres medidas).
+- [ ] (T) Determinismo: misma entrada y mismo `now` → mismos bytes.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0; `incremental.ts` y `to-pdf.ts` ≥ 90 % de líneas.
+
+## Fuera de alcance
+- Validación con qpdf y corpus (PDF-029). Escribir en disco (PDF-037). Respuestas `/IRT` (PDF-058). Marcar como libres los objetos borrados (no hace falta: quedan sin referencias).
+
+## Registro
+<!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
