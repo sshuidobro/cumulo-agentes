@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-017
 titulo: Núcleo de búsqueda - normalización, coincidencias y sesión incremental cancelable
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-005]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, calidad-profesional]
