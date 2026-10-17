@@ -77,7 +77,7 @@ Al abrir un PDF se importan sus anotaciones (todas si tiene ≤ 20 000 páginas,
 6. Mensajes en `messages.ts` para todo lo anterior. Tests `tests/ui/annotation-actions.test.ts`, `tests/ui/comment-toolbar.test.tsx`.
 
 ## Criterios de aceptación
-- [ ] (T) Abrir `annotated.pdf` (motor real *legacy*) → al terminar el escaneo `baseline` tiene 6 soportadas, `foreign` 1 (`Square`), `scan 'done'`.
+- [ ] (T) Abrir `annotated.pdf` (motor real *legacy*) → al terminar el escaneo `baseline` tiene 5 soportadas, `foreign` 1 (`Square`), `scan 'done'`.
 - [ ] (T) Con un documento simulado de 25 000 páginas → `scan 'lazy'`; `ensurePageAnnotations(7)` importa solo la página 7 (una llamada a `getAnnotations`) y una segunda llamada no vuelve a importar.
 - [ ] (T) `addAnnotation` ×2, `deleteAnnotation` ×1, `undo` → la borrada vuelve; `redo` → se borra; `undo.isDirty` y el título (`setTitle` espía) muestran `• ` mientras haya cambios y no tras `markAnnotationsSaved`.
 - [ ] (T) `addAnnotations('resaltar', [a, b])` → `undoDepth` 1 y un `undo` quita las dos.
