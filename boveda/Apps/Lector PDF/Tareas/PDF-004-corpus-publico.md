@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-004
 titulo: Añadir el corpus público (veraPDF) y PDFs exportados con LibreOffice
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-005]
 intentos: 0
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -59,3 +59,14 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0011-documentos-de-prue
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `fixtures/pdf/corpus/verapdf/` (7 PDF de veraPDF), `fixtures/pdf/corpus/src/` (`informe.html`, `multilingue.html`, `make-largo.mjs`, `make-libreoffice.sh`, `largo.html`), `fixtures/pdf/corpus/libreoffice/` (`informe.pdf`, `multilingue.pdf`, `largo.pdf`), `fixtures/FUENTES.md`, `apps/lector-pdf/tests/unit/corpus.test.ts`, esta ficha.
+- Qué he hecho: descargados los 7 PDF de veraPDF (commit `bb75f4f`, licencia CC BY 4.0 verificada en su README) y escritos los HTML de origen; `make-libreoffice.sh` genera los 3 PDF con LibreOffice 24.2. `corpus.test.ts` (15 casos): inventario exacto de 10 PDF, `loadPdf` sin error y texto de la página 1 en los 10, texto `Introducción`/`€` y outline no vacío en `informe`, ≥ 30 páginas en `largo` (81), `Привет`/`Καλημέρα`/`你好` en `multilingue`, anotación `Highlight` en `7.18.1-t02-pass-a.pdf`.
+- Comandos ejecutados y resultado:
+  - `du -sh fixtures/pdf/corpus` → 864K (836 620 bytes, < 1,5 MB).
+  - `pnpm typecheck` → código 0.
+  - `pnpm test` → código 0: 53 ficheros, 694 tests pasan.
+  - `pnpm lint` → código 1 por un fichero ajeno: 5 errores `no-console` en `apps/lector-pdf/tests/unit/pdf/zz-debug.test.ts` (sin versionar, de otro programador). Mis ficheros pasan ESLint sin avisos. No lo he tocado.
+  - `git check-ignore` de los PDF → sin coincidencias: se añaden como nuevos.
+- Dudas o cosas que no he podido hacer: `pnpm lint` queda en rojo hasta que se corrija `zz-debug.test.ts`. Chino, griego y ruso se extraen bien. El árabe se extrae en orden visual (bidi); el test no lo comprueba. Sin dudas de producto.
