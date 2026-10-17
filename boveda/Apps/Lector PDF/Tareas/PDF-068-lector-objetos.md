@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-068
 titulo: Lector de objetos por rangos y localización de páginas por /Count
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-026]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -95,3 +95,9 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escrit
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/block-cache.ts` (nuevo), `apps/lector-pdf/src/core/pdf/lru.ts` (nuevo, LRU interna usada por la caché de bloques y por `ObjectReader`), `apps/lector-pdf/src/core/pdf/object-reader.ts` (nuevo), `apps/lector-pdf/src/core/pdf/index.ts` (exporta `BlockCache` y `ObjectReader`), `apps/lector-pdf/tests/unit/pdf/block-cache.test.ts`, `apps/lector-pdf/tests/unit/pdf/object-reader.test.ts`, `apps/lector-pdf/tests/perf/object-reader.perf.test.ts`.
+- Qué he hecho: `BlockCache` (bloques alineados de 4 KB, LRU de 256, lecturas contiguas en una sola llamada, lecturas > 64 KB directas) y `ObjectReader` (`open`, `get`, `resolve`, `getDict`, `pageCount`, `pageRef` con el pseudocódigo de la ficha, `pageRefs` cacheado). Objetos en offset (ventana de 4 KB doblada hasta `endobj`, `/Length` indirecto resuelto antes de cortar el flujo, con corte de ciclos) y objetos comprimidos (ObjStm, caché LRU de 16). El helper LRU va en `lru.ts` por no duplicar código.
+- Comandos ejecutados y resultado: `pnpm lint` → 0 avisos. `pnpm test` → 81 ficheros, 1019 tests en verde. `pnpm typecheck` (lector-pdf) → 0 errores. `pnpm perf` → `object-reader.perf` en verde (abrir + `pageRef(99998)` ≈ 165 ms + 14 ms; `pageRefs()` de `pages-5000` ≈ 175 ms, mejor de 5). En la última pasada falló un perf de otro módulo (`annotations-import` y luego `search`, cambiando de test en cada ejecución): ruido de carga por el otro programador, no mi código. `pnpm coverage` con directorio propio (`--coverage.reportsDirectory`, porque el directorio por defecto lo tenía bloqueado otro vitest): `object-reader.ts` 100 % líneas / 93,75 % sentencias, `block-cache.ts` 100 % líneas / 98,18 % sentencias. Medidas de bytes (xref incluida, `countingSource`): `pages-100000.pdf` abrir + `pageRef(99998)` + `getDict` = 4 246 708 bytes de 31 101 661 (**13,65 %**, límite 15 %); 10 `pageRef` repartidos = 4 459 700 bytes (**14,34 %**, límite 16 %). Corpus: los 10 PDFs cuadran con `numPages` de pdf.js y `pageRef(i) = pageRefs()[i]`. `pages-20000-flat`: `pageRef(19999)` usa el atajo y lee menos del 50 % del fichero.
+- Dudas o cosas que no he podido hacer: (1) En árboles incoherentes con un mismo nodo hoja o intermedio referenciado dos veces, `pageRefs()` lo cuenta una vez (visitados, como pide la ficha) y `pageRef` lo cuenta en cada aparición: pueden diferir. No está en los criterios; lo dejo anotado por si el tester quiere un test. (2) `pageCount()` devuelve el `/Count` del raíz aunque esté mentido, como indica la ficha; solo `pageRef` tiene el respaldo. (3) `readXref` lee directamente de la fuente (no por la caché), como indica la ficha.

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-010
 titulo: Dibujar las páginas en lienzo con la cola de render (cancelación y liberación de memoria)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-009]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, calidad-profesional, pruebas-calidad]
@@ -73,3 +73,8 @@ Cada marco de página montado se dibuja con pdf.js en un `<canvas>` nítido (seg
   2. El criterio «zoom 100 %» no se puede fijar desde la interfaz (no hay control de zoom hasta PDF-011). El test ajusta el ancho de la ventana y comprueba que el marco mide 816 px antes de capturar.
   3. `PageFrame` recibe `rendered` y `children` para alojar el lienzo; la ficha no lo especificaba, pero mantiene el marco como fondo.
   4. El árbol de trabajo era compartido: otros agentes commitearon PDF-026 y PDF-030 durante mi trabajo. Solo he commiteado mis ficheros.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- Comprobado: `pnpm lint` y `pnpm typecheck` OK; vitest lector-pdf 55 ficheros / 707 tests OK; e2e completo 34/35 (el bucle de zoom de PDF-009 corregido en 0971165 ya no falla; `viewer-stress` pasa). Los cuatro criterios (T) tienen test propio; `render.ts`, cola, cancelación, liberación de lienzos y `page.cleanup()` cumplen la ficha; sin permisos ni HTML del documento.
+1. (opcional) `tests/e2e/render.spec.ts:153` — el test de tareas largas de `images-200` dio 118 ms una vez con toda la suite en paralelo y pasa en solitario (52 ms, 3 de 3). Es sensible a la carga: valorar ejecutarlo con `--workers=1` o tolerancia en el tester.
+2. (opcional) `PageView.tsx` — al cambiar de documento `rendered` no se reinicia hasta que acaba el nuevo dibujo; el lienzo antiguo se ve brevemente.
