@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-011
 titulo: Zoom y rotación de vista en la interfaz (barra, atajos, Ctrl+rueda, anclaje)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-010]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -60,3 +60,16 @@ El usuario cambia el zoom con botones, un campo editable («125 %»), una lista 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/state/viewer-store.ts`, `src/state/view-actions.ts` (nuevo), `src/ui/viewer/Viewer.tsx`, `src/ui/App.tsx`, `src/ui/App.module.css`, `src/ui/shortcuts.ts`, `src/ui/messages.ts`, `src/ui/icons.tsx`, `src/ui/toolbar/MainToolbar.tsx` + `.module.css` (nuevos), `src/ui/toolbar/ZoomControls.tsx` + `.module.css` (nuevos), `tests/unit/view-actions.test.ts` (nuevo), `tests/ui/zoom-controls.test.tsx` (nuevo), `tests/ui/viewer-zoom.test.tsx` (nuevo), `tests/e2e/zoom.spec.ts` (nuevo), `tests/e2e/viewer.spec.ts` (una línea de límite de Tab).
+- Qué he hecho: store con `zoomFocusY` y acciones `setZoomMode`, `zoomIn`, `zoomOut`, `zoomWithWheel` (acumula ruedas por fotograma) y `rotateView`. El visor ancla el punto de foco en el cambio de layout, centra horizontalmente y procesa Ctrl+rueda (Cmd en Mac). La barra principal (`MainToolbar`) incluye Abrir, deshacer/rehacer, zoom (botones, campo, lista) y giro; los atajos de vista solo actúan con documento abierto.
+- Comandos ejecutados y resultado: `pnpm lint` (0), `pnpm typecheck` (0), `pnpm test` (86 ficheros, 1087 tests, 0 fallos), `pnpm coverage` (0; 96,6 % líneas), `pnpm --filter lector-pdf e2e` (29/29, 0; puerto 4173 libre). Una pasada anterior de la suite E2E falló en `viewer.spec.ts` «sizes-mixed» por tiempo de espera; en aislamiento y en la siguiente suite completa pasó, no lo he reproducido.
+- Dudas o cosas que no he podido hacer:
+  - `zoomFocusY` es `number | 'center' | null` y no `number | null`: la ficha dice que sin foco el centro del visor lo resuelve el `Viewer` con su alto, así que el valor `'center'` hace falta para que la acción no conozca el alto del visor. Si se prefiere otra forma, se cambia.
+  - Deshacer/rehacer se han movido de `App.tsx` a `MainToolbar` (la ficha pide la barra principal y PDF-069 ya los quiere ahí).
+  - `viewer.spec.ts`: el test «visor enfocable con Tab» buscaba el visor a 3 pulsaciones de Abrir; con los controles nuevos hay que llegar a 12. Solo cambia ese límite, el test sigue igual.
+  - La lista de zoom muestra «Tamaño real» para el zoom 100 % (la opción «100 %» existe, pero nunca aparece seleccionada).
+  - Al perder el foco, el campo de zoom descarta lo escrito (la ficha no lo dice).
+  - La captura de la página girada se adjunta al test E2E, pero no la he comparado con una referencia visual ni la he revisado a mano.
+  - Ctrl+1/Ctrl+2 en navegador no se han probado (Chrome puede capturarlos, como indica la ficha).

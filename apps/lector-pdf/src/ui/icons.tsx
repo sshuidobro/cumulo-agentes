@@ -45,3 +45,41 @@ export function IconOpen() {
     </Svg>
   );
 }
+
+export function IconZoomIn() {
+  return (
+    <Svg>
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="M12.5 12.5 17 17" />
+      <path d="M8.5 6v5M6 8.5h5" />
+    </Svg>
+  );
+}
+
+export function IconZoomOut() {
+  return (
+    <Svg>
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="M12.5 12.5 17 17" />
+      <path d="M6 8.5h5" />
+    </Svg>
+  );
+}
+
+export function IconRotateLeft() {
+  return (
+    <Svg>
+      <path d="M4.5 10a5.5 5.5 0 1 0 1.6-3.9" />
+      <path d="M4.5 3.5V6.5h3" />
+    </Svg>
+  );
+}
+
+export function IconRotateRight() {
+  return (
+    <Svg>
+      <path d="M15.5 10a5.5 5.5 0 1 1-1.6-3.9" />
+      <path d="M15.5 3.5V6.5h-3" />
+    </Svg>
+  );
+}
