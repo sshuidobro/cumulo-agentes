@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-007
 titulo: Implementar guardar y guardar como en la Platform web
 app: comun
-estado: en-revision
+estado: en-test
 depende_de: [COM-006]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad, calidad-profesional]
@@ -59,3 +59,6 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 - Comandos ejecutados y resultado: `pnpm lint` 0 avisos; `pnpm typecheck` 0 errores; `pnpm test` 547 tests en verde; `packages/platform/src/web` 99,38 % líneas (`platform-web.ts` 99,18 %). `pnpm coverage` sale con código 1: global 79,98 % frente al 80 % exigido, por `apps/lector-pdf/src/core/pdf/{lexer,objects,parser,text-string}.ts` (trabajo en curso de PDF-025, sin tests todavía); el paquete `platform` no contribuye a la caída.
 - Dudas o cosas que no he podido hacer: (1) Sin `queryPermission` en el handle no se comprueba el permiso y se intenta escribir (lectura literal de la ficha); la escritura fallará si no hay permiso. (2) Errores de `createWritable` y `getFile` se traducen igual que en abrir (`NotAllowedError` → `permission-denied`, resto → `io`); los de `write`/`close` son `io` como pide la ficha. (3) Queda pendiente que el líder confirme la cobertura global cuando PDF-025 aporte sus tests.
 
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck y tests del paquete en verde (191 tests); `src/web` 99,38 % de líneas. Todos los criterios (T) cubiertos por tests reales; el test de memoria comprueba identidad del `File`. El fallo de coverage global es de PDF-025 y no cuenta. Sin problemas bloqueantes.

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-005
 titulo: Motor PDF - carga por rangos, errores tipados y escaneo de dimensiones
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-002, COM-005]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -118,3 +118,17 @@ Sugerencias (opcional, no bloquean):
 1. `apps/lector-pdf/src/engine/load.ts:91` — dejar un comentario junto a `enableXfa: false` explicando que `isEvalSupported` no existe en esta versión de pdf.js, para que nadie la reañada.
 2. `apps/lector-pdf/src/engine/page-dims.ts:40` — en documentos de 100 000 páginas conviene llamar a `page.cleanup()` tras leer cada tamaño para no retener memoria; valorar en PDF-008.
 3. `onIoError` (error de lectura tras abrir) no tiene test; añadirlo en una ficha posterior.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| basic-5, pages-5000, pages-100000 (rangos), pages-20000-flat | OK | `pnpm test` 514 ok (547 tras tests de otros agentes); `pnpm perf` 9 ok |
+| corrupt-* (empty, not-pdf con 1 lectura, truncated, bad-startxref) | OK | tests de `engine-load.test.ts`; truncated -> corrupt, bad-startxref -> ok 5 págs (según programador, tests verdes) |
+| io, cancelled, destroy idempotente | OK | `engine-load.test.ts` |
+| scanPageDims (sizes-mixed, lotes, cancelación, 5000 págs) | OK | `engine-page-dims.test.ts` |
+| Rendimiento scanPageDims 5000 | OK | `pnpm perf`: total 510 ms, máximo entre lotes 12,3 ms, 100 lotes (límites 10 s / 100 ms) |
+| lint / typecheck / test / perf | OK | código 0 |
+| `core/errors.ts` 100 % | OK | json-summary: 3/3 líneas |
+| `pnpm coverage` código 0 | NO atribuible a esta ficha | Con el árbol actual el total es 79,98 % (< 80) por `src/core/pdf/{lexer,objects,text-string}.ts` sin tests (0 %), código sin commitear de PDF-025 en curso. Con el árbol limpio el coverage dio exit 0. PDF-005 no lo causa; PDF-025 deberá aportar sus tests. |
+Tests añadidos: `apps/lector-pdf/tests/unit/qa-engine-edge.test.ts` (13): abort previo, fallo en cabecera, "%PDF-" solo, Unicode/RTL sin cabecera, basura previa a la cabecera, onProgress, 5 cargas concurrentes, onIoError tras abrir (cubre la sugerencia 3 del revisor), scan con from>total / from=3 / batchSize 0 / señal previa / lote parcial.
+Rendimiento: ver arriba. Sin fallos encontrados.
