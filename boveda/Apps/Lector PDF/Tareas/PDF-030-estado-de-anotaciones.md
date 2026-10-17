@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-030
 titulo: Estado de anotaciones por documento, deshacer/rehacer y atajos
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-023, PDF-024, PDF-009, COM-011]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -117,3 +117,18 @@ Al abrir un PDF se importan sus anotaciones (todas si tiene ≤ 20 000 páginas,
 Comprobado: `pnpm lint`, `pnpm typecheck` y `pnpm test` (74 ficheros, 923 tests) con código 0. `pnpm coverage` completo no se ha usado; con `--exclude xref-robustness` pasa (918 tests): `core/annotations` 96,2 % ramas / 97,5 % líneas, `palette.ts` 91,7 %. Todos los criterios vigentes (menos el tachado de `CommentToolbar`) tienen test que falla si se rompen: importación real de `annotated.pdf`, modo lazy con una sola llamada a `getAnnotations`, undo/redo/título, agrupación, atajos con `textarea`, preferencias y aborto sin `set`.
 1. (opcional) `annotation-actions.ts:141-143` — si el escaneo falla, `scan` queda en `done` sin aviso al usuario; aceptado por el líder, valorar un estado de error en PDF-036.
 2. (opcional) `tests/ui/annotation-shortcuts.test.tsx` — prueba `useShortcuts` con un arnés, no el cableado de `App.tsx`; PDF-069 debería cubrirlo al mover los botones.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `annotated.pdf` → 5 soportadas, 1 `Square`, `scan 'done'` | OK | `annotation-actions.test.ts` (motor real), pasa |
+| 25 000 págs → `lazy`; `ensurePageAnnotations(7)` una sola llamada, sin reimportar | OK | test + caso concurrente (3 llamadas → 1 `getPage`) |
+| add×2, delete, undo/redo, título `• ` y `markAnnotationsSaved` | OK | test con espía `setTitle` |
+| `addAnnotations` → `undoDepth` 1, un undo quita ambas | OK | test |
+| Ctrl+Z visor / no en `textarea`; Ctrl+Y y Ctrl+Mayús+Z rehacen | OK | `annotation-shortcuts.test.tsx` (arnés, no `App.tsx`; ya anotado por el revisor) |
+| Color en prefs sobrevive a recrear store; autor vacío → «Usuario» | OK | tests de preferencias + prefs corruptas (nuevo) |
+| Cerrar durante el escaneo aborta sin `set` posteriores | OK | espía de `setState` |
+| lint / typecheck / test / coverage | OK con matiz | `pnpm lint` 0; `pnpm test` 74 ficheros, 923 tests OK; coverage (dir. propio, sin `xref-robustness` de PDF-026) 76 ficheros, 938 tests OK, `core/annotations` 80,05 % líneas. `tsc` falla solo en `tests/unit/annotations/appearance.test.ts` (WIP de PDF-027, ajeno); mi test y el código de PDF-030 compilan limpio |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/annotations/annotation-qa.test.ts` (6): undo/redo con pila vacía, rehacer descartado tras edición nueva, borrar id inexistente sin entrada, límite de 100, sesión nueva reinicia ediciones, prefs corruptas → valores por defecto.
+Rendimiento: no aplica (sin presupuesto en esta ficha). Sin UI propia que probar con Playwright (movida a PDF-069/031).

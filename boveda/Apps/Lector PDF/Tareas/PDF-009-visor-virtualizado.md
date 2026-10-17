@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: hecha
+estado: cambios-pedidos
 depende_de: [PDF-008, PDF-007]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -94,3 +94,6 @@ Lint, typecheck, vitest lector-pdf (580), coverage (líneas 98,17 %) y e2e (19/1
 Nota: en la ejecución completa de e2e falló una vez `open-qa.spec.ts` (Ctrl+O, PDF-008) por carga concurrente de otros testers; 3 repeticiones aisladas 9/9 OK. No relacionado con PDF-009.
 Tests añadidos: `apps/lector-pdf/tests/e2e/viewer-stress.spec.ts` (pages-5000 y pages-100000).
 Rendimiento: 5000 págs 5,6 s y 100 000 págs 7,0 s para todo el escenario de estrés, con DOM acotado (≤12 marcos).
+
+### [coordinador] reapertura — 2026-10-17
+Defecto detectado por el programador de PDF-010: en `viewer.spec.ts` «sizes-mixed» (y `viewer-stress.spec.ts`) aparece «Maximum update depth exceeded»: el zoom automático depende de `currentPage` y se realimenta. Reproducible en el commit de PDF-009 sin cambios de PDF-010. Corregir (el zoom auto no debe depender de la página actual de forma circular; p. ej. basar el ajuste en la página de anclaje fijada al cambiar de modo/redimensionar), añadir test de regresión unitario/UI y que `pnpm --filter lector-pdf e2e` pase completo (26 tests).
