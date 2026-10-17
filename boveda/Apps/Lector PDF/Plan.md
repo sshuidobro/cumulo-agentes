@@ -137,7 +137,7 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[PDF-026-lector-xref]] | Lector de xref y filtros (partida, ver [[ADR-0014-localizar-paginas-por-count]]) | PDF-025, PDF-003 | cambios-pedidos |
 | [[PDF-068-lector-objetos]] | Lector de objetos por rangos y `pageRef` por `/Count` | PDF-026 | pendiente |
 | [[PDF-027-apariencias]] | Apariencias /AP de anotaciones | PDF-023, PDF-026 | pendiente |
-| [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-068, PDF-027, PDF-024 | pendiente |
+| [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-068, PDF-027, PDF-024 | cambios-pedidos |
 | [[PDF-029-interoperabilidad-anotaciones]] | Interoperabilidad (qpdf, pdf.js, corpus) | PDF-028, PDF-004 | pendiente |
 | [[PDF-030-estado-de-anotaciones]] | Estado de anotaciones, deshacer/rehacer y atajos (UI movida a PDF-069 y PDF-031) | PDF-023, PDF-024, PDF-009, COM-011 | en-revision |
 | [[PDF-069-barra-comentar]] | Barra «Comentar» y deshacer/rehacer en la barra principal | PDF-030, PDF-011, PDF-020 | pendiente |

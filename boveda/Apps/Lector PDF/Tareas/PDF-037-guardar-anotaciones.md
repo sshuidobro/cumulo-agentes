@@ -35,7 +35,7 @@ Ctrl+S guarda las anotaciones **dentro del PDF** (anexando un incremento de form
    export function isSaving(): boolean;
    ```
    - Sin cambios (`isEmptyDiff`) en `save` → `'nothing'` (en `saveAs` se guarda igualmente una copia con `delta` vacío: `{ kind: 'append', ..., delta: new Uint8Array(0) }`).
-   - Construye: `ObjectReader.open(file.source)` → `buildIncrementalUpdate({ source, reader, diff, now: nowIso() })`. `err` → `Notice` con el mensaje → `'failed'`.
+   - Construye: `openForSave(file.source)` (de `src/core/pdf`, devuelve `Result<ObjectReader>`; **no** uses `ObjectReader.open`, que lanza) → si `ok`, `buildIncrementalUpdate({ source, reader, diff, now: nowIso() })`. Cualquier `err` (de las dos) → `Notice` con `error.message` → `'failed'`, sin llamar a la plataforma.
    - `save`: si `file.canSaveInPlace` → `platform.save(file, { kind: 'append', base: file, expectedSize, delta })`; si no → `saveAs()`.
    - `saveAs`: `platform.saveAs(file.name, PDF_FILTERS, data)`; `'cancelled'` → `'cancelled'`; `'downloaded'` → `markAnnotationsSaved()`, `Notice` «Se ha descargado «<nombre>» con tus anotaciones.» → `'downloaded'` (el documento abierto sigue siendo el original con los cambios en pantalla).
    - Guardado en disco (`save` ok o `saveAs` `'saved'`): guarda la posición actual, `openDocument(nuevoFichero, { restore })` (el estado de anotaciones se reinicia desde el fichero: lo nuevo pasa a la línea base) → `'saved'`; `Notice` «Guardado.».
@@ -56,6 +56,7 @@ Ctrl+S guarda las anotaciones **dentro del PDF** (anexando un incremento de form
 - [ ] (T) `canSaveInPlace false` → se llama a `saveAs`; resultado `'downloaded'` → título sin «•» y el documento no se reabre.
 - [ ] (T) `changed-on-disk` → aparece el diálogo; «Guardar como…» llama a `saveAs`.
 - [ ] (T) PDF con `/Encrypt` → `Notice` con el texto de `save-encrypted` y la plataforma no se llama.
+- [ ] (T) PDF dañado tras abrirlo (fuente falsa cuyo contenido es `corrupt-bad-startxref.pdf`) → `Notice` con el texto de `save-unreadable`, `'failed'` y la plataforma no se llama.
 - [ ] (T) `installCloseGuard`: sin cambios el callback devuelve `true`; con cambios devuelve `false` y muestra el diálogo; «No guardar» llama a `closeWindow`; «Cancelar» no.
 - [ ] (T) Abrir otro documento con cambios → diálogo; «Cancelar» mantiene el actual.
 - [ ] (T) La posición (página 3, zoom 150 %) se mantiene tras guardar.
@@ -67,3 +68,7 @@ Ctrl+S guarda las anotaciones **dentro del PDF** (anexando un incremento de form
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [líder] ajuste por desbloqueo de PDF-028 — 2026-10-17
+- `save-actions` abre el lector con `openForSave` (nuevo en [[PDF-028-escritor-incremental]]), que traduce cifrado → `save-encrypted` y estructura dañada → `save-unreadable` sin lanzar. Así el criterio del PDF cifrado es cumplible (antes `ObjectReader.open` lanzaba `encrypted`). Añadido criterio de PDF dañado.
+
