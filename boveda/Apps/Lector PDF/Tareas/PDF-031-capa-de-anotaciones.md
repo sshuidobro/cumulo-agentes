@@ -4,7 +4,7 @@ id: PDF-031
 titulo: Capa de anotaciones - dibujar, seleccionar, mover y borrar
 app: pdf
 estado: pendiente
-depende_de: [PDF-030]
+depende_de: [PDF-030, PDF-010, PDF-011, PDF-013]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
@@ -38,7 +38,9 @@ Encima de cada página visible, una capa SVG muestra las anotaciones nuevas y ed
    - Supr / Retroceso con una seleccionada → `deleteAnnotation(id)` y foco a la siguiente de la página (o al visor).
    - Las anotaciones soportadas del fichero se pueden mover (según su tipo) y borrar aunque su autor sea otro (como Acrobat), sin confirmación.
 5. CSS: `.annotationLayer` `position: absolute; inset: 0; z-index` por encima de `.textLayer`. Con `tool !== 'none'` la capa de texto sigue activa para marcado; para nota/texto/dibujo la capa de anotaciones captura el puntero (PDF-033 a PDF-035 lo usan).
-6. Tests `tests/ui/annotation-layer.test.tsx` (jsdom; `viewport` falso con `transform` y `convertToPdfPoint` conocidos) y `tests/e2e/annotations-layer.spec.ts`.
+6. *(viene de PDF-030)* Cursor por herramienta: `Viewer.tsx` pone `data-tool={tool}` (de `useAnnotations(s => s.tool)`) en su contenedor de scroll; en `Viewer.module.css`: `[data-tool='highlight'], [data-tool='underline'], [data-tool='strikeout']` → `cursor: text` sobre la capa de texto; `[data-tool='note'], [data-tool='freetext'], [data-tool='ink']` → `cursor: crosshair` sobre `.annotationLayer`. Con `'none'` no cambia nada.
+7. *(viene de PDF-030)* Importación perezosa: en `PageView`, `useEffect(() => { if (visible && scan === 'lazy') void ensurePageAnnotations(index); }, [visible, index, scan])` (`scan` con selector fino `useAnnotations(s => s.scan)`). `ensurePageAnnotations` ya evita importar dos veces la misma página.
+8. Tests `tests/ui/annotation-layer.test.tsx` (jsdom; `viewport` falso con `transform` y `convertToPdfPoint` conocidos) y `tests/e2e/annotations-layer.spec.ts`.
 
 ## Criterios de aceptación
 - [ ] (T) Con un `viewport` de escala 2 y rotación 0, una nota nueva en `rect [100, 700, 120, 720]` de una página de 792 pt de alto se dibuja con `transform` `matrix(2 0 0 -2 0 1584)` y su zona activa existe con `aria-label` correcto.
@@ -48,6 +50,8 @@ Encima de cada página visible, una capa SVG muestra las anotaciones nuevas y ed
 - [ ] E2E (`annotated.pdf`): borrar con Supr el resaltado de la p1 → el píxel amarillo de su centro deja de serlo en el lienzo (tolerancia 10); Ctrl+Z → vuelve.
 - [ ] E2E: mover con el ratón una nota 50 px → su `rect` cambia ≈ 50 / escala pt.
 - [ ] E2E: con zoom 200 % y rotación 90° la zona activa del resaltado de la p1 coincide con el píxel amarillo (clic en el centro → seleccionado).
+- [ ] (T) Con `tool 'ink'` el contenedor del visor tiene `data-tool="ink"` y `.annotationLayer` calcula `cursor: crosshair`; con `'highlight'` la capa de texto `cursor: text`.
+- [ ] (T) Con `scan 'lazy'` (documento simulado de 25 000 páginas), montar `PageView` visible de la página 7 → `ensurePageAnnotations(7)` una vez (espía); con `visible: false` no se llama; con `scan 'done'` no se llama.
 - [ ] Rendimiento: una página con 500 anotaciones (fixture generado en el test) se desplaza sin *long tasks* > 100 ms.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
 
@@ -56,3 +60,7 @@ Encima de cada página visible, una capa SVG muestra las anotaciones nuevas y ed
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] replanificación — 2026-10-17
+- Recibe de [[PDF-030-estado-de-anotaciones]] el cursor por herramienta y la llamada a `ensurePageAnnotations` al hacerse visible una página (pasos 6 y 7, dos criterios nuevos). La barra «Comentar» va a [[PDF-069-barra-comentar]]; esta ficha no la necesita (usa `tool` del store).
+- `depende_de` corregido: faltaban PDF-010 (`PageView`), PDF-011 (zoom y rotación, criterio e2e) y PDF-013 (`TextLayerView`).

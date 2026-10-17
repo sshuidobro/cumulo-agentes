@@ -139,18 +139,19 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[PDF-027-apariencias]] | Apariencias /AP de anotaciones | PDF-023, PDF-026 | pendiente |
 | [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-068, PDF-027, PDF-024 | pendiente |
 | [[PDF-029-interoperabilidad-anotaciones]] | Interoperabilidad (qpdf, pdf.js, corpus) | PDF-028, PDF-004 | pendiente |
-| [[PDF-030-estado-de-anotaciones]] | Estado de anotaciones, deshacer/rehacer y barra «Comentar» | PDF-023, PDF-024, PDF-009, COM-011 | pendiente |
-| [[PDF-031-capa-de-anotaciones]] | Capa de anotaciones: dibujar, seleccionar, mover, borrar | PDF-030 | pendiente |
-| [[PDF-032-resaltar-subrayar-tachar]] | Resaltar, subrayar y tachar | PDF-031, PDF-013 | pendiente |
-| [[PDF-033-notas-emergentes]] | Notas emergentes y comentarios | PDF-031 | pendiente |
-| [[PDF-034-texto-libre]] | Texto libre | PDF-031 | pendiente |
-| [[PDF-035-dibujo-a-mano]] | Dibujo a mano | PDF-031 | pendiente |
+| [[PDF-030-estado-de-anotaciones]] | Estado de anotaciones, deshacer/rehacer y atajos (UI movida a PDF-069 y PDF-031) | PDF-023, PDF-024, PDF-009, COM-011 | en-revision |
+| [[PDF-069-barra-comentar]] | Barra «Comentar» y deshacer/rehacer en la barra principal | PDF-030, PDF-011, PDF-020 | pendiente |
+| [[PDF-031-capa-de-anotaciones]] | Capa de anotaciones: dibujar, seleccionar, mover, borrar; cursor por herramienta; importación perezosa | PDF-030, PDF-010, PDF-011, PDF-013 | pendiente |
+| [[PDF-032-resaltar-subrayar-tachar]] | Resaltar, subrayar y tachar | PDF-031, PDF-013, PDF-069 | pendiente |
+| [[PDF-033-notas-emergentes]] | Notas emergentes y comentarios | PDF-031, PDF-069 | pendiente |
+| [[PDF-034-texto-libre]] | Texto libre | PDF-031, PDF-069 | pendiente |
+| [[PDF-035-dibujo-a-mano]] | Dibujo a mano | PDF-031, PDF-069 | pendiente |
 | [[PDF-036-panel-de-comentarios]] | Panel de comentarios | PDF-031, PDF-015 | pendiente |
 | [[PDF-037-guardar-anotaciones]] | Guardar y guardar como dentro del PDF; aviso de cambios | PDF-028, PDF-030, PDF-019, COM-007, COM-010, COM-013 | pendiente |
 | [[PDF-038-recuperar-anotaciones]] | Recuperar anotaciones tras cierre inesperado | PDF-037, COM-012 | pendiente |
-| [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038 | pendiente |
+| [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069 | pendiente |
 
-Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. Tras PDF-031: PDF-032 a PDF-036 en paralelo.
+Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. PDF-031 y PDF-069 en paralelo (ambas tras PDF-030; PDF-031 tras PDF-013, PDF-069 tras PDF-020). Tras PDF-031 y PDF-069: PDF-032 a PDF-035 en paralelo; PDF-036 solo necesita PDF-031 y PDF-015.
 
 ### Iteraciones 3-6 (fichas por detallar)
 | Id | Título | Depende de | Estado |
@@ -186,6 +187,7 @@ Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PD
 
 ## Historial de iteraciones
 - 2026-10-17: plan creado. Iteraciones 1 y 2 detalladas; 3-6 con fichas de título y dependencias.
+- 2026-10-17: PDF-030 desbloqueada partiendo su UI: barra «Comentar» → [[PDF-069-barra-comentar]]; cursor e importación perezosa por página → [[PDF-031-capa-de-anotaciones]] (que corrige su `depende_de`).
 
 ## Mejoras conocidas (no planificadas)
 - Texto libre con caracteres no latinos: incrustar una fuente en la apariencia.

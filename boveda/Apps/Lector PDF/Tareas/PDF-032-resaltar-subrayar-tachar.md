@@ -4,7 +4,7 @@ id: PDF-032
 titulo: Resaltar, subrayar y tachar texto seleccionado
 app: pdf
 estado: pendiente
-depende_de: [PDF-031, PDF-013]
+depende_de: [PDF-031, PDF-013, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
@@ -55,3 +55,6 @@ El usuario selecciona texto y lo resalta, subraya o tacha: (a) con la herramient
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] replanificación — 2026-10-17
+- `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).
