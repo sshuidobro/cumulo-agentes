@@ -220,16 +220,19 @@ function pintarEstado(estado) {
   }
 
   const fuente = $('fuente');
-  const vivo = estado.fuente === 'boveda' && modo === 'servidor';
+  const vivo = modo === 'servidor' && !estado.aviso;
   let textoFuente;
   if (estado.fuente === 'ejemplo') textoFuente = 'Datos de ejemplo: un equipo imaginario haciendo el lector PDF';
-  else if (vivo) textoFuente = `En directo desde la bóveda · ${hora(estado.generado)}`;
+  else if (estado.fuente === 'github') {
+    const cambio = new Date(estado.fechaCommit).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+    textoFuente = estado.aviso || `En directo desde GitHub · rama ${estado.rama} · último cambio ${cambio} · comprobado ${hora(estado.generado)}`;
+  } else if (vivo) textoFuente = `En directo desde la bóveda · ${hora(estado.generado)}`;
   else textoFuente = `Instantánea del repositorio · ${new Date(estado.generado).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}`;
   fuente.innerHTML = `<span class="punto${vivo || estado.fuente === 'ejemplo' ? ' vivo' : ''}"></span>`;
   fuente.append(textoFuente);
 
   $('pie').innerHTML = estado.fuente === 'ejemplo'
-    ? 'Para ver al equipo de verdad, en el repositorio: <code>node herramientas/oficina-2d/estado.mjs --servir</code>'
+    ? 'Para ver al equipo de verdad, en el repositorio: <code>node herramientas/oficina-2d/estado.mjs --servir --github</code>'
     : `${estado.total ?? 0} fichas en la bóveda. Se deduce de su <code>estado</code>; el líder y el investigador, del Plan y de la investigación.`;
 }
 
