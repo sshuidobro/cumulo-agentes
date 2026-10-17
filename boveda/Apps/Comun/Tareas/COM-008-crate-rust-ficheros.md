@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-008
 titulo: Crear el crate Rust suite-platform con registro de ficheros y E/S atómica
 app: comun
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [stack-tauri, pruebas-calidad]
@@ -96,3 +96,9 @@ Existe el crate `packages/platform/rust` (`suite-platform`, solo `std`, sin Taur
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `Cargo.toml` (raíz, workspace), `packages/platform/rust/Cargo.toml`, `packages/platform/rust/src/lib.rs`, `packages/platform/rust/src/files.rs`, `packages/platform/rust/tests/files.rs`, `Cargo.lock` (generado), esta ficha.
+- Qué he hecho: crate `suite-platform` solo con `std` (sin Tauri). Registro de tokens `t1..tN` con `Mutex` (poison-safe), `read_range` con recorte y límite de 16 MiB, `atomic_write` y `atomic_copy_append` con temporal `.{nombre}.suite-tmp-{pid}-{n}` en el mismo directorio, borrado del temporal ante error y copia de permisos en `atomic_write`. Mensajes de error en español y códigos estables. 15 tests de integración cubren todos los criterios (T).
+- Comandos ejecutados y resultado: `cargo fmt --check -p suite-platform` → 0; `cargo clippy -p suite-platform --all-targets -- -D warnings` → 0; `cargo test -p suite-platform` → 15 passed, 0 failed. Tiempo de `atomic_copy_append` con base de 50 MiB + 1 KiB: **65 ms** (límite 3 s). `target/` aparece ignorado por `.gitignore` (la entrada ya estaba en el working tree, editada por COM-004; no la he tocado). Todos los comandos se ejecutaron desde la raíz del repo.
+- Dudas o cosas que no he podido hacer: el test de permisos (`atomic_write` conserva modo) va con `#[cfg(unix)]` porque el crate debe compilar también en Windows; en Windows no se ejecuta. No he hecho `fsync` del directorio tras el `rename` (no lo pide la ficha; anotado por si el tester lo quiere como mejora de durabilidad).

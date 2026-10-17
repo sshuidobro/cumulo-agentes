@@ -1,9 +1,20 @@
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
+import reactHooks from 'eslint-plugin-react-hooks';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const noTauri = { group: ['@tauri-apps/*'], message: 'Usa @suite/platform (ADR-0008).' };
+const noNode = { group: ['node:*'], message: 'Este código corre en el navegador.' };
+const noPdfjs = { group: ['pdfjs-dist', 'pdfjs-dist/*'], message: 'Solo src/engine importa pdfjs-dist (ADR-0007).' };
+const noUi = { group: ['react', 'react-dom', 'react-dom/*', 'zustand'], message: 'core/ es lógica pura sin React (stack-typescript-react).' };
+
 export default defineConfig(
-  { ignores: ['**/node_modules/', '**/coverage/', '**/dist/', 'boveda/', 'ejemplos/'] },
+  {
+    ignores: ['**/node_modules/', '**/coverage/', '**/dist/', 'boveda/', 'ejemplos/', 'target/',
+      '**/src-tauri/target/', '**/src-tauri/gen/', '**/public/pdfjs/', 'fixtures/pdf/generated/',
+      '**/playwright-report/', '**/test-results/'],
+  },
   js.configs.recommended,
   tseslint.configs.strict,
   {
@@ -15,11 +26,13 @@ export default defineConfig(
       '@typescript-eslint/ban-ts-comment': ['error', { 'ts-expect-error': 'allow-with-description' }],
     },
   },
-  {
-    files: ['**/*.cjs'],
-    languageOptions: {
-      sourceType: 'commonjs',
-      globals: { module: 'writable', require: 'readonly' },
-    },
-  },
+  { files: ['packages/shared/src/logger.ts'], rules: { 'no-console': 'off' } },
+  { files: ['apps/**/*.{ts,tsx}', 'packages/platform/**/*.ts'], languageOptions: { globals: { ...globals.browser } } },
+  { files: ['apps/**/*.{ts,tsx}'], ...reactHooks.configs.flat.recommended },
+  { files: ['apps/*/src/**/*.{ts,tsx}'], rules: { 'no-restricted-imports': ['error', { patterns: [noPdfjs, noTauri, noNode] }] } },
+  { files: ['apps/*/src/engine/**/*.{ts,tsx}'], rules: { 'no-restricted-imports': ['error', { patterns: [noTauri, noNode] }] } },
+  { files: ['apps/*/src/core/**/*.ts'], rules: { 'no-restricted-imports': ['error', { patterns: [noPdfjs, noTauri, noNode, noUi] }] } },
+  { files: ['packages/platform/src/**/*.ts'], ignores: ['packages/platform/src/tauri/**'], rules: { 'no-restricted-imports': ['error', { patterns: [noTauri, noNode] }] } },
+  { files: ['**/*.cjs'], languageOptions: { sourceType: 'commonjs', globals: { module: 'writable', require: 'readonly' } } },
+  { files: ['**/*.mjs'], languageOptions: { globals: { ...globals.node } } },
 );

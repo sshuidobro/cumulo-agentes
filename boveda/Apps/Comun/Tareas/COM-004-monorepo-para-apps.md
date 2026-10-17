@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-004
 titulo: Preparar el monorepo para apps (proyectos de Vitest, typecheck por paquete, lint de React, Result y logger)
 app: comun
-estado: en-curso
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -145,3 +145,12 @@ Que el monorepo admita paquetes con DOM y apps React: Vitest por proyectos, type
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `tsconfig.base.json` (nuevo), `tsconfig.json`, `vitest.config.ts`, `packages/shared/vitest.config.ts` (nuevo), `eslint.config.js`, `package.json`, `pnpm-lock.yaml`, `.gitignore`, `packages/shared/src/index.ts`, `packages/shared/src/result.ts` (nuevo), `packages/shared/src/logger.ts` (nuevo), `packages/shared/tests/result.test.ts` (nuevo), `packages/shared/tests/logger.test.ts` (nuevo).
+- Qué he hecho: configuración de monorepo según la ficha (base de tsconfig, proyectos de Vitest con `shared`, ESLint con reglas de React y de capas, scripts raíz, `.gitignore`). Añadidos `AppError`/`Result`/`ok`/`err` y el logger (`configureLogging`, `createLogger`, `consoleSink`) con sus tests. Los 59 tests anteriores no se han tocado. `apps/*/vitest.config.ts` se mantiene en `projects` (no ha dado error con 0 apps).
+- Desviación menor: `tsconfig` tiene `types: []` y `lib` sin DOM, así que `console` no existe para el tipo. En `logger.ts` y en su test se accede a la consola mediante un tipo mínimo `ConsoleApi` sobre `globalThis` (sin cambiar `tsconfig`). El comportamiento es el de la ficha.
+- Comandos ejecutados y resultado: `pnpm install` sin avisos de peer (grep de peer/warn vacío). `pnpm lint` 0. `pnpm typecheck` 0. `pnpm test` 0: 67 tests en 7 ficheros (59 previos + 8 nuevos), salida con `|shared|`. `pnpm coverage` 0: 100 % líneas (logger.ts 100 %, ramas 83 %).
+- Comprobación de capas: fichero temporal `apps/x/src/core/t.ts` con `import 'react'`. Salida: `1:1 error 'react' import is restricted from being used by a pattern. core/ es lógica pura sin React (stack-typescript-react) no-restricted-imports`, exit 1. Fichero y carpeta `apps/x` borrados.
+- `git status`: no aparecen `dist/` ni `target/`. Hay una carpeta `target/` (Cargo, creada a las 17:08 por otro proceso, no por este compilado de TS) que ya está ignorada por `.gitignore`. No la he borrado.
+- Dudas o cosas que no he podido hacer: ninguna de la ficha. Pendiente para el líder: `pnpm e2e` no tiene ningún paquete con script `e2e` todavía (se resolverá con PDF-001).
