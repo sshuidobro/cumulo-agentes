@@ -3,9 +3,9 @@ tipo: tarea
 id: COM-006
 titulo: Implementar Platform para navegador (abrir, soltar, enlaces, título, cierre)
 app: comun
-estado: en-test
+estado: cambios-pedidos
 depende_de: [COM-005]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -99,3 +99,23 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 ### [revisor] ronda 1 — 2026-10-17 — APROBADO
 Lint, typecheck, test (257) y coverage en verde; `src/web` 98,3 % de líneas. Todos los criterios cubiertos por tests reales; sin código fuera de alcance; tipos sin `any`; URLs externas filtradas por protocolo.
 1. (opcional) `packages/platform/src/web/platform-web.ts:27` — `registry` se escribe pero aún no se lee; COM-007 lo usará para guardar, sin acción ahora.
+
+### [tester] ronda 1 — 2026-10-17 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Picker con handle (5 bytes, canSaveInPlace, path null) | OK | `platform-web-open.test.ts` en verde |
+| AbortError / NotAllowedError / TypeError | OK | idem; más NotFoundError en `getFile` -> `io` (qa-web-edge) |
+| Sin picker -> `pickWithInput('.pdf,application/pdf')` | OK | idem; pickWithInput que lanza -> err sin romper |
+| `openDropped` handle / files / vacío | OK | idem; handle rechazado o carpeta -> cae a `files` |
+| `openExternalUrl` seguro | OK | también `JAVASCRIPT:`, ` javascript:`, `vbscript:`, `blob:`, `ftp:`, vacío rechazados; `MAILTO:` permitido |
+| `onCloseRequested` | OK | idem; dos listeners y baja doble |
+| `setTitle` y tokens distintos | OK | tokens únicos incluso tras `closeFile` |
+| lint / typecheck | OK | código 0 |
+| `pnpm test` código 0 | **FALLA** | 2 tests rojos de `apps/lector-pdf` (ver abajo) |
+| `pnpm coverage` código 0 | **FALLA** | mismo motivo (corre el mismo conjunto) |
+| `src/web` >= 85 % líneas | OK | 100 % líneas (98,3 % sentencias) con `vitest --coverage` en `packages/platform` |
+
+**Fallo (fuera del código de COM-006, pero bloquea el criterio global):** con `pnpm test` desde la raíz fallan por tiempo, de forma repetible (3 de 3 ejecuciones), tests de rendimiento de `apps/lector-pdf` bajo carga paralela: `tests/unit/layout.test.ts` "1 000 000 de consultas aleatorias en menos de 300 ms" (1,8–3,4 s) y "calcula 1 000 000 de páginas en menos de 100 ms" (121 ms, intermitente), y `tests/unit/fixtures.test.ts` "árbol de 100 000 páginas con fanout 32" (timeout 5 s). Aislados (`vitest run tests/unit/layout.test.ts`) pasan 33/33. `packages/platform` entero: 159/159 en verde. Reproducir: `pnpm test` en la raíz. Son tests de PDF-002/PDF-006 que dependen de la carga de la máquina; la causa y su arreglo (p. ej. umbrales/timeouts razonables o ejecutarlos como benchmark) corresponden al líder/programador de PDF, no a COM-006. Sugerencia: si el líder lo decide así, COM-006 puede cerrarse en cuanto el conjunto raíz esté estable.
+
+Tests añadidos: `packages/platform/tests/web/qa-web-edge.test.ts` (8 tests: Unicode/RTL/vacío, picker vacío, getFile fallido, drop con handle fallido o carpeta, URLs peligrosas, listeners, tokens). Revisado y conservado `packages/platform/tests/qa-edge.test.ts` (4 tests válidos: prefs Unicode/circular, fuentes vacías/NaN, readAll de 10 MB).
+Rendimiento: sin presupuesto aplicable a esta ficha.

@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-010
 titulo: Implementar Platform para Tauri (TypeScript) con mocks
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react, pruebas-calidad]
@@ -81,3 +81,14 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 - Todos los criterios cubiertos por tests reales; solo `src/tauri/tauri-api.ts` importa `@tauri-apps/*`; lista blanca de protocolos correcta.
 1. (opcional) `platform-tauri.ts:onFileOpenedFromOS` — una recogida en vuelo se pierde si se da de baja justo entonces; aceptable, ya anotado por el programador.
 2. (opcional) Añadir COM-006 a `depende_de` (lo señala el programador).
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| openFile / read / save / saveAs / onFileOpenedFromOS / cierre y URL / mockIPC / loadPlatform | OK | `pnpm --filter @suite/platform exec vitest run` → 166 tests en verde (tests de programador + 7 de QA) |
+| lint, typecheck | OK | `pnpm lint` y `pnpm typecheck` con código 0 |
+| Cobertura `platform-tauri.ts` ≥ 85 % | OK | 97,43 % líneas (platform: 94,87 % global); `tauri-api.ts` 28 % (solo `invoke` vía mockIPC; fuera del umbral) |
+| `pnpm test` / `pnpm coverage` raíz | Sin fallos en platform | Fallan solo tests de rendimiento temporales de `apps/lector-pdf` (layout.test.ts, commands.test.ts, fixtures.test.ts) con carga de máquina 10-12 en 4 núcleos; los de layout/commands/fixtures pasan en aislamiento. No relacionado con COM-010; vigilar flakiness (PDF-006). |
+
+Tests añadidos: `packages/platform/tests/tauri/qa-edge-tauri.test.ts` (Unicode/rutas con espacios, rangos inválidos sin invocar, errores sin code → io, cierre permitido, baja antes de resolver `listen`, URLs file:/data:/relativas rechazadas, setTitle con rechazo).
+Rendimiento: no aplica (capa fina de IPC).
