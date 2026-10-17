@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-024
 titulo: Importar las anotaciones existentes del PDF al modelo (y las no soportadas como solo lectura)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-023, PDF-005, PDF-003]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -54,3 +54,10 @@ Leer con pdf.js las anotaciones que ya tiene el PDF (de Adobe, de otros programa
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/import.ts` (nuevo), `apps/lector-pdf/src/core/annotations/index.ts` (export), `apps/lector-pdf/src/engine/annotations-import.ts` (nuevo), `apps/lector-pdf/src/engine/index.ts` (export), `apps/lector-pdf/tests/unit/annotations/import.test.ts` (nuevo), `apps/lector-pdf/tests/unit/annotations/engine-import.test.ts` (nuevo), `apps/lector-pdf/tests/perf/annotations-import.perf.test.ts` (nuevo).
+- Qué he hecho: `importPageAnnotations` (puro, nunca lanza) convierte Highlight/Underline/StrikeOut/Text/FreeText/Ink al modelo y el resto a ajenas de solo lectura; Popup, Link y Widget se ignoran y las anotaciones con bandera Hidden también. `readPageAnnotations` y `scanAnnotations` (lotes de 50, cede el hilo, aborta a `cancelled`) en el motor. Criterios (T) cubiertos con `annotated.pdf`, `pages-5000.pdf` y `7.18.1-t02-pass-a.pdf`.
+- Criterios de decisión tomados (la ficha no los fijaba): `quadPoints` ausente o vacío usa el rectángulo, pero con longitud inválida la anotación pasa a ajena; un campo presente con tipo inesperado hace la anotación ajena, uno ausente toma su valor por defecto; `popupRef` no parseable hace la anotación ajena; un `id` ausente o no parseable produce una ajena con id provisional (`ref:?<página>.<índice>` o `ref:<id>`) y rectángulo `[0,0,0,0]` si falta; el icono no válido de una nota vale `Note`; `fontSize` no positivo vale 12.
+- Comandos ejecutados y resultado: `pnpm lint` (0, sin avisos), `pnpm typecheck` (0), `pnpm test` (0; 62 ficheros, 830 tests), `pnpm coverage` (0; `import.ts` 98,29 % líneas), `pnpm perf -- annotations-import` (0; `scanAnnotations` 5000 páginas: total 536,1 ms, máximo entre lotes 8,3 ms, 100 lotes).
+- Dudas o cosas que no he podido hacer: ninguna bloqueante. Los tests de rendimiento están en `tests/perf/` porque la regla del proyecto prohíbe `performance.now()` en `tests/unit/`. No he hecho commit de otros ficheros del árbol de trabajo: solo los míos.
