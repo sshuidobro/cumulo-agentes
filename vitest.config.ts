@@ -2,11 +2,11 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['packages/*/tests/**/*.test.ts'],
-    environment: 'node',
+    projects: ['packages/*/vitest.config.ts', 'apps/*/vitest.config.ts'],
     coverage: {
       provider: 'v8',
-      include: ['packages/*/src/**/*.ts'],
+      include: ['packages/*/src/**/*.ts', 'apps/*/src/core/**/*.ts'],
+      exclude: ['**/*.d.ts'],
       thresholds: { lines: 80 },
     },
   },

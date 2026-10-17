@@ -2,3 +2,10 @@ node_modules/
 coverage/
 *.log
 registros/
+target/
+dist/
+fixtures/pdf/generated/
+apps/*/public/pdfjs/
+playwright-report/
+test-results/
+apps/*/src-tauri/gen/
