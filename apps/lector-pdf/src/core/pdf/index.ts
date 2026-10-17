@@ -5,3 +5,5 @@ export { parseIndirectObject, parseValue, type LengthResolver, type ParsedIndire
 export { serializeIndirect, serializeValue } from './serialize';
 export { decodeStreamData, flateEncode } from './filters';
 export { readXref, type XrefEntry, type XrefInfo } from './xref';
+export { BlockCache, type BlockCacheOptions } from './block-cache';
+export { ObjectReader } from './object-reader';
