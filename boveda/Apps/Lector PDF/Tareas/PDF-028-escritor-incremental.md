@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-028
 titulo: Escritor incremental - anexar las anotaciones al PDF sin reescribirlo
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-068, PDF-027, PDF-024]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -116,3 +116,10 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
 - Dudas o cosas que no he podido hacer:
   1. **Fallos ajenos a esta ficha:** `pnpm typecheck` falla en `apps/lector-pdf/tests/e2e/zoom.spec.ts` (líneas 63-64, `Property 'top' does not exist`), fichero sin commitear de otro agente. `pnpm test` y `pnpm coverage` tienen un test rojo: `tests/ui/open.test.tsx` › «con la carga pendiente muestra el estado de carga con el nombre y Cancelar», que importa `src/ui/App`, en edición por el agente del visor. No lo he tocado (no toco `src/ui`). Mis ficheros no provocan ninguno de los dos fallos.
   2. Las medidas numéricas de lectura y tiempo no se han vuelto a extraer en esta ronda: el código de escritura no ha cambiado y los umbrales de `incremental.perf.test.ts` y del test de lectura pasan.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- Comprobado: `pnpm lint` OK; `pnpm typecheck` sin errores en este momento; `incremental.test.ts` + `to-pdf.test.ts` 40/40 OK; `pnpm perf`: `incremental.perf.test.ts` OK. Falla `search.perf.test.ts` (ajeno a esta ficha, posible ruido de carga por ejecución concurrente; el tester debe repetirlo en serie).
+- Revisado: cumple los criterios y el paso 3.9 (`openForSave`), el incremento no toca bytes previos, xref de tabla/stream según `lastKind`, `/Annots` ausente/directo/indirecto, `/RC` borrado al cambiar el texto, `/ID` determinista, sin excepciones (todo vía `Result`), sin `skip`/`only`/`console.log`.
+- (opcional) `incremental.ts`: una nota modificada no actualiza el `/Open` de su popup existente; revisarlo si PDF-037 expone ese cambio.
+- (opcional) Los tests ven bien `annotated.pdf` y `basic-5`, pero no hay caso explícito con `incremental-updates.pdf`; el doble guardado ya cubre el encadenado.
+- Problemas bloqueantes: 0.
