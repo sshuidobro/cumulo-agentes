@@ -5,7 +5,7 @@ titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados
 app: pdf
 estado: en-revision
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -108,3 +108,30 @@ Decisiones menores del programador (ronda 1) aceptadas: `closeDocument` cancela 
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK (en un primer intento falló en `tests/helpers/fake-platform.ts` por el `closeWindow` obligatorio que añadió el trabajo paralelo de COM-013; en la segunda ejecución ya pasaba, y no he tocado ese fichero en esta ronda); `pnpm test` 60 ficheros / 778 tests OK; `pnpm coverage` OK (líneas 89,1 % en total; un primer intento chocó con otro proceso de Vitest que usaba el mismo directorio de cobertura, y en el segundo pasó); `pnpm --filter lector-pdf e2e`: **5 de 5 OK** (los 4 de `open.spec.ts` y el de `smoke.spec.ts`).
 - Tiempo de `pages-100000.pdf`: **444 ms** desde `setInputFiles` hasta «100.000 páginas» (medido con la anotación `rendimiento` de `open.spec.ts`, presupuesto < 5 000 ms; en las tres ejecuciones del E2E de 100 000 páginas el test pasó). Presupuesto cumplido.
 - Dudas o cosas que no he podido hacer: no he tocado los criterios marcados `[ ]`; los verificará el tester. Commit de la ronda con solo mis ficheros (fuentes de `engine/` y esta ficha).
+
+### [revisor] ronda 2 — 2026-10-17 — APROBADO
+- Comprobado: `pnpm lint` y `pnpm typecheck` OK; `pnpm test` 63 ficheros / 834 tests OK (una primera ejecución falló sin que pudiera reproducirlo en tres repeticiones; probable interferencia de trabajo paralelo); `pnpm coverage` código 0 (líneas 98,9 %); `pnpm --filter lector-pdf e2e` 5/5 OK (100 000 páginas en 1,4 s de test completo).
+- `grep pdfjs-dist src`: solo `engine/pdfjs.ts` (legacy), `engine/worker.ts` (legacy) y el CSS; conforme a ADR-0013. Lógica de `document-actions.ts` correcta (última apertura gana, destrucción de resultados obsoletos, cancelación, límite de escaneo). Tests cubren los criterios (T).
+1. (opcional) `document-actions.ts:110` — si se cancela durante `getPage(1)` el resultado se descarta solo por el contador; funciona, sin acción.
+
+### [tester] ronda 1 — 2026-10-17 — FALLA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) unit/UI de apertura (basic-5, sizes-mixed, A lento/B rápido, corrupt, cancelar, Ctrl+O, tooltip) | OK | `pnpm test`: 63 ficheros / 834 tests OK |
+| E2E basic-5, corrupt-not-pdf, corrupt-empty | OK | `pnpm --filter lector-pdf e2e`: 5/5 OK |
+| E2E rendimiento 100 000 páginas | OK | 936 ms (anotación `rendimiento`, ejecución con 2 workers); presupuesto < 5 000 ms |
+| Estados navegables con teclado, foco visible | OK | `open-qa.spec.ts` (Tab llega a «Abrir…» con foco visible) |
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` código 0 (sin fallos ajenos) |
+| coverage | OK | `pnpm coverage` chocó con el proceso de otro agente (mismo directorio); repetido con `--coverage.reportsDirectory` propio: código 0, líneas 98,9 % |
+| Arrastrar y soltar (Objetivo de la ficha) | FALLA | `pnpm exec playwright test open-qa -g arrastrar` |
+
+**Fallo (arrastrar y soltar silencioso).** Pasos: abrir la app; soltar un PDF cuyo `DataTransferItem.getAsFileSystemHandle()` resuelve a `undefined` en lugar de `null` (Chromium lo hace con un `DataTransfer` sintético y, según la fuente del arrastre, puede ocurrir con arrastres reales que no son ficheros del disco). La superposición «Suelta el PDF para abrirlo» sale bien, pero al soltar no pasa nada: ni documento ni mensaje de error. Causa: `packages/platform/src/web/platform-web.ts:119` hace `handle !== null && isFileHandle(handle)`; con `undefined`, `handle.kind` lanza `TypeError`, `openDropped` rechaza y `document-actions.ts:186 openDropped` no captura la excepción (promesa rechazada sin tratar). Arreglo esperado: tratar `undefined` igual que `null` (`handle != null`, usando la copia `dt.files[0]`) en la plataforma, y que `openDropped` de la app convierta una excepción en estado `error` con mensaje en español. Test que lo reproduce (rojo): `apps/lector-pdf/tests/e2e/open-qa.spec.ts` «arrastrar y soltar un PDF…». Conviene además un test unitario en `packages/platform` (COM-006) con `getAsFileSystemHandle` devolviendo `undefined`.
+
+Tests añadidos: `apps/lector-pdf/tests/e2e/open-qa.spec.ts` (9: nombre con espacios/ñ/emoji, texto con extensión .pdf, PDF truncado sin errores de consola, recuperarse tras un error, B sobre A, arrastrar y soltar [rojo], Tab y foco, Ctrl+O con selector simulado, tooltip). Nota: la plataforma captura `showOpenFilePicker` al arrancar, por lo que el test lo sustituye con `addInitScript`.
+Rendimiento: 100 000 páginas visibles en 936 ms. Bundle (`pnpm --filter lector-pdf build`, `dist` 9,2 MB en total): JS principal `index-*.js` 724,8 kB (221 kB gzip), `pdf.worker.min-*.mjs` 1 321 kB (392 kB gzip), CSS 233,5 kB (42 kB gzip), chunk `tauri` 18,8 kB (5,3 kB gzip), `web` 5,5 kB; Vite avisa de chunk > 500 kB (informativo, no rechazo; el CSS de 233 kB viene del visor de pdf.js).
+
+### [programador] ronda 3 — 2026-10-17
+- Ficheros cambiados: `packages/platform/src/web/platform-web.ts` (`openDropped` trata `getAsFileSystemHandle()` que devuelve `undefined` igual que `null`; cae a `dt.files[0]`); `packages/platform/tests/web/platform-web-open.test.ts` (2 tests nuevos: handle `undefined` síncrono y resuelto a `undefined`); `apps/lector-pdf/src/state/document-actions.ts` (`openDropped` captura una excepción de la plataforma y la muestra como `io` con mensaje en español, en vez de dejar la promesa rechazada); `apps/lector-pdf/tests/unit/document-actions.test.ts` (test nuevo: excepción en `openDropped` → `status 'error'`); esta ficha.
+- Qué he hecho: reproducido primero el fallo del tester (`open-qa.spec.ts` «arrastrar y soltar…», rojo con `document-ready` no encontrado). Corregida la comparación `null`/`undefined` en la plataforma y añadido el manejo de excepciones en la acción de la app. `package.json` y `vitest.config` sin cambios.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 64 ficheros / 841 tests OK; `pnpm coverage` código 0 (líneas 98,9 %); `pnpm --filter lector-pdf e2e` 14/14 OK (incluye «arrastrar y soltar», que antes fallaba); tests unitarios de `packages/platform/tests/web/platform-web-open.test.ts` 34/34 OK.
+- Dudas o cosas que no he podido hacer: `apps/lector-pdf/tests/e2e/open-qa.spec.ts` (del tester) sigue sin commitear; lo incluyo en el commit solo si el tester no lo ha hecho antes. Otros ficheros `qa-*` sin seguir son de otros agentes y no los he tocado. El tiempo de `pages-100000.pdf` (1,2 s en esta ejecución del E2E) queda como en la ronda 2.
