@@ -27,11 +27,12 @@ Un "videojuego" en pixel art que muestra al equipo de agentes trabajando. Hay un
 El código está en `herramientas/oficina-2d/` (JavaScript sin dependencias, fuera de las apps).
 
 ## Cómo abrirla
-- **En directo** (lee la bóveda cada 3 s): `node herramientas/oficina-2d/estado.mjs --servir` y abrir `http://localhost:4173`. Solo escucha en `127.0.0.1`: nada sale del ordenador.
+- **En directo desde GitHub** (el equipo trabaja en otra máquina, p. ej. en la nube): `node herramientas/oficina-2d/estado.mjs --servir --github` y abrir `http://localhost:4173`. Cada 15 s hace `git fetch` y lee las fichas de la rama remota con el commit más reciente, sin tocar la carpeta local. Para fijar una rama: `--rama NOMBRE`. Solo ve lo que el equipo haya subido, así que el equipo debe hacer commit y push de `boveda/` cada vez que una ficha cambie de estado.
+- **En directo desde la carpeta local** (el equipo trabaja en este mismo ordenador; lee la bóveda cada 3 s): `node herramientas/oficina-2d/estado.mjs --servir`. El servidor solo escucha en `127.0.0.1`: nada sale del ordenador.
 - **Fichero suelto** con una instantánea del estado actual: `node herramientas/oficina-2d/empaquetar.mjs` genera `herramientas/oficina-2d/oficina-autonoma.html` (no se sube al repo).
 - **Solo el estado en JSON**: `node herramientas/oficina-2d/estado.mjs`.
 - El botón **Ejemplo** muestra un equipo imaginario recorriendo el flujo completo de fichas del lector PDF.
-- Tests: `node --test 'herramientas/oficina-2d/pruebas/*.test.mjs'`.
+- Tests: `node --test 'herramientas/oficina-2d/pruebas/*.test.mjs'`. Una opción mal escrita (p. ej. `--servir.`) da error en vez de ignorarse.
 
 ## De dónde sale el estado
 Se deduce del frontmatter de la bóveda (`derivar.mjs`):
