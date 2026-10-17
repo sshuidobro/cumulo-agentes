@@ -72,3 +72,34 @@ Con un documento abierto, el área central muestra una columna de **marcos de p�
 - Qué he hecho: store con `zoomMode`, `zoom`, `rotation` y `navRequest`; `goToPage`/`setCurrentPage` (acotado y con `seq` creciente); visor con scroll escalado (`contentYRef` como fuente de verdad, eco de `scrollTop` ignorado, rueda y teclado solo si `factor > 1`), páginas montadas ± 1, página actual en el tercio superior, anclaje al cambiar layout y foco al abrir. `App` monta `Viewer` y conserva `data-testid="document-ready"` en un texto oculto (lectores de pantalla) con el recuento.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` (raíz) 855 tests OK antes del último ajuste del contenedor; tras él `vitest --project lector-pdf` 580 tests OK; `pnpm coverage` OK (líneas globales 88,26 %); `pnpm --filter lector-pdf e2e` 19/19 OK (incluidos los 5 de visor). Tarea larga máxima en el e2e de scroll: ver anotación del test (≤ 100 ms).
 - Dudas o cosas que no he podido hacer: (1) el ancla se calcula al cambiar el layout a partir del layout anterior y `contentY` (equivalente a guardarla tras cada scroll, pero sin estado extra). (2) Los marcos de página llevan `role="group"`: `aria-label` en un `div` sin rol no es válido. (3) En modo «auto» con documentos de tamaños mezclados, el zoom sigue a la página actual; el ancla evita saltos, pero conviene revisarlo en el e2e de PDF-022 con `sizes-mixed`. (4) PDF-021 y PDF-026 no los he tocado: son fichas distintas y no forman parte de esta.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint, typecheck, vitest lector-pdf (580), coverage (líneas 98,17 %) y e2e (19/19) en verde. Todos los criterios cubiertos; sin fuera de alcance.
+1. (opcional) `apps/lector-pdf/tests/ui/viewer.test.tsx:125-129` — la comprobación de `currentPage` tras actualizar dims anteriores es síncrona; añadir además que el `contentY`/página 300 sigue montada tras el cambio la haría más robusta.
+2. (opcional) `Viewer.tsx:131` — la ficha pide `round(...)` en `scrollTop`; el código lo deja sin redondear y compara con tolerancia 0,5. Sin impacto funcional.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| T: 5000 págs ≤5 nodos, mitad ≈2500 | OK | `pnpm test` 892/892 (tests/ui/viewer.test.tsx) |
+| T: goToPage clamp | OK | idem + tests/unit/navigation.test.ts |
+| T: 100 000 págs End / wheel sin factor | OK | idem |
+| T: anclaje zoom y dims previas | OK | idem |
+| E2E 5000 (≤12 marcos, pág. 1 visible) | OK | viewer.spec.ts + viewer-stress.spec.ts (150 ruedas rápidas, End/Home/PageUp/PageDown, <400 nodos DOM totales, marcos contiguos, sin índices fuera de rango) |
+| E2E 100000: End < 1,5 s | OK | viewer.spec.ts (tiempo anotado en el informe) y viewer-stress.spec.ts |
+| E2E sizes-mixed | OK | viewer.spec.ts |
+| Accesibilidad Tab/aria-label | OK | viewer.spec.ts |
+| Long tasks ≤ 100 ms | OK | viewer.spec.ts |
+| lint/typecheck/test/coverage/e2e | OK | lint 0, typecheck 0, vitest 892 OK, cobertura (dir propio) líneas 98,17 %, e2e 20/21 |
+Nota: en la ejecución completa de e2e falló una vez `open-qa.spec.ts` (Ctrl+O, PDF-008) por carga concurrente de otros testers; 3 repeticiones aisladas 9/9 OK. No relacionado con PDF-009.
+Tests añadidos: `apps/lector-pdf/tests/e2e/viewer-stress.spec.ts` (pages-5000 y pages-100000).
+Rendimiento: 5000 págs 5,6 s y 100 000 págs 7,0 s para todo el escenario de estrés, con DOM acotado (≤12 marcos).
+
+### [coordinador] reapertura — 2026-10-17
+Defecto detectado por el programador de PDF-010: en `viewer.spec.ts` «sizes-mixed» (y `viewer-stress.spec.ts`) aparece «Maximum update depth exceeded»: el zoom automático depende de `currentPage` y se realimenta. Reproducible en el commit de PDF-009 sin cambios de PDF-010. Corregir (el zoom auto no debe depender de la página actual de forma circular; p. ej. basar el ajuste en la página de anclaje fijada al cambiar de modo/redimensionar), añadir test de regresión unitario/UI y que `pnpm --filter lector-pdf e2e` pase completo (26 tests).
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/Viewer.tsx`, `apps/lector-pdf/tests/ui/viewer.test.tsx`, `boveda/Apps/Lector PDF/Tareas/PDF-009-visor-virtualizado.md`.
+- Qué he hecho: el zoom automático ya no depende de la página actual (causa del bucle: zoom → layout → página actual → zoom). La página de referencia del zoom se fija solo al cambiar el modo, la rotación, el tamaño del visor o el documento (ajuste de estado durante el render, sin efecto). Añadido test de regresión en `tests/ui/viewer.test.tsx` (40 páginas con tamaños alternos, 12 saltos en modo automático, sin errores); falla con el código anterior («Maximum update depth exceeded») y pasa con el arreglo.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 1016/1016 OK; `pnpm coverage` OK (líneas globales 98,51 %); `pnpm --filter lector-pdf e2e` 25/26 OK: el único fallo fue `open-qa.spec.ts` «Ctrl+O» (carga concurrente, ya anotado por el tester); repetido aislado 3 veces 9/9 OK. Los avisos «HTMLCanvasElement.getContext not implemented» de jsdom ya existían con PDF-010 y no proceden de este cambio.
+- Dudas o cosas que no he podido hacer: la ficha original decía que el zoom automático usa la página actual; ahora usa la página de referencia fijada al cambiar de modo/tamaño, tal como propuso el coordinador. Conviene confirmarlo en el revisor. Los criterios de rendimiento de long tasks y el resto de e2e no se han vuelto a medir fuera de la ejecución completa.

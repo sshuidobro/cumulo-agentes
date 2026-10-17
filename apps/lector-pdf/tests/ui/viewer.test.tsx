@@ -130,6 +130,59 @@ describe('Viewer · ancla al cambiar zoom o dimensiones', () => {
   });
 });
 
+describe('Viewer · regresión: zoom automático con tamaños mezclados', () => {
+  it('con modo automático y páginas de tamaños distintos, desplazarse no provoca bucle de actualizaciones', async () => {
+    const count = 40;
+    const dims = PageDimsTable.uniform(count, 612, 792, 0);
+    // Páginas alternas apaisadas: cambiar de página cambia el zoom automático y, con él, el layout.
+    for (let i = 1; i < count; i += 2) dims.set(i, 792, 612, 0);
+    useViewer.setState({
+      ...initialViewerState,
+      status: 'ready',
+      file: openedFile('sizes.pdf', memorySource(new Uint8Array([0x25]))),
+      dims,
+      dimsVersion: 1,
+      zoomMode: { kind: 'auto' },
+    });
+    render(<Viewer />);
+    const region = screen.getByRole('region', { name: 'Documento «sizes.pdf»' });
+    Object.defineProperty(region, 'clientWidth', { configurable: true, value: VIEW_W });
+    Object.defineProperty(region, 'clientHeight', { configurable: true, value: VIEW_H });
+    Object.defineProperty(region, 'scrollTop', { configurable: true, writable: true, value: 0 });
+    act(() => {
+      FakeResizeObserver.triggerResize(region);
+    });
+
+    const errors: unknown[] = [];
+    const onError = (event: ErrorEvent): void => {
+      errors.push(event.error);
+      event.preventDefault();
+    };
+    window.addEventListener('error', onError);
+    try {
+      for (let step = 1; step <= 12; step++) {
+        const page = step * 3;
+        // El zoom automático cambia tras cada salto: el objetivo se calcula con el zoom que tiene el visor ahora.
+        const layout = computeLayout(dims, {
+          scale: zoomToScale(useViewer.getState().zoom),
+          rotation: 0,
+          gap: DEFAULT_GAP,
+          padding: DEFAULT_PADDING,
+        });
+        // La página actual es la que queda en el tercio superior: se sitúa su centro ahí.
+        const target = (layout.tops[page] ?? 0) + (layout.heights[page] ?? 0) / 2 - VIEW_H / 3;
+        Object.defineProperty(region, 'scrollTop', { configurable: true, writable: true, value: target });
+        fireEvent.scroll(region);
+        await waitFor(() => expect(useViewer.getState().currentPage).toBe(page));
+      }
+    } finally {
+      window.removeEventListener('error', onError);
+    }
+    expect(errors).toEqual([]);
+    expect(useViewer.getState().zoom).toBeGreaterThan(0);
+  });
+});
+
 describe('Viewer · accesibilidad', () => {
   it('es un área enfocable con Tab que recibe el foco al abrir, y cada página tiene su etiqueta', async () => {
     const { region } = setup(5);
