@@ -24,9 +24,19 @@ vi.mock('../../src/engine', () => ({
 
 const ASSET_BASE = 'http://localhost/pdfjs/';
 
+/** Página de pdf.js mínima: el visor pide tamaño, rotación, dibujo y liberación. El dibujo no termina nunca. */
+function fakePage(): unknown {
+  return {
+    rotate: 0,
+    getViewport: () => ({ width: 612, height: 792 }),
+    render: () => ({ promise: new Promise<void>(() => undefined), cancel: () => undefined }),
+    cleanup: () => true,
+  };
+}
+
 function fakeLoaded(numPages: number): LoadedPdf {
   return {
-    doc: { getPage: async () => ({}) } as unknown as LoadedPdf['doc'],
+    doc: { getPage: async () => fakePage() } as unknown as LoadedPdf['doc'],
     numPages,
     fingerprint: 'fake',
     onIoError: () => () => undefined,

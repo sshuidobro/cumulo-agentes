@@ -28,7 +28,7 @@ import type { PageDimsTable } from '../../core/page-dims';
 import { msg } from '../messages';
 import { setCurrentPage } from '../../state/navigation';
 import { useViewer } from '../../state/viewer-store';
-import { PageFrame } from './PageFrame';
+import { PageView } from './PageView';
 import { useViewportSize } from './use-viewport-size';
 import styles from './Viewer.module.css';
 
@@ -247,10 +247,11 @@ export function Viewer() {
   if (layout !== null) {
     spacerWidth = Math.max(layout.maxWidth + 2 * DEFAULT_PADDING, viewport.width);
     const range = visibleRange(layout, contentY, contentY + vh, 1);
+    const inView = visibleRange(layout, contentY, contentY + vh, 0);
     const scrollTop = contentYToScrollTop(contentY, map);
     for (let i = range.first; i <= range.last; i++) {
       frames.push(
-        <PageFrame
+        <PageView
           key={i}
           index={i}
           numPages={layout.count}
@@ -258,6 +259,9 @@ export function Viewer() {
           left={(spacerWidth - (layout.widths[i] ?? 0)) / 2}
           width={layout.widths[i] ?? 0}
           height={layout.heights[i] ?? 0}
+          zoom={zoom}
+          rotation={rotation}
+          visible={i >= inView.first && i <= inView.last}
         />,
       );
     }

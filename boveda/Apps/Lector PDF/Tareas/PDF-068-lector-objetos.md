@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-068
 titulo: Lector de objetos por rangos y localización de páginas por /Count
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-026]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
