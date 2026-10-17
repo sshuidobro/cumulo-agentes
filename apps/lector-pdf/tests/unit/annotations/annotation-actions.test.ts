@@ -1,0 +1,240 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createStorageStore, memorySource, type Platform } from '@suite/platform';
+import { createFakePlatform, openedFile } from '../../helpers/fake-platform';
+import { fixtureSource, nodeAssetBase } from '../../helpers/pdfjs-node';
+import { loadPdf, type LoadedPdf } from '../../../src/engine';
+import type { RawAnnotation } from '../../../src/core/annotations/import';
+import { PALETTE } from '../../../src/core/annotations/palette';
+import {
+  addAnnotation,
+  addAnnotations,
+  deleteAnnotation,
+  endAnnotationSession,
+  ensurePageAnnotations,
+  getEffective,
+  markAnnotationsSaved,
+  redo,
+  setAuthor,
+  setInkWidth,
+  setToolColor,
+  startAnnotationSession,
+  undo,
+} from '../../../src/state/annotation-actions';
+import { initialAnnotationState, useAnnotations } from '../../../src/state/annotation-store';
+import { initServices } from '../../../src/state/services';
+import { initialViewerState, useViewer } from '../../../src/state/viewer-store';
+import { newAnnotation } from './factories';
+
+const OPEN_TIMEOUT = 30_000;
+const TITLE = 'annotated.pdf — Lector PDF';
+const DIRTY_TITLE = `• ${TITLE}`;
+
+const setTitle = vi.fn();
+const opened: LoadedPdf[] = [];
+
+/** Documento simulado de `numPages` páginas sin anotaciones; cuenta las llamadas a `getPage` y `getAnnotations`. */
+function fakeLoaded(numPages: number) {
+  const getAnnotations = vi.fn(async (): Promise<RawAnnotation[]> => []);
+  const getPage = vi.fn(async (n: number) => ({ pageNumber: n, getAnnotations }));
+  const pdf = { numPages, doc: { numPages, getPage } } as unknown as LoadedPdf;
+  return { pdf, getPage, getAnnotations };
+}
+
+async function openAnnotated(): Promise<LoadedPdf> {
+  const result = await loadPdf(fixtureSource('annotated.pdf'), { assetBaseUrl: nodeAssetBase() });
+  if (!result.ok) throw new Error(`No se pudo abrir annotated.pdf: ${result.error.code}`);
+  opened.push(result.value);
+  return result.value;
+}
+
+async function waitForScan(): Promise<void> {
+  await vi.waitFor(
+    () => {
+      expect(useAnnotations.getState().scan).toBe('done');
+    },
+    { timeout: OPEN_TIMEOUT },
+  );
+}
+
+beforeEach(() => {
+  const platform: Platform = createFakePlatform({
+    setTitle,
+    prefs: createStorageStore(null, 'test.'),
+  });
+  initServices({ platform, assetBaseUrl: '' });
+  useViewer.setState({
+    ...initialViewerState,
+    status: 'ready',
+    file: openedFile('annotated.pdf', memorySource(new Uint8Array([0x25]))),
+  });
+  endAnnotationSession();
+  setTitle.mockClear();
+});
+
+afterEach(async () => {
+  endAnnotationSession();
+  useViewer.setState(initialViewerState);
+  for (const pdf of opened.splice(0)) await pdf.destroy();
+});
+
+describe('importación al abrir', () => {
+  it('annotated.pdf: 5 anotaciones soportadas, 1 ajena (Square) y escaneo terminado', async () => {
+    const pdf = await openAnnotated();
+    startAnnotationSession(pdf, new AbortController().signal);
+    await waitForScan();
+
+    const state = useAnnotations.getState();
+    expect(state.baseline.size).toBe(5);
+    expect([...state.baseline.values()].map((a) => a.type).sort()).toEqual(
+      ['freetext', 'highlight', 'ink', 'note', 'underline'],
+    );
+    expect(state.foreign.size).toBe(1);
+    expect([...state.foreign.values()][0]?.subtype).toBe('Square');
+    expect(state.scanProgress).toBe(pdf.numPages);
+  }, OPEN_TIMEOUT);
+
+  it('documento de 25 000 páginas: modo lazy, sin escanear y sin llamadas a getPage', () => {
+    const { pdf, getPage } = fakeLoaded(25_000);
+    startAnnotationSession(pdf, new AbortController().signal);
+
+    expect(useAnnotations.getState().scan).toBe('lazy');
+    expect(getPage).not.toHaveBeenCalled();
+  });
+
+  it('ensurePageAnnotations importa solo la página pedida y no la vuelve a importar', async () => {
+    const { pdf, getPage, getAnnotations } = fakeLoaded(25_000);
+    startAnnotationSession(pdf, new AbortController().signal);
+
+    await ensurePageAnnotations(7);
+    expect(getPage).toHaveBeenCalledTimes(1);
+    expect(getPage).toHaveBeenCalledWith(8);
+    expect(getAnnotations).toHaveBeenCalledTimes(1);
+    expect(useAnnotations.getState().importedPages.has(7)).toBe(true);
+    expect(useAnnotations.getState().scanProgress).toBe(1);
+
+    await ensurePageAnnotations(7);
+    expect(getPage).toHaveBeenCalledTimes(1);
+    expect(getAnnotations).toHaveBeenCalledTimes(1);
+  });
+
+  it('llamadas concurrentes a la misma página importan una sola vez', async () => {
+    const { pdf, getPage } = fakeLoaded(25_000);
+    startAnnotationSession(pdf, new AbortController().signal);
+
+    await Promise.all([ensurePageAnnotations(3), ensurePageAnnotations(3), ensurePageAnnotations(3)]);
+    expect(getPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('cerrar durante el escaneo lo aborta: ningún set del store después del cierre', async () => {
+    const gates: (() => void)[] = [];
+    const getAnnotations = vi.fn(
+      () =>
+        new Promise<RawAnnotation[]>((resolve) => {
+          gates.push(() => {
+            resolve([]);
+          });
+        }),
+    );
+    const getPage = vi.fn(async (n: number) => ({ pageNumber: n, getAnnotations }));
+    const pdf = { numPages: 300, doc: { numPages: 300, getPage } } as unknown as LoadedPdf;
+    startAnnotationSession(pdf, new AbortController().signal);
+    await vi.waitFor(() => {
+      expect(gates.length).toBe(1);
+    });
+
+    const setSpy = vi.spyOn(useAnnotations, 'setState');
+    endAnnotationSession();
+    const callsAtClose = setSpy.mock.calls.length;
+    for (const release of gates.splice(0)) release();
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 20);
+    });
+
+    expect(setSpy.mock.calls.length).toBe(callsAtClose);
+    expect(useAnnotations.getState().scan).toBe('idle');
+    expect(getPage.mock.calls.length).toBeLessThan(300);
+    setSpy.mockRestore();
+  });
+});
+
+describe('historial de cambios', () => {
+  it('añadir dos, borrar una del fichero: undo la devuelve, redo la borra, y el título marca los cambios', async () => {
+    const pdf = await openAnnotated();
+    startAnnotationSession(pdf, new AbortController().signal);
+    await waitForScan();
+    const target = [...useAnnotations.getState().baseline.values()][0];
+    if (target === undefined) throw new Error('annotated.pdf sin anotaciones soportadas');
+
+    addAnnotation(newAnnotation('suite-a', 'note', 0));
+    addAnnotation(newAnnotation('suite-b', 'highlight', 1));
+    deleteAnnotation(target.id);
+    expect(getEffective().has(target.id)).toBe(false);
+    expect(useAnnotations.getState().undo.undoDepth).toBe(3);
+    expect(useAnnotations.getState().undo.isDirty).toBe(true);
+    expect(setTitle).toHaveBeenLastCalledWith(DIRTY_TITLE);
+
+    undo();
+    expect(getEffective().get(target.id)).toEqual(target);
+    expect(getEffective().has('suite-a')).toBe(true);
+
+    redo();
+    expect(getEffective().has(target.id)).toBe(false);
+
+    markAnnotationsSaved();
+    expect(useAnnotations.getState().undo.isDirty).toBe(false);
+    expect(setTitle).toHaveBeenLastCalledWith(TITLE);
+  }, OPEN_TIMEOUT);
+
+  it('addAnnotations crea una sola entrada de deshacer', async () => {
+    const pdf = await openAnnotated();
+    startAnnotationSession(pdf, new AbortController().signal);
+    await waitForScan();
+
+    addAnnotations('resaltar', [newAnnotation('suite-1', 'highlight', 0), newAnnotation('suite-2', 'highlight', 0)]);
+    expect(useAnnotations.getState().undo.undoDepth).toBe(1);
+    expect(useAnnotations.getState().undo.undoLabel).toBe('resaltar');
+    expect(getEffective().has('suite-1')).toBe(true);
+    expect(getEffective().has('suite-2')).toBe(true);
+
+    undo();
+    expect(getEffective().has('suite-1')).toBe(false);
+    expect(getEffective().has('suite-2')).toBe(false);
+    expect(useAnnotations.getState().undo.canUndo).toBe(false);
+  }, OPEN_TIMEOUT);
+
+  it('sube la versión de la página afectada al cambiar sus anotaciones', () => {
+    const { pdf } = fakeLoaded(25_000);
+    startAnnotationSession(pdf, new AbortController().signal);
+
+    addAnnotation(newAnnotation('suite-p4', 'note', 4));
+    expect(useAnnotations.getState().pageVersion.get(4)).toBe(1);
+    expect(useAnnotations.getState().pageVersion.has(5)).toBe(false);
+  });
+});
+
+describe('preferencias', () => {
+  it('el color elegido se guarda en prefs y sobrevive a recrear el store', () => {
+    const { pdf } = fakeLoaded(25_000);
+    startAnnotationSession(pdf, new AbortController().signal);
+    const blue = PALETTE.find((c) => c.id === 'blue');
+    if (blue === undefined) throw new Error('falta el azul en la paleta');
+
+    setToolColor('highlight', blue.rgb);
+    setInkWidth(4);
+    expect(useAnnotations.getState().colors.highlight).toEqual(blue.rgb);
+
+    // «Recrear el store»: estado inicial y nueva sesión; las preferencias deben volver.
+    useAnnotations.setState(initialAnnotationState());
+    expect(useAnnotations.getState().colors.highlight).not.toEqual(blue.rgb);
+    startAnnotationSession(pdf, new AbortController().signal);
+    expect(useAnnotations.getState().colors.highlight).toEqual(blue.rgb);
+    expect(useAnnotations.getState().inkWidth).toBe(4);
+  });
+
+  it('autor vacío o solo espacios → «Usuario»; el nombre se recorta', () => {
+    setAuthor('   ');
+    expect(useAnnotations.getState().author).toBe('Usuario');
+    setAuthor('  Ana  ');
+    expect(useAnnotations.getState().author).toBe('Ana');
+  });
+});

@@ -18,4 +18,10 @@ export const msg = {
   toolbarLabel: 'Barra de herramientas',
   documentRegion: (name: string): string => `Documento «${name}»`,
   pageOf: (n: number, total: number): string => `Página ${n} de ${total}`,
+  undo: 'Deshacer',
+  redo: 'Rehacer',
+  /** Nombre accesible de «Deshacer»/«Rehacer» con la etiqueta de la última acción (p. ej. «añadir resaltado»). */
+  undoWith: (label: string): string => `Deshacer ${label}`,
+  redoWith: (label: string): string => `Rehacer ${label}`,
+  cancelTool: 'Dejar la herramienta de anotación',
 } as const;

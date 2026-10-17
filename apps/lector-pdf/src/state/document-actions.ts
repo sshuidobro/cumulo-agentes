@@ -5,6 +5,7 @@ import { pdfError } from '../core/errors';
 import { PageDimsTable } from '../core/page-dims';
 import { normalizeRotation } from '../core/rotation';
 import { windowTitle } from '../core/title';
+import { endAnnotationSession, startAnnotationSession } from './annotation-actions';
 import { services } from './services';
 import { initialViewerState, useViewer } from './viewer-store';
 
@@ -46,6 +47,7 @@ async function closeOpened(file: OpenedFile): Promise<void> {
 
 /** Detiene el escaneo, se da de baja de los avisos, libera el documento y cierra el fichero. */
 async function releaseSession(current: Session | null): Promise<void> {
+  endAnnotationSession();
   if (current === null) return;
   current.scan.abort();
   current.stopListening();
@@ -143,6 +145,7 @@ export async function openDocument(file: OpenedFile): Promise<void> {
     dimsVersion: useViewer.getState().dimsVersion + 1,
   });
   platform.setTitle(windowTitle(file.name, false));
+  startAnnotationSession(loaded, scan.signal);
 
   if (loaded.numPages <= SCAN_PAGE_LIMIT) {
     scanPageDims(loaded.doc, {

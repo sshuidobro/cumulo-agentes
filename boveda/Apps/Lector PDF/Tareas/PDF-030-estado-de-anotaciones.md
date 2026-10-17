@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-030
 titulo: Estado de anotaciones por documento, deshacer/rehacer y barra «Comentar»
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-023, PDF-024, PDF-009, COM-011]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -92,3 +92,12 @@ Al abrir un PDF se importan sus anotaciones (todas si tiene ≤ 20 000 páginas,
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/palette.ts` (nuevo), `src/state/annotation-store.ts` (nuevo), `src/state/annotation-actions.ts` (nuevo), `src/state/document-actions.ts` (inicia y cierra la sesión de anotaciones), `src/ui/shortcuts.ts` (`undo`, `redo`, `cancel-tool`), `src/ui/use-shortcuts.ts` sin cambios, `src/ui/messages.ts` (textos de deshacer/rehacer), `src/ui/icons.tsx` (`IconUndo`, `IconRedo`), `src/ui/App.tsx` (botones Deshacer/Rehacer y atajo Escape), `tests/unit/annotations/annotation-actions.test.ts` (nuevo), `tests/ui/annotation-shortcuts.test.tsx` (nuevo), `tests/ui/open.test.tsx` (el mock del motor añade `scanAnnotations`), esta ficha.
+- Qué he hecho: store zustand `useAnnotations` y acciones sobre `UndoStack<AnnotationEdits>` (una pila por documento, `maxDepth 100`, título con «• » según `isDirty`, preferencias con guards). Al abrir: escaneo completo hasta 20 000 páginas y modo `lazy` con `ensurePageAnnotations` (dedupe por página). Cerrar aborta el escaneo sin `set` posteriores. Atajos Ctrl+Z, Ctrl+Y, Ctrl+Mayús+Z y Esc (solo con herramienta activa); fuera de los campos de texto, como indica la ficha.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (73 ficheros, 918 tests). `pnpm coverage` falla en 2 tests de `tests/unit/pdf/xref-robustness.test.ts` (fichero de PDF-026, sin commitear por otro agente) por timeout de 60 s bajo cobertura; no es de esta ficha. Cobertura de los módulos nuevos: `core/annotations` 97,9 % líneas 99,6 %; `palette.ts` 91,7 %. Los 10 tests de acciones pasan con `annotated.pdf` real (5 soportadas, 1 `Square` ajena, escaneo `done`).
+- Dudas o cosas que no he podido hacer:
+  1. **Bloqueo de dependencias.** La ficha usa `MainToolbar` (la crea PDF-011, pendiente), `MenuButton` (PDF-020, pendiente) y `PageView` (PDF-010, en curso), pero `depende_de` no los incluye. Sin ellos no puedo hacer `CommentToolbar` (criterio de la barra: aria-pressed, flechas, menú de grosor solo con Dibujar), ni el cursor por herramienta, ni llamar a `ensurePageAnnotations` al hacerse visible una página. Pregunta al líder: ¿añadir a `depende_de` PDF-010, PDF-011 y PDF-020, o autorizar un `MenuButton` provisional aquí?
+  2. Decisiones menores tomadas por mí: grosor por defecto 2 pt (la ficha no lo fija); `setCommentBarOpen` añadido (el conmutador lo necesita); los botones Deshacer/Rehacer van en la cabecera de `App.tsx` porque `MainToolbar` no existe aún; los tests de acciones están en `tests/unit/annotations/` porque `vitest.config.ts` solo incluye `tests/ui/*.test.tsx`; si el escaneo falla, `scan` queda en `done` con un aviso en el log (revisar si debe ser un estado de error).
+  3. Commit: solo los ficheros de esta ficha. `messages.ts` tiene también una línea `pageRenderFailed` de PDF-010 que no he commiteado.
