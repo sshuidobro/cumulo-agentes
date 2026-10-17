@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-010
 titulo: Dibujar las páginas en lienzo con la cola de render (cancelación y liberación de memoria)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-009]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, calidad-profesional, pruebas-calidad]
@@ -60,3 +60,16 @@ Cada marco de página montado se dibuja con pdf.js en un `<canvas>` nítido (seg
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/engine/render.ts` (nuevo), `src/state/render-service.ts` (nuevo), `src/ui/viewer/PageView.tsx` (nuevo), `src/ui/viewer/PageFrame.tsx` (props `rendered` y `children`), `src/ui/viewer/Viewer.tsx` (usa `PageView` y pasa `zoom`, `rotation` y `visible`), `src/ui/viewer/Viewer.module.css`, `src/ui/messages.ts` (`pageRenderFailed`), `tests/ui/page-view.test.tsx` (nuevo), `tests/unit/engine-render.test.ts` (nuevo), `tests/ui/open.test.tsx` (la página falsa ahora tiene `getViewport`, `render` y `cleanup`), `tests/e2e/render.spec.ts` (nuevo) y su referencia `tests/e2e/render.spec.ts-snapshots/basic-5-pagina-1-zoom-100-chromium-linux.png`.
+- Qué he hecho: `renderPageToCanvas` dibuja con pdf.js (`ENABLE_STORAGE`, `transform` solo si la densidad no es 1) y se cancela con la señal. `PageView` pide el dibujo a la cola compartida (2 a la vez; visibles prioridad 0, overscan 1), dibuja en un lienzo nuevo, lo sustituye al terminar y libera el anterior. Al desmontar cancela, libera lienzos y llama a `page.cleanup()`. Un error normal muestra «No se ha podido dibujar esta página.» y se registra con `createLogger('viewer')`.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `vitest run` en lector-pdf 48 ficheros / 611 tests OK; `playwright test tests/e2e/render.spec.ts` 5/5 OK. Cobertura de `PageView.tsx`: 100 % líneas, 95 % sentencias (con `coverage/` del repo ocupado por otro proceso, usé un directorio propio). Medidas (anotadas en el test): primera página de `basic-5` 469 ms; de `pages-5000` 468 ms; heap JS tras 20 saltos 11,2 MB; tarea larga máxima en `images-200` 52 ms; píxeles amarillos del resaltado en `annotated` 12 540.
+- **Pendiente, no es de esta ficha:** `pnpm --filter lector-pdf e2e` NO sale con código 0. Fallan 2 de 26 tests:
+  1. `tests/e2e/viewer.spec.ts` «en sizes-mixed…» (PDF-009): la app se cae con «Maximum update depth exceeded» al hacer scroll hasta la página 5. Lo he reproducido en el commit `1dbc998` (PDF-009), sin mis cambios. Causa encontrada: en `Viewer.tsx` el zoom automático (y de ajuste) usa `currentPage`; el zoom cambia el layout, el layout cambia la página actual y así en bucle al haber páginas de distinto tamaño. Comprobado: fijar el zoom a la página 0 elimina el bucle. Propuesta: devolver PDF-009 a `cambios-pedidos` (no lo he tocado, está fuera de mi alcance).
+  2. `tests/e2e/viewer-stress.spec.ts` (fichero sin commit de otro agente, pages-5000): «element(s) not found». No lo he investigado.
+- Dudas o cosas que no he podido hacer:
+  1. `RenderPageOptions.rotation` es la rotación **absoluta** del viewport, según la nota de la ficha; `PageView` la calcula como `(page.rotate + rotación de vista) % 360`.
+  2. El criterio «zoom 100 %» no se puede fijar desde la interfaz (no hay control de zoom hasta PDF-011). El test ajusta el ancho de la ventana y comprueba que el marco mide 816 px antes de capturar.
+  3. `PageFrame` recibe `rendered` y `children` para alojar el lienzo; la ficha no lo especificaba, pero mantiene el marco como fondo.
+  4. El árbol de trabajo era compartido: otros agentes commitearon PDF-026 y PDF-030 durante mi trabajo. Solo he commiteado mis ficheros.

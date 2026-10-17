@@ -18,6 +18,7 @@ export const msg = {
   toolbarLabel: 'Barra de herramientas',
   documentRegion: (name: string): string => `Documento «${name}»`,
   pageOf: (n: number, total: number): string => `Página ${n} de ${total}`,
+  pageRenderFailed: 'No se ha podido dibujar esta página.',
   undo: 'Deshacer',
   redo: 'Rehacer',
   /** Nombre accesible de «Deshacer»/«Rehacer» con la etiqueta de la última acción (p. ej. «añadir resaltado»). */
