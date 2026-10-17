@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-010
 titulo: Implementar Platform para Tauri (TypeScript) con mocks
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react, pruebas-calidad]

@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-006
 titulo: Implementar Platform para navegador (abrir, soltar, enlaces, título, cierre)
 app: comun
-estado: en-curso
+estado: en-revision
 depende_de: [COM-005]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -89,3 +89,9 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0008-plataforma-ficheros]]
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `packages/platform/src/web/` (nuevo: `fs-access.ts`, `mime.ts`, `web-env.ts`, `platform-web.ts`, `index.ts`), `packages/platform/src/detect.ts` (`loadPlatform`, solo rama web), `packages/platform/src/index.ts` (una línea de export), `packages/platform/tests/web/` (nuevo: `platform-web-open.test.ts`, `mime.test.ts`, `web-env.test.ts`, `fakes.ts`).
+- Qué he hecho: `createWebPlatform` con File System Access o `<input type=file>`, `openDropped` (lee `items`/`files` de forma síncrona y cae a `files` si el handle es una carpeta o falla), `openExternalUrl` solo `http:`/`https:`/`mailto:`, `setTitle`, `onCloseRequested` con `beforeunload`. `save`/`saveAs` devuelven `unsupported` (COM-007). Los métodos de File System Access se enlazan a `window` en `defaultWebEnv` (si no, Chromium lanza "Illegal invocation"). Tipos de FS Access y `getAsFileSystemHandle` declarados en `fs-access.ts`.
+- Comandos ejecutados y resultado: `pnpm lint` 0; `pnpm typecheck` 0; `pnpm test` 0 (257 tests, 24 ficheros); `pnpm coverage` 0 (`src/web` 98,3 % líneas, global 97,06 %). Cubierto también `defaultWebEnv` (pickWithInput, download, localStorage bloqueado) con jsdom, así que no depende del e2e de PDF.
+- Dudas o cosas que no he podido hacer: en el commit solo entra la rama web de `loadPlatform` y el export de `loadPlatform`; la rama Tauri que ya está en el worktree (COM-010) no se commitea aquí. Sin Playwright: el flujo real de selector de Chromium se verificará en el e2e de PDF.

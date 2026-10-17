@@ -13,3 +13,4 @@ export { PlatformIoError, platformError } from './errors';
 export { memorySource, blobSource, readAll } from './byte-source';
 export { createStorageStore } from './prefs';
 export { isTauri } from './detect';
+export { loadPlatform } from './detect';
