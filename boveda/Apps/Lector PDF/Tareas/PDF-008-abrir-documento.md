@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-008
 titulo: Abrir un documento en la app (botón, Ctrl+O, arrastrar, SO) con estados de carga y error
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-005, PDF-006, COM-006, COM-011]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -101,3 +101,10 @@ Pasos exactos (se autoriza tocar estos ficheros de PDF-001/PDF-005):
 7. Pasa todos los comandos de la ficha desde cero (`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e`). Si `tests/ui/app.test.tsx` falla con `Servicios no inicializados` (lo vio PDF-025 bajo `pnpm coverage`), es de esta ficha: el test debe llamar a `initServices` con la `Platform` falsa de `tests/helpers/fake-platform.ts` en su `beforeEach`.
 
 Decisiones menores del programador (ronda 1) aceptadas: `closeDocument` cancela una apertura en curso; un fallo del selector o de `openDropped` sustituye el documento por el error; `openShortcutHint` como función `(atajo) => texto`.
+
+### [programador] ronda 2 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/engine/pdfjs.ts` y `src/engine/worker.ts` (build `legacy` según [[ADR-0013-pdfjs-build-legacy]]); `src/engine/index.ts` (la re-exportación de `getDocument`, `OPS`… sale de `pdfjs-dist` y pasa a `./pdfjs`, para que el bundle no cargue la build principal); ficha `PDF-008` (Registro y estado).
+- Qué he hecho: aplicados los pasos 1 a 5 del desbloqueo del líder. `grep` de `pdfjs-dist/build` en `src/` vacío y ningún otro import directo de `pdfjs-dist` fuera de `engine/pdfjs.ts`. `tests/ui/app.test.tsx` ya llama a `initServices` con `createFakePlatform()` en su `beforeEach`, así que no hizo falta cambiarlo. Revisados los textos de `messages.ts` y de los estados vacío, carga, error y aviso de lectura: se mantienen tal cual.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK (en un primer intento falló en `tests/helpers/fake-platform.ts` por el `closeWindow` obligatorio que añadió el trabajo paralelo de COM-013; en la segunda ejecución ya pasaba, y no he tocado ese fichero en esta ronda); `pnpm test` 60 ficheros / 778 tests OK; `pnpm coverage` OK (líneas 89,1 % en total; un primer intento chocó con otro proceso de Vitest que usaba el mismo directorio de cobertura, y en el segundo pasó); `pnpm --filter lector-pdf e2e`: **5 de 5 OK** (los 4 de `open.spec.ts` y el de `smoke.spec.ts`).
+- Tiempo de `pages-100000.pdf`: **444 ms** desde `setInputFiles` hasta «100.000 páginas» (medido con la anotación `rendimiento` de `open.spec.ts`, presupuesto < 5 000 ms; en las tres ejecuciones del E2E de 100 000 páginas el test pasó). Presupuesto cumplido.
+- Dudas o cosas que no he podido hacer: no he tocado los criterios marcados `[ ]`; los verificará el tester. Commit de la ronda con solo mis ficheros (fuentes de `engine/` y esta ficha).
