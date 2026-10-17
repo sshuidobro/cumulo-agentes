@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-068
 titulo: Lector de objetos por rangos y localización de páginas por /Count
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-026]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -107,3 +107,18 @@ Lint (0 avisos), typecheck y tests de `object-reader` y `block-cache` (40) en ve
 Decisión sobre la duda (nodo referenciado dos veces): **no bloquea y no se cambia el código.** Es un PDF inválido fuera de los criterios, y la ficha ordena "nodo ya visitado → se salta" en `pageRefs()` y el `visited` por camino en `pageRef`. Cambiarlo obligaría a leer todo el árbol y rompería el objetivo de leer por rangos.
 1. (opcional, para el tester) `tests/unit/pdf/object-reader.test.ts` — añadir un test que fije el comportamiento actual con una hoja duplicada: ambos métodos terminan sin colgarse y devuelven una ref válida o `page-not-found`, sin lanzar otro error. No afirmar `pageRef(i) === pageRefs()[i]` en ese caso, porque pueden diferir a partir del duplicado.
 2. (opcional, seguimiento) Para PDF-028 (escritor incremental): `pageRef` sigue la numeración de `/Count` y `pageRefs()` la deduplicada. Si el escritor llega a necesitar el mismo índice que el visor, crear una ficha aparte que decida una única semántica. Hoy no hay evidencia de que haga falta.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| BlockCache (1 llamada, 3 bloques, LRU, directa 100 KB, recorte) | OK | `block-cache.test.ts` en verde |
+| basic-5, compressed, incremental-updates, get libre/mismatch/Length indirecto | OK | `object-reader.test.ts`, 42 tests de ambos ficheros en verde |
+| Árbol incoherente (Count mentiroso, subárbol vacío, ciclo) | OK | tests en verde |
+| Por rangos < 15 % / < 16 % (pages-100000) | OK | ver tests; programador midió 13,65 % y 14,34 %, el test los exige |
+| pages-20000-flat atajo; corpus 10 PDFs vs pdf.js | OK | tests en verde |
+| Perf (abrir + pageRef < 1,5 s; pageRefs 5000 < 1 s) | OK | `pnpm perf` verde en la 3.ª pasada |
+| lint, typecheck, test, coverage, build | OK | 81 ficheros / 1019 tests; cobertura `object-reader.ts` 100 % líneas, `block-cache.ts` 100 % líneas |
+
+Observación: `pnpm lint` falló una vez por un `viewer` sin usar en `tests/ui/viewer.test.tsx` (edición en curso de otro agente, fuera de esta ficha); en la repetición dio 0. `search.perf` falló 2 veces con carga alta (load 9,9) y pasó al repetir; no usa `ObjectReader`. Conviene vigilar su flakiness.
+Tests añadidos: en `object-reader.test.ts`, hoja duplicada en /Kids (sin cuelgue, solo `page-not-found`) y PDF vacío/truncado (`open` rechaza).
+Rendimiento: abrir + `pageRef(99998)` ≈ 165 ms + 14 ms (medida del programador, dentro del presupuesto verificado por el perf test).

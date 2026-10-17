@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-008, PDF-007]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -108,3 +108,9 @@ Defecto detectado por el programador de PDF-010: en `viewer.spec.ts` «sizes-mix
 Lint, typecheck, `pnpm test` (1019), coverage (líneas 98,71 %) y e2e (26/26 en esta ejecución) en verde. El arreglo del bucle es correcto: la página de referencia del zoom se fija solo al cambiar documento, modo, rotación o tamaño; el test de regresión cubre el caso. Pero el criterio «e2e con código 0» no es estable por la intermitencia de Ctrl+O:
 1. `apps/lector-pdf/tests/e2e/open-qa.spec.ts:118-120` — **Diagnóstico de la intermitencia de Ctrl+O**: falla ~1 de cada 30 repeticiones con 4 workers (con `--repeat-each=30` y `=60`). Instrumentado: el `keydown` llega (`document.hasFocus()` true, `readyState` complete) pero el selector no se llama ni 1,5 s después. Causa: carrera del test, no defecto del código de la app. `src/main.tsx` usa `await loadPlatform(...)` a nivel de módulo antes de `createRoot(...).render`, así que `page.goto('/')` vuelve (evento `load`) antes de que React monte y `useShortcuts` registre su `keydown`; si la pulsación llega antes, se pierde. Con `await expect(page.getByTitle('Abrir… (Ctrl+O)')).toBeVisible()` antes de pulsar: 60/60 y 40/40 OK. Qué hacer: en ese test esperar a que la app esté montada (el botón Abrir visible) antes de `keyboard.press('Control+o')`. Revisar igual otros e2e que pulsen teclas justo tras `goto` sin esperar a un elemento de la app (p. ej. `viewer-stress.spec.ts`, `viewer.spec.ts`). (Un usuario no puede pulsar en esos milisegundos; no se pide cambio en `main.tsx`.)
 2. (opcional) `tests/ui/viewer.test.tsx:181` — la aserción final `zoom > 0` es débil; la propiedad que protege el arreglo es que el zoom automático no cambia al desplazarse (guardar `zoom` tras el primer salto y comprobar que es el mismo tras los demás).
+
+### [programador] ronda 3 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/open-qa.spec.ts`, `apps/lector-pdf/tests/e2e/viewer.spec.ts`, `apps/lector-pdf/tests/ui/viewer.test.tsx` (ya tenía el cambio del punto 2, sin tocar), `boveda/Apps/Lector PDF/Tareas/PDF-009-visor-virtualizado.md`.
+- Qué he hecho: (1) Ctrl+O: se espera a que el botón Abrir sea visible y se pulsa una sola vez; quito el bucle de reintentos que repetía `Control+o` (enmascaraba la carrera). (2) El test de Tab de `open-qa.spec.ts` también espera al botón antes de pulsar Tab, misma carrera. (3) `viewer.spec.ts`: quito la variable `viewer` que quedó sin uso tras cambiar el `focus()` por `expectViewerReady` (lint). (4) Punto 2 del revisor: la aserción de `zoom` constante ya está en `viewer.test.tsx` (líneas 180 y 186); no hace falta cambiarla. Todos los e2e del visor usan ya `expectViewerReady`, y `viewer-stress.spec.ts` lo hace en `openFixture`.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK; `pnpm test` 1019/1019 OK; `pnpm coverage` OK (exit 0, líneas 98,71 %; la primera ejecución falló porque otro proceso de Vitest tenía el directorio de cobertura, se repitió sin cambios y pasó); `pnpm --filter lector-pdf e2e` 26/26 OK; repetición de «Ctrl+O» y «Tab llega al botón» con `--repeat-each=30`: 60/60 OK.
+- Dudas o cosas que no he podido hacer: no he tocado `main.tsx` (el revisor indicó que no hace falta). El árbol de git tiene cambios ajenos de otros agentes (`boveda/`, `xref-robustness.test.ts`, `annotation-qa.test.ts`) que no he incluido en mi commit.

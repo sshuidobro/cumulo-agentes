@@ -82,6 +82,7 @@ test('arrastrar y soltar un PDF muestra la superposición y lo abre', async ({ p
 
 test('teclado: Tab llega al botón Abrir… con foco visible', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByTitle('Abrir… (Ctrl+O)')).toBeVisible();
   const reached: string[] = [];
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('Tab');
@@ -116,6 +117,8 @@ test('Ctrl+O llama al selector de ficheros y abre el elegido', async ({ page }) 
     };
   }, bytes);
   await page.goto('/');
+  // No se pulsa hasta que la app está montada (el botón Abrir es visible); si no, el atajo aún no está registrado.
+  await expect(page.getByTitle('Abrir… (Ctrl+O)')).toBeVisible();
   await page.keyboard.press('Control+o');
   await expect.poll(() => page.evaluate(() => (window as unknown as { __pickerCalls: number }).__pickerCalls)).toBe(1);
   await expect(page.getByTestId('document-ready')).toHaveText('5 páginas');
