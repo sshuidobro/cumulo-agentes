@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-027
 titulo: Generar la apariencia (/AP) de cada tipo de anotación
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-023, PDF-026]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -60,3 +60,9 @@ Para cada `Annotation` del modelo, producir el Form XObject de su apariencia nor
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/{helvetica-widths,winansi,wrap,appearance}.ts`; tests `apps/lector-pdf/tests/unit/annotations/{helvetica-widths,winansi,wrap,appearance}.test.ts`; esta ficha.
+- Qué he hecho: anchos AFM Helvetica y `textWidth`; `toWinAnsi` (Latin-1 + 27 caracteres C1 de WinAnsi); `wrapText` por palabras con corte por caracteres; `buildAppearance` para los 6 tipos (Form XObject con BBox = rect, sin Matrix, comprimido con FlateDecode). Un trazo de un punto emite `m` + `l` a sí mismo y `S`. El test con pdf.js abre un PDF con cada `/AP` y comprueba `hasAppearance` y `beginAnnotation` en `getOperatorList`.
+- Comandos ejecutados y resultado: `pnpm exec vitest run apps/lector-pdf/tests/unit/annotations` → 187 tests OK. `pnpm typecheck` → OK. `pnpm lint` → sin errores en mis ficheros; quedan 2 errores `no-console` en `tests/unit/pdf/object-reader.test.ts` y 1 aviso `react-hooks` en `src/ui/viewer/Viewer.tsx`, ambos de trabajo en curso ajeno. `pnpm test` → 1015/1016; falla `tests/ui/viewer.test.tsx` (zoom automático con tamaños mezclados), por `Viewer.tsx` modificado por otro agente, no por estos cambios. Cobertura de los 4 módulos nuevos con v8: 100 % líneas, 92 % ramas. `pnpm coverage` global no termina en verde por ese fallo ajeno.
+- Dudas o cosas que no he podido hacer: (1) Tachado: interpreto "igual a la mitad de la altura" como línea en `yInf + h/2` con el mismo grosor `max(1, h/14)` que el subrayado. (2) El criterio "pnpm coverage con código 0" depende de que el fallo ajeno de `viewer.test.tsx` se resuelva. (3) Los anchos de vocales acentuadas están escritos explícitamente en la tabla (í/ì = 222, igual que la i).
