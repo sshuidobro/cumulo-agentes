@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-006
 titulo: Núcleo - tabla de dimensiones y layout virtual con escalado de scroll
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -184,3 +184,14 @@ Pasos exactos (ronda 2):
 - Ejecutado: `pnpm lint`, `pnpm typecheck` y `pnpm test` (426 en verde) con código 0; `pnpm coverage` sin `layout.perf.test.ts`, `layout.ts` 98,7 % líneas; `grep performance.now` en `layout.test.ts` vacío. `layout.perf.test.ts` aislado: 4/4 ejecuciones en verde.
 - `pnpm perf` completo: 1 ejecución falló y 3 posteriores pasaron. La suite ya incluye `annotation-commands.perf.test.ts` y `fixtures.perf.test.ts` (otras fichas) y se ejecutó con carga de otros agentes. No atribuible a PDF-006 (el layout pasa siempre aislado). El tester debe repetir `pnpm perf` x3 sin carga concurrente.
 - (opcional) `pageAtY` con `y` NaN devuelve 0 sin error; no bloquea.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios (T) de tops, rotación, pageAtY/visibleRange, scroll 100 000 págs, anclaje, PageDimsTable | OK | `pnpm test` 42 ficheros, 493 tests en verde; 7 tests QA nuevos en verde |
+| 1 000 000 de páginas (comportamiento) sin `performance.now` | OK | `grep performance.now tests/unit/layout.test.ts` vacío |
+| Rendimiento 100 ms / 300 ms | OK | `pnpm perf apps/lector-pdf/tests/perf/layout.perf.test.ts` x3: código 0 las tres (2,19 s, 2,45 s, 2,44 s) con carga de otros agentes (load average 6,0-6,8); no hizo falta repetir por carga. No se extrajeron ms por assert |
+| `vitest.perf.config.ts` igual que el paso 1 del líder | OK | `diff` sin diferencias |
+| lint / typecheck / test / coverage | OK | código 0 los cuatro. `pnpm coverage` en la ruta por defecto chocó con otro proceso de Vitest (directorio en uso); repetido con `--coverage.reportsDirectory` propio: código 0, `layout.ts` 100 % líneas (98,7 % sentencias), `layout.perf.test.ts` no listado; `page-dims.ts` y `rotation.ts` no aparecen en la tabla por estar al 100 % |
+Tests añadidos: `apps/lector-pdf/tests/unit/qa-layout-edge.test.ts` (páginas 0x0, y negativo, top>bottom, 1 página con overscan enorme, rotación -90/-450, fin de scroll con varios viewports, parámetros inválidos, ancla fuera de rango).
+Rendimiento: ver tabla. Nota: `pageAtY` con NaN devuelve 0 sin error (opcional del revisor, sin cambios).

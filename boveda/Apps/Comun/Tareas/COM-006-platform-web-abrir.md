@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-006
 titulo: Implementar Platform para navegador (abrir, soltar, enlaces, título, cierre)
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-005]
 intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -128,3 +128,11 @@ Rendimiento: sin presupuesto aplicable a esta ficha.
 
 ### [revisor] ronda 2 — 2026-10-17 — APROBADO
 `pnpm lint`, `typecheck`, `test` (431 tests) y `coverage` con código 0; `packages/platform/src/web` 100 % de líneas. El bloqueo del tester (tests de tiempo de `lector-pdf`) ya no afecta a `pnpm test` (movidos a `pnpm perf`, ADR-0012). Sin cambios de implementación desde `ac6e184`/`7648a12`; `qa-web-edge.test.ts` aporta casos límite válidos. Sin problemas bloqueantes.
+
+### [tester] ronda 2 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Todos los criterios (T) de abrir, errores, input, drop, URLs, cierre, título | OK | `vitest run packages/platform/tests/web`: 4 ficheros, 54 tests en verde (incluye `qa-web-edge.test.ts`) |
+| `pnpm lint`, `typecheck`, `test`, `coverage` código 0 | OK | `test` 493 en verde; sin el fallo de ronda 1 (tests de tiempo ya en `pnpm perf`, ADR-0012) |
+| `src/web` >= 85 % líneas | OK | coverage: 100 % líneas (98,3 % sentencias) |
+Tests añadidos: ninguno nuevo en esta ronda. Rendimiento: no aplica.

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-005
 titulo: Motor PDF - carga por rangos, errores tipados y escaneo de dimensiones
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-002, COM-005]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -100,3 +100,13 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]
 ### [lider] suite de rendimiento — 2026-10-17
 Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
 Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.
+
+### [programador] ronda 1 — 2026-10-17
+- Ficheros cambiados: `apps/lector-pdf/src/engine/{pdfjs,range-transport,load,page-dims,index}.ts`, `apps/lector-pdf/src/core/errors.ts`, `apps/lector-pdf/tests/helpers/pdfjs-node.ts`, `apps/lector-pdf/tests/unit/{engine-load,engine-page-dims,errors}.test.ts`, `apps/lector-pdf/tests/perf/{engine-load,engine-page-dims}.perf.test.ts`, esta ficha.
+- Qué he hecho: reexportador único de pdf.js, errores tipados en español (`pdfError`), transporte por rangos sobre `ByteSource` y `loadPdf` (cabecera, mapeo de excepciones, cancelación, `onIoError`, `destroy` idempotente) con `scanPageDims`/`readPageDims`. Los asserts de tiempo van a `tests/perf/` según el Registro del líder; el resto, en `tests/unit/`.
+- Comandos ejecutados y resultado: `pnpm lint` OK · `pnpm typecheck` OK · `pnpm test` OK (42 ficheros, 493 tests) · `pnpm coverage` OK (`core/` 100 % líneas en `errors.ts`) · `pnpm perf` OK (9 tests). Medidas: `pages-100000` lee el 14,03 % del fichero (68 lecturas, medido con `countingSource`). `scanPageDims(pages-5000)`: total 474 ms, máximo entre lotes 8,7 ms, 100 lotes. Los tiempos de apertura pasan los umbrales (3 s / 3 s / 5 s), no los anoto con valor. `corrupt-truncated.pdf` → `corrupt`; `corrupt-bad-startxref.pdf` → `ok` con 5 páginas. `corrupt-not-pdf.pdf` → `not-pdf` con 1 lectura y sin llamar a `getDocument`.
+- Dudas o cosas que no he podido hacer:
+  - `isEvalSupported: false` de la ficha no existe en `DocumentInitParameters` de pdfjs-dist 6.4.299 (typecheck lo rechaza y no aparece en el build). Lo he omitido; si el revisor quiere esa opción, hay que decidir otra forma.
+  - Contraseña (`password-required`/`password-incorrect`) no está cubierta por tests: no hay fixture cifrado; corresponde a PDF-046.
+  - `onIoError` (error de lectura después de abrir) no tiene test propio; el criterio de la ficha solo cubre el fallo antes de abrir.
+  - Los tests de tiempo que pide la ficha en `tests/unit` están en `tests/perf` por la regla del Registro del líder (ADR-0012).
