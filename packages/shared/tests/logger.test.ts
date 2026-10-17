@@ -88,4 +88,16 @@ describe('logger', () => {
     expect(spy).toHaveBeenNthCalledWith(1, '[lector] cuidado', { p: 2 });
     expect(spy).toHaveBeenNthCalledWith(2, '[core] sin datos');
   });
+
+  it('configuración inicial del módulo: minLevel warn y sink de consola (módulo recién cargado)', async () => {
+    vi.resetModules();
+    const fresh = await import('../src/logger');
+    const info = vi.spyOn(consoleApi, 'info').mockImplementation(() => undefined);
+    const error = vi.spyOn(consoleApi, 'error').mockImplementation(() => undefined);
+    const log = fresh.createLogger('por-defecto');
+    log.info('no');
+    log.error('ñandú 🚀 مرحبا');
+    expect(info).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledExactlyOnceWith('[por-defecto] ñandú 🚀 مرحبا');
+  });
 });
