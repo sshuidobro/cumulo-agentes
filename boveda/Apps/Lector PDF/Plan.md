@@ -110,7 +110,7 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 | [[PDF-007-zoom-y-cola-de-render]] | Núcleo: zoom, cola de render y tamaño de lienzo | PDF-001 | pendiente |
 | [[PDF-008-abrir-documento]] | Abrir documento en la app | PDF-005, PDF-006, COM-006, COM-011 | cambios-pedidos (desbloqueada, [[ADR-0013-pdfjs-build-legacy]]) |
 | [[PDF-009-visor-virtualizado]] | Visor virtualizado (marcos y scroll) | PDF-008, PDF-007 | pendiente |
-| [[PDF-010-render-de-paginas]] | Render de páginas en lienzos | PDF-009 | pendiente |
+| [[PDF-010-render-de-paginas]] | Render de páginas en lienzos | PDF-009 | hecha |
 | [[PDF-011-zoom-y-rotacion-ui]] | Zoom y rotación de vista en la interfaz | PDF-010 | pendiente |
 | [[PDF-012-ir-a-pagina]] | Ir a página y navegación | PDF-011, PDF-003 | pendiente |
 | [[PDF-013-capa-de-texto]] | Capa de texto: seleccionar y copiar; herramienta mano | PDF-011, PDF-004 | pendiente |
