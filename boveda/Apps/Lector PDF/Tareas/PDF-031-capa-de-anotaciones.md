@@ -34,17 +34,17 @@ Encima de cada página visible, una capa SVG muestra las anotaciones nuevas y ed
    - Para **todas** las soportadas de la página (también las del fichero sin tocar), una zona activa transparente (`pointer-events: visiblePainted`, `fill: transparent` y `stroke` transparente de 6 px para las líneas) con `role="button"`, `tabindex={0}` (solo la seleccionada o, si no hay, la primera de la página: *roving tabindex* entre anotaciones de la página con ↑/↓) y `aria-label` «<Tipo> de <autor>: <primeros 80 caracteres del comentario>».
    - Las ajenas no tienen zona activa.
    - Selección: clic o Intro/Espacio → `select(id)`; dibuja un rectángulo discontinuo (`annotationOutline`, color `--color-focus`). Clic en zona vacía de la página → `select(null)`.
-   - Mover: arrastrar la seleccionada (umbral 3 px) mueve una vista previa; al soltar → `updateAnnotation(translateAnnotation(a, dx, dy), 'mover')`, con `dx, dy` en puntos PDF (`viewport.convertToPdfPoint`). Flechas: 1 pt (Mayús: 10 pt), `mergeKey 'move:<id>'`.
+   - Mover (solo `note`, `freetext` e `ink`; el marcado de texto va unido al texto y no se mueve): arrastrar la seleccionada (umbral 3 px) mueve una vista previa; al soltar → `updateAnnotation(translateAnnotation(a, dx, dy), 'mover')`, con `dx, dy` en puntos PDF (`viewport.convertToPdfPoint`). Flechas: 1 pt (Mayús: 10 pt), `mergeKey 'move:<id>'`.
    - Supr / Retroceso con una seleccionada → `deleteAnnotation(id)` y foco a la siguiente de la página (o al visor).
-   - Las anotaciones soportadas del fichero se pueden mover y borrar aunque su autor sea otro (como Acrobat), sin confirmación.
+   - Las anotaciones soportadas del fichero se pueden mover (según su tipo) y borrar aunque su autor sea otro (como Acrobat), sin confirmación.
 5. CSS: `.annotationLayer` `position: absolute; inset: 0; z-index` por encima de `.textLayer`. Con `tool !== 'none'` la capa de texto sigue activa para marcado; para nota/texto/dibujo la capa de anotaciones captura el puntero (PDF-033 a PDF-035 lo usan).
 6. Tests `tests/ui/annotation-layer.test.tsx` (jsdom; `viewport` falso con `transform` y `convertToPdfPoint` conocidos) y `tests/e2e/annotations-layer.spec.ts`.
 
 ## Criterios de aceptación
 - [ ] (T) Con un `viewport` de escala 2 y rotación 0, una nota nueva en `rect [100, 700, 120, 720]` de una página de 792 pt de alto se dibuja con `transform` `matrix(2 0 0 -2 0 1584)` y su zona activa existe con `aria-label` correcto.
-- [ ] (T) Clic en la zona → `selectedId`; Supr → la anotación se borra y `undo` la recupera; flechas mueven 1 pt (`rect` +1 en x con →) y varias pulsaciones seguidas son una sola entrada de deshacer.
+- [ ] (T) Clic en la zona → `selectedId`; Supr → la anotación se borra y `undo` la recupera; sobre una nota, flechas mueven 1 pt (`rect` +1 en x con →) y varias pulsaciones seguidas son una sola entrada de deshacer.
 - [ ] (T) Editar una anotación del fichero llama a `setFileAnnotationHidden(..., true)`; deshacer la edición → `false`.
-- [ ] (T) Las ajenas no generan zona activa.
+- [ ] (T) Las ajenas no generan zona activa; arrastrar o pulsar flechas sobre un resaltado no lo mueve.
 - [ ] E2E (`annotated.pdf`): borrar con Supr el resaltado de la p1 → el píxel amarillo de su centro deja de serlo en el lienzo (tolerancia 10); Ctrl+Z → vuelve.
 - [ ] E2E: mover con el ratón una nota 50 px → su `rect` cambia ≈ 50 / escala pt.
 - [ ] E2E: con zoom 200 % y rotación 90° la zona activa del resaltado de la p1 coincide con el píxel amarillo (clic en el centro → seleccionado).
