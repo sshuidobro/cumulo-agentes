@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-009
 titulo: Visor virtualizado (marcos de página, scroll escalado, página actual, navegación y anclaje)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-008, PDF-007]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -77,3 +77,20 @@ Con un documento abierto, el área central muestra una columna de **marcos de p�
 Lint, typecheck, vitest lector-pdf (580), coverage (líneas 98,17 %) y e2e (19/19) en verde. Todos los criterios cubiertos; sin fuera de alcance.
 1. (opcional) `apps/lector-pdf/tests/ui/viewer.test.tsx:125-129` — la comprobación de `currentPage` tras actualizar dims anteriores es síncrona; añadir además que el `contentY`/página 300 sigue montada tras el cambio la haría más robusta.
 2. (opcional) `Viewer.tsx:131` — la ficha pide `round(...)` en `scrollTop`; el código lo deja sin redondear y compara con tolerancia 0,5. Sin impacto funcional.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| T: 5000 págs ≤5 nodos, mitad ≈2500 | OK | `pnpm test` 892/892 (tests/ui/viewer.test.tsx) |
+| T: goToPage clamp | OK | idem + tests/unit/navigation.test.ts |
+| T: 100 000 págs End / wheel sin factor | OK | idem |
+| T: anclaje zoom y dims previas | OK | idem |
+| E2E 5000 (≤12 marcos, pág. 1 visible) | OK | viewer.spec.ts + viewer-stress.spec.ts (150 ruedas rápidas, End/Home/PageUp/PageDown, <400 nodos DOM totales, marcos contiguos, sin índices fuera de rango) |
+| E2E 100000: End < 1,5 s | OK | viewer.spec.ts (tiempo anotado en el informe) y viewer-stress.spec.ts |
+| E2E sizes-mixed | OK | viewer.spec.ts |
+| Accesibilidad Tab/aria-label | OK | viewer.spec.ts |
+| Long tasks ≤ 100 ms | OK | viewer.spec.ts |
+| lint/typecheck/test/coverage/e2e | OK | lint 0, typecheck 0, vitest 892 OK, cobertura (dir propio) líneas 98,17 %, e2e 20/21 |
+Nota: en la ejecución completa de e2e falló una vez `open-qa.spec.ts` (Ctrl+O, PDF-008) por carga concurrente de otros testers; 3 repeticiones aisladas 9/9 OK. No relacionado con PDF-009.
+Tests añadidos: `apps/lector-pdf/tests/e2e/viewer-stress.spec.ts` (pages-5000 y pages-100000).
+Rendimiento: 5000 págs 5,6 s y 100 000 págs 7,0 s para todo el escenario de estrés, con DOM acotado (≤12 marcos).

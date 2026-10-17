@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-026
 titulo: Lector de la tabla de referencias cruzadas (xref) y filtros de streams
 app: pdf
-estado: en-test
+estado: cambios-pedidos
 depende_de: [PDF-025, PDF-003]
-intentos: 0
+intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-17
@@ -106,3 +106,18 @@ Estado: `en-revision`.
 Lint, typecheck, tests de xref/filters (35/35) y `pnpm perf` (14/14) en verde. Cobertura: `xref.ts` 92,5 % y `filters.ts` 94,0 % de líneas. Cada criterio de la ficha tiene su test. La lectura de `pages-100000.pdf` cumple el límite del 14 % (13,51 % según el programador). Las decisiones menores del programador (tipos desconocidos → `free`, filas incompletas ignoradas, varios filtros → error) son razonables.
 1. (opcional) `filters.ts:54` — `unzlibSync` no limita el tamaño descomprimido, así que un xref stream malicioso podría hacer una bomba de descompresión — poner un tope cuando llegue el endurecimiento (PDF-052 o similar).
 2. (opcional) `tests/perf/xref.perf.test.ts` — duplica `measureBest` en versión asíncrona — extraer una variante asíncrona a `tests/perf/measure.ts`.
+
+### [tester] ronda 1 — 2026-10-17 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Comparación con qpdf | PASA | Script temporal: `readXref` vs `qpdf --show-xref` (qpdf 11.9.0) sobre los 23 PDF no corruptos de generated/, verapdf y libreoffice: mismas entradas (offset/gen y objStm/index) en los 23 |
+| Criterios (T) de la ficha, lint, typecheck, `pnpm test` | PASA | lint y typecheck OK; 69 ficheros / 892 tests OK |
+| `pnpm perf` | PASA | 9 ficheros / 14 tests OK |
+| Robustez: truncados, bytes corrompidos (1 200 casos), vacío, 1 byte | PASA | `xref-robustness.test.ts`: solo `PdfSyntaxError`, sin cuelgues |
+| Robustez: bomba de descompresión | FALLA | defecto de seguridad (abajo) |
+
+**Defecto (seguridad, rechazo según el encargo):** `filters.ts` `inflate()` llama a `unzlibSync` sin límite de tamaño de salida.
+Reproducir: `pnpm exec vitest run apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts`. Un PDF de ~1 MB con un xref stream cuyo Flate expande a 1 GiB de ceros: `readXref` reserva 1 GiB, tarda ~16 s y devuelve un resultado en lugar de rechazar. Con unos 4 MB se agotaría la memoria del proceso. Lo mismo ocurre con `decodeStreamData`.
+Arreglo esperado: tope de salida en `decodeStreamData` (para xref, p. ej. `size * suma(W)` según `/Index`/`/Size`, o un máximo absoluto) con `PdfSyntaxError`. Usar `Inflate`/`Zlib` en streaming de fflate o `unzlibSync` con `out` acotado. Ambos tests rojos están escritos y deben pasar.
+Tests añadidos: `apps/lector-pdf/tests/unit/pdf/xref-robustness.test.ts` (5 tests; 2 rojos a propósito por la bomba).
+Rendimiento: `pnpm perf` OK; el programador anotó 13,51 % de bytes y ~142 ms para `pages-100000.pdf`.
