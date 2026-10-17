@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-011
 titulo: Crear el registro único de atajos de teclado en @suite/shared
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-004]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -79,3 +79,16 @@ Plan: [[Apps/Comun/Plan|Plan]] · Decisiones: [[ADR-0010-stack-apps-web-y-prueba
 ### [revisor] ronda 1 — 2026-10-17 — APROBADO
 Lint, typecheck y 138 tests en verde. `pnpm coverage` no se pudo repetir (directorio de cobertura en uso por otro revisor); se acepta el 100 % de líneas del programador. Cada criterio tiene su test; código conforme a la ficha, sin DOM.
 1. (opcional) `chord.ts:54` — `f3` no equivale a `F3`; decisión menor, documentada por el programador.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| parseChord (válidos e inválidos) | OK | `chord.test.ts` + QA: `Mod++`, `++`, `Mod+code:`, `Ctrl+S` lanzan `Atajo no válido` |
+| matchChord (Win/Mac, Ctrl+Meta, `+`, `0`, Alt+flecha) | OK | `chord.test.ts`; QA añade Unicode (Ñ, emoji), teclas `Dead`/`Process`, `code:` con Alt |
+| formatChord | OK | tests del programador + `Ctrl+Ñ` |
+| Registro, duplicados | OK | QA: duplicado dentro de un mismo def y con modificadores en distinto orden/mayúsculas; registro vacío |
+| isEditableTarget | OK | QA: textarea, select, input sin type, radio/button/submit/range/color, `undefined`, string, número |
+| lint / typecheck / test / coverage | OK | lint 0, typecheck 0, 147 tests (14 ficheros), `src/shortcuts` 100 % líneas (97,82 % ramas) |
+
+Tests añadidos: `packages/shared/tests/shortcuts/qa.test.ts` (9 tests). Rendimiento: no aplica (funciones puras O(1)).
+Observaciones no bloqueantes: (1) `Mod+Plus` y `Mod+Shift+Plus` tienen distinto `chordId` pero coinciden con los mismos eventos (Mayús se ignora), así que el registro no detecta ese solapamiento; (2) `f3` no equivale a `F3` (ya anotado por el revisor); (3) en Mac, Alt+letra produce caracteres especiales en `e.key` y no coincidiría; usar `code:` en esos casos. En el primer `pnpm coverage` hubo un fallo de carrera con otra ejecución concurrente; repetido, pasa.

@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-009
 titulo: Añadir los comandos Tauri de suite-platform (feature tauri)
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-008]
 intentos: 0
 skills: [stack-tauri, pruebas-calidad]
@@ -93,3 +93,15 @@ Con `--features tauri`, el crate exporta los comandos `suite_*` que usa `platfor
 Verificado: `cargo test -p suite-platform` (con y sin `--features tauri`), `clippy --all-targets --features tauri -D warnings` y `cargo fmt --check` con código 0. Contrato JS↔Rust (nombres de comandos, parámetros camelCase, cabeceras `x-suite-*`, evento) coincide con COM-010. Sin `unwrap`/`expect` fuera de tests; `read_range` ya limita `MAX_READ_LEN`. Sin cambios bloqueantes.
 1. `commands.rs:185-237` — (opcional) comandos `async` con E/S síncrona; valorar `spawn_blocking` con ficheros grandes (PDF-021).
 2. `commands.rs:262` — (opcional) rutas del SO ilegibles se descartan en silencio; considerar avisar al usuario.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| paths_from_args | OK | `cargo test -p suite-platform --test args`: 5 tests en verde (incluye el del criterio, opciones, directorios, vacío y Unicode) |
+| CommandError / FileInfoDto | OK | 4 tests de `commands::tests` en verde con `--features tauri` |
+| cargo test con y sin feature | OK | ambos código 0 (args 5, files 15, files_qa 9) |
+| clippy -D warnings y fmt --check | OK | ambos código 0 |
+| Sin unwrap/expect fuera de tests | OK | `grep` en commands.rs: solo líneas 322 y 346, dentro de `#[cfg(test)]` (desde la 287) |
+
+Regresión TS: `pnpm lint` y `pnpm typecheck` 0; `pnpm test` 138 en verde. Contrato con COM-010: `platform-tauri.ts` aún no existe; se comprobaron nombres de comandos y cabeceras en `commands.rs`, sin contraste posible con JS.
+Tests añadidos: `admite_rutas_con_espacios_tildes_y_emojis` en `packages/platform/rust/tests/args.rs`.   Rendimiento: no aplica.
