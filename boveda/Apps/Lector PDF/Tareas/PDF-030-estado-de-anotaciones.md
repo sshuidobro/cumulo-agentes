@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-030
 titulo: Estado de anotaciones por documento, deshacer/rehacer y barra «Comentar»
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-023, PDF-024, PDF-009, COM-011]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
