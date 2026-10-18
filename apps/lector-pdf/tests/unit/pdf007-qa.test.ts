@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RenderQueue } from '../../src/core/render-queue';
-import { nextZoom, parseZoomInput, resolveZoom, wheelZoom, ZOOM_STEPS, formatZoom } from '../../src/core/zoom';
+import { MAX_ZOOM, nextZoom, parseZoomInput, resolveZoom, wheelZoom, ZOOM_STEPS, formatZoom } from '../../src/core/zoom';
 import { planCanvas } from '../../src/core/canvas-size';
 
 describe('PDF-007 QA adversarial', () => {
@@ -24,7 +24,7 @@ describe('PDF-007 QA adversarial', () => {
     expect(parseZoomInput('-50')).not.toBe(Number.NaN);
   });
   it('wheelZoom y formatZoom estables', () => {
-    expect(wheelZoom(8, -1e5, 0)).toBe(8);
+    expect(wheelZoom(8, -1e5, 0)).toBe(MAX_ZOOM);
     expect(wheelZoom(1, 0, 0)).toBe(1);
     expect(formatZoom(0.675)).toMatch(/^\d+ %$/);
   });

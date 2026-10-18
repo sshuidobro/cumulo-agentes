@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-015
 titulo: Documentos recientes en @suite/platform - tipos e implementación web
 app: comun
-estado: en-revision
+estado: en-test
 depende_de: [COM-014]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri]
@@ -70,3 +70,8 @@ clearRecents(): Promise<void>;
   - Añadido `indexedDB` a `WebEnv` (inyección para tests, igual que `storage`).
   - Los cuatro miembros añadidos en `apps/lector-pdf/tests/helpers/` están fuera del alcance de la ficha; sin ellos `pnpm typecheck` no compila.
   - Para cobertura usé un `reportsDirectory` propio porque otro proceso de Vitest tenía ocupado `coverage/`. Solo ejecuté el proyecto `platform`; no lancé e2e ni perf de apps.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Lint (0 avisos), typecheck y tests del proyecto platform (215) en verde; no se lanzaron e2e/perf. Todos los criterios cubiertos por `packages/platform/tests/web/recent.test.ts` (orden, dedupe, tope 20, permisos, not-found, 5 claves). `fake-indexeddb` ya estaba en `packages/platform/package.json` (sin dependencias nuevas). Los 4 miembros añadidos en `apps/lector-pdf/tests/helpers/` son necesarios para compilar y aceptables.
+- (opcional) `packages/platform/src/web/recent-store.ts` `rememberEntry`: lista+put+recorte no es atómico; dos aperturas simultáneas podrían duplicar una entrada. Poco probable en uso real.
+- (opcional) `available: false` solo en memoria (decisión coherente con el criterio de 5 claves); documentar en COM-016/PDF-049 que tras recargar se reintenta al abrir.

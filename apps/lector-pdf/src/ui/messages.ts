@@ -55,7 +55,7 @@ export const msg = {
   zoomPercent: (percent: number): string => `${String(percent)} %`,
   rotateLeft: 'Girar a la izquierda',
   rotateRight: 'Girar a la derecha',
-  zoomInvalid: 'Escribe un porcentaje entre 10 y 800',
+  zoomInvalid: 'Escribe un porcentaje entre 10 y 6400',
   toolSelect: 'Herramienta de selección',
   toolHand: 'Herramienta mano',
   selectAll: 'Seleccionar todo el texto de la página',

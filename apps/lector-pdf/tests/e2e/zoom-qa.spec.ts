@@ -10,12 +10,12 @@ async function open(page: Page): Promise<void> {
   await expectViewerReady(page);
 }
 
-test('QA: el zoom se acota entre 10 % y 800 % y el campo lo refleja', async ({ page }) => {
+test('QA: el zoom se acota entre 10 % y 6 400 % y el campo lo refleja', async ({ page }) => {
   await open(page);
   const input = page.getByRole('textbox', { name: 'Zoom' });
-  await input.fill('5000');
+  await input.fill('9000');
   await input.press('Enter');
-  await expect(input).toHaveValue('800 %');
+  await expect(input).toHaveValue('6400 %');
   await input.fill('1');
   await input.press('Enter');
   await expect(input).toHaveValue('10 %');
