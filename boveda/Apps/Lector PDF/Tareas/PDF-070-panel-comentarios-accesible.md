@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-070
 titulo: Hacer accesible el panel de comentarios (nombre visible y Borrar fuera de la fila)
 app: pdf
-estado: bloqueada
+estado: cambios-pedidos
 depende_de: [PDF-036]
 intentos: 0
 skills: [calidad-profesional]
@@ -102,3 +102,19 @@ Que axe no dé violaciones `serious`/`critical` en el panel de comentarios: (a) 
   2. **Espacio añadido en el JSX.** He puesto `{' '}` entre `.name` y la fecha para que, en jsdom, el nombre tenga separación antes de la fecha (sin él, el nombre era «Nota de Ana, página 117/10/26…» y no cumplía `optionName`). No tiene efecto visual en flex. Es una desviación menor de la estructura de la ficha; avisar si no se quiere.
   3. **Icono de papelera.** La ficha dice que «aparece al pasar el ratón o con la fila seleccionada, como hoy», pero hoy es siempre visible (no hay regla de hover en `.rowActions`). He mantenido el comportamiento actual y solo he añadido `cursor: pointer`.
   4. **E2E adaptados** (solo localizadores, sin quitar aserciones): `annotations-kit.ts` (`optionName`), `annotations-flow.spec.ts` (nombres por `optionName`, sin `exact`), `annotations-keyboard.spec.ts` (la fila activa se lee de su `textContent`, ya no tiene `aria-label`), `comments-panel.spec.ts` (Borrar por testid). `notes.spec.ts` y `annotation-popup.test.tsx` no se tocan: su «Borrar» es el de la ventana de comentario, no el de la fila.
+
+### [líder] replanificación — 2026-10-18
+Decisión: **opción (a)**. El espacio que Chromium mete antes de la coma no cambia la lectura (el lector de pantalla hace una pausa) ni afecta a axe (`label-content-name-mismatch` solo exige que el nombre contenga el texto visible, y ya pasa). Ni (b) ni (c): no se toca la estructura ni el CSS de la fila. Se conserva todo el código sin commitear de la ronda 1.
+
+Instrucciones exactas (única corrección pendiente):
+1. En **las dos** funciones `optionName` (`tests/e2e/annotations-kit.ts` y `tests/ui/comments-panel.test.tsx`), tras escapar el nombre, permitir espacios opcionales antes de cada coma:
+   ```ts
+   export function optionName(name: string): RegExp {
+     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/,/g, '\\s*,');
+     return new RegExp('^' + escaped + '(?:\\s|$)');
+   }
+   ```
+   (En el test de componente puede seguir usando `escapeRegExp(name)` y luego el `.replace(/,/g, '\\s*,')`.) No se añade ningún otro comodín.
+2. El criterio «nombre que cumple `optionName('Nota de Ana, página 1')`» se entiende con esta `optionName`. No cambia ningún otro criterio.
+3. Desviaciones de la ronda 1, **aceptadas** tal como están: `{' '}` entre `.name` y la fecha (punto 2); papelera siempre visible con `cursor: pointer`, porque la ficha se equivocaba al decir que hoy aparece solo al pasar el ratón (punto 3); localizadores de E2E del punto 4.
+4. Ejecutar y anotar en el Registro: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter lector-pdf exec playwright test annotations-a11y` (3 en verde) y **`pnpm --filter lector-pdf e2e` completo** con código 0.
