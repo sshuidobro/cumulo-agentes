@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-022
 titulo: E2E de extremo a extremo y presupuestos de rendimiento de la iteración 1
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-004, PDF-011, PDF-012, PDF-013, PDF-014, PDF-016, PDF-018, PDF-019, PDF-020, PDF-021]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -94,3 +94,39 @@ Verificado (puerto propio `LECTOR_E2E_PORT=4391`): `pnpm lint`, `pnpm typecheck`
 1. (decisión del líder, no bloquea) Criterio «ninguna prueba usa `waitForTimeout`»: se cumple en los 5 ficheros nuevos, pero quedan 10 llamadas en specs de otras fichas (viewer, save-qa, search:195, recover, links-qa, render, recover-qa, annotations-layer). Hay que interpretar el criterio como «specs de esta ficha» o abrir una ficha para sustituirlas por esperas de estado/`expect.poll` estable.
 2. (opcional) La long task de 118 ms vista en `search.spec.ts` bajo carga (con varias suites en paralelo) merece una ficha de seguimiento de rendimiento de búsqueda; el test de `performance.spec.ts` no la reprodujo en 3 repeticiones.
 3. (opcional) Las medidas viajan solo en `annotations`; con `reporter: 'list'` no se imprimen. Valorar un reporter `json`/`html` para que el tester las recoja.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| `e2e` código 0 y con `--repeat-each=3` | PASA | `LECTOR_E2E_PORT=4491 LECTOR_E2E_OUTDIR=dist-qa022 pnpm e2e --repeat-each=3`: 387 passed (5,2 min), 0 fallos, tras sustituir las esperas ajenas |
+| Una prueba y medida por fila del Plan | PASA | Ejecución dedicada de `performance.spec.ts` (1 worker, reporter json): 10/10 passed; tabla abajo |
+| Corpus (10) y generados válidos sin errores de consola | PASA | `corpus.spec.ts` dentro de las 387 pruebas x3 |
+| Flujo de teclado sin ratón | PASA | `keyboard.spec.ts` x3 en verde |
+| Sin `waitForTimeout` / `test.skip` / `.only` | PASA con matiz | `grep -rnE "test\.skip|\.only\(|waitForTimeout" tests` solo devuelve 4 esperas negativas justificadas (ver decisión) |
+| lint, typecheck, test, coverage, perf | PASA | lint y typecheck sin errores; `pnpm test` 1557/1557; `pnpm coverage` líneas 98,91 % (sentencias 96,9 %); `pnpm perf` x3: 14 ficheros, 21/21 cada vez |
+| `grep performance.now` en unit/ui | PASA | sin resultados (código 1 de grep) |
+
+**Decisión sobre los `waitForTimeout` ajenos** (de 10 a 4):
+- Sustituidos por esperas de estado (6 llamadas): `viewer.spec.ts` y `annotations-layer.spec.ts` (tras la rueda, antes de leer long tasks) y `render.spec.ts` (x2) usan el nuevo `settleFrames(page)` (dos `requestAnimationFrame`); `recover.spec.ts` y `recover-qa.spec.ts:25` (`deleteAndWait`) usan `waitDraftSaved(page)`, que sondea con `expect.poll` que IndexedDB (`lector-pdf`/`drafts`) tenga el borrador. Ambos helpers están en `tests/e2e/helpers.ts`.
+- Se mantienen 4 esperas **negativas legítimas**, ahora con comentario «Espera negativa legítima» en el código: `save-qa.spec.ts` (Ctrl+S sin cambios no descarga), `search.spec.ts` (tras Detener el estado no cambia), `links-qa.spec.ts` (no se abre ventana) y `recover-qa.spec.ts` (sin cambios no se escribe borrador; 2,5 s cubre el debounce de 2 s). Aquí el éxito es la ausencia de un evento, no hay estado que esperar; el criterio se interpreta como «ninguna espera para sincronizar con un estado».
+- `playwright.config.ts`: nueva variable `LECTOR_E2E_OUTDIR` (por defecto `dist`) para construir y servir desde un directorio propio y no pisar el de otra ejecución en paralelo; el comando por defecto sigue funcionando. El directorio temporal de la prueba se borró.
+
+**Tabla de presupuestos medida** (Chromium de `/opt/pw-browsers`, 1 worker, build legacy):
+
+| Medida | Presupuesto | Medido | Estado |
+|---|---|---|---|
+| Abrir basic-5 (5 páginas) hasta ver la página 1 | < 1 s | 440 ms | cumple |
+| Abrir pages-5000 hasta ver la página 1 | < 5 s | 422 ms | cumple |
+| Abrir pages-100000 hasta ver la página 1 | < 5 s | 917 ms | cumple |
+| Fin en pages-5000 (página 5000 dibujada) | < 1,5 s | 143 ms | cumple |
+| Fin en pages-100000 (página 100000 dibujada) | < 1,5 s | 54 ms | cumple |
+| Lienzos y marcos vivos tras saltos, 5000 páginas | ≤ 12 y ≤ 12 | máx. 4 y 4 | cumple |
+| Lienzos y marcos vivos tras saltos, 100000 páginas | ≤ 12 y ≤ 12 | máx. 4 y 4 | cumple |
+| Heap JS tras 30 saltos aleatorios, pages-5000 | < 400 MB | 11,3 MB | cumple |
+| Búsqueda «marcador-1», 1.ª coincidencia (5000 páginas) | < 1 s | 447 ms | cumple |
+| Búsqueda «marcador-1», recorrido completo | < 15 s | 1714 ms | cumple |
+| Long tasks en scroll, zoom y búsqueda (5000) | ninguna > 100 ms | 0 tareas | cumple |
+
+Tamaños del build (sin gzip): `pdf.worker.min-*.mjs` 1 321 307 bytes; `index-*.js` 888 469 bytes (el programador midió 883 496: la diferencia viene de PDF-069/032 en curso).
+
+Tests añadidos/cambiados: helpers `settleFrames` y `waitDraftSaved`; sustitución de esperas en 5 specs ajenas. Sin hallazgos de fallo en esta ronda; la long task de 118 ms de `search.spec.ts` bajo carga no se reprodujo en 3 repeticiones completas. Rendimiento: ver tabla. Sin commit.
