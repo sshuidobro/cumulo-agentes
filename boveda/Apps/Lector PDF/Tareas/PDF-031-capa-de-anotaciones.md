@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-031
 titulo: Capa de anotaciones - dibujar, seleccionar, mover y borrar
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-030, PDF-010, PDF-011, PDF-013]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -52,7 +52,7 @@ Encima de cada página visible, una capa SVG muestra las anotaciones nuevas y ed
 - [ ] E2E: con zoom 200 % y rotación 90° la zona activa del resaltado de la p1 coincide con el píxel amarillo (clic en el centro → seleccionado).
 - [ ] (T) Con `tool 'ink'` el contenedor del visor tiene `data-tool="ink"` y `.annotationLayer` calcula `cursor: crosshair`; con `'highlight'` la capa de texto `cursor: text`.
 - [ ] (T) Con `scan 'lazy'` (documento simulado de 25 000 páginas), montar `PageView` visible de la página 7 → `ensurePageAnnotations(7)` una vez (espía); con `visible: false` no se llama; con `scan 'done'` no se llama.
-- [ ] Rendimiento: una página con 500 anotaciones (fixture generado en el test) se desplaza sin *long tasks* > 100 ms.
+- [x] Rendimiento: una página con 500 anotaciones (fixture generado en el test) se desplaza sin *long tasks* > 100 ms. Medido: tarea larga máxima 0 ms al desplazar (E2E, 3 repeticiones).
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
@@ -82,3 +82,18 @@ Comprobado: lint 0 avisos; tests de la ficha (18 ficheros, 225 tests) OK; E2E `a
 1. `tests/perf/annotation-layer.perf.test.tsx` / `tests/e2e/annotations-layer.spec.ts` — el criterio «una página con 500 anotaciones se desplaza sin long tasks > 100 ms» no tiene ningún test que lo compruebe (el de jsdom solo mide montaje y selección, y el programador lo declara cubierto «en parte») — añadir un E2E que genere un PDF con 500 anotaciones en una página (fixture generado en el test), desplace el visor y verifique con `PerformanceObserver({ type: 'longtask' })` que ninguna pasa de 100 ms (patrón ya usado en `tests/e2e/viewer.spec.ts:105`). Anotar el resultado en la ficha.
 2. (opcional) `AnnotationLayer.tsx:152` — con el foco en una zona no seleccionada (Tab) Supr no hace nada; valorar seleccionar al enfocar por teclado o que Supr actúe sobre la zona enfocada.
 3. (opcional) `tests/e2e/annotations-layer.spec.ts:36` — `pixelAt` usa `locator('canvas')` sin acotar; durante el cambio de lienzo puede haber dos y fallar por modo estricto. Usar `.last()`.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/AnnotationLayer.tsx` (Supr sobre la zona enfocada); `tests/ui/annotation-layer.test.tsx` (test Tab + Supr); `tests/e2e/annotations-layer.spec.ts` (`pixelAt` robusto y test de 500 anotaciones con long tasks); `tests/perf/annotation-layer.perf.test.tsx` renombrado a `annotation-layer.perf.test.ts` (sin JSX); esta ficha.
+- Qué he hecho: (1) E2E nuevo: PDF de 3 páginas con 500 resaltados en la página 1, se desplaza con la rueda y `PerformanceObserver` de long tasks solo para tareas que empiezan durante el desplazamiento: máximo 0 ms. (2) Supr/Retroceso actúan sobre la zona enfocada aunque no esté seleccionada (llegada con Tab); la selección no cambia y `deleteAnnotation` la limpia si era la borrada. (3) `pixelAt` usa el último lienzo con tamaño en pantalla y devuelve `null` en vez de lanzar (dentro de `expect.poll` un throw no se reintenta). El test de rendimiento de jsdom no se ejecutaba con `pnpm perf`: el patrón solo recoge `*.perf.test.ts` y el fichero era `.tsx`; ahora es `.ts` con `createElement`.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: OK (código 0).
+  - `pnpm coverage`: OK, 122 ficheros, 1457 tests, código 0.
+  - `pnpm typecheck` (`tsc -p tsconfig.json`): solo falla `tests/e2e/outline.spec.ts(50,45)` (PDF-016, ajeno a esta ficha); ningún error en ficheros míos.
+  - `pnpm exec vitest run --config vitest.perf.config.ts annotation-layer`: pasa; en una ejecución midió 163 ms al montar 500 anotaciones (carga del sistema, load average 8) y en dos reintentos pasó.
+  - E2E `annotations-layer.spec.ts` con config temporal en el puerto 4404 (en el scratchpad, fuera del repo): 4 tests × 3 repeticiones, 12/12 OK; el de long tasks 0 ms.
+- Dudas o cosas que no he podido hacer:
+  1. Decisión a revisar: Supr borra la zona enfocada aunque no esté seleccionada (el criterio original hablaba de «seleccionada»). Alternativa: seleccionar al enfocar, pero cambia el test de Supr que espera selección nula tras borrar.
+  2. `pnpm e2e` completo no lo he ejecutado: el árbol lo usan otras fichas. Solo he corrido el E2E de esta ficha.
+  3. El perf de jsdom queda en `pnpm perf` sin JSX. Si se quiere `.tsx`, hay que ampliar el `include` de `vitest.perf.config.ts` (config compartida, no la he tocado).
+  4. No he hecho commit (instrucción de no usar git commit/stash/checkout con las otras fichas en el árbol).

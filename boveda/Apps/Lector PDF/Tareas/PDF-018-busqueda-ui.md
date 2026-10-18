@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-018
 titulo: Búsqueda en la interfaz (Ctrl+F, opciones, resaltado, siguiente/anterior, progreso)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-017, PDF-013]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -79,6 +79,21 @@ Ctrl+F abre una barra de búsqueda. Mientras se escribe, se busca en todo el doc
   - Decisiones menores tomadas en la implementación (no estaban en la ficha): F3 también funciona dentro del campo; «Cerrar» borra la consulta y conserva las opciones; cambiar de documento cierra la barra.
   - La aserción «5 resaltados en total» no se puede comprobar en el DOM: el visor solo monta las páginas cercanas. El total lo verifica el contador «1 de 5».
   - Queda pendiente el error de typecheck de `tests/e2e/outline.spec.ts`, ajeno a esta ficha. El criterio «pnpm typecheck sin errores» solo se cumplirá cuando lo resuelva su dueño.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/search.spec.ts` (solo este fichero). Sin tocar `src/`.
+- Qué he hecho: (1) el test «durante la búsqueda…» instala el `PerformanceObserver` de long tasks con `addInitScript` antes de abrir el documento, comprueba `supportedEntryTypes` incluye `longtask` (si no, el criterio sería vacuo), quita el `?? []` y mide el máximo en el mismo test. (2) Añade scroll con la rueda del ratón mientras el botón «Detener» sigue visible (la búsqueda está en curso), con `expect.poll` sobre `scrollTop`. (3) El campo de página también se usa con la búsqueda en curso. (4) Quito del test de `aguja` el observador huérfano que nunca se leía.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: sin errores ni avisos.
+  - `pnpm --filter lector-pdf typecheck`: falla solo en `tests/e2e/outline.spec.ts(50,45)` (ajeno, PDF-016). Ningún error en ficheros de PDF-018.
+  - `pnpm test`: 122 ficheros, 1457 tests en verde.
+  - `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>/coverage-pdf018` (con directorio propio porque otro agente tenía bloqueado `coverage/`): código 0; `core/search` 96,1 % líneas.
+  - E2E completo con config temporal en puerto 4403 (borrada después): 76/76 en verde en una ejecución. En ejecuciones de `search.spec.ts` solo, el test de `aguja` falló en 4 de 5 ejecuciones (timeout de «1 de 2» a 3 s).
+  - Medidas: long task máxima en `pages-5000` durante la búsqueda y el scroll: **87,0 ms** (1 tarea; observador desde la carga del documento). Captura del zoom 200 % y vista girada: `/tmp/claude-0/-home-claude-cumulo-agentes/409a8bbc-9d52-502a-8457-def03208983e/scratchpad/search-zoom-200-girado-ronda2.png`.
+- Dudas o cosas que no he podido hacer:
+  - **Criterio de `aguja` marginal (decisión del líder).** Con diagnóstico temporal (borrado) el recorrido completo de 5 000 páginas hasta «1 de 2» tarda 2,0–3,3 s con la carga actual de la máquina (load ~3,5 en 4 núcleos, por otros agentes). El presupuesto de la ficha es < 3 s. No he cambiado el umbral ni he tocado el núcleo de búsqueda (fuera de alcance). Opciones: optimizar el recorrido de `core/search`/`engine/search-source.ts` (PDF-017) o revisar el criterio. Hasta decidirlo, el E2E no es estable en esta máquina.
+  - Sin commit: el usuario ha prohibido git en el árbol compartido.
+  - `pnpm typecheck` no llegará a 0 hasta que PDF-016 arregle `outline.spec.ts`.
 
 ### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
 Comprobado: `pnpm lint` 0; tests nuevos de búsqueda 23/23 en verde; `typecheck` solo falla en `tests/e2e/outline.spec.ts` (ajeno, PDF-016). Núcleo, store, acciones, barra y resaltado cumplen la ficha.
