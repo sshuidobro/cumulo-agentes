@@ -56,3 +56,17 @@ export function cancelPrint(): void;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/state/print-actions.ts`, `src/ui/messages-print.ts`, `src/ui/print/PrintDialog.tsx`, `PrintDialog.module.css`, `PrintProgress.tsx`, `PrintContainer.tsx`, `print.css`; modificados `src/ui/App.tsx`, `src/ui/shortcuts.ts` (atajo `print`, Mod+P), `src/ui/toolbar/MainToolbar.tsx` (botón tras «Guardar como»), `src/ui/toolbar/DocumentMenu.tsx` (entrada «Imprimir…»), `src/ui/icons.tsx` (`IconPrint`); tests nuevos `tests/unit/print-actions.test.ts`, `tests/ui/print-dialog.test.tsx`, `tests/e2e/print.spec.ts`.
+- Qué he hecho: diálogo Imprimir (páginas, comentarios, orientación, calidad, rango validado con Intro y Esc), progreso con Cancelar, y `startPrint`/`cancelPrint` sobre `openPrintSource` y `renderPageForPrint` (PDF-087). Hojas en `#print-container` con `@page` del tamaño de la página 1, giro automático, URL de blob revocadas al terminar (o en `afterprint`). Confirmación por encima de 500 páginas. Las opciones se recuerdan en `printOptions` salvo el texto del rango.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (180 ficheros, 2127 tests); `pnpm --filter lector-pdf e2e` (chromium y chromium-perf, 172 tests) código 0; `pnpm --filter lector-pdf build` OK (arranque 473 460 bytes de 500 000); `pnpm coverage` código 0 (líneas 98,98 %).
+- Dudas o cosas que no he podido hacer:
+  1. **«Página N de 5000» en orden en el PDF de `page.pdf()`**: no es comprobable por texto, porque Chromium sale rasterizado (cada hoja es una imagen). La e2e comprueba: una sola llamada a `print`, tres hojas, PDF de 3 páginas y URL creadas = revocadas. El orden lo cubre el test unitario (índices 1, 2, 3). Si el líder quiere la comprobación de contenido, hace falta otra estrategia (p. ej. comparar con un render de referencia).
+  2. El `page.pdf()` de la e2e se hace sobre el contenedor reconstruido con las hojas copiadas en `window.print` (la app vacía el contenedor en cuanto `print()` resuelve, así que no se puede llamar a `page.pdf()` tal cual).
+  3. «Resaltado en la zona»: la e2e cuenta píxeles amarillos en toda la hoja 1 (basic-5 no tiene otro amarillo).
+  4. Preferencias: interpreto «salvo el rango» como: se recuerdan páginas, comentarios, orientación y calidad, pero no el texto del rango.
+  5. Extensiones de API (necesarias, no cambian lo pedido): `PrintSheet` queda `{url, rotate}` y el tamaño de hoja va en `usePrintJob.sheet`; `usePrintDialog` (estado del diálogo) está en `print-actions.ts`.
+  6. Riesgo para Tauri: `platform.print()` resuelve en cuanto se pide el diálogo; si el webview lee el DOM después, las hojas pueden faltar. Cómo lo trata la ficha: se revoca al resolver o al `afterprint`. Hay que comprobarlo en la máquina del usuario.
+  7. **Pendiente, sin hacer**: criterio «Manual» (`tauri dev` → Ctrl+P abre el diálogo del sistema). Requiere la máquina del usuario.
+  8. El presupuesto de arranque (500 000 bytes) queda a 26 000 bytes; el código de impresión está en el bundle principal. Conviene vigilarlo.
