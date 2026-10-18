@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-091
 titulo: Documentos de prueba cifrados y con permisos (qpdf)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-040]
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
@@ -69,3 +69,11 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0022-pdf
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 - Los 7 cifrados coinciden con la tabla de la ficha; `GENERATOR_VERSION` 4; `qpdfEncrypt` limpia el temporal siempre; FUENTES.md documentado. Tests (46/46) y eslint de los ficheros de la ficha limpios. Los fallos de lint, typecheck y coverage son de otras fichas.
 - (opcional) `fixtures-encrypted.test.ts` termina con una línea en blanco antes de `});`.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 7 ficheros y qpdf --check | OK | `pnpm --filter lector-pdf fixtures` (25 generados); `qpdf --check` código 0 en los 7 |
+| pdf.js NEED/INCORRECT_PASSWORD, texto, permisos, anotaciones, PATH vacío | OK | `fixtures-encrypted.test.ts` + `fixtures.test.ts`: 46/46 |
+| Batería completa | OK salvo ajeno | coverage: 2319 OK, 1 fallo ajeno (zoom-controls) |
+Tests añadidos: ninguno (los del programador cubren cada criterio). Rendimiento: no aplica.
