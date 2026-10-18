@@ -60,6 +60,15 @@
   pointer-events: none;
 }
 
+/* Vista previa del trazo a mano alzada: lienzo temporal encima de la capa mientras se traza (PDF-076). */
+.inkPreview {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
 /* Tirador de tamaño del texto libre seleccionado: recibe el puntero aunque la capa no lo reciba (PDF-034). */
 .handle {
   fill: var(--color-focus);

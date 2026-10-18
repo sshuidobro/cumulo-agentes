@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-076
 titulo: Dibujar la vista previa del trazo de forma incremental en un canvas temporal (test rojo previo)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -109,3 +109,19 @@ Que dibujar a mano alzada cueste lo mismo por frame con 10 o con 2 000 puntos y 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/ink-preview.ts` (nuevo), `apps/lector-pdf/src/ui/viewer/AnnotationLayer.tsx`, `apps/lector-pdf/src/ui/viewer/AnnotationLayer.module.css`, `apps/lector-pdf/tests/ui/ink.test.tsx`, `apps/lector-pdf/tests/unit/ink-preview.test.ts` (nuevo), `apps/lector-pdf/tests/e2e/ink-preview.spec.ts` (nuevo), esta ficha.
+- Qué he hecho: rojo previo en `ink.test.tsx` (contexto 2D simulado en `beforeEach` del `describe`, `afterEach` con `restoreAllMocks`/`unstubAllGlobals`, test de `Profiler` y el test de la polilínea sustituido por el del lienzo). Después, `ink-preview.ts` (`prepareInkCanvas`, `drawInkSegments`) y `AnnotationLayer` con lienzo temporal `data-testid="ink-preview"` montado solo durante el trazo; `requestInkPreview` dibuja solo los segmentos nuevos; el estado de React cambia solo al empezar y al soltar. El CSS `.inkPreview` según la ficha. Tests unitarios de `ink-preview` y e2e `ink-preview.spec.ts` a 50 % y 300 %.
+- Desviación menor: el contexto simulado se pasa como `fakeCtx as unknown as CanvasRenderingContext2D` en vez de `as never`, para no usar un cast que anule el tipo.
+- Rojo previo (`pnpm --filter lector-pdf exec vitest run tests/ui/ink.test.tsx`, antes de tocar `src/`): 2 fallos. «mientras se traza, la vista previa es un lienzo…»: `expected null not to be null` (no existe `[data-testid="ink-preview"]`; la capa aún pinta la `<polyline>`). «durante el trazo la capa no se vuelve a renderizar…»: `expected 100 to be +0` (commits = 100, uno por frame).
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf exec vitest run tests/ui/ink.test.tsx tests/unit/ink-preview.test.ts`: 17/17 en verde.
+  - `pnpm --filter lector-pdf exec eslint --max-warnings 0 <ficheros cambiados>` y `pnpm lint` (raíz): código 0.
+  - `pnpm --filter lector-pdf typecheck` y `pnpm typecheck` (raíz): código 0.
+  - `pnpm test` (raíz): 145 ficheros, 1720 tests en verde, código 0.
+  - `pnpm perf`: 25/25 en verde, código 0.
+  - E2E acotado (`LECTOR_E2E_PORT=4191 LECTOR_E2E_OUTDIR=dist-ink-preview pnpm exec playwright test --project=chromium -g "ink|Dibujo|trazo"`): 15/15 en verde, código 0 (incluye `ink-preview.spec.ts` a 50 % y 300 %, y `ink.spec.ts`). No se ha ejecutado la batería completa.
+  - Rendimiento: `uptime` antes de medir: `load average: 0.00, 0.41, 1.18` y `pgrep -fa "playwright|vitest|vite build"` vacío. `pnpm --filter lector-pdf exec playwright test --project=chromium-perf --no-deps --repeat-each=5 -g "trazo de 2 000"` (puerto 4191): 5 passed, código 0. Antes de medir había otra ejecución (PDF-074) en marcha; la espera al reposo se hizo con un bucle hasta que la carga bajó de 1.
+  - `git diff`: sin `skip`, `.only`, `retries`, `waitForTimeout` ni cambios de umbrales.
+- Dudas o cosas que no he podido hacer: ninguna de la ficha. Quedan fuera de mi commit `boveda/Apps/Lector PDF/Tareas/PDF-074-presupuesto-bundle-arranque.md` y los cambios de PDF-074 (`package.json`, `vite.config.ts`, `tests/bundle/`), que son del otro agente. El `Plan.md` sigue marcando PDF-076 como `pendiente`: lo actualiza el líder.

@@ -28,10 +28,11 @@ import {
 } from '../../state/annotation-actions';
 import { useAnnotations } from '../../state/annotation-store';
 import { msg } from '../messages';
-import { annotationOutline, cssColor, svgPointsForPath } from './annotation-geometry';
+import { annotationOutline, cssColor } from './annotation-geometry';
 import { AnnotationShape, ZoneShape } from './annotation-shapes';
 import { FreeTextEditor } from './FreeTextEditor';
 import { toPx } from './freetext-box';
+import { drawInkSegments, prepareInkCanvas } from './ink-preview';
 import styles from './AnnotationLayer.module.css';
 import viewerStyles from './Viewer.module.css';
 
@@ -67,6 +68,10 @@ interface InkStroke {
   readonly points: number[];
   /** Petición de animación pendiente para la vista previa, o `null`. */
   frame: number | null;
+  /** Contexto del lienzo de la vista previa; `null` hasta que el lienzo existe (PDF-076). */
+  ctx: CanvasRenderingContext2D | null;
+  /** Coordenadas de `points` ya dibujadas en la vista previa (PDF-076). */
+  drawn: number;
 }
 
 export interface AnnotationLayerProps {
@@ -121,8 +126,10 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   const [sketch, setSketch] = useState<RectPt | null>(null);
   /** Tirador de tamaño en curso: id del texto libre y rectángulo de vista previa (PDF-034). */
   const [resizing, setResizing] = useState<Resizing | null>(null);
-  /** Vista previa del trazo a mano alzada en curso, en puntos PDF; se actualiza como mucho una vez por frame (PDF-035). */
-  const [inkPreview, setInkPreview] = useState<readonly number[] | null>(null);
+  /** Hay un trazo a mano alzada en curso: monta el lienzo de la vista previa (PDF-035, PDF-076). */
+  const [inkActive, setInkActive] = useState(false);
+  /** Lienzo temporal de la vista previa del trazo; solo existe mientras se traza (PDF-076). */
+  const inkCanvasRef = useRef<HTMLCanvasElement>(null);
   const zones = useRef(new Map<string, SVGGElement>());
   const layerRef = useRef<SVGSVGElement>(null);
   /** Dónde poner el foco tras un render (p. ej. tras borrar): id de zona, `FOCUS_VIEWER` o nada. */
@@ -317,12 +324,23 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     stroke.points.push(px, py);
   }
 
-  /** Pide la vista previa del trazo para el siguiente frame; varios eventos en el mismo frame cuestan una sola actualización. */
+  /**
+   * Pide dibujar la vista previa del trazo en el siguiente frame; varios eventos en el mismo frame cuestan una sola
+   * pasada. Dibuja solo los segmentos nuevos en el lienzo temporal: no re-renderiza la capa (PDF-076).
+   */
   function requestInkPreview(stroke: InkStroke): void {
     if (stroke.frame !== null) return;
     stroke.frame = requestAnimationFrame(() => {
       stroke.frame = null;
-      if (inkStroke.current === stroke) setInkPreview(stroke.points.slice());
+      if (inkStroke.current !== stroke) return;
+      const canvas = inkCanvasRef.current;
+      if (stroke.ctx === null && canvas !== null) {
+        stroke.ctx = prepareInkCanvas(canvas, viewport, window.devicePixelRatio || 1, {
+          color: cssColor(inkColor),
+          widthPt: inkWidth,
+        });
+      }
+      if (stroke.ctx !== null) stroke.drawn = drawInkSegments(stroke.ctx, stroke.points, stroke.drawn);
     });
   }
 
@@ -332,7 +350,7 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     if (stroke === null) return;
     if (stroke.frame !== null) cancelAnimationFrame(stroke.frame);
     inkStroke.current = null;
-    setInkPreview(null);
+    setInkActive(false);
   }
 
   /**
@@ -358,8 +376,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
       box: svg.getBoundingClientRect(),
       points: [],
       frame: null,
+      ctx: null,
+      drawn: 0,
     };
     inkStroke.current = stroke;
+    setInkActive(true);
     addInkSample(stroke, event.clientX, event.clientY);
   }
 
@@ -523,18 +544,6 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
             <rect x={sketch[0]} y={sketch[1]} width={sketch[2] - sketch[0]} height={sketch[3] - sketch[1]} className={styles.sketch} />
           </g>
         )}
-        {inkPreview !== null && (
-          <g transform={`matrix(${viewport.transform.join(' ')})`} pointerEvents="none">
-            <polyline
-              points={svgPointsForPath(inkPreview)}
-              fill="none"
-              stroke={cssColor(inkColor)}
-              strokeWidth={inkWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </g>
-        )}
         {items.length > 0 && (
           <g transform={`matrix(${viewport.transform.join(' ')})`}>
             {items.map((a, index) => {
@@ -603,6 +612,7 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
           />
         )}
       </svg>
+      {inkActive && <canvas ref={inkCanvasRef} className={styles.inkPreview} data-testid="ink-preview" aria-hidden="true" />}
     {editingHere !== null && <FreeTextEditor key={editingHere.base.id} editing={editingHere} viewport={viewport} />}
     </>
   );
