@@ -9,6 +9,7 @@ TypeScript + React (Vite), empaquetado como escritorio con Tauri 2 y funcionando
 - Equipo de agentes en `.claude/agents/`: `investigador`, `lider`, `programador`, `revisor`, `tester`. Skills de experto en `.claude/skills/`.
 - Para arrancar un objetivo: `/dirigir-equipo <objetivo>`.
 - **Toda la documentación va en la bóveda de Obsidian `boveda/`** según la skill `documentar-obsidian`: planes en `boveda/Apps/<App>/Plan.md`, fichas en `boveda/Apps/<App>/Tareas/`, decisiones en `boveda/Decisiones/`, investigación en `boveda/Investigacion/`, bitácora diaria en `boveda/Bitacora/`.
+- Ahorro de tokens ([[ADR-0026-ahorro-de-tokens]]): el equipo corre por rondas con `scripts/equipo.sh` (contexto limpio en cada ronda); para localizar código, `node scripts/indice-codigo.mjs <ruta> --buscar <palabra>` y el agente `explorador` antes de leer ficheros enteros.
 - Flujo de una ficha: pendiente → en-curso → en-revision → en-test → hecha. Rechazo → `cambios-pedidos`; a los 3 rechazos se escala al líder.
 
 ## Trabajo continuo (regla del usuario)

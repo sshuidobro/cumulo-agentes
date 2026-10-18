@@ -93,7 +93,7 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 ## Comandos
 - Requisitos del sistema (una vez, Linux): `apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev qpdf` (WebKitGTK solo para compilar Tauri; `qpdf` para validar PDFs escritos).
 - Instalar: `pnpm install`
-- Lint / typecheck / test / cobertura (raíz): `pnpm lint && pnpm typecheck && pnpm test && pnpm coverage`
+- Lint / typecheck / test / cobertura (raíz): `pnpm lint && pnpm typecheck && pnpm coverage` (`pnpm coverage` ya ejecuta todos los tests: no hace falta `pnpm test` antes; [[ADR-0026-ahorro-de-tokens]])
 - Rendimiento (raíz, [[ADR-0012-suite-de-rendimiento]]): `pnpm perf` — asserts de tiempo de reloj en `apps/lector-pdf/tests/perf/*.perf.test.ts`, sin cobertura y en serie. Nunca `performance.now()` en `tests/unit/` ni `tests/ui/`. Benchmarks informativos: `pnpm exec vitest bench --run`.
 - Fixtures: `pnpm --filter lector-pdf fixtures` (los tests los generan solos si faltan)
 - Desarrollo web: `pnpm --filter lector-pdf dev` (http://localhost:5173)
@@ -101,7 +101,7 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 - E2E (web, Chromium de `/opt/pw-browsers`): `pnpm --filter lector-pdf e2e` (o `pnpm e2e` en la raíz). Las pruebas de *long tasks* llevan `{ tag: '@perf' }` y corren en el proyecto `chromium-perf` (en serie, tras el resto; [[ADR-0016-e2e-long-tasks-en-serie]]). Cada prueba `@perf` espera antes de empezar a que la CPU real esté en reposo (< 15 % en 3 s seguidos, máximo 150 s; si no, falla con «La máquina no está en reposo…»; [[PDF-078-reposo-cpu-antes-de-perf]], revisión 2 de ADR-0016); no lanzar otros `playwright`/`vitest`/`vite build` mientras se mide. `--repeat-each` no repite proyectos de dependencia: repetir con `e2e --project=chromium --repeat-each=N` y `e2e --project=chromium-perf --no-deps --repeat-each=N` (revisión de ADR-0016).
 - Rust: `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --all-features`
 - Escritorio (solo en la máquina del usuario): `pnpm --filter lector-pdf tauri dev` · `pnpm --filter lector-pdf tauri build`
-- Comprobación completa de una ficha: `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm coverage` + lo que pida la ficha (`pnpm perf`, e2e, cargo).
+- Comprobación completa de una ficha: `pnpm install && pnpm lint && pnpm typecheck && pnpm coverage` (`pnpm coverage` ya ejecuta todos los tests: no hace falta `pnpm test` antes; [[ADR-0026-ahorro-de-tokens]]) + lo que pida la ficha (`pnpm perf`, e2e, cargo).
 
 ## Tareas
 ### Iteración 1 · Base común (en [[Apps/Comun/Plan|Comun]]) · cerrada
