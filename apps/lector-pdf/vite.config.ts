@@ -21,7 +21,7 @@ function cspPlugin(): Plugin {
 export default defineConfig({
   plugins: [react(), cspPlugin()],
   base: './',
-  build: { target: 'es2023', sourcemap: true },
+  build: { target: 'es2023', sourcemap: true, manifest: true },
   worker: { format: 'es' },
   server: { port: 5173, strictPort: true },
 });
