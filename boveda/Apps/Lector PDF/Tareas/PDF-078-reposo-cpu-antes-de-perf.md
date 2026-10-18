@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-078
 titulo: Esperar a que la CPU esté en reposo antes de cada prueba @perf y medir la CPU real durante ella
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -117,3 +117,8 @@ Que ninguna prueba `@perf` empiece a medir con la CPU ocupada: antes de cada una
   - `--list`: 160 tests en 41 ficheros (sin cambios en ningún `.spec.ts`, así que el total no cambia). `--list --project=chromium-perf --no-deps`: 7.
   - Auditoría: `git diff` no toca umbrales de long tasks ni ningún `.spec.ts`; no hay `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout` en lo añadido.
 - Dudas o cosas que no he podido hacer: (1) En el caso con carga, Playwright muestra «(170ms)» junto a la prueba fallida, mientras que el mensaje dice «tras 150 s» (calculado con `Date.now`). Parece que el reporte `list` no cuenta el tiempo de la fixture; no lo he investigado, el mensaje sí demuestra la espera de 150 s. (2) La batería ×3 no es de esta ficha (es la verificación de PDF-073).
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: lint y typecheck en 0; 8/8 tests unitarios de `cpu-usage`; el código sigue la ficha (única desviación, `let last: number;` sin valor inicial, es correcta y justificada). Sin umbrales, `.spec.ts`, `retries`, `skip`, `only`, `fixme` ni `waitForTimeout` añadidos.
+Duda del programador (170 ms con carga): **no es un problema real**. Repetí la prueba con dos bucles `node` ocupando 2 núcleos y el tiempo de pared fue de 158 s (cronometrado con `date`), con fallo y sin dejar procesos. El reporte `list` solo cuenta la duración del cuerpo de la prueba, no la preparación de la fixture automática, que es donde falla y espera.
+1. (opcional) `perf-fixture.ts` — el aviso de duración engañosa podría anotarse en ADR-0016 para quien lea el reporte; no bloquea.
