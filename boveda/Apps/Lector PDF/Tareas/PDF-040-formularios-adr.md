@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-040
 titulo: Generar el documento de prueba de formularios completo (form-full.pdf)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
@@ -70,3 +70,7 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 3) · Decisiones: [[ADR-0019-for
 - Qué he hecho: generador de `form-full.pdf` según la tabla (2 páginas, 15 + 2 widgets, todos con `/AP`, campo jerárquico `nombre` y `persona.apellido`, botones de opción, combo, lista, firma sin firmar). Tests con pdf.js en Node que comprueban los atributos de la ficha.
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf fixtures` (18 generados); `qpdf --check fixtures/pdf/generated/form-full.pdf` → código 0; `pnpm lint` → 0; `pnpm test` → 154/154 ficheros, 1793 tests en verde; `pnpm coverage` → 0 (líneas 97,15 %). `pnpm typecheck` falla por `apps/lector-pdf/tests/unit/print-render.test.ts(131,41)` (`noPrint` no existe): fichero de otra ficha en curso, no tocado.
 - Dudas o cosas que no he podido hacer: (1) pdf.js devuelve `fieldValue` de un combo como array (`['España']`); el test lo refleja. (2) Las apariencias las genera el propio fixture con la fórmula de la ficha: `importe` (`/Q 2`) y `rotado` (`/MK /R 90`) se dibujan alineados a la izquierda y sin girar; es inocuo para pdf.js con `ENABLE_STORAGE`, pero si PDF-079 necesita una apariencia alineada o girada hay que cambiarla. (3) La ficha pedía «Formulario completo · página N»: el `·` no estaba en la tabla WinAnsi, así que lo añadí (no cambia ningún fixture existente). (4) El recuento de fixtures pasa de 17 a 18 en `fixtures.test.ts`; es consecuencia directa del nuevo fichero.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: fixtures (18 generados), `qpdf --check` código 0, lint 0, typecheck 0, `pnpm test` 0, tests de fixtures en verde. Tabla de campos, orden de `/Annots` (15 + 2) y `/Fields` conforme a la ficha; tests cubren los criterios.
+1. (opcional) `apps/lector-pdf/tests/fixtures/structure.ts:409,417` — `importe` y `rotado` tienen apariencia sin alinear/girar (ya anotado por el programador); revisar en PDF-079 si hace falta.
