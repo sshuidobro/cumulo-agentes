@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072, PDF-073]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
