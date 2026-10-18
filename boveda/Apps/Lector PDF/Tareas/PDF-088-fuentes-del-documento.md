@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-088
 titulo: Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-045]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -56,3 +56,12 @@ export function mergeFonts(a: readonly FontInfo[], b: readonly FontInfo[]): read
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/fonts.ts`, `src/core/pdf/index.ts`, `src/state/fonts-actions.ts`, `src/state/fonts-store.ts`, `src/ui/properties/PropertiesDialog.tsx`, `PropertiesDialog.module.css`, `src/ui/messages-properties.ts`, `tests/unit/pdf-fonts.test.ts`, `tests/unit/fonts-actions.test.ts`, `tests/ui/properties-fonts.test.tsx`, `tests/perf/fonts.perf.test.ts`, `tests/e2e/properties.spec.ts`; esta ficha.
+- Qué he hecho: he revisado el trabajo previo sin commitear y lo he dado por bueno sin reescribirlo: `scanFonts`/`mergeFonts` con caché por objeto, escaneo por lotes de 200 páginas cedendo el hilo, pestaña «Fuentes» con progreso, «Detener», error y cancelación al cerrar. No he cambiado código de la app. Todos los criterios se cumplen salvo el de `verapdf/7.21.4.1-t01-pass-a.pdf` (ver dudas).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm --filter lector-pdf typecheck` OK; `pnpm test` 178 ficheros / 2069 tests OK; `pnpm coverage` OK (`fonts.ts` 96,7 % líneas); `pnpm perf` (fonts.perf) OK; `playwright test properties.spec.ts --project=chromium` 14/14 OK; `--project=chromium-perf` (pages-100000, long tasks y «Detener») OK. En la ejecución completa del E2E fallaron `open-qa.spec.ts:59` (arrastrar y soltar) y `render.spec.ts:158` (resaltado), ajenos a esta ficha; no los he tocado.
+- Dudas o cosas que no he podido hacer:
+  1. **Criterio de verapdf no cumplido tal como está escrito.** El criterio pide que la lista «coincida con las `/BaseFont` que da `qpdf --json`». Esas `/BaseFont` son `Helvetica` y `ZapfDingbats` (solo en `/AcroForm /DR`, no en `/Resources` de ninguna página) y `BRYEGL+Arial`. El escaneo, según el «Contexto», solo mira `/Resources` de páginas y Form XObject, así que da solo `Arial`. El test `pdf-fonts.test.ts` asegura lo que hace el código (solo `Arial`), no el criterio. Hay que decidir: (a) añadir `/AcroForm /DR` al escaneo, o (b) cambiar el criterio a «fuentes de las páginas». No lo he decidido yo.
+  2. Menor: «Búsqueda detenida en la página n.» usa `pagesDone`, que avanza por lotes de 200; la página exacta donde se detuvo puede ser anterior. Si se quiere la página exacta, hay que publicar progreso por página.
+  3. Menor: con 0 páginas leídas, el mensaje es «Búsqueda detenida antes de terminar la primera página.» (texto mío, no está en la ficha).

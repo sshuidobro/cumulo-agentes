@@ -7,6 +7,7 @@ export { decodeStreamData, flateEncode } from './filters';
 export { readXref, type XrefEntry, type XrefInfo } from './xref';
 export { BlockCache, type BlockCacheOptions } from './block-cache';
 export { ObjectReader } from './object-reader';
+export { scanFonts, mergeFonts, type FontInfo } from './fonts';
 export { buildIncrementalUpdate, openForSave, type IncrementalInput, type IncrementalOutput } from './incremental';
 export * from './image';
 export { concatSource } from './concat-source';
