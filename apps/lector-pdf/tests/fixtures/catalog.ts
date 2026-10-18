@@ -11,9 +11,10 @@ import {
   buildPageLabels,
 } from './structure.ts';
 import { textPage } from './pdf-builder.ts';
+import { qpdfEncrypt } from './encrypted.ts';
 
 /** Subir si cambia la forma de los ficheros generados: fuerza la regeneración en todos los equipos. */
-export const GENERATOR_VERSION = 3;
+export const GENERATOR_VERSION = 4;
 
 export interface FixtureSpec {
   readonly name: string;
@@ -135,4 +136,62 @@ export const FIXTURES: readonly FixtureSpec[] = [
   { name: 'annotated.pdf', build: buildAnnotated },
   { name: 'form.pdf', build: buildForm },
   { name: 'form-full.pdf', build: buildFormFull },
+  // Cifrados con qpdf (contraseñas: usuario = `usuario`, propietario = `propietario`; ver fixtures/FUENTES.md).
+  {
+    name: 'encrypted-rc4-40.pdf',
+    build: () => qpdfEncrypt(buildBasic5(), ['--allow-weak-crypto', '--encrypt', 'usuario', 'propietario', '40', '--']),
+  },
+  {
+    name: 'encrypted-rc4-128.pdf',
+    build: () =>
+      qpdfEncrypt(buildBasic5(), [
+        '--allow-weak-crypto',
+        '--encrypt',
+        'usuario',
+        'propietario',
+        '128',
+        '--use-aes=n',
+        '--',
+      ]),
+  },
+  {
+    name: 'encrypted-aes-128.pdf',
+    build: () => qpdfEncrypt(buildBasic5(), ['--encrypt', 'usuario', 'propietario', '128', '--use-aes=y', '--']),
+  },
+  {
+    name: 'encrypted-aes-256.pdf',
+    build: () => qpdfEncrypt(buildBasic5(), ['--encrypt', 'usuario', 'propietario', '256', '--']),
+  },
+  {
+    name: 'encrypted-aes-256-objstm.pdf',
+    build: () =>
+      qpdfEncrypt(buildCompressed(), [
+        '--object-streams=generate',
+        '--encrypt',
+        'usuario',
+        'propietario',
+        '256',
+        '--',
+      ]),
+  },
+  {
+    name: 'encrypted-owner-only.pdf',
+    build: () =>
+      qpdfEncrypt(buildBasic5(), [
+        '--encrypt',
+        '',
+        'propietario',
+        '256',
+        '--print=none',
+        '--extract=n',
+        '--modify=none',
+        '--annotate=n',
+        '--',
+      ]),
+  },
+  {
+    name: 'encrypted-annotated-aes-128.pdf',
+    build: () =>
+      qpdfEncrypt(buildAnnotated(), ['--encrypt', 'usuario', 'propietario', '128', '--use-aes=y', '--']),
+  },
 ];

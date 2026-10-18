@@ -27,7 +27,8 @@ export interface QpdfAnnotation {
 type QpdfJsonValue = unknown;
 export type QpdfObjects = Readonly<Record<string, { readonly value?: QpdfJsonValue; readonly stream?: { dict?: unknown } }>>;
 
-function run(args: readonly string[]): { readonly status: number | null; readonly stdout: string; readonly stderr: string } {
+/** Ejecuta `qpdf` con `args`; lanza con la instrucción de instalación si no está en el PATH. */
+export function run(args: readonly string[]): { readonly status: number | null; readonly stdout: string; readonly stderr: string } {
   const result = spawnSync('qpdf', [...args], { encoding: 'utf8', maxBuffer: MAX_BUFFER });
   if (result.error !== undefined) {
     const code = (result.error as NodeJS.ErrnoException).code;
