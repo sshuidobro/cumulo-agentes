@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-078
 titulo: Esperar a que la CPU esté en reposo antes de cada prueba @perf y medir la CPU real durante ella
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
