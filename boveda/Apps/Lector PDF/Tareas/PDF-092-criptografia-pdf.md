@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-092
 titulo: Manejador de seguridad estándar - claves, contraseñas y cifrado por objeto
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-091]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -67,3 +67,13 @@ export function encryptBytes(h: SecurityHandler, kind: 'string' | 'stream', num:
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/crypto/rc4.ts` (nuevo), `apps/lector-pdf/src/core/pdf/crypto/security.ts` (nuevo), `apps/lector-pdf/src/core/pdf/crypto/index.ts` (nuevo), `apps/lector-pdf/tests/unit/pdf-crypto.test.ts` (nuevo, 39 tests), `apps/lector-pdf/tests/perf/pdf-crypto.perf.test.ts` (nuevo), `apps/lector-pdf/package.json` (`@noble/hashes@2.4.0`, `@noble/ciphers@2.4.0`), `pnpm-lock.yaml` (lo regenera `pnpm install`).
+- Qué he hecho: `rc4`, `openSecurity` (R2-R6, usuario y propietario, `/Filter`, `/V`, `/CF`, `/EncryptMetadata`), `decryptBytes`/`encryptBytes` para RC4, AES-128 y AES-256 y `none`. Nunca lanza por datos del fichero: lo no soportado es `unsupported`. Las claves de R2-R4 usan el alg. 3 de ISO 32000-1 (50 rehashes sobre los `n` primeros bytes, también en la de propietario).
+- Comandos ejecutados y resultado: `pnpm lint` sin errores ni avisos. `pnpm typecheck` OK. `pnpm coverage`: 197 ficheros, 2374 tests en verde; `crypto/` con 100 % de líneas. `pnpm perf`: 18 ficheros, 29 tests en verde (R6 < 50 ms).
+- Dudas o cosas que no he podido hacer:
+  1. **Desviación de la ficha, por código existente:** `ObjectReader.open` lanza `PdfSyntaxError('encrypted')` en cuanto el trailer tiene `/Encrypt` (`xref.ts`). No se puede leer `/Encrypt` ni `/ID` «con ObjectReader sin descifrar» sin cambiar ese comportamiento, que es de PDF-093. Los tests leen `/Encrypt` y `/ID` con el analizador directo (`parseIndirectObject`) sobre el texto del fichero, y localizan el flujo de contenido por su texto (`P\341gina 1 de 5`, `…de 50`, `…de 3`) en vez de «la p1» por el árbol de páginas. Comparan el flujo descifrado con el del fichero base. Si el líder prefiere otra vía, lo cambio cuando PDF-093 haga legible el cifrado.
+  2. Los tests importan `@noble/*` (MD5 de referencia y AES para el texto de prueba). Solo el código de producción lo importa desde `crypto/`.
+  3. `pnpm install` ha reescrito además entradas de `pnpm-lock.yaml` que no son mías (jsdom/vitest/whatwg-url, cambios de forma del lockfile). Conviene revisarlo antes del commit.
+  4. No he hecho commit (lo pediste). PDF-090 y PDF-102 no se han tocado.
