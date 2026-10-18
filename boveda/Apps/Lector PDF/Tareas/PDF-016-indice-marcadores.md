@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-016
 titulo: Índice (marcadores) del documento en el panel lateral
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-015, PDF-014]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -69,3 +69,9 @@ La pestaña «Marcadores» del panel lateral muestra el índice del PDF como un 
 ### [lider] suite de rendimiento — 2026-10-17
 Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
 Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/core/outline.ts`, `src/engine/outline.ts`, `src/state/outline-actions.ts`, `src/ui/sidebar/OutlinePanel.tsx` (+ `.module.css`), `src/ui/links/confirm-external.tsx`, tests `tests/unit/outline.test.ts`, `tests/unit/engine-outline.test.ts`, `tests/ui/outline-panel.test.tsx`, `tests/perf/outline.perf.test.ts`, `tests/e2e/outline.spec.ts`. Modificados: `src/state/viewer-store.ts` (campos `outline`, `outlineExpanded`), `src/state/document-actions.ts` (carga del índice en segundo plano), `src/ui/sidebar/Sidebar.tsx` (pestaña «Marcadores»), `src/ui/viewer/LinkLayer.tsx` (diálogo de enlace externo extraído), `src/ui/messages.ts`.
+- Qué he hecho: núcleo puro del índice (validación de cada campo, profundidad máx. 64, ids por ruta, aplanado virtual), motor con `getOutline` que nunca lanza, pestaña «Marcadores» como `role="tree"` virtualizada (filas de 28 px) con teclado completo, activación (interno, acción, externo con confirmación, bloqueado con aviso) y estados de carga y vacío. Se extrajo el diálogo de enlace externo para reutilizarlo y `LinkLayer` lo usa ahora.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK; `pnpm test` y `pnpm coverage` OK (121 ficheros, 1455 tests); `pnpm perf` OK (incluye el de 10 000 marcadores); E2E de `outline.spec.ts` con config temporal en el puerto 4399: 4/4 OK. E2E completa de la app en 4399: 72 OK y 1 fallo en `tests/e2e/annotations-layer.spec.ts` («borrar el resaltado con Supr»: `getImageData` sobre un lienzo de tamaño 0), ajeno a esta ficha (anotaciones, PDF-031 en curso). Config temporal y `test-results-4399` borrados.
+- Dudas o cosas que no he podido hacer: (1) Decisiones menores: «recortado» = quitar caracteres de control, colapsar blancos y recortar, sin límite de longitud; el estado de despliegue va en el store (`outlineExpanded`, no estaba en la ficha) para no perderlo al cambiar de pestaña. (2) No he hecho commit ni stash: el árbol está compartido con PDF-018, PDF-031 y PDF-037 (las fichas siguen en `en-revision` sin commit propio). (3) `document-actions` importa `getOutline` desde `engine/outline` y no desde el índice de `engine`, porque tests existentes mockean `src/engine` sin esa función.
