@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-042
 titulo: Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-081, PDF-082, PDF-087]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]

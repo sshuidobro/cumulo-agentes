@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-041
 titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-081]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -93,3 +93,15 @@ Tests añadidos: `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (R
 
 ### [revisor] ronda 2 — 2026-10-18 — APROBADO
 Comprobado: typecheck OK, eslint del test sin avisos, `form-highlight-contrast` y `form-layer` en verde (16/16). La regla `.night.highlight` se aplica (`FormLayer.tsx` pone `styles.night` y `styles.highlight` solo sin foco, así que no pisa a `.night.editing`). Color `rgb(60 80 160 / 55%)` sobre `#1f1f23` da contraste suficiente frente a `#e6e6e6`. Sangría de `--shadow-page` corregida. Sin e2e/perf por indicación (tester ocupado); el tester debe repetir el e2e completo. Sin problemas bloqueantes (0).
+
+### [tester] ronda 2 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Contraste en modo noche (rechazo ronda 1) | PASA | `form-highlight-contrast.test.ts` en verde dentro de `pnpm test`: 186 ficheros, 2180 tests |
+| UI / E2E de la ficha, axe p1, zoom+rotación | PASA | `pnpm --filter lector-pdf e2e` en reposo (loadavg 2,1): 184 passed (4,1 min), código 0, incluido `chromium-perf` |
+| lint, typecheck | PASA | código 0, 0 avisos |
+| test, coverage | PASA | `vitest run --coverage` (carpeta propia, la de la raíz estaba en uso por otro proceso): 2180 tests, líneas 98,61 %, código 0 |
+| Presupuestos | PASA | `pnpm perf`: 17 ficheros, 28 tests |
+
+Incidencias ajenas a la ficha: 1) corridas bajo carga concurrente (loadavg ~10) fallaron `open.spec` (100 000 páginas) y `open-qa` (arrastrar y soltar) por tiempo, y `zoom-qa` y 4 unitarios por tomar a medias la edición de PDF-098 (MAX_ZOOM 800 % a 6 400 %). Repetidas en reposo y con PDF-098 ya confirmado: todo verde. 2) `pnpm coverage` en la raíz choca si otro proceso usa `coverage/`.
+Tests añadidos: ninguno nuevo en esta ronda. Rendimiento: sin regresión.
