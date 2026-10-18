@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-044
 titulo: Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-087, PDF-045, COM-014]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -70,3 +70,11 @@ export function cancelPrint(): void;
   6. Riesgo para Tauri: `platform.print()` resuelve en cuanto se pide el diálogo; si el webview lee el DOM después, las hojas pueden faltar. Cómo lo trata la ficha: se revoca al resolver o al `afterprint`. Hay que comprobarlo en la máquina del usuario.
   7. **Pendiente, sin hacer**: criterio «Manual» (`tauri dev` → Ctrl+P abre el diálogo del sistema). Requiere la máquina del usuario.
   8. El presupuesto de arranque (500 000 bytes) queda a 26 000 bytes; el código de impresión está en el bundle principal. Conviene vigilarlo.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Comprobado: `pnpm lint` OK; tests de la ficha (`print-actions`, `print-dialog`, 27) OK. `pnpm typecheck` falla por `src/ui/viewer/FormLayer.tsx(127)` (`maxLength: number | undefined`, `exactOptionalPropertyTypes`): fichero sin seguir en git de otro agente, ajeno a esta ficha; no se imputa aquí, pero la ficha no podrá cerrarse con typecheck rojo.
+Código revisado (print-actions, PrintDialog, PrintContainer, print.css): correcto y limpio (cancelación, revocado único con `closeRun`, `afterprint`, rango validado, a11y del diálogo). Solo bloquea lo siguiente:
+1. `apps/lector-pdf/tests/e2e/print.spec.ts:172-191` — el criterio 1 (orden «Página 2/3/4 de 5000») no tiene ningún test. La limitación de Chromium (hojas rasterizadas, sin texto) es real y aceptable para NO leer texto, pero la alternativa propuesta es insuficiente: el test unitario de índices (1, 2, 3) no prueba que las `<img>` del contenedor salgan en ese orden ni que cada imagen sea la de su página, y la e2e solo cuenta 3 hojas. Qué hacer: en la e2e, comparar cada hoja del `snapshot.images` (en orden del HTML) con la hoja de imprimir por separado «Página actual» de las páginas 2, 3 y 4 (mismo dpi, render determinista → data URL idéntica), y comprobar que las tres son distintas entre sí. Alternativa válida: render del PNG de cada hoja y comparar con el render de pdf.js de esa página (`toHaveScreenshot`/diferencia con tolerancia). Documentar en la ficha que el criterio se sustituye por este («texto» → «imagen equivalente»).
+2. `apps/lector-pdf/tests/e2e/print.spec.ts:282-284` — el criterio @perf pide «Cancelar deja `job.status === 'idle'` en < 300 ms» y el test solo espera que el diálogo se oculte. Qué hacer: leer `usePrintJob` (o comprobar que `#print-container` sigue vacío y que no se llama a `print`) y, tras cancelar, que `created === revoked` en el balance de URL.
+3. Criterio «Manual» (`tauri dev` → Ctrl+P): imposible aquí; es aceptable que quede como verificación manual, pero añade al final del Registro una línea «Pendiente Manual» con los pasos exactos, y que el tester lo marque como comprobación en la máquina del usuario (no se da por cumplido). El riesgo de que `print()` resuelva antes de que el webview lea el DOM (duda 6) debe constar ahí.
+4. (opcional) `print.spec.ts:118-131` — `printedPdf` reconstruye el DOM con data URL; vale, pero comprueba también que el PDF no esté vacío (cada página con imagen) para que el conteo de 3 páginas no pase con hojas en blanco.
