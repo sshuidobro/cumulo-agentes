@@ -29,6 +29,9 @@ const FREETEXT_BORDER = 1;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
+/** `/Name` de los `/Stamp` que son firmas de la suite: así se distinguen de los sellos de otros programas. */
+export const SIGNATURE_STAMP_NAME = 'SuiteFirma';
+
 const SUBTYPES: Readonly<Record<Annotation['type'], string>> = {
   highlight: 'Highlight',
   underline: 'Underline',
@@ -36,6 +39,7 @@ const SUBTYPES: Readonly<Record<Annotation['type'], string>> = {
   note: 'Text',
   freetext: 'FreeText',
   ink: 'Ink',
+  signature: 'Stamp',
 };
 
 export interface AnnotationDictOptions {
@@ -141,5 +145,7 @@ function typeEntries(a: Annotation): Record<string, PdfValue> {
     }
     case 'ink':
       return { InkList: a.paths.map((p) => [...p]), BS: dict({ W: a.width }) };
+    case 'signature':
+      return { Name: name(SIGNATURE_STAMP_NAME) };
   }
 }

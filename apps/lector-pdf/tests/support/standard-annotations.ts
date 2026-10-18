@@ -5,19 +5,22 @@
  */
 import { quadFromRect, type Annotation, type AnnotationType, type RectPt, type Rgb } from '../../src/core/annotations';
 
+/** Tipos del conjunto: los que la app escribe como anotaciones editables (sin la firma, PDF-085). */
+type StandardType = Exclude<AnnotationType, 'signature'>;
+
 export const STANDARD_AUTHOR = 'Prueba';
 export const STANDARD_CONTENTS = 'Revisión: año, ñandú, café, ¿qué tal? 5 € ';
 export const STANDARD_DATE = '2026-10-17T12:00:00.000Z';
 
 /** Tipos del conjunto, en el orden en que se añaden. Cubren los seis subtipos que escribe la app. */
-export const STANDARD_TYPES: readonly AnnotationType[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
+export const STANDARD_TYPES: readonly StandardType[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
 
 /** Id de una anotación del conjunto estándar. */
-export function standardId(type: AnnotationType): string {
+export function standardId(type: StandardType): string {
   return `suite-std-${type}`;
 }
 
-const RECTS: Readonly<Record<AnnotationType, RectPt>> = {
+const RECTS: Readonly<Record<StandardType, RectPt>> = {
   highlight: [72, 700, 272, 720],
   underline: [72, 660, 272, 680],
   strikeout: [72, 620, 272, 640],
@@ -26,7 +29,7 @@ const RECTS: Readonly<Record<AnnotationType, RectPt>> = {
   ink: [72, 460, 200, 500],
 };
 
-const COLORS: Readonly<Record<AnnotationType, Rgb>> = {
+const COLORS: Readonly<Record<StandardType, Rgb>> = {
   highlight: [1, 1, 0],
   underline: [0, 0, 1],
   strikeout: [1, 0, 0],
@@ -40,7 +43,7 @@ export function standardAnnotations(pageIndex = 0): readonly Annotation[] {
   return STANDARD_TYPES.map((type) => standardAnnotation(type, pageIndex));
 }
 
-function standardAnnotation(type: AnnotationType, pageIndex: number): Annotation {
+function standardAnnotation(type: StandardType, pageIndex: number): Annotation {
   const rect = RECTS[type];
   const base = {
     id: standardId(type),

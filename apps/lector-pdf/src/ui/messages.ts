@@ -34,6 +34,7 @@ export const msg = {
     note: 'Nota',
     freetext: 'Texto',
     ink: 'Dibujo',
+    signature: 'Firma',
   },
   /** «Resaltado de Ana»; sin autor, solo el tipo. */
   annotationName: (kind: string, author: string): string => (author.trim() === '' ? kind : `${kind} de ${author}`),

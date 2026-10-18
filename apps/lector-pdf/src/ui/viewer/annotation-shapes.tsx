@@ -1,9 +1,16 @@
 import type { ReactElement } from 'react';
 import { FREETEXT_LEADING, FREETEXT_MARGIN_PT } from '../../core/annotations/freetext';
-import type { Annotation, FreeTextAnnotation, NoteAnnotation, TextMarkupAnnotation } from '../../core/annotations/model';
+import type {
+  Annotation,
+  FreeTextAnnotation,
+  NoteAnnotation,
+  SignatureAnnotation,
+  TextMarkupAnnotation,
+} from '../../core/annotations/model';
 import { wrapText } from '../../core/annotations/wrap';
 import { cssColor, svgPathForQuads, svgPointsForPath } from './annotation-geometry';
 import styles from './AnnotationLayer.module.css';
+import { useSignatureImageUrl } from './signature-image';
 
 /** Mismo valor que la apariencia de PDF-027, para que se vea igual en el visor y en otros programas. */
 const NOTE_SIZE = 20;
@@ -36,6 +43,8 @@ export function AnnotationShape({ a }: { readonly a: Annotation }): ReactElement
           ))}
         </g>
       );
+    case 'signature':
+      return <SignatureShape a={a} />;
   }
 }
 
@@ -48,6 +57,7 @@ export function ZoneShape({ a }: { readonly a: Annotation }): ReactElement {
       return <path d={svgPathForQuads(a.quads)} className={styles.zone} />;
     case 'note':
     case 'freetext':
+    case 'signature':
       return <rect x={a.rect[0]} y={a.rect[1]} width={a.rect[2] - a.rect[0]} height={a.rect[3] - a.rect[1]} className={styles.zone} />;
     case 'ink':
       return (
@@ -58,6 +68,39 @@ export function ZoneShape({ a }: { readonly a: Annotation }): ReactElement {
         </>
       );
   }
+}
+
+/**
+ * Firma (ADR-0020). `ink`: trazos en su caja, escalada al `rect` como en la apariencia (el grosor también).
+ * `image`: `<image>` en el `rect`; la capa voltea el eje Y, así que se vuelve a voltear para que se lea derecha.
+ */
+function SignatureShape({ a }: { readonly a: SignatureAnnotation }): ReactElement | null {
+  const url = useSignatureImageUrl(a.art);
+  const [x1, y1, x2, y2] = a.rect;
+  if (a.art.kind === 'ink') {
+    const [boxW, boxH] = a.art.box;
+    return (
+      <g
+        transform={`translate(${x1} ${y1}) scale(${(x2 - x1) / boxW} ${(y2 - y1) / boxH})`}
+        fill="none"
+        stroke={cssColor(a.color)}
+        strokeWidth={a.art.width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={a.opacity}
+      >
+        {a.art.paths.map((path, i) => (
+          <polyline key={i} points={svgPointsForPath(path)} />
+        ))}
+      </g>
+    );
+  }
+  if (url === null) return null;
+  return (
+    <g transform={`translate(${x1} ${y2}) scale(1 -1)`} opacity={a.opacity}>
+      <image x={0} y={0} width={x2 - x1} height={y2 - y1} href={url} preserveAspectRatio="none" />
+    </g>
+  );
 }
 
 function HighlightShape({ a }: { readonly a: TextMarkupAnnotation }): ReactElement {
