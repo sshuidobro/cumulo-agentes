@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-096
 titulo: Layout de doble página (pares y con portada)
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -71,3 +71,9 @@ export interface Layout {
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/layout.ts`, `apps/lector-pdf/tests/unit/layout.test.ts`, `apps/lector-pdf/tests/perf/layout.perf.test.ts`, esta ficha.
+- Qué he hecho: `computeLayout` agrupa las páginas en filas (`spread` `none`/`pairs`/`cover`) con `lefts`, `rowOf`, `rowStart`, `rowTops`, `rowHeights`, `rowWidths` y `rowCount`; `pageAtY`, `visibleRange`, `anchorAt` y `contentYForAnchor` operan por fila; nuevas `rowRange` y `rowWidthOf`. Valores de `none` fijados en los tests desde la versión anterior (5 tablas), y comprobados además contra la versión anterior con 400 tablas aleatorias y 13 200 consultas (idénticos, bit a bit).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (180 ficheros, 2127 tests); `pnpm coverage` OK, `layout.ts` 100 % líneas y 98,5 % ramas; `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/layout.perf.test.ts` (desde la raíz) OK, 4/4 (incluidos los dos existentes sin cambiar umbral).
+- Dudas o cosas que no he podido hacer: ninguna. Nota: `rowRange` y `rowWidthOf` lanzan `RangeError` para una página fuera de rango (criterio de `valueAt`, no estaba en la ficha). `anchorAt` sobre el hueco entre filas da fracción 1 de la fila anterior, igual que hoy; el test de inversa se hace con posiciones dentro de filas.
