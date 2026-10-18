@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-102
 titulo: Modo de vista - estado, preferencia y navegación por filas
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-096]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -63,3 +63,5 @@ export function pagedWindow(layout: Layout, row: number): { readonly top: number
 - Qué he hecho: revisado el código existente contra la ficha: `ViewMode`, `isViewMode`, `rowFirstPage`, `stepRow`, `referenceSize`, `pagedWindow`, `viewMode` en el store (conservado al abrir otro documento), `loadViewMode`/`setViewMode` con `prefs`, y `nextPage`/`prevPage`/`firstPage`/`lastPage` por filas. Los tests cubren los valores exactos de los criterios de aceptación.
 - Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK; `pnpm coverage` OK (exit 0; 196 ficheros, 2335 tests pasan; `view-mode.ts` con 98,11 % de líneas, 96,87 % de ramas).
 - Dudas o cosas que no he podido hacer: no he commiteado (lo pediste así). `referenceSize` está implementada, pero no he comprobado que el visor la use para el zoom de ajuste; no figura en los criterios de la ficha. Tampoco he ejecutado `pnpm perf` ni e2e porque la ficha no los pide.
+
+- Revisor (ronda 1): APROBADO, 0 problemas. Pasa a en-test.
