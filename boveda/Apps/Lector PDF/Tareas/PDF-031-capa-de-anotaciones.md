@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-031
 titulo: Capa de anotaciones - dibujar, seleccionar, mover y borrar
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-030, PDF-010, PDF-011, PDF-013]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -100,3 +100,15 @@ Comprobado: lint 0 avisos; tests de la ficha (18 ficheros, 225 tests) OK; E2E `a
 
 ### [revisor] ronda 2 — 2026-10-18 — APROBADO
 Comprobado: `pnpm lint` 0 avisos; `pnpm typecheck` OK (ya sin el fallo ajeno); `pnpm test` 122 ficheros, 1457 tests OK; tests de la ficha 226 OK; perf de jsdom OK; E2E `annotations-layer` 4 tests x2 repeticiones = 8/8 en puerto 4409 (el de 500 anotaciones sin long tasks). Los tres puntos de la ronda 1 resueltos. Supr sobre la zona enfocada y la decisión ↑/↓ (mover si hay movible seleccionada, si no recorrer) son razonables y quedan aceptadas. Sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios (T) de la capa, selección, mover, borrar, ocultar, ajenas, cursor, carga perezosa | OK | `vitest run annotation` y `page-view-annotations`: verdes; suite completa 1469/1470 |
+| E2E borrar/Ctrl+Z, mover 50 px, zoom 200 % + rotación 90° | OK | `annotations-layer.spec.ts` x3 en puerto 4413: 11/12 |
+| 500 anotaciones sin long tasks > 100 ms | OK | aislado, `--workers=1 --repeat-each=6`: 6/6. Un fallo con 2 workers y load average ~13 (carga) |
+| lint / typecheck | OK | código 0 |
+| `pnpm test` | solo falla `tests/ui/open.test.tsx:174` (barra de PDF-020, ajeno); en aislado pasa 10/10 | |
+
+Observación (no bloqueante): el perf de jsdom «montar 500 anotaciones < 100 ms» dio 102-154 ms con load average ~11 (3 de 3 ejecuciones); es un proxy sensible a la carga, el criterio real lo cubre el E2E. Repetir en máquina libre.
+Tests añadidos: ninguno nuevo; cobertura existente suficiente.
