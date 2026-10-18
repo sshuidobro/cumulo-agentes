@@ -153,7 +153,7 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[PDF-070-panel-comentarios-accesible]] | Panel de comentarios accesible (nombre visible, Borrar fuera de la fila, Supr) | PDF-036 | hecha |
 | [[PDF-071-barra-comentar-flechas]] | ←/→/Inicio/Fin de la barra «Comentar» sin cambiar de página (test rojo previo) | PDF-069 | hecha |
 | [[PDF-072-nota-con-teclado]] | Colocar una nota solo con teclado | PDF-033, PDF-070, PDF-071 | hecha |
-| [[PDF-074-presupuesto-bundle-arranque]] | Comprobar tras el build el presupuesto del JavaScript de arranque (rojo previo) | — | pendiente |
+| [[PDF-074-presupuesto-bundle-arranque]] | Comprobar tras el build el presupuesto del JavaScript de arranque (rojo previo) | — | cambios-pedidos |
 | [[PDF-075-pdfjs-diferido]] | Cargar pdf.js con `import()` diferido (arranque sin tarea de ~100 ms) | PDF-074 | pendiente |
 | [[PDF-076-vista-previa-trazo-canvas]] | Vista previa del trazo incremental en canvas temporal (test rojo previo) | — | pendiente |
 | [[PDF-077-diagnostico-long-tasks]] | Diagnóstico de long tasks y carga de CPU en las pruebas @perf | — | pendiente |
