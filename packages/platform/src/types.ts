@@ -46,4 +46,6 @@ export interface Platform {
   onCloseRequested(cb: () => boolean): () => void;
   /** Cierra la ventana sin volver a llamar a onCloseRequested. */
   closeWindow(): Promise<void>;
+  /** Abre el diálogo de impresión del sistema. Resuelve cuando el diálogo se ha abierto (web: cuando `window.print()` vuelve). */
+  print(): Promise<Result<void>>;
 }

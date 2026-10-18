@@ -251,6 +251,14 @@ pub fn suite_take_pending_opens(state: State<'_, SuitePlatformState>) -> Vec<Fil
         .collect()
 }
 
+/// Abre el diálogo de impresión nativo de la ventana (en macOS `window.print()` no siempre lo abre).
+#[tauri::command]
+pub async fn suite_print<R: Runtime>(window: tauri::WebviewWindow<R>) -> Result<(), String> {
+    window
+        .print()
+        .map_err(|error| format!("No se ha podido abrir la impresión: {error}"))
+}
+
 /// Registra las rutas recibidas del SO, las añade a la cola y avisa a JS con `OS_OPEN_EVENT`.
 /// Las rutas que no se pueden leer se descartan.
 pub fn register_os_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<PathBuf>) {
@@ -281,6 +289,7 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         suite_append_atomic,
         suite_close,
         suite_take_pending_opens,
+        suite_print,
     ]
 }
 

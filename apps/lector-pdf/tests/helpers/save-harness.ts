@@ -95,6 +95,7 @@ export function setupSaveHarness(): SaveHarness {
     setTitle,
     onCloseRequested,
     closeWindow,
+    print: vi.fn(async () => ok(undefined)),
   };
   const harness: SaveHarness = { original, platform, save, saveAs, closeFile, closeWindow, setTitle, onCloseRequested };
 
