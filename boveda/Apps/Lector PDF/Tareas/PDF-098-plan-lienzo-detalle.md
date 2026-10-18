@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-098
 titulo: Zoom hasta 6 400 % y cálculo de la zona de detalle
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -57,3 +57,9 @@ export function needsRedraw(drawn: PxRect, visible: PxRect): boolean;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/zoom.ts`, `apps/lector-pdf/src/core/detail.ts` (nuevo), `apps/lector-pdf/src/ui/messages.ts`, `apps/lector-pdf/tests/unit/detail.test.ts` (nuevo), `apps/lector-pdf/tests/unit/zoom.test.ts`, `apps/lector-pdf/tests/unit/pdf007-qa.test.ts`, `apps/lector-pdf/tests/unit/view-actions.test.ts`, `apps/lector-pdf/tests/ui/zoom-controls.test.tsx`, `apps/lector-pdf/tests/e2e/zoom-qa.spec.ts`.
+- Qué he hecho: `MAX_ZOOM = 64` y pasos 12-64 en `ZOOM_STEPS`; mensaje `zoomInvalid` a 10-6400; `core/detail.ts` con `visibleInFrame`, `detailRect`, `planDetail`, `needsRedraw` y `DETAIL_MARGIN`, según la ficha (valores no finitos o tamaños negativos → `RangeError`; tamaños 0 no lanzan). Los tests que asumían 800 % como máximo se han actualizado al nuevo límite; `ZoomControls` no se ha tocado (sigue con su propia lista).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (186 ficheros, 2180 tests); `pnpm coverage` código 0, `core/detail.ts` y `core/zoom.ts` al 100 % de líneas, funciones y ramas. E2E y perf NO ejecutados (los pide el tester): el criterio «los E2E de zoom siguen en verde» queda pendiente. He actualizado `tests/e2e/zoom-qa.spec.ts` (antes esperaba 800 %; ahora escribe 9000 y espera «6400 %») para que no quede en rojo por el cambio de máximo.
+- Dudas o cosas que no he podido hacer: el criterio de `planDetail` a 3 200 % de A4 está cubierto como test unitario, pero la comprobación de los E2E de zoom queda para el tester. El texto de la ficha dice «6 400 %» y `formatZoom` muestra «6400 %» (sin espacio de miles), que es el formato existente.

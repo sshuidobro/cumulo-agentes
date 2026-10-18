@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { wheelZoom } from '../../src/core/zoom';
+import { MAX_ZOOM, wheelZoom } from '../../src/core/zoom';
 import { rotateView, setZoomMode, zoomIn, zoomOut, zoomWithWheel } from '../../src/state/view-actions';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
 
@@ -46,9 +46,9 @@ describe('zoomIn / zoomOut', () => {
   });
 
   it('en el máximo el zoom no cambia', () => {
-    useViewer.setState({ zoom: 8 });
+    useViewer.setState({ zoom: MAX_ZOOM });
     zoomIn();
-    expect(useViewer.getState().zoomMode).toEqual({ kind: 'custom', zoom: 8 });
+    expect(useViewer.getState().zoomMode).toEqual({ kind: 'custom', zoom: MAX_ZOOM });
   });
 });
 
