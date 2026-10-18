@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-017
 titulo: Pantalla completa en @suite/platform
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-016]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -60,3 +60,14 @@ onFullscreenChange(cb: (on: boolean) => void): () => void;
 1. Criterios 1-4 cubiertos por código y tests (web: ok/rechazo/ausente/evento/baja; Tauri: llamada, aviso solo al cambiar). Capacidad con los dos permisos; `cargo check --workspace --all-features` rc=0.
 2. `pnpm lint`, `typecheck` y `coverage` en verde tras 4804e5d (líneas 98,6 %).
 3. (opcional) `platform-web.ts` setFullscreen(false) fuera de pantalla completa devuelve `unsupported` si `exitFullscreen` rechaza; podría tratarse como `ok`.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Web ok/rechazo/ausente | OK | `fullscreen-web.test.ts` dentro de `pnpm coverage` rc=0 |
+| Web evento y baja | OK | idem |
+| Tauri llamada y aviso solo al cambiar | OK | `fullscreen-tauri.test.ts`, idem |
+| Capacidad y cargo | OK | permisos en `default.json` líneas 8-9; `cargo check --workspace --all-features` rc=0 |
+| lint/typecheck/coverage | OK | los tres rc=0; líneas 98,6 % |
+
+Tests añadidos: ninguno. Rendimiento: no aplica.

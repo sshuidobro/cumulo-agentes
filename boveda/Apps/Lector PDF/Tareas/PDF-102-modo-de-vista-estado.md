@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-102
 titulo: Modo de vista - estado, preferencia y navegación por filas
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-096]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
