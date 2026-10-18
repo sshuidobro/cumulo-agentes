@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-037
 titulo: Guardar y Guardar como con anotaciones, recarga y aviso de cambios sin guardar
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-028, PDF-030, PDF-019, COM-007, COM-010, COM-013]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, stack-tauri]
