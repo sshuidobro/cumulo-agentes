@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-014
 titulo: Enlaces internos y externos, destinos e historial atrás/adelante
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-012, PDF-003]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, formatos-ofimatica, calidad-profesional, pruebas-calidad]
@@ -96,3 +96,16 @@ Typecheck OK; ESLint sin avisos en los ficheros de la ficha; 7 ficheros de test 
 1. (opcional) `LinkLayer.tsx` — el menú contextual «abrir en pestaña nueva» sobre un `<a href={url}>` externo salta el diálogo (solo http/https/mailto, ya clasificado). Se podría quitar el `href` real.
 2. (opcional) `MainToolbar.tsx` — iconos de página reutilizados para atrás/adelante; crear iconos propios.
 3. (opcional) Falta aplicar `ctrl+clic`/`shift+clic` explícitamente en test; hoy pasan por `onClick` y quedan cubiertos.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| Tests unitarios (classifyUrl, parseExplicitDest, motor links.pdf, historial, Dialog) | OK | `pnpm test`: 106 ficheros, 1348 tests en verde |
+| E2E links.pdf (a)(d)(f)(g)(h), Alt+←/→, Cancelar/Abrir con `noopener,noreferrer` | OK | `links.spec.ts` 4/4 con build propio en puerto 4392 |
+| Seguridad | OK | `window.open` solo en `platform-web.ts`; E2E extra: Esc, clic de rueda, Ctrl+clic y mailto no abren sin diálogo |
+| typecheck | OK | `pnpm typecheck` código 0 |
+| lint | Solo fallos ajenos | `text-qa.spec.ts` (PDF-013, ignorado por encargo); mis ficheros 0 avisos |
+| e2e completo | 54 pasan, 3 fallan por carga | `render.spec.ts:68`, `render.spec.ts:116`, `viewer.spec.ts:101` (tareas largas/tiempo); el Tab pasa. Al repetirlos en serie pasan los de render; `viewer.spec.ts:101` es intermitente con carga de máquina 16 (134 ms frente a 100 ms, pasa en otras ejecuciones). Recomendable repetirlo con la máquina libre en PDF-022. |
+Observación: el `<a href>` externo permite «abrir en pestaña nueva» desde el menú contextual saltando el diálogo (ya anotado por el revisor, opcional; sin ejecución de código, solo http/https/mailto).
+Tests añadidos: `apps/lector-pdf/tests/e2e/links-qa.spec.ts` (4 tests: Esc, rueda/Ctrl+clic, mailto, Enter con teclado, historial con botones deshabilitados). Lint OK.
+Rendimiento: sin presupuesto propio de la ficha; ver la intermitencia anterior.
