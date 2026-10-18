@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-098
 titulo: Zoom hasta 6 400 % y cálculo de la zona de detalle
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -68,3 +68,16 @@ export function needsRedraw(drawn: PxRect, visible: PxRect): boolean;
 Lint, typecheck y test (2180) en verde; E2E no ejecutados (los corre el tester). Criterios cubiertos con tests; sin código fuera de alcance; `ZoomControls` intacto.
 1. (opcional) `boveda/Apps/Lector PDF/Manual.md:30` — sigue diciendo «10-800 %» — actualizar a 6 400 % al cerrar la iteración.
 2. (opcional) Tester: verificar en E2E que `zoom-qa.spec.ts` (ahora espera «6400 %») y los demás de zoom siguen en verde.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Zoom (nextZoom/clamp/parse hasta 64) | OK | `pnpm test`: 187 ficheros, 2187 tests en verde (zoom.test.ts actualizado) |
+| visibleInFrame / detailRect / needsRedraw | OK | `tests/unit/detail.test.ts` con los valores de la ficha |
+| planDetail (null si no capped; A4 a 3 200 % → densidad 1, ≤ MAX_CANVAS_PIXELS) | OK | `detail.test.ts` líneas 113-145 |
+| Tamaño 0 no lanza; no finitos → RangeError | OK | `detail.test.ts` (NaN en los 4 métodos) |
+| lint, typecheck, test, coverage | OK, código 0 | cobertura global líneas 97,2 % |
+| E2E de zoom y toda la batería | OK | `pnpm --filter lector-pdf e2e`: 184 passed, código 0 (zoom-qa espera «6400 %») |
+Rendimiento: `pnpm perf` 17 ficheros, 28 tests OK en reposo (load 2-3).
+Incidencia no atribuible: en la 1.ª pasada e2e, con load average 9-12 (otro tester con Rust y PDF-042), `pdfjs-deferred.spec.ts:9` midió 1986 ms (límite 1400); en solitario pasa (~1,1 s) y la 2.ª pasada completa con load 3-9 fue verde. Sin umbrales tocados.
+Tests añadidos: ninguno (cobertura suficiente). Pendiente opcional: Manual.md:30 sigue con «10-800 %».
