@@ -3,8 +3,8 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: bloqueada
-depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072]
+estado: pendiente
+depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072, PDF-073]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
 creado: 2026-10-17
@@ -96,3 +96,10 @@ Decisiones técnicas y de accesibilidad (no de producto) sobre los puntos de la 
   1. **Criterio de la ficha no cumplido: `e2e` con código 0.** Las dos fallas son long tasks de 101-117 ms en pruebas preexistentes de `search.spec.ts` y `viewer.spec.ts`, no de anotaciones. Bajo carga (2 workers, la batería completa) superan 100 ms; aisladas pasan casi siempre. No relajo el umbral ni salto la prueba. Decisión para el líder: estabilizar esas medidas (p. ej. medirlas sin carga concurrente o con `workers: 1` para esa categoría) o asumir el riesgo. Es una decisión de infraestructura de pruebas, no de producto.
   2. **Cambio ajeno sin commitear**: `apps/lector-pdf/tests/ui/comments-panel.test.tsx` añade el test «al borrar con Supr la última fila, la activa pasa a la anterior». No es de esta ficha; no lo incluyo en el commit y lo dejo sin tocar. Pasa en la batería unitaria.
   3. Por lo anterior, la ficha queda `bloqueada`, no `en-revision`.
+
+### [lider] replanificación — 2026-10-18 (ronda 2)
+Decisión técnica (infraestructura de pruebas, no de producto) → [[ADR-0016-e2e-long-tasks-en-serie]]:
+- Las dos fallas de la ronda 2 son pruebas de *long tasks* preexistentes que superan 100 ms solo con la batería en paralelo. No se relaja el umbral ni se reintenta: las 7 pruebas que miden *long tasks* llevan `{ tag: '@perf' }` y corren en un proyecto Playwright `chromium-perf` con `workers: 1`, después del proyecto paralelo → [[PDF-073-e2e-long-tasks-en-serie]].
+- `depende_de` gana PDF-073. Estado → `pendiente`, `intentos: 0`. Lo de la ronda 2 ya está commiteado (`ff96d56`).
+- El cambio sin commitear `tests/ui/comments-panel.test.tsx` es el test que añadió el tester de [[PDF-070-panel-comentarios-accesible]] (su Registro lo cita); se commitea aparte como PDF-070.
+- **Qué queda en esta ficha al reanudarla (sin cambios de código previstos):** con PDF-073 hecha, ejecutar `pnpm --filter lector-pdf e2e` y `pnpm --filter lector-pdf e2e --repeat-each=3` (código 0), anotar en el Registro las medidas del punto 3 (ahora salen del proyecto `chromium-perf`) y la salida de `qpdf --check`, y pasar a `en-revision`. `annotations-performance.spec.ts` recibe la etiqueta `@perf` en PDF-073: no la toques aquí. Si una prueba de anotaciones falla también en serie, se anota con su valor y vuelve al líder.
