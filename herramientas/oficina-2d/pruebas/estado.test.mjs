@@ -5,7 +5,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-/* global process */
 import { estadoDeNotas, seguidorGithub } from '../estado.mjs';
 
 const ficha = (id, estado) => `---\ntipo: tarea\nid: ${id}\ntitulo: Ficha ${id}\napp: pdf\nestado: ${estado}\nintentos: 0\n---\n# ${id}\n`;

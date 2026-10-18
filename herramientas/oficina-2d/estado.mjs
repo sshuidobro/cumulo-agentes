@@ -5,7 +5,6 @@
 //        sigue al equipo aunque trabaje en otra máquina: cada 15 s descarga de GitHub
 //        la rama con el último cambio (o la de --rama NOMBRE) y lee sus fichas.
 // Opciones: --puerto N, --repo RUTA (por defecto, la raíz de este repositorio).
-/* global process, URL */
 import { execFile } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { createServer } from 'node:http';

@@ -1,7 +1,6 @@
 // Junta la oficina en un único HTML autónomo (sin servidor), con una instantánea
 // del estado real del equipo incrustada. Útil para abrirla con doble clic o publicarla.
 //   node herramientas/oficina-2d/empaquetar.mjs [salida.html]
-/* global process */
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
