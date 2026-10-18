@@ -25,7 +25,7 @@ export interface QpdfAnnotation {
 }
 
 type QpdfJsonValue = unknown;
-export type QpdfObjects = Readonly<Record<string, { readonly value?: QpdfJsonValue }>>;
+export type QpdfObjects = Readonly<Record<string, { readonly value?: QpdfJsonValue; readonly stream?: { dict?: unknown } }>>;
 
 function run(args: readonly string[]): { readonly status: number | null; readonly stdout: string; readonly stderr: string } {
   const result = spawnSync('qpdf', [...args], { encoding: 'utf8', maxBuffer: MAX_BUFFER });
@@ -75,6 +75,63 @@ export function qpdfAnnotations(path: string): QpdfAnnotation[] {
   return out;
 }
 
-function isDict(v: unknown): v is Readonly<Record<string, unknown>> {
+/**
+ * `/BaseFont` (sin prefijo «XXXXXX+», sin repetir, orden `localeCompare('es')`) de las fuentes de `/Resources /Font`
+ * de todas las páginas (con herencia desde `/Pages`) y de los Form XObject de primer nivel de esas `/Resources`.
+ * Es el oráculo independiente de `scanFonts`: no incluye `/AcroForm /DR`, que no es un recurso de las páginas.
+ */
+export function qpdfPageFontNames(path: string): string[] {
+  const objs = qpdfObjects(path);
+  const trailer = objs['trailer']?.value;
+  if (!isDict(trailer)) throw new Error('qpdf --json=2 sin trailer: no se pueden leer las fuentes de las páginas');
+  const names = new Set<string>();
+  const visited = new Set<unknown>();
+
+  const addFonts = (res: Dict | undefined): void => {
+    for (const f of itemsOf(dictOf(deref(objs, res?.['/Font'])))) {
+      const base = dictOf(deref(objs, f))?.['/BaseFont'];
+      if (typeof base === 'string') names.add(base.replace(/^\//, '').replace(/^[A-Z]{6}\+/, ''));
+    }
+  };
+
+  const visit = (node: Dict | undefined, inherited: Dict | undefined): void => {
+    if (node === undefined || visited.has(node)) return;
+    visited.add(node);
+    const res = dictOf(deref(objs, node['/Resources'])) ?? inherited;
+    if (node['/Type'] === '/Pages') {
+      for (const kid of itemsOf(deref(objs, node['/Kids']))) visit(dictOf(deref(objs, kid)), res);
+      return;
+    }
+    addFonts(res);
+    for (const xo of itemsOf(dictOf(deref(objs, res?.['/XObject'])))) {
+      const x = dictOf(deref(objs, xo));
+      if (x?.['/Subtype'] === '/Form') addFonts(dictOf(deref(objs, x['/Resources'])));
+    }
+  };
+
+  const root = dictOf(deref(objs, trailer['/Root']));
+  visit(dictOf(deref(objs, root?.['/Pages'])), undefined);
+  return [...names].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+type Dict = Readonly<Record<string, unknown>>;
+
+/** Resuelve una referencia `"N G R"` al cuerpo del objeto (diccionario de un stream incluido). */
+function deref(objs: QpdfObjects, v: unknown): unknown {
+  if (typeof v !== 'string' || !/^\d+ \d+ R$/.test(v)) return v;
+  const object = objs[`obj:${v}`];
+  return object?.value ?? object?.stream?.dict;
+}
+
+function dictOf(v: unknown): Dict | undefined {
+  return isDict(v) ? v : undefined;
+}
+
+function itemsOf(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v;
+  return isDict(v) ? Object.values(v) : [];
+}
+
+function isDict(v: unknown): v is Dict {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }

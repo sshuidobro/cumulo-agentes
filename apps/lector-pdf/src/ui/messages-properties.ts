@@ -41,7 +41,7 @@ export const propertiesMsg = {
     scanning: (done: string, total: string): string => `Buscando fuentes… ${done} de ${total} páginas`,
     stop: 'Detener',
     none: 'No se han encontrado fuentes en el documento.',
-    stopped: (page: string): string => `Búsqueda detenida en la página ${page}.`,
+    stopped: (done: string, total: string): string => `Búsqueda detenida tras revisar ${done} de ${total} páginas.`,
     stoppedEarly: 'Búsqueda detenida antes de terminar la primera página.',
     error: 'No se han podido leer las fuentes de este PDF.',
   },
