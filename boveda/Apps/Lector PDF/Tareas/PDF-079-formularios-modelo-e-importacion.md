@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-079
 titulo: Núcleo de formularios - modelo de campos e importación desde pdf.js
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-040]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
