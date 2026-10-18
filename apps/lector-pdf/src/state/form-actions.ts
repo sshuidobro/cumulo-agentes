@@ -17,6 +17,8 @@ import { bumpPageVersions, executeEdit, onEditsPublished, onPagesImported } from
 import { useAnnotations } from './annotation-store';
 import { services } from './services';
 import { initialFormState, useForms, type FormState } from './form-store';
+import { showNotice } from './notice';
+import { formMsg } from '../ui/messages-forms';
 
 /** Clave de la preferencia de resaltado de campos (el almacén ya antepone el prefijo de la app). */
 const HIGHLIGHT_PREF = 'formHighlight';
@@ -28,6 +30,8 @@ interface FormSession {
 }
 
 let session: FormSession | null = null;
+/** El aviso «hay campos que rellenar» se muestra una vez por documento (PDF-041). */
+let fillableNoticeShown = false;
 
 function isBoolean(v: unknown): v is boolean {
   return typeof v === 'boolean';
@@ -42,6 +46,7 @@ export function startFormSession(pdf: LoadedPdf): void {
   const doc = pdf.doc;
   const highlight = services().platform.prefs.get(HIGHLIGHT_PREF, isBoolean) ?? true;
   useForms.setState(initialFormState(highlight));
+  fillableNoticeShown = false;
   session = {
     stopPages: onPagesImported((pages) => {
       importPages(doc, pages);
@@ -58,6 +63,7 @@ export function endFormSession(): void {
   session = null;
   current?.stopPages();
   current?.stopEdits();
+  fillableNoticeShown = false;
   useForms.setState(initialFormState(useForms.getState().highlight));
 }
 
@@ -94,6 +100,10 @@ function importPages(doc: PDFDocumentProxy, pages: readonly ImportedPage[]): voi
   if (incoming.length === 0) return;
   const fields = mergeFields(useForms.getState().fields, incoming);
   useForms.setState({ fields, byPage: byPageOf(fields) });
+  if (!fillableNoticeShown && incoming.some(isFillable)) {
+    fillableNoticeShown = true;
+    showNotice(formMsg.hasFields);
+  }
 
   const { edits } = useAnnotations.getState();
   for (const incomingField of incoming) {

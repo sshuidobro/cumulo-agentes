@@ -301,3 +301,12 @@ export function IconSignature() {
     </Svg>
   );
 }
+
+export function IconFormFields() {
+  return (
+    <Svg>
+      <rect x="3" y="4.5" width="14" height="11" rx="1.5" />
+      <path d="M6 8h4.5M6 11.5h8" />
+    </Svg>
+  );
+}
