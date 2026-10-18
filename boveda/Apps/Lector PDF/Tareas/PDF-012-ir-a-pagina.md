@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-012
 titulo: Ir a página y navegación entre páginas (campo, etiquetas, atajos)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-011, PDF-003]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -67,3 +67,9 @@ La barra muestra la página actual («4 de 300», o «iv (4 de 300)» si el PDF 
   - `tests/ui/zoom-controls.test.tsx`: el test de orden de Tab contaba 2 pulsaciones hasta «Reducir»; ahora pulsa Tab hasta encontrar «Reducir» (la barra tiene controles nuevos). Sigue comprobando el orden de los controles de zoom.
   - La ficha dice «Fin» para ir a la última página en escala: ahora va al inicio de la última página (no al final del documento, como hacía el visor antes). Es lo que pide la ficha; lo anoto por si el usuario lo espera distinto.
   - `pnpm --filter lector-pdf e2e` no da código 0 por los 2 tests de `text.spec.ts` de PDF-013; no los he tocado. Pendiente de esa ficha.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (1235 pasan) y `pnpm coverage` con código 0; `tests/e2e/navigation.spec.ts` 2/2. Los fallos de `text.spec.ts` son de PDF-013 y no se cuentan.
+- Cada criterio tiene test; el núcleo no importa React; mensajes centralizados; `aria-invalid`, `aria-describedby` y `role="alert"` correctos; las etiquetas se leen sin bloquear la apertura y se reinician al abrir otro documento.
+1. (opcional) `apps/lector-pdf/tests/ui/page-navigator.test.tsx` — el test de ArrowRight dentro del campo solo comprueba que no hay `navRequest`; podría comprobar también la posición del cursor.
+2. (opcional) Los cambios de esta ficha y de PDF-013 comparten ficheros sin commit (`MainToolbar.tsx`, `shortcuts.ts`, `App.tsx`, `Viewer.tsx`); al hacer commit, separar o commitear juntos con cuidado.
