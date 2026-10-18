@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { type Locator, type Page, type TestInfo } from '@playwright/test';
+import { expect, test } from './perf-fixture.ts';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 

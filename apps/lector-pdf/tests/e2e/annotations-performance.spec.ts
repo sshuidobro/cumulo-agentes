@@ -1,5 +1,6 @@
 import { statSync } from 'node:fs';
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { type Page, type TestInfo } from '@playwright/test';
+import { expect, test } from './perf-fixture.ts';
 import { fixture, goToPageByKeyboard, installPerfProbes, longTasks, pageNow, recordMeasure, seeded, waitPageRendered } from './helpers.ts';
 import { msg } from '../../src/ui/messages.ts';
 import { qpdfCheck } from '../support/qpdf.ts';

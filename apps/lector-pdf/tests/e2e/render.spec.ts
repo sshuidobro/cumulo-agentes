@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from './perf-fixture.ts';
 import { DEFAULT_PADDING } from '../../src/core/layout.ts';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
 import { settleFrames } from './helpers.ts';
