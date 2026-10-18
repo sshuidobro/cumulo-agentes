@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-074
 titulo: Comprobar tras el build el presupuesto del JavaScript de arranque (test rojo previo)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -108,3 +108,19 @@ Un comando `pnpm --filter lector-pdf bundle:check` que, tras el build, falle si 
 - Decisión: el algoritmo y el código de `bundle-budget.ts` y `check-bundle.ts` no cambian. Reescrito el paso 5 con los seis manifiestos exactos, sus tamaños y lo que debe salir (casos 1 y 2: `entryBytes` 400 000 y 550 000; pdf.js pesa 400 000 y no suma).
 - El código de la ronda 1 que está en el árbol sin commitear (`vite.config.ts`, `package.json`, `tests/bundle/*`, `tests/unit/bundle-budget.test.ts`) **se conserva**. Ronda 2: solo hay que reescribir `tests/unit/bundle-budget.test.ts` según el paso 5, repetir los criterios (el rojo de `bundle:check` ya está pegado arriba y vale) y pasar `pnpm lint`, `pnpm typecheck` y `pnpm test` de la raíz.
 - Estado → `cambios-pedidos`, `intentos: 0`. [[PDF-075-pdfjs-diferido]] no cambia: su criterio «n ≤ 500 000» usa este mismo algoritmo (pdf.js no cuenta).
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/unit/bundle-budget.test.ts` (reescrito según el paso 5 de la replanificación). Ficha (estado y Registro). El resto de ficheros de la ronda 1 (`vite.config.ts`, `package.json`, `tests/bundle/*`) se conserva sin cambios.
+- Qué he hecho: reescritos los 6 casos de `bundle-budget.test.ts` con los manifiestos, tamaños y mensajes exactos de la replanificación. `bundle-budget.ts` y `check-bundle.ts` no se han tocado. Los casos 1 y 2 ya dan `entryBytes` 400 000 y 550 000 con pdf.js fuera del total.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/bundle-budget.test.ts` → 6/6 en verde.
+  - `pnpm --filter lector-pdf build && pnpm --filter lector-pdf bundle:check` → código 1 (rojo esperado de PDF-075). Salida:
+    ```
+    Arranque: 918971 bytes en 2 ficheros JS (máximo 500000).
+    El JavaScript de arranque pesa 918971 bytes (máximo 500000).
+    pdf.js no está en un chunk diferido (import()).
+    ```
+  - `node tests/bundle/check-bundle.ts /tmp/no-existe` (desde `apps/lector-pdf`) → código 1: `Falta /tmp/no-existe/.vite/manifest.json: ejecuta antes el build.`
+  - `pnpm lint` → 0. `pnpm typecheck` → 0. `pnpm test` (raíz) → 0: 144 ficheros, 1716 tests en verde.
+  - No ejecutada la e2e completa (indicación del líder, por la carga de PDF-076).
+- Dudas o cosas que no he podido hacer: ninguna. El criterio de `bundle:check` en rojo queda cumplido y pegado arriba.
