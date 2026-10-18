@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-084
 titulo: Objetos de imagen PDF desde RGBA y JPEG
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -65,3 +65,7 @@ export function jpegImageObject(bytes: Uint8Array): Result<PdfStream>;  // err('
   - `pnpm lint` (raíz): **falla** por un error ajeno a esta ficha: `apps/lector-pdf/tests/fixtures/structure.ts:486` `no-constant-condition`. Ese fichero tiene cambios sin commitear de otro trabajo en curso (no lo he tocado).
   - `pnpm test` (raíz): 1759/1760 OK. Falla `tests/unit/search-actions.test.ts` («cambiar una opción cancela la búsqueda anterior…»), un test de temporización que pasa en aislado (7/7); parece intermitencia por la carga de la máquina, no tiene relación con esta ficha.
 - Dudas o cosas que no he podido hacer: el criterio de `pnpm lint` y `pnpm test` en raíz no se cumple por los dos motivos de arriba, ajenos a esta ficha; conviene que el líder lo confirme cuando el otro trabajo esté commiteado. Los bytes de `jpegImageObject` se pasan sin copiar (el `data` del stream es el mismo `Uint8Array` del llamante), como pide la ficha.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Lint de los ficheros de la ficha, typecheck y 19 tests propios en verde; los fallos de `pnpm lint` (structure.ts) y del test de temporización de búsqueda son ajenos a la ficha. Criterios cubiertos y nada fuera de alcance.
+1. `apps/lector-pdf/src/core/pdf/image.ts:135` (opcional) — `readJpegInfo` no comprueba la precisión del SOF y `jpegImageObject` fija `/BitsPerComponent 8`; un JPEG de 12 bits quedaría mal declarado. Devolver `null` si la precisión no es 8.

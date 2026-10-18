@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-087
 titulo: Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica]
@@ -74,3 +74,9 @@ export async function openPrintSource(): Promise<PrintSource | null>;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/print/range.ts`, `src/core/print/plan.ts` (nuevos); `src/core/pdf/concat-source.ts` (nuevo) y su export en `src/core/pdf/index.ts`; `src/engine/print-render.ts` (nuevo); `src/state/print-source.ts` (nuevo); `src/state/save-actions.ts` (extraído `buildCurrentDelta(file)`, usado por guardar y guardar como); tests `tests/unit/print-range.test.ts`, `print-plan.test.ts`, `concat-source.test.ts`, `print-render.test.ts`, `print-source.test.ts`.
+- Qué he hecho: implementado el núcleo de impresión sin interfaz: rangos de página, plan de hoja (con orientación automática y escala limitada por el lienzo), documento temporal «original + incremento» por `concatSource` y render de página a PNG con pdf.js (intent print, comentarios ocultos con `noPrint` que se deshace al terminar). `buildCurrentDelta` devuelve `null` sin cambios; guardar y guardar como conservan su comportamiento (incluido el delta vacío al guardar una copia sin cambios).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (155 ficheros, 1797 tests); `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>/coverage-087` OK (líneas 99,02 %); `pnpm coverage` no se pudo ejecutar porque otro proceso de Vitest (pid 20476, de otro agente) tenía bloqueado `coverage/`; se usó un directorio propio y el resultado es el mismo.
+- Dudas o cosas que no he podido hacer: (1) La ficha pide `tests/ui/print-source.test.ts`, pero la configuración de Vitest solo recoge `tests/ui/**/*.test.tsx`, así que lo he puesto en `tests/unit/print-source.test.ts`; ¿se cambia la ruta en la ficha o la config? (2) El render de `renderPageForPrint` se prueba con dobles de página y lienzo (no hay paquete `canvas` en Node); los píxeles no se comprueban aquí. (3) `planPage` no gira las páginas cuadradas (decisión de implementación para no girar su contenido sin motivo). (4) Con cambios sin guardar y un PDF cifrado, `openPrintSource` devuelve el abierto con `unsavedIncluded: false`. (5) `pnpm coverage` debe volver a ejecutarse cuando no haya otro proceso de Vitest en la carpeta `coverage/`.
