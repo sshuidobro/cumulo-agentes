@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-079
 titulo: Núcleo de formularios - modelo de campos e importación desde pdf.js
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-040]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -95,3 +95,16 @@ export function isFillable(f: FormField): boolean; // !readOnly && type ∈ text
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 Lint, typecheck y `pnpm test` (161 ficheros, 1867 tests) en verde; cobertura de `src/core/forms/` 99 % de líneas. Todos los criterios cubiertos con tests reales (form-full.pdf, annotated.pdf, 6 casos inválidos, valueEquals/isFieldValue). Las decisiones (a)-(d) del programador son razonables y compatibles con la ficha.
 1. (opcional) `apps/lector-pdf/src/core/forms/import.ts:164` — `v as 0 | 90 | 180 | 270` podría evitarse con un `switch`; no bloquea.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| form-full.pdf: 14 campos y propiedades | OK | `forms-import.test.ts` en verde dentro de `pnpm test` (161 ficheros, 1867 tests) |
+| importWidget inválidos devuelve null sin lanzar | OK | test de 6 casos + `forms-import-qa.test.ts` (NaN, id `0R`, basura, flag Hidden) |
+| valueEquals / isFieldValue | OK | tests de cada variante incl. `choice [1]` y clave extra |
+| Anotaciones existentes en verde; annotated.pdf `widgets: []` | OK | batería completa verde |
+| Cobertura forms ≥ 90 % | OK | `vitest run --coverage` (dir. propio): `core/forms` 99,15 % líneas, global 99,04 % |
+| lint, typecheck, test, coverage = 0 | OK | ejecutados; exit 0 |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/forms-import-qa.test.ts` (Unicode/RTL, rect invertido, basura, radio Off, mergeFields idempotente y misma referencia).
+Rendimiento: no aplica (núcleo puro).
