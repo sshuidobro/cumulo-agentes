@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-079
 titulo: Núcleo de formularios - modelo de campos e importación desde pdf.js
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-040]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -85,3 +85,9 @@ export function isFillable(f: FormField): boolean; // !readOnly && type ∈ text
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/forms/model.ts` (nuevo), `apps/lector-pdf/src/core/forms/import.ts` (nuevo), `apps/lector-pdf/src/core/forms/index.ts` (nuevo), `apps/lector-pdf/src/core/annotations/import.ts` (`ImportedPage.widgets`; los Widget pasan por `importWidget`), `apps/lector-pdf/tests/unit/forms-import.test.ts` (nuevo), `apps/lector-pdf/tests/unit/annotations/import.test.ts` (añadido `widgets: []` a las expectativas que comparan el objeto entero).
+- Qué he hecho: modelo `FieldValue`/`FormField`/`FormWidget` con `valueEquals`, `isFieldValue` (forma exacta) e `isFillable`; `importWidget` por tipo (Tx, Btn checkbox/radio/button, Ch combo/list, Sig) con valores iniciales según la ficha; `mergeFields` por nombre; integración en `importPageAnnotations`. Tests con raws escritos a mano y con `form-full.pdf` (14 campos, criterios de la ficha) y `annotated.pdf` (sin widgets).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 161 ficheros, 1867 tests en verde; `pnpm coverage` OK (`src/core/forms/` con 99 % de líneas en su ejecución aislada). Batería completa ejecutada una sola vez al final.
+- Dudas o cosas que no he podido hacer: decisiones menores no especificadas en la ficha, tomadas aquí y a revisar: (a) `importWidget` devuelve `null` también si el `rect` no tiene 4 números, si `id` no es una referencia `<num>R[gen]` válida o si `fieldName` no es cadena; (b) además de `hidden === true` se descarta el widget con el bit Hidden de `annotationFlags`; (c) en listas, los elementos no cadena de `fieldValue` se descartan (no se devuelve la lista entera vacía); (d) colores ausentes o no válidos: por defecto (negro en `textColor`, `null` en `background`/`border`). No he podido confirmar que pdf.js entregue `hidden` en `getAnnotations()`; el test cubre el caso con el bit de `annotationFlags`.
