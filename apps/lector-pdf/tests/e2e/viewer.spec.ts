@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
+import { settleFrames } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 /** Presupuesto de PDF-009: la última página visible tras Fin en 100 000 páginas. */
@@ -114,7 +115,7 @@ test('durante un scroll continuo no hay tareas largas de más de 100 ms', async 
   for (let i = 0; i < 50; i++) {
     await page.mouse.wheel(0, 100);
   }
-  await page.waitForTimeout(200);
+  await settleFrames(page);
 
   const longest = await page.evaluate(() => {
     const tasks = (window as unknown as { __longTasks: number[] }).__longTasks;

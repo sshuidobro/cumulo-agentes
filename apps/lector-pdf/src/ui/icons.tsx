@@ -158,3 +158,117 @@ export function IconAppearance() {
     </Svg>
   );
 }
+
+export function IconComment() {
+  return (
+    <Svg>
+      <path d="M3.5 4.5h13a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-3.5 3v-3h-2a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z" />
+    </Svg>
+  );
+}
+
+export function IconHighlight() {
+  return (
+    <Svg>
+      <path d="M5.5 11.5 11.5 5.5l3 3-6 6h-3z" />
+      <path d="M3.5 16.5h13" />
+    </Svg>
+  );
+}
+
+export function IconUnderline() {
+  return (
+    <Svg>
+      <path d="M6 4v6a4 4 0 0 0 8 0V4" />
+      <path d="M4 17.5h12" />
+    </Svg>
+  );
+}
+
+export function IconStrikeout() {
+  return (
+    <Svg>
+      <path d="M4 10h12" />
+      <path d="M7 5.5h6M7 14.5h6" />
+    </Svg>
+  );
+}
+
+export function IconCopy() {
+  return (
+    <Svg>
+      <rect x={7} y={7} width={9.5} height={9.5} rx={1.5} />
+      <path d="M4.5 12.5v-8a1.5 1.5 0 0 1 1.5-1.5h8" />
+    </Svg>
+  );
+}
+
+export function IconNote() {
+  return (
+    <Svg>
+      <path d="M3.5 3.5h13v9l-4 4h-9z" />
+      <path d="M7 7.5h6M7 10.5h4" />
+    </Svg>
+  );
+}
+
+export function IconFreeText() {
+  return (
+    <Svg>
+      <path d="M4.5 5h11M10 5v11M7.5 16h5" />
+    </Svg>
+  );
+}
+
+export function IconInk() {
+  return (
+    <Svg>
+      <path d="M13.5 3.5l3 3L8 15l-4 1 1-4z" />
+      <path d="M11.5 5.5l3 3" />
+    </Svg>
+  );
+}
+
+export function IconColor() {
+  return (
+    <Svg>
+      <path d="M10 3c-3.5 4-5.5 6.5-5.5 9a5.5 5.5 0 0 0 11 0c0-2.5-2-5-5.5-9z" />
+    </Svg>
+  );
+}
+
+export function IconInkWidth() {
+  return (
+    <Svg>
+      <path d="M3.5 5h13" strokeWidth={0.8} />
+      <path d="M3.5 10h13" strokeWidth={2.4} />
+      <path d="M3.5 15.5h13" strokeWidth={4.5} />
+    </Svg>
+  );
+}
+
+export function IconFontSize() {
+  return (
+    <Svg>
+      <path d="M2.5 16 6 5l3.5 11M3.8 12h4.4" />
+      <path d="M13 16V8.5M16.5 16V5" />
+    </Svg>
+  );
+}
+
+export function IconTrash() {
+  return (
+    <Svg>
+      <path d="M4 5.5h12M8 5.5V3.8h4v1.7M5.5 5.5l.7 10.2h7.6l.7-10.2" />
+      <path d="M8.5 8.5v5M11.5 8.5v5" />
+    </Svg>
+  );
+}
+
+export function IconClose() {
+  return (
+    <Svg>
+      <path d="M5 5l10 10M15 5L5 15" />
+    </Svg>
+  );
+}

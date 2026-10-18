@@ -1,0 +1,12 @@
+/* Barra flotante junto a una selección de texto (PDF-032). Posición fija: las coordenadas son de ventana. */
+.bar {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}

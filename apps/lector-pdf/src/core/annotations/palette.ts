@@ -8,12 +8,12 @@ export interface PaletteEntry {
 
 /** Colores que ofrece la barra «Comentar». */
 export const PALETTE: readonly PaletteEntry[] = [
-  { id: 'yellow', label: 'amarillo', rgb: [1, 0.92, 0.23] },
-  { id: 'green', label: 'verde', rgb: [0.4, 0.73, 0.42] },
-  { id: 'blue', label: 'azul', rgb: [0.26, 0.65, 0.96] },
-  { id: 'pink', label: 'rosa', rgb: [0.93, 0.25, 0.48] },
-  { id: 'orange', label: 'naranja', rgb: [1, 0.65, 0.15] },
-  { id: 'red', label: 'rojo', rgb: [0.9, 0.22, 0.21] },
+  { id: 'yellow', label: 'Amarillo', rgb: [1, 0.92, 0.23] },
+  { id: 'green', label: 'Verde', rgb: [0.4, 0.73, 0.42] },
+  { id: 'blue', label: 'Azul', rgb: [0.26, 0.65, 0.96] },
+  { id: 'pink', label: 'Rosa', rgb: [0.93, 0.25, 0.48] },
+  { id: 'orange', label: 'Naranja', rgb: [1, 0.65, 0.15] },
+  { id: 'red', label: 'Rojo', rgb: [0.9, 0.22, 0.21] },
 ];
 
 const RED: Rgb = [0.9, 0.22, 0.21];

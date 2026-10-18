@@ -4,6 +4,8 @@ import { normalizeRotation, type Rotation } from '../../core/rotation';
 import { zoomToScale } from '../../core/zoom';
 import { createTextLayer, type TextLayerHandle } from '../../engine/text';
 import type { PDFPageProxy, PageViewport } from '../../engine/pdfjs';
+import { markupSelection, isMarkupTool } from '../../state/markup-actions';
+import { useAnnotations } from '../../state/annotation-store';
 import { useViewer } from '../../state/viewer-store';
 import { attachSelectionBehavior } from './text-selection';
 import { register, unregister } from './text-layer-registry';
@@ -18,6 +20,18 @@ export interface TextLayerViewProps {
   readonly zoom: number;
   /** Rotación de vista (se suma a la de la página). */
   readonly rotation: Rotation;
+}
+
+/**
+ * Con una herramienta de marcado activa, soltar el ratón sobre la capa marca el texto seleccionado (PDF-032).
+ * Sin selección no hace nada.
+ */
+function markOnRelease(): void {
+  const tool = useAnnotations.getState().tool;
+  if (!isMarkupTool(tool)) return;
+  const sel = document.getSelection();
+  if (sel === null || sel.isCollapsed) return;
+  markupSelection(tool, sel);
 }
 
 /** Viewport de la página con el mismo zoom y rotación que su lienzo (ver `PageView`). */
@@ -77,7 +91,12 @@ export function TextLayerView({ index, zoom, rotation }: TextLayerViewProps) {
         layerRef.current = layer;
         await layer.render();
         if (disposed) return;
-        detach = attachSelectionBehavior(host);
+        const detachSelection = attachSelectionBehavior(host);
+        host.addEventListener('pointerup', markOnRelease);
+        detach = () => {
+          host.removeEventListener('pointerup', markOnRelease);
+          detachSelection();
+        };
         register(index, layer);
       } catch (cause: unknown) {
         if (!disposed) log.warn('no se ha podido crear la capa de texto', { page: index + 1, error: cause });

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { SearchMatch } from '../../src/core/search/find';
 import { PageDimsTable } from '../../src/core/page-dims';
 import type { TextLayerHandle } from '../../src/engine/text';
+import type { PageViewport } from '../../src/engine/pdfjs';
 import { SearchHighlights } from '../../src/ui/viewer/SearchHighlights';
 import * as registry from '../../src/ui/viewer/text-layer-registry';
 import { initialSearchState, useSearch } from '../../src/state/search-store';
@@ -24,6 +25,8 @@ function fakeLayer(): { readonly handle: TextLayerHandle; readonly host: HTMLEle
   const handle: TextLayerHandle = {
     textDivs,
     items: ['busqueda uno', 'otra busqueda'],
+    container: host,
+    viewport: { convertToPdfPoint: (x: number, y: number) => [x, y] } as unknown as PageViewport,
     render: () => Promise.resolve(),
     update: () => undefined,
     cancel: () => undefined,

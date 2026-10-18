@@ -34,6 +34,8 @@ export interface AnnotationState {
   readonly edits: AnnotationEdits;
   readonly undo: UndoState;
   readonly selectedId: string | null;
+  /** Anotación cuya ventana emergente de comentario está abierta (PDF-033), o ninguna. */
+  readonly openPopupId: string | null;
   readonly tool: AnnotationTool;
   readonly colors: Readonly<Record<ColorTool, Rgb>>;
   readonly inkWidth: (typeof INK_WIDTHS)[number];
@@ -65,6 +67,7 @@ export function initialAnnotationState(): AnnotationState {
     edits: EMPTY_EDITS,
     undo: EMPTY_UNDO,
     selectedId: null,
+    openPopupId: null,
     tool: 'none',
     colors: { ...DEFAULT_TOOL_COLORS },
     inkWidth: DEFAULT_INK_WIDTH,

@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
+import { waitDraftSaved } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 const file = join(FIXTURES_DIR, 'annotated.pdf');
@@ -22,7 +23,7 @@ async function deleteAndWait(page: Page): Promise<void> {
   await zone.focus();
   await page.keyboard.press('Delete');
   await expect(zone).toHaveCount(0);
-  await page.waitForTimeout(2_500);
+  await waitDraftSaved(page);
   await page.reload();
 }
 
@@ -50,6 +51,7 @@ test('tras «Recuperar», Ctrl+Z restaura el estado original en un solo paso', a
 test('sin cambios no se ofrece nada al recargar', async ({ page }) => {
   await page.goto('/');
   await open(page);
+  // Espera negativa legítima: no se escribe borrador (ausencia); 2,5 s cubre el debounce de 2 s del autoguardado.
   await page.waitForTimeout(2_500);
   await page.reload();
   await open(page);

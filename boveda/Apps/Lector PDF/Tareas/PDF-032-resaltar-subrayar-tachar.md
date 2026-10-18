@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-032
 titulo: Resaltar, subrayar y tachar texto seleccionado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-031, PDF-013, PDF-069]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -84,3 +84,19 @@ Lint, typecheck y `pnpm test` (135 ficheros, 1586 tests, código 0) en verde; E2
 1. (opcional) `src/ui/viewer/SelectionActions.tsx` — sin aviso si falla `clipboard.writeText`.
 2. (opcional) `src/state/markup-actions.ts:3` — `state` importa de `ui`; valorar mover `selection-to-pages` a `engine/`.
 3. Nota para el tester: una ejecución de `pnpm test` bajo carga paralela acabó con ELIFECYCLE sin ficheros en rojo; repetida, salió con código 0. Vigilar posible flaky (probablemente timeout por carga).
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| rectsToLineQuads (3 palabras, 2 líneas, hueco 20 pt, rect 0,2 pt) | OK | `pnpm test`: 135 ficheros, 1586 tests, código 0 (`line-quads.test.ts`) |
+| markupSelection p2+p3 → 2 anotaciones, 1 paso de undo | OK | `tests/ui/markup.test.tsx` en verde |
+| E2E doble clic + «Resaltar» + píxel amarillo + Ctrl+Z | OK | `markup.spec.ts` 7/7 en Chromium real |
+| E2E herramienta Subrayar, línea 3 ≥ 80 % | OK | ídem |
+| E2E multipágina (p1→p2 y p1→p3 con la 2 entera, rect no excede el texto de su página) | OK | ídem |
+| E2E zoom 150 % + rotación 90° | OK | ídem |
+| E2E teclado (Ctrl+A + Intro) y clic de ratón en la barra «Comentar» | OK | ídem |
+| lint / typecheck / test / coverage / e2e | OK | lint 0, typecheck 0, test 0, coverage 0 (líneas 98,92 %), E2E completo 136 passed |
+
+Observaciones: (1) En la primera ejecución completa del E2E falló `performance.spec.ts` «pages-5000: ninguna long task…» mientras corrían a la vez el otro tester y la suite; repetido en solitario (`--workers=1`, performance + markup) 17/17 OK: flake por carga, no regresión. (2) Un primer `pnpm coverage` falló por colisión del directorio `coverage/` con el otro tester (Vitest lo bloquea); repetido sin concurrencia, código 0. (3) Sigue abierto, opcional: sin aviso si falla `clipboard.writeText`; `state` importa de `ui`.
+Tests añadidos: ninguno (la cobertura de la ficha ya cubre cada criterio). Rendimiento: abrir pages-100000 en 1,2 s (presupuesto < 5 s), sin long tasks > 100 ms en solitario.
+Build E2E en `dist/e2e-tester032`, puerto 4733, borrado al terminar.

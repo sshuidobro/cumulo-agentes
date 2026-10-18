@@ -3,12 +3,14 @@ import { msg } from './messages';
 import { useShortcuts } from './use-shortcuts';
 import { useTheme } from './use-theme';
 import { MainToolbar } from './toolbar/MainToolbar';
+import { CommentToolbar } from './toolbar/CommentToolbar';
 import { DropOverlay } from './open/DropOverlay';
 import { EmptyState } from './open/EmptyState';
 import { ErrorState } from './open/ErrorState';
 import { IoErrorBanner } from './open/IoErrorBanner';
 import { LoadingState } from './open/LoadingState';
 import { Viewer } from './viewer/Viewer';
+import { SelectionActions } from './viewer/SelectionActions';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
 import { Sidebar } from './sidebar/Sidebar';
@@ -80,6 +82,7 @@ export function App() {
   const status = useViewer((s) => s.status);
   const numPages = useViewer((s) => s.pdf?.numPages ?? null);
   const tool = useAnnotations((s) => s.tool);
+  const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
   const notice = useViewer((s) => s.notice);
   const sidebar = useViewer((s) => s.sidebar);
 
@@ -101,6 +104,7 @@ export function App() {
   return (
     <div className={styles.app}>
       <MainToolbar />
+      {status === 'ready' && commentBarOpen && <CommentToolbar />}
       <IoErrorBanner />
       <main className={status === 'ready' ? styles.mainReady : styles.main}>
         {status === 'empty' && <EmptyState />}
@@ -115,6 +119,7 @@ export function App() {
               {sidebar !== 'none' && <Sidebar />}
               <Viewer />
             </div>
+            <SelectionActions />
             <SearchBar />
           </>
         )}

@@ -192,6 +192,7 @@ test.describe('búsqueda en la interfaz', () => {
     const status = page.getByRole('search').locator('[aria-live="polite"]');
     await expect(stop).toBeHidden();
     const frozen = await status.textContent();
+    // Espera negativa legítima: se comprueba que, tras Detener, el estado no cambia (nada que esperar).
     await page.waitForTimeout(1_000);
     expect(await status.textContent()).toBe(frozen);
     expect(frozen).not.toContain('Buscando');

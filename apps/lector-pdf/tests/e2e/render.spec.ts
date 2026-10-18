@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { DEFAULT_PADDING } from '../../src/core/layout.ts';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
+import { settleFrames } from './helpers.ts';
 
 /** Presupuestos de PDF-010 (ver la ficha). */
 const FIRST_PAGE_BUDGET_MS = 1_000;
@@ -101,7 +102,7 @@ test('pages-5000: la página 1 se dibuja en menos de 5 s y, tras 20 saltos, no h
       await page.mouse.move(400, 300);
       await page.mouse.wheel(0, Math.floor(random() * 6000) - 3000);
     }
-    await page.waitForTimeout(150);
+    await settleFrames(page);
     expect(await mountedCanvases(page)).toBeLessThanOrEqual(MAX_CANVASES);
   }
 
@@ -129,7 +130,7 @@ test('images-200: al recorrer las 20 primeras páginas, las visibles se dibujan 
   for (let step = 0; step < 20; step++) {
     await page.mouse.move(400, 300);
     await page.mouse.wheel(0, 900);
-    await page.waitForTimeout(100);
+    await settleFrames(page);
   }
 
   const visible = page.locator('[data-testid=viewer] [data-page-index][data-rendered]');

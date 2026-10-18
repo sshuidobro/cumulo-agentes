@@ -46,6 +46,7 @@ test('clic de rueda y ctrl+clic en enlace externo no abren sin confirmar', async
   await link.click({ modifiers: ['Control'] });
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
+  // Espera negativa legítima: se comprueba que no se abre ninguna ventana (ausencia de evento).
   await page.waitForTimeout(300);
   expect(popups).toEqual([]);
   expect(await opened(page)).toEqual([]);
