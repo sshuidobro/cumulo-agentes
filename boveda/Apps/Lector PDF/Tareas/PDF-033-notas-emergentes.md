@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-033
 titulo: Notas emergentes y comentarios sobre resaltados
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -67,3 +67,10 @@ Con la herramienta «Nota», un clic en la página coloca un icono de nota y abr
   3. Cada tecla pasa por `publish` y sube `pageVersion`, así que el lienzo de la página se vuelve a dibujar. Es el comportamiento existente; no lo he tocado, pero puede notarse en páginas grandes.
   4. Intro abre la ventana y selecciona; Espacio solo selecciona.
   5. No he ejecutado `pnpm --filter lector-pdf e2e` completo (árbol compartido); solo los specs relacionados. No hay medición de rendimiento nueva.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm typecheck` OK; `eslint --max-warnings 0` sobre `apps/lector-pdf/src`, `apps/lector-pdf/tests` y `packages` OK (el lint de raíz solo falla por `dist-e2e-pdf032/` de otra ejecución, ajeno a esta ficha); `pnpm test` 135 ficheros / 1586 tests OK; E2E `notes.spec.ts` con puerto 4441 y `LECTOR_E2E_OUTDIR=dist-e2e-rev033` (borrado después): 5/5 OK.
+- Criterios cubiertos por tests: nota con clic (±0,5 pt, foco, herramienta a `none`), una entrada «escribir comentario» y Ctrl+Z, Esc devuelve el foco, Borrar, doble clic en `annotated.pdf` («Comentario previo», «Otra persona»), E2E de reabrir y de accesibilidad (Tab textarea, Borrar, Cerrar).
+- Guardado como estándar de Adobe: una nota nueva se escribe como `/Subtype /Text` (`/Name`, `/Open`, `/Contents`, `/T`, `/AP`) más un `/Popup` hijo (`/Parent`, `/Rect` 200x100 a la derecha, flags 28) en `core/annotations/to-pdf.ts` e `incremental.ts`. El texto escrito en la ventana actualiza la anotación en `edits` y se serializa en `/Contents`. Los tests de PDF-029 (`tests/unit/pdf/incremental.test.ts`, `to-pdf.test.ts`) lo verifican releyendo con pdf.js (Text + Popup, contenido con ñ y emoji). Sin cambios requeridos.
+- (opcional) Añadir un test que encadene escribir en la ventana, guardar y releer el `/Contents` con su Popup, para cubrir el extremo a extremo de esta ficha.
+- (opcional) Los resaltados nuevos con comentario se guardan sin `/Popup` (solo las notas lo llevan); Acrobat lo tolera, pero convendría valorarlo en PDF-036/PDF-039.
