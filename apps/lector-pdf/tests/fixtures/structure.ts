@@ -332,3 +332,179 @@ export function buildForm(): Uint8Array {
     },
   });
 }
+
+// ---------------------------------------------------------------- Formulario completo
+
+/** Rectángulo de un widget en puntos `[x1 y1 x2 y2]` y su tamaño (ancho y alto). */
+interface Box {
+  readonly rect: string;
+  readonly w: number;
+  readonly h: number;
+}
+
+function box(x1: number, y1: number, x2: number, y2: number): Box {
+  return { rect: `[${x1} ${y1} ${x2} ${y2}]`, w: x2 - x1, h: y2 - y1 };
+}
+
+/** Flujo de apariencia (`/Form`) del tamaño de `area`, con Helvetica como `/Helv`. */
+function formAppearance(b: PdfBuilder, font: number, area: Box, content: string): number {
+  return b.addStream(
+    `<< /Type /XObject /Subtype /Form /BBox [0 0 ${area.w} ${area.h}] /Resources << /Font << /Helv ${font} 0 R >> >> >>`,
+    content,
+  );
+}
+
+/** Fondo gris de un campo de texto, combo o lista. */
+function grayBackground(area: Box): string {
+  return `0.9 g 0 0 ${area.w} ${area.h} re f`;
+}
+
+/** Texto de una línea de un campo de texto, marcado como contenido de campo. */
+function textContent(value: string): string {
+  return `/Tx BMC BT /Helv 12 Tf 0 g 2 5 Td ${winAnsi(value)} Tj ET EMC`;
+}
+
+/** Cuadro de casilla u opción; `on` añade el relleno interior del estado activado. */
+function checkContent(on: boolean): string {
+  return on ? '0 g 1 w 1 1 12 12 re S 3 3 8 8 re f' : '0 g 1 w 1 1 12 12 re S';
+}
+
+/**
+ * Formulario con todos los tipos de campo AcroForm (ADR-0019): texto (una y varias líneas, peine,
+ * alineado, solo lectura, obligatorio, giro), casilla, botones de opción, combo, lista, campo
+ * jerárquico, firma sin firmar y un campo en la segunda página. Todos los widgets llevan `/AP`.
+ */
+export function buildFormFull(): Uint8Array {
+  return buildDocument(2, (page) => ({ content: textPage([`Formulario completo · página ${page}`]) }), {
+    setup: ({ b, tree, font }) => {
+      const p1 = pageNum(tree, 1);
+      const p2 = pageNum(tree, 2);
+
+      const widget = (area: Box, page: number, entries: string): number =>
+        b.addObject(`<< /Type /Annot /Subtype /Widget /Rect ${area.rect} /F 4 /P ${page} 0 R ${entries} >>`);
+
+      const appearance = (area: Box, content: string): string =>
+        `/AP << /N ${formAppearance(b, font, area, content)} 0 R >>`;
+
+      /** Campo de texto con un solo widget; `value` añade `/V` y su apariencia con el valor. */
+      const text = (area: Box, page: number, name: string, attrs: string, value?: string): number => {
+        const content = value === undefined ? grayBackground(area) : `${grayBackground(area)}\n${textContent(value)}`;
+        const valueEntry = value === undefined ? '' : ` /V ${winAnsi(value)}`;
+        return widget(area, page, `/FT /Tx /T (${name})${valueEntry} ${attrs} ${appearance(area, content)}`);
+      };
+
+      // nombre: campo padre con un widget en cada página, ambos con «Ana».
+      const nombreParent = b.alloc();
+      const nombreBox = box(72, 760, 300, 780);
+      const nombreContent = `${grayBackground(nombreBox)}\n${textContent('Ana')}`;
+      const nombreP1 = widget(nombreBox, p1, `/Parent ${nombreParent} 0 R ${appearance(nombreBox, nombreContent)}`);
+      const nombreP2 = widget(nombreBox, p2, `/Parent ${nombreParent} 0 R ${appearance(nombreBox, nombreContent)}`);
+      b.setObject(
+        nombreParent,
+        `<< /FT /Tx /T (nombre) /V (Ana) /DA (/Helv 12 Tf 0 g) /Kids ${refList([nombreP1, nombreP2])} >>`,
+      );
+
+      const comentarios = text(box(72, 640, 523, 740), p1, 'comentarios', '/Ff 4096 /DA (/Helv 10 Tf 0 g)');
+      const codigo = text(box(72, 600, 222, 620), p1, 'codigo', '/Ff 16777216 /MaxLen 6 /DA (/Helv 12 Tf 0 g)');
+      const importe = text(box(320, 600, 420, 620), p1, 'importe', '/Q 2 /DA (/Helv 0 Tf 0 0 1 rg)', '12,50');
+      const soloLectura = text(box(320, 400, 523, 420), p1, 'solo_lectura', '/Ff 1 /DA (/Helv 12 Tf 0 g)', 'No editable');
+      const obligatorio = text(
+        box(72, 360, 300, 380),
+        p1,
+        'obligatorio',
+        '/Ff 2 /TU (Campo obligatorio) /DA (/Helv 12 Tf 0 g)',
+      );
+      const rotado = text(box(540, 600, 560, 760), p1, 'rotado', '/MK << /R 90 >> /DA (/Helv 12 Tf 0 g)', 'Girado');
+      const pagina2 = text(box(72, 700, 300, 720), p2, 'pagina2', '/DA (/Helv 12 Tf 0 g)');
+
+      // persona.apellido: padre sin /FT y con /T; el hijo es el widget.
+      const personaParent = b.alloc();
+      const apellido = text(box(72, 400, 300, 420), p1, 'apellido', `/Parent ${personaParent} 0 R /DA (/Helv 12 Tf 0 g)`);
+      b.setObject(personaParent, `<< /T (persona) /Kids ${refList([apellido])} >>`);
+
+      // acepto: casilla activada con el estado «Si» (no «Yes»), desactivada en /Off.
+      const aceptoBox = box(72, 560, 86, 574);
+      const acepto = widget(
+        aceptoBox,
+        p1,
+        `/FT /Btn /T (acepto) /V /Off /AS /Off /DA (/Helv 0 Tf 0 g) ` +
+          `/AP << /N << /Si ${formAppearance(b, font, aceptoBox, checkContent(true))} 0 R ` +
+          `/Off ${formAppearance(b, font, aceptoBox, checkContent(false))} 0 R >> >>`,
+      );
+
+      // color: botones de opción con /Ff 49152 (radio + NoToggleToOff) y un widget por estado.
+      const colorParent = b.alloc();
+      const colorOff = formAppearance(b, font, box(72, 520, 86, 534), checkContent(false));
+      const colorStates = [
+        { state: 'Rojo', area: box(72, 520, 86, 534) },
+        { state: 'Verde', area: box(120, 520, 134, 534) },
+        { state: 'Azul', area: box(168, 520, 182, 534) },
+      ] as const;
+      const colorNums = colorStates.map(({ state, area }) => {
+        const selected = state === 'Verde';
+        const on = formAppearance(b, font, area, checkContent(true));
+        return widget(
+          area,
+          p1,
+          `/Parent ${colorParent} 0 R /AS /${selected ? state : 'Off'} /DA (/Helv 0 Tf 0 g) ` +
+            `/AP << /N << /${state} ${on} 0 R /Off ${colorOff} 0 R >> >>`,
+        );
+      });
+      b.setObject(
+        colorParent,
+        `<< /FT /Btn /Ff 49152 /T (color) /V /Verde /DA (/Helv 0 Tf 0 g) /Kids ${refList(colorNums)} >>`,
+      );
+
+      // pais: combo con una opción agrupada (pt, Portugal).
+      const paisBox = box(72, 470, 252, 490);
+      const pais = widget(
+        paisBox,
+        p1,
+        `/FT /Ch /T (pais) /Ff 131072 /Opt [${winAnsi('España')} ${winAnsi('Francia')} [${winAnsi('pt')} ${winAnsi('Portugal')}]] ` +
+          `/V ${winAnsi('España')} /DA (/Helv 12 Tf 0 g) ${appearance(paisBox, `${grayBackground(paisBox)}\n${textContent('España')}`)}`,
+      );
+
+      // idiomas: lista de multiselección con dos valores elegidos (índices 0 y 1).
+      const idiomasBox = box(320, 430, 470, 490);
+      const idiomas = widget(
+        idiomasBox,
+        p1,
+        `/FT /Ch /T (idiomas) /Ff 2097152 ` +
+          `/Opt [${winAnsi('Español')} ${winAnsi('Inglés')} ${winAnsi('Francés')} ${winAnsi('Alemán')}] ` +
+          `/V [${winAnsi('Español')} ${winAnsi('Inglés')}] /I [0 1] /DA (/Helv 12 Tf 0 g) ` +
+          appearance(
+            idiomasBox,
+            `${grayBackground(idiomasBox)}\nBT /Helv 12 Tf 0 g 2 37 Td ${winAnsi('Español')} Tj 0 -14 Td ${winAnsi('Inglés')} Tj ET`,
+          ),
+      );
+
+      // firma: campo /Sig sin firmar; solo se muestra su apariencia de fondo.
+      const firmaBox = box(320, 340, 523, 380);
+      const firma = widget(firmaBox, p1, `/FT /Sig /T (firma) /DA (/Helv 12 Tf 0 g) ${appearance(firmaBox, grayBackground(firmaBox))}`);
+
+      return {
+        catalog:
+          `/AcroForm << /Fields ${refList([
+            nombreParent,
+            comentarios,
+            codigo,
+            importe,
+            acepto,
+            colorParent,
+            pais,
+            idiomas,
+            personaParent,
+            soloLectura,
+            obligatorio,
+            firma,
+            rotado,
+            pagina2,
+          ])} /NeedAppearances false /DA (/Helv 0 Tf 0 g) /DR << /Font << /Helv ${font} 0 R >> >> >>`,
+        pageAnnots: new Map<number, string>([
+          [1, `/Annots ${refList([nombreP1, comentarios, codigo, importe, acepto, ...colorNums, pais, idiomas, apellido, soloLectura, obligatorio, firma, rotado])}`],
+          [2, `/Annots ${refList([nombreP2, pagina2])}`],
+        ]),
+      };
+    },
+  });
+}
