@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-080
 titulo: Valores de campo en el historial común y en los borradores
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-079]
 intentos: 0
 skills: [stack-typescript-react]
@@ -71,3 +71,10 @@ export function diffFields(fields: ReadonlyMap<string, FormField>, edits: Annota
   1. **Desviación de criterio, revisar:** la ficha pide «sin cambiar sus aserciones», pero la propia ficha hace que `toDraft` escriba la versión 2 y que la 2 sea válida. Tres aserciones que fijaban el número de versión han tenido que cambiar: `tests/unit/annotations/draft.test.ts` (`version: 1` → `2` en el ida y vuelta; la «versión distinta» usa ahora `version: 3`, porque la 2 ya es válida) y `tests/ui/draft-sync.test.tsx` (`version: 1` → `2`). No se ha tocado ninguna otra aserción.
   2. `storageValue` para opciones de grupo: he añadido la guarda `widget.onState !== null &&` para que un widget sin estado de exportación nunca salga marcado (con la fórmula literal, `null === null` daría `true`). Solo cambia el caso mal formado.
   3. Prettier marca ficheros existentes del proyecto (también `forms/import.ts`); no es parte de `pnpm lint`, no lo he tocado.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Lint y typecheck en 0; tests dirigidos (forms, anotaciones, pdf, draft-sync: 43 ficheros, 703 tests) en verde.
+- Desviación declarada aceptada: `toDraft` debe escribir v2 por mandato de la ficha, así que las aserciones `version: 1` -> `2` y «versión distinta» 2 -> 3 son consecuencia inevitable; no se ha debilitado ninguna otra aserción. El resto de cambios en tests solo añade `fields: new Map()`.
+- Guarda `onState !== null` en `storageValue` aceptada (solo afecta a casos mal formados y tiene test).
+- Los criterios tienen test que falla si se incumplen (undo/redo, `color` -> false/false/true, `diffFields`, v1/v2 de borradores).
+1. (opcional) `forms/commands.ts` — `invert` conserva bien el valor previo; sin cambios necesarios.

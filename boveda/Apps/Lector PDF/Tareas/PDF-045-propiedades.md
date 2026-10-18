@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-045
 titulo: Propiedades del documento (Ctrl+D) y menú «Más acciones»
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -80,3 +80,8 @@ export function formatFileSize(bytes: number): string; // «1,7 MB (1.775.941 by
   - «Formulario» = AcroForm o XFA. La fila «Ruta» aparece en la web con «—».
   - Por debajo de 10 KB se muestra un decimal («2,0 KB»); la ficha no lo fija.
   - Durante la verificación hubo fallos de tiempo (timeouts de 5 s en tests unitarios y budgets de apertura de 1 s en E2E) por la carga de otras baterías en la máquina (load ~20 en 4 núcleos). Cada uno pasó al repetirlo solo, y la suite E2E completa terminó en 0 en la tercera ejecución. No he tocado ningún presupuesto ni test.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint` 0, `pnpm typecheck` 0, tests unit/ui de la ficha 25/25, E2E `properties.spec.ts` 8/8 (puerto alternativo por 4173 ocupado). Criterios cubiertos; núcleo sin React; textos centralizados; `readRawProperties` nunca lanza.
+1. (opcional) Criterio «tooltip con atajo en el botón»: el atajo está en la entrada del menú y su `title`, no en el botón «Más acciones» (que no tiene atajo propio); interpretación razonable.
+2. (opcional) `PropertiesDialog.tsx`: relee propiedades si cambia la página con el diálogo abierto; inocuo.
