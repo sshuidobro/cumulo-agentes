@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-098
 titulo: Zoom hasta 6 400 % y cálculo de la zona de detalle
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
