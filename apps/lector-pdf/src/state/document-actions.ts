@@ -9,6 +9,7 @@ import { PageDimsTable } from '../core/page-dims';
 import { normalizeRotation } from '../core/rotation';
 import { windowTitle } from '../core/title';
 import { endAnnotationSession, startAnnotationSession } from './annotation-actions';
+import { endFormSession, startFormSession } from './form-actions';
 import { expectRestore, flushPosition } from './position-sync';
 import { sidebarForOpenedDocument } from './sidebar-actions';
 import { services } from './services';
@@ -54,6 +55,7 @@ async function closeOpened(file: OpenedFile): Promise<void> {
 /** Detiene el escaneo, se da de baja de los avisos, libera el documento y cierra el fichero. */
 async function releaseSession(current: Session | null): Promise<void> {
   endAnnotationSession();
+  endFormSession();
   if (current === null) return;
   current.scan.abort();
   current.stopListening();
@@ -161,6 +163,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
   });
   platform.setTitle(windowTitle(file.name, false));
   startAnnotationSession(loaded, scan.signal);
+  startFormSession(loaded);
   loadPageLabels(loaded);
   loadOutline(loaded);
 
