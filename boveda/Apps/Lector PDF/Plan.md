@@ -85,6 +85,9 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 | Búsqueda en 5 000 páginas | 1.ª coincidencia < 1 s; recorrido completo < 15 s; la UI responde durante la búsqueda |
 | Guardar anotaciones en un PDF de 5 000 páginas | < 1 s; el fichero crece < 50 KB por 10 anotaciones |
 | Ninguna tarea bloquea el hilo principal | > 100 ms (Long Tasks en e2e) |
+| Guardar formularios en `form-full.pdf` · imprimir 20 páginas de 5 000 (it. 3, [[PDF-090-e2e-iteracion-3|PDF-090]]) | < 1 s · < 20 s sin *long tasks* |
+| Cambiar de pestaña hasta pintar la página (3 × 1 000 páginas, it. 4) | ≤ 500 ms (p95); heap estable (+50 MB máx. tras 20 cambios) |
+| Lienzos con zoom alto (it. 4) | ≤ 12 base + 1 de detalle por página visible; ≤ 300 MB de lienzos |
 | JavaScript estático del arranque (pdf.js diferido, [[ADR-0017-carga-diferida-de-pdfjs]]) | ≤ 500 000 bytes (`bundle:check`, vigente con [[PDF-075-pdfjs-diferido]]) |
 
 ## Comandos
@@ -177,21 +180,61 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 
 Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. PDF-031 y PDF-069 en paralelo (ambas tras PDF-030; PDF-031 tras PDF-013, PDF-069 tras PDF-020). Tras PDF-031 y PDF-069: PDF-032 a PDF-035 en paralelo; PDF-036 solo necesita PDF-031 y PDF-015. Correcciones de accesibilidad y teclado salidas de PDF-039: PDF-070 ∥ PDF-071 → PDF-072 (tras ambas) → PDF-039. Estabilidad de las medidas de long tasks: (PDF-074 → PDF-075) ∥ PDF-076 ∥ PDF-077 → PDF-078 → PDF-073 (verificación) → PDF-039.
 
-### Iteraciones 3-6 (fichas por detallar)
+### Iteración 3 · Formularios, firma e impresión
 | Id | Título | Depende de | Estado |
 |---|---|---|---|
-| [[PDF-040-formularios-adr]] | ADR y prueba: formularios AcroForm | PDF-039 | pendiente |
-| [[PDF-041-rellenar-formularios]] | Rellenar formularios | PDF-040 | pendiente |
-| [[PDF-042-guardar-formularios]] | Guardar formularios con apariencias | PDF-041, PDF-028 | pendiente |
-| [[PDF-043-firma-visual]] | Firma visual (dibujar, escribir, imagen) | PDF-039 | pendiente |
-| [[PDF-044-imprimir]] | Imprimir | PDF-039 | pendiente |
-| [[PDF-045-propiedades]] | Propiedades del documento | PDF-022 | pendiente |
-| [[PDF-046-abrir-con-contrasena]] | Abrir PDF con contraseña | PDF-022 | pendiente |
-| [[PDF-047-anotar-pdf-cifrado]] | Guardar anotaciones en PDF cifrado | PDF-046, PDF-037 | pendiente |
-| [[PDF-048-permisos]] | Respetar permisos del documento | PDF-046 | pendiente |
-| [[PDF-049-recientes-y-pestanas]] | Recientes y pestañas | PDF-022 | pendiente |
-| [[PDF-050-modos-de-pagina]] | Modos de página y pantalla completa | PDF-022 | pendiente |
-| [[PDF-051-lienzo-de-detalle]] | Lienzo de detalle (zoom hasta 6 400 %) | PDF-022 | pendiente |
+| [[COM-014-imprimir-desde-la-plataforma]] | Platform.print() - imprimir la ventana en web y en Tauri | — | pendiente |
+| [[PDF-040-formularios-adr]] | Generar el documento de prueba de formularios completo (form-full.pdf) | — | pendiente |
+| [[PDF-079-formularios-modelo-e-importacion]] | Núcleo de formularios - modelo de campos e importación desde pdf.js | PDF-040 | pendiente |
+| [[PDF-080-valores-de-campo-en-el-historial]] | Valores de campo en el historial común y en los borradores | PDF-079 | pendiente |
+| [[PDF-081-estado-de-formularios]] | Estado de formularios y sincronización con el lienzo de pdf.js | PDF-080 | pendiente |
+| [[PDF-082-apariencias-de-campos]] | Apariencias /AP de campos de texto, combo y lista | PDF-079 | pendiente |
+| [[PDF-041-rellenar-formularios]] | Rellenar campos de texto, combos y listas en pantalla | PDF-081 | pendiente |
+| [[PDF-042-guardar-formularios]] | Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental | PDF-081, PDF-082, PDF-087 | pendiente |
+| [[PDF-083-casillas-opciones-y-tabulacion]] | Casillas, botones de opción, tabulación entre páginas y E2E de formularios | PDF-041, PDF-042 | pendiente |
+| [[PDF-084-objetos-de-imagen-pdf]] | Objetos de imagen PDF desde RGBA y JPEG | — | pendiente |
+| [[PDF-085-anotacion-de-firma]] | Anotación de firma - modelo, apariencia, escritura y dibujo en la capa | PDF-084, PDF-080 | pendiente |
+| [[PDF-086-crear-firma]] | Crear firma (dibujar, escribir o imagen) y firmas guardadas | PDF-085 | pendiente |
+| [[PDF-043-firma-visual]] | Firmar - colocar, mover y redimensionar la firma en la página | PDF-086 | pendiente |
+| [[PDF-087-nucleo-de-impresion]] | Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento | — | pendiente |
+| [[PDF-045-propiedades]] | Propiedades del documento (Ctrl+D) y menú «Más acciones» | — | pendiente |
+| [[PDF-088-fuentes-del-documento]] | Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable | PDF-045 | pendiente |
+| [[PDF-044-imprimir]] | Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable | PDF-087, PDF-045, COM-014 | pendiente |
+| [[PDF-089-esperas-fijas-e2e]] | Quitar las esperas fijas de las pruebas e2e y prohibirlas con ESLint | — | pendiente |
+| [[PDF-090-e2e-iteracion-3]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3 | PDF-083, PDF-043, PDF-044, PDF-088, PDF-089 | pendiente |
+
+Orden (sin dos fichas en paralelo sobre el mismo fichero): **ola A** en paralelo PDF-040, PDF-084, PDF-087, PDF-045, PDF-089, COM-014 → **ola B** PDF-079 ∥ PDF-088 ∥ PDF-044 → **ola C** PDF-080 ∥ PDF-082 → **ola D** PDF-081 ∥ PDF-085 → **ola E** PDF-041 ∥ PDF-086 → **ola F** PDF-042 (tras PDF-085, comparten `incremental.ts`) → **ola G** PDF-083 ∥ PDF-043 (ficheros distintos: `FormLayer` frente a `AnnotationLayer` y barra) → PDF-090.
+
+### Iteración 4 · Contraseñas y comodidad
+| Id | Título | Depende de | Estado |
+|---|---|---|---|
+| [[COM-015-recientes-web]] | Documentos recientes en @suite/platform - tipos e implementación web | COM-014 | pendiente |
+| [[COM-016-recientes-tauri]] | Documentos recientes en Tauri (lista guardada por Rust) | COM-015 | pendiente |
+| [[COM-017-pantalla-completa]] | Pantalla completa en @suite/platform | COM-016 | pendiente |
+| [[PDF-091-fixtures-cifrados]] | Documentos de prueba cifrados y con permisos (qpdf) | PDF-040 | pendiente |
+| [[PDF-092-criptografia-pdf]] | Manejador de seguridad estándar - claves, contraseñas y cifrado por objeto | PDF-091 | pendiente |
+| [[PDF-093-lector-y-escritor-cifrados]] | Lector de objetos y escritor incremental con cifrado | PDF-092, PDF-090 | pendiente |
+| [[PDF-046-abrir-con-contrasena]] | Abrir PDF con contraseña | PDF-091, PDF-090 | pendiente |
+| [[PDF-047-anotar-pdf-cifrado]] | Guardar anotaciones, firmas y formularios en PDF cifrado | PDF-093, PDF-046 | pendiente |
+| [[PDF-048-permisos]] | Respetar los permisos del documento (copiar, imprimir) y avisar al anotar | PDF-046, PDF-044, PDF-045 | pendiente |
+| [[PDF-049-recientes-y-pestanas]] | Documentos recientes en la pantalla de inicio y en «Abrir recientes» | COM-015, COM-016, PDF-090 | pendiente |
+| [[PDF-094-sesiones-de-documento]] | Sesiones de documento - núcleo de pestañas (suspender y reanudar) | PDF-090, PDF-046 | pendiente |
+| [[PDF-100-pestanas-historial-busqueda-posicion]] | Pestañas - historial, búsqueda, posición y panel lateral por documento | PDF-094 | pendiente |
+| [[PDF-101-pestanas-anotaciones-formularios-borradores]] | Pestañas - anotaciones, formularios y borradores por documento | PDF-094, PDF-048 | pendiente |
+| [[PDF-095-pestanas]] | Barra de pestañas y atajos para varios documentos | PDF-100, PDF-101, PDF-049, PDF-097 | pendiente |
+| [[PDF-096-layout-doble-pagina]] | Layout de doble página (pares y con portada) | — | pendiente |
+| [[PDF-102-modo-de-vista-estado]] | Modo de vista - estado, preferencia y navegación por filas | PDF-096 | pendiente |
+| [[PDF-050-modos-de-pagina]] | Modos de página en el visor y menú «Vista» | PDF-102, PDF-049 | pendiente |
+| [[PDF-097-pantalla-completa]] | Modo pantalla completa (lectura y presentación) | PDF-050, COM-017 | pendiente |
+| [[PDF-098-plan-lienzo-detalle]] | Zoom hasta 6 400 % y cálculo de la zona de detalle | — | pendiente |
+| [[PDF-051-lienzo-de-detalle]] | Lienzo de detalle para zoom alto | PDF-098, PDF-050 | pendiente |
+| [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051 | pendiente |
+
+Orden: pueden adelantarse durante la it. 3 (núcleo puro o paquetes sin choques): PDF-096, PDF-098, PDF-091 (tras PDF-040), PDF-092, PDF-102, COM-015 → COM-016 → COM-017 (tras COM-014; las cuatro de Comun tocan `types.ts` y van en serie). Tras PDF-090: PDF-093 ∥ PDF-046 ∥ PDF-049 → PDF-047 ∥ PDF-048 (tras PDF-046) ∥ PDF-050 (tras PDF-049) → PDF-094 ∥ PDF-097 ∥ PDF-051 → PDF-100 ∥ PDF-101 → PDF-095 → PDF-099.
+
+### Iteraciones 5-6 (fichas por detallar)
+| Id | Título | Depende de | Estado |
+|---|---|---|---|
 | [[PDF-052-organizar-adr]] | ADR y prueba: reescribir PDFs (organizar, reparar xref) | PDF-039 | pendiente |
 | [[PDF-053-organizar-paginas]] | Girar, borrar y reordenar páginas | PDF-052 | pendiente |
 | [[PDF-054-extraer-dividir]] | Extraer y dividir | PDF-053 | pendiente |
@@ -216,8 +259,13 @@ Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PD
 - 2026-10-18: PDF-039 (ronda 2) bloqueada por dos pruebas de long tasks preexistentes que fallan solo con carga concurrente → [[ADR-0016-e2e-long-tasks-en-serie]] y [[PDF-073-e2e-long-tasks-en-serie]] (proyecto `chromium-perf`, `workers: 1`, sin tocar umbrales). PDF-039 → `pendiente` tras PDF-073.
 - 2026-10-18: PDF-073 (ronda 1) bloqueada: `images-200` 101 ms y `ink` [79, 145] ms en serie. Diagnóstico del líder: el primero es la evaluación del chunk de arranque de 917 KB (67-101 ms, real) → [[ADR-0017-carga-diferida-de-pdfjs]], [[PDF-074-presupuesto-bundle-arranque]], [[PDF-075-pdfjs-diferido]]; el segundo no se reproduce (6/6 sin long tasks, máquina cargada por otras baterías) pero hay coste O(n²) y re-render por frame → [[ADR-0018-vista-previa-del-trazo-en-canvas]], [[PDF-076-vista-previa-trazo-canvas]]; diagnóstico en cada `@perf` → [[PDF-077-diagnostico-long-tasks]]; `--repeat-each` y dependencias: limitación de diseño de Playwright, se repite por proyecto. Umbrales intactos. PDF-073 → `pendiente` (solo verificación).
 - 2026-10-18: PDF-073 (ronda 2) bloqueada: `ink` 52 ms al soltar el trazo, con `loadavg` 4,69 heredado. Trazas en reposo: tarea máxima 18,5 ms, `pointerup` 9-11 ms, sin *long tasks* ni con CPU ×2 → no es regresión de la app. `loadavg` y `ps pcpu` no miden la CPU actual → puerta de reposo por prueba `@perf` con `os.cpus()` ([[ADR-0016-e2e-long-tasks-en-serie]], revisión 2; [[PDF-078-reposo-cpu-antes-de-perf]]). Umbrales intactos. PDF-073 → `pendiente` tras PDF-078.
+- 2026-10-18: **iteraciones 1 y 2 cerradas.** Todas sus fichas en `hecha` (PDF-039 verificada por el tester con las baterías ×3 y la puerta de reposo). Se crea el [[Apps/Lector PDF/Manual|Manual]] y se marca lo cubierto en [[Paridad Adobe Acrobat]].
+- 2026-10-18: **iteraciones 3 y 4 detalladas** con ADR-0019 a ADR-0025. PDF-040 pasa de «ADR y prueba» a generar `form-full.pdf` (el ADR lo escribe el líder). Fichas nuevas: PDF-079 a PDF-102 y COM-014 a COM-017. PDF-049 se parte (recientes aquí; pestañas en PDF-094, PDF-100, PDF-101 y PDF-095); PDF-050 se parte (layout PDF-096, estado PDF-102, visor PDF-050, pantalla completa PDF-097); PDF-051 se apoya en PDF-098. Dependencias añadidas solo para evitar choques de ficheros entre fichas en paralelo (ver «Orden» de cada tabla).
 
 ## Mejoras conocidas (no planificadas)
 - Texto libre con caracteres no latinos: incrustar una fuente en la apariencia.
 - Deshacer después de guardar (hoy el historial se vacía al recargar).
-- Formularios: con `ENABLE_STORAGE` los widgets se pintan en el lienzo; la it. 3 decidirá cómo combinarlo con la capa HTML de formularios (ver [[PDF-040-formularios-adr]]).
+- ~~Formularios: cómo combinar `ENABLE_STORAGE` con la capa HTML~~ → resuelto en [[ADR-0019-formularios-acroform]].
+- Campos de formulario con texto no latino: la apariencia usa Helvetica WinAnsi (como el texto libre); incrustar una fuente resolvería ambos casos.
+- Firmas guardadas en el perfil local sin cifrar (preferencias de la app): valorar cifrarlas con una clave del sistema (llavero) en Tauri.
+- Restaurar las pestañas abiertas al reiniciar la app.

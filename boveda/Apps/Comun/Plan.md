@@ -2,9 +2,9 @@
 tipo: plan
 app: comun
 estado: en-curso
-iteracion: 2
+iteracion: 3
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [plan, comun]
 ---
 
@@ -69,6 +69,8 @@ Dependencias permitidas (únicas): `typescript@7.0.2`, `vitest@5.0.5`, `@vitest/
 - 2026-10-17: se añade ESLint sin replanificar ([[ADR-0006-eslint]]); cambian COM-001 y la comprobación de COM-002/003.
 - Iteración 1 (2026-10-17): **cerrada**. COM-001, COM-002 y COM-003 hechas a la primera (0 rechazos, `intentos: 0`). Verificación final desde cero por el coordinador: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 59 tests en verde (5 ficheros: humo, núcleo, casos límite, agrupación, QA de agrupación), `pnpm coverage` 100 % de líneas (`undo-stack.ts` ramas 94,44 %). Rendimiento: 100 000 `execute` en ~60 ms (presupuesto 1000 ms). Uso: [[Apps/Comun/Manual|Manual]].
 - Iteración 2 (2026-10-17): planificada junto con el Lector PDF (COM-004 a COM-013).
+- Iteración 2 (2026-10-18): **cerrada** junto con las iteraciones 1 y 2 del Lector PDF (COM-004 a COM-013 hechas).
+- Iteración 3 (2026-10-18): planificada con las iteraciones 3 y 4 del Lector PDF (COM-014 a COM-017).
 
 ## Lo aprendido en la iteración 1
 - **typescript-eslint 8 no admite TypeScript 7.** Se resolvió con `.pnpmfile.cjs`, que hace que los paquetes de typescript-eslint usen `@typescript/typescript6@6.0.2` mientras `tsc` sigue en TS 7 ([[ADR-0006-eslint]]). Hay que crearlo **antes** del primer `pnpm install` y el lockfile debe llevar `pnpmfileChecksum:`. Revisar cuando salga un typescript-eslint con soporte de TS 7: entonces se borra el fichero y se actualiza el ADR.
@@ -85,25 +87,39 @@ Observaciones de revisor y tester. No bloquean nada; se convertirán en fichas s
 - [ ] **Mover el assert de tiempo de COM-002 a la suite de rendimiento** ([[ADR-0012-suite-de-rendimiento]]): `packages/shared/tests/undo/undo-stack.test.ts` ("100 000 execute < 1000 ms") → `packages/shared/tests/perf/undo-stack.perf.test.ts`; el test de comportamiento (doc final `100000`, `undoDepth 100`) se queda en `tests/undo/`. Añadir a `vitest.perf.config.ts` un proyecto `{ test: { name: 'shared-perf', root: './packages/shared', include: ['tests/perf/**/*.perf.test.ts'], environment: 'node', fileParallelism: false } }`. Margen actual 16×, no urge; hacerlo la próxima vez que se toque `packages/shared`. (2026-10-17)
 - [ ] **Reloj que retrocede agrupa.** Si `now()` devuelve un valor menor que `lastTime`, la diferencia negativa cuenta como "dentro de la ventana". Inocuo con `Date.now()` salvo cambios de hora del sistema; valorar `Math.abs` o usar `performance.now()` por defecto. (COM-003)
 
-## Iteración 2 · Base para las apps (planificada 2026-10-17 con el [[Apps/Lector PDF/Plan|Lector PDF]])
+## Iteración 2 · Base para las apps (planificada 2026-10-17 con el [[Apps/Lector PDF/Plan|Lector PDF]]) · cerrada 2026-10-18
 **Objetivo:** lo que necesita la primera app vertical (Lector PDF) y reutilizarán las demás: monorepo preparado para apps React/Vite (Result, logger, capas de lint), `@suite/platform` (abrir/guardar por rangos y de forma atómica en navegador y en Tauri), crate Rust `suite-platform` con los comandos Tauri, registro de atajos, almacén de borradores y cierre de ventana con confirmación.
 **Decisiones:** [[ADR-0008-plataforma-ficheros]] · [[ADR-0010-stack-apps-web-y-pruebas]] (versiones exactas de React, Vite, zustand, Tauri, Playwright…).
 **No entra:** ui-kit compartido (los componentes nacen en `apps/lector-pdf/src/ui/kit` y se moverán a `packages/` cuando una segunda app los necesite), i18n, actualizaciones automáticas.
 
 | Id | Título | Depende de | Estado |
 |---|---|---|---|
-| [[COM-004-monorepo-para-apps]] | Preparar el monorepo para apps (tsconfig base, Vitest por proyectos, lint por capas, Result, logger) | — | pendiente |
-| [[COM-005-platform-tipos-y-bytesource]] | @suite/platform: tipos, ByteSource y preferencias | COM-004 | pendiente |
-| [[COM-006-platform-web-abrir]] | Platform web: abrir, soltar, enlaces, título | COM-005 | pendiente |
-| [[COM-007-platform-web-guardar]] | Platform web: guardar y guardar como (atómico, `append`) | COM-006 | pendiente |
-| [[COM-008-crate-rust-ficheros]] | Crate Rust `suite-platform`: registro de rutas y E/S atómica | — | pendiente |
-| [[COM-009-comandos-tauri-platform]] | Comandos Tauri de `suite-platform` | COM-008 | pendiente |
-| [[COM-010-platform-tauri]] | Platform Tauri (TS) con `mockIPC` | COM-005 | pendiente |
-| [[COM-011-registro-de-atajos]] | Registro de atajos de teclado | COM-004 | pendiente |
-| [[COM-012-almacen-de-borradores]] | Almacén de borradores en IndexedDB | COM-005 | pendiente |
-| [[COM-013-cerrar-ventana]] | `Platform.closeWindow()` | COM-007, COM-010 | pendiente |
+| [[COM-004-monorepo-para-apps]] | Preparar el monorepo para apps (tsconfig base, Vitest por proyectos, lint por capas, Result, logger) | — | hecha |
+| [[COM-005-platform-tipos-y-bytesource]] | @suite/platform: tipos, ByteSource y preferencias | COM-004 | hecha |
+| [[COM-006-platform-web-abrir]] | Platform web: abrir, soltar, enlaces, título | COM-005 | hecha |
+| [[COM-007-platform-web-guardar]] | Platform web: guardar y guardar como (atómico, `append`) | COM-006 | hecha |
+| [[COM-008-crate-rust-ficheros]] | Crate Rust `suite-platform`: registro de rutas y E/S atómica | — | hecha |
+| [[COM-009-comandos-tauri-platform]] | Comandos Tauri de `suite-platform` | COM-008 | hecha |
+| [[COM-010-platform-tauri]] | Platform Tauri (TS) con `mockIPC` | COM-005 | hecha |
+| [[COM-011-registro-de-atajos]] | Registro de atajos de teclado | COM-004 | hecha |
+| [[COM-012-almacen-de-borradores]] | Almacén de borradores en IndexedDB | COM-005 | hecha |
+| [[COM-013-cerrar-ventana]] | `Platform.closeWindow()` | COM-007, COM-010 | hecha |
 
 COM-004 a COM-011 los necesita la iteración 1 del Lector PDF; COM-012 y COM-013, su iteración 2. Paralelo desde el inicio: COM-004 y COM-008.
+
+## Iteración 3 · Plataforma para las iteraciones 3 y 4 del Lector PDF (planificada 2026-10-18)
+**Objetivo:** imprimir la ventana, documentos recientes y pantalla completa en `@suite/platform`, en web y en Tauri.
+**Decisiones:** [[ADR-0021-impresion]] · [[ADR-0023-pestanas-y-recientes]] · [[ADR-0024-modos-de-pagina]].
+**No entra:** listas de saltos del SO (Jump List, Dock), impresión nativa sin diálogo.
+
+| Id | Título | Depende de | Estado |
+|---|---|---|---|
+| [[COM-014-imprimir-desde-la-plataforma]] | `Platform.print()` en web y en Tauri | — | pendiente |
+| [[COM-015-recientes-web]] | Documentos recientes: tipos e implementación web | COM-014 | pendiente |
+| [[COM-016-recientes-tauri]] | Documentos recientes en Tauri (lista guardada por Rust) | COM-015 | pendiente |
+| [[COM-017-pantalla-completa]] | Pantalla completa | COM-016 | pendiente |
+
+Van en serie porque las cuatro amplían la interfaz `Platform` (`types.ts`) y las implementaciones. COM-014 la necesita la iteración 3 del Lector (PDF-044); las otras tres, su iteración 4.
 
 ## Siguiente iteración
 Sin planificar: se decidirá con la segunda app (mover componentes comunes a `packages/ui-kit`, resolver las mejoras pendientes de `UndoStack`).
