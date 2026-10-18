@@ -40,3 +40,29 @@ describe('rendimiento de layout con 1 000 000 de páginas', () => {
     expect(ms).toBeLessThan(300);
   });
 });
+
+describe('rendimiento de layout en filas (spread pairs) con 1 000 000 de páginas', () => {
+  const pairs: LayoutParams = { ...base, spread: 'pairs' };
+
+  it('calcula 1 000 000 de páginas en parejas en menos de 150 ms', () => {
+    const dims = PageDimsTable.uniform(1_000_000, 612, 792, 0);
+    const { value, ms } = measureBest(() => computeLayout(dims, pairs));
+    expect(value.rowCount).toBe(500_000);
+    expect(ms).toBeLessThan(150);
+  });
+
+  it('1 000 000 de consultas aleatorias sobre filas en menos de 300 ms', () => {
+    const big = computeLayout(PageDimsTable.uniform(1_000_000, 612, 792, 0), pairs);
+    const random = seeded(42);
+    const ys = new Float64Array(1_000_000);
+    for (let i = 0; i < ys.length; i++) ys[i] = random() * big.totalHeight;
+    const lookup = pageAtY;
+    const { value: checksum, ms } = measureBest(() => {
+      let sum = 0;
+      for (let i = 0; i < ys.length; i++) sum += lookup(big, ys[i] ?? 0);
+      return sum;
+    });
+    expect(checksum).toBeGreaterThan(0);
+    expect(ms).toBeLessThan(300);
+  });
+});
