@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-089
 titulo: Quitar las esperas fijas de las pruebas e2e y prohibirlas con ESLint
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -59,3 +59,7 @@ Ninguna prueba e2e usa `page.waitForTimeout`: las que esperan a un temporizador 
   - `pnpm typecheck`: código 0.
   - `pnpm lint`: **falla**, código 1, por un único error ajeno a esta ficha: `apps/lector-pdf/tests/unit/forms-history-qa.test.ts:29` (`no-non-null-assertion`). Ese fichero no está commiteado y pertenece a otro trabajo (PDF-080). Los ficheros de esta ficha pasan `eslint --max-warnings 0` con código 0. No lo he tocado.
 - Dudas o cosas que no he podido hacer: el criterio «`pnpm lint` código 0» no se cumple hasta que se resuelva ese error en `forms-history-qa.test.ts` (y `forms-import-qa.test.ts` / `print-qa.test.ts` sin commitear, que no dan error). Hay que decidir de quién es dejar esos ficheros sin commitear. En las mutaciones C y D el fallo se produce en la primera aserción, no en la que da nombre a la prueba; cumple «hace fallar», pero conviene que el tester lo vea.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+1. Verificado: 0 `waitForTimeout` en `apps/*/tests/e2e`; `settle`, `page.clock` y regla ESLint según la ficha; `pnpm lint` (raíz) con código 0 (el error ajeno de PDF-080 ya no está); las 4 specs pasan (`--repeat-each=3`, 39/39).
+2. (opcional) Mutaciones C y D fallan en una aserción previa a la que da nombre a la prueba; el tester puede confirmar que las aserciones finales (estado congelado, `popups`) son alcanzables.
