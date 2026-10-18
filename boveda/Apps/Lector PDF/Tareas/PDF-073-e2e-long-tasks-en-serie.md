@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-073
 titulo: Ejecutar las pruebas e2e de long tasks en un proyecto Playwright en serie
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-075, PDF-076, PDF-077, PDF-078]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -184,3 +184,11 @@ Ronda 2 aceptada en lo verificado (listas 160 = 153 + 7, `@perf` solo en `chromi
   - La ficha pide «Tarea larga máxima» y `tarea-larga-maxima-ms` en el Registro; el fixture no crea esa anotación (solo `long-tasks`, con la duración y el instante de cada tarea). He puesto esos valores, sacados de `long-tasks`.
   - `cpu-durante` (26-56 %) es más alto que la referencia de PDF-078 (27 % en `ink` aislado) en pruebas que se ejecutan con otro proceso de Chromium en la misma máquina. Solo es un dato, la puerta pasó siempre.
   - Quedan a la espera del revisor. PDF-039 sigue esperando a esta ficha.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Sin relanzar la batería e2e (verificada 3 veces por el programador, 3 ejecuciones + ×3 por proyecto, todo en código 0).
+1. Configuración: `apps/lector-pdf/playwright.config.ts` coincide con la ficha (proyectos `chromium` con `grepInvert` y `chromium-perf` en serie con `dependencies`); `workers: 2`, `retries: 0`, `timeout` y `webServer` intactos.
+2. Listados reejecutados: total 160; `chromium-perf --no-deps` = 7 (las de la tabla); `chromium` con `@perf` = 0. `@perf` aparece 1 vez en cada uno de los 7 ficheros; `longtask` solo en esos 7.
+3. Diff de las 7 specs desde `a54642d^`: solo la etiqueta `{ tag: '@perf' }` y el cambio de import al fixture `perf-fixture`; ningún umbral, `retries`, `skip`, `only`, `fixme` ni `waitForTimeout` nuevos. Umbrales de la puerta de reposo (15 %, 3 ventanas de 1 s, 150 s) conformes a ADR-0016 rev. 2 y fallan (no saltan).
+4. Plan: línea «E2E» actualizada y coherente con ADR-0016. Lint/typecheck/test reportados en verde (1732 tests).
+Sin problemas bloqueantes. (opcional) Las anotaciones `tarea-larga-maxima-ms` no existen; ya documentado por el programador.
