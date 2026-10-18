@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-069
 titulo: Barra «Comentar» y botones de deshacer/rehacer en la barra principal
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-030, PDF-011, PDF-020]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -39,13 +39,13 @@ La barra principal tiene «Deshacer», «Rehacer» y el conmutador «Comentar»;
 6. Tests: `tests/ui/comment-toolbar.test.tsx` y ajusta los de `App` que buscaban los botones en la cabecera.
 
 ## Criterios de aceptación
-- [ ] (T) Pulsar «Comentar» muestra la barra (`getByRole('toolbar', { name: 'Comentar' })`) y `aria-pressed="true"`; pulsarlo otra vez la oculta y deja `tool === 'none'`.
-- [ ] (T) Clic en «Dibujar» → `aria-pressed="true"` solo en «Dibujar» y existe el menú «Grosor»; clic otra vez → `tool === 'none'` y «Grosor» no existe. «Tamaño de letra» solo existe con «Texto».
-- [ ] (T) Con el foco en «Resaltar», → lo lleva a «Subrayar», Fin al último control, Inicio al primero, ← desde el primero al último; solo un control de la barra tiene `tabindex="0"`.
-- [ ] (T) Con «Resaltar» activo, menú «Color» → «Verde» → `colors.highlight` es `[0.4, 0.73, 0.42]` y el elemento «Verde» tiene `aria-checked="true"`.
-- [ ] (T) «Deshacer» en `MainToolbar`: deshabilitado sin cambios; tras `addAnnotations('añadir resaltado', [a])` habilitado con `title` «Deshacer añadir resaltado (Ctrl+Z)» y al pulsarlo llama a `undo`.
-- [ ] Todos los botones de icono tienen `aria-label` y tooltip; se ven bien en tema claro y oscuro (variables CSS del tema, sin colores fijos salvo las muestras de la paleta).
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
+- [x] (T) Pulsar «Comentar» muestra la barra (`getByRole('toolbar', { name: 'Comentar' })`) y `aria-pressed="true"`; pulsarlo otra vez la oculta y deja `tool === 'none'`.
+- [x] (T) Clic en «Dibujar» → `aria-pressed="true"` solo en «Dibujar» y existe el menú «Grosor»; clic otra vez → `tool === 'none'` y «Grosor» no existe. «Tamaño de letra» solo existe con «Texto».
+- [x] (T) Con el foco en «Resaltar», → lo lleva a «Subrayar», Fin al último control, Inicio al primero, ← desde el primero al último; solo un control de la barra tiene `tabindex="0"`.
+- [x] (T) Con «Resaltar» activo, menú «Color» → «Verde» → `colors.highlight` es `[0.4, 0.73, 0.42]` y el elemento «Verde» tiene `aria-checked="true"`.
+- [x] (T) «Deshacer» en `MainToolbar`: deshabilitado sin cambios; tras `addAnnotations('añadir resaltado', [a])` habilitado con `title` «Deshacer añadir resaltado (Ctrl+Z)» y al pulsarlo llama a `undo`.
+- [x] Todos los botones de icono tienen `aria-label` y tooltip; se ven bien en tema claro y oscuro (variables CSS del tema, sin colores fijos salvo las muestras de la paleta).
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
 - Lo que hace cada herramienta sobre la página (PDF-032 a PDF-035), cursor y capa (PDF-031). Cambiar el color de una anotación seleccionada (PDF-034, PDF-035). Guardar (PDF-037).
@@ -68,3 +68,17 @@ La barra principal tiene «Deshacer», «Rehacer» y el conmutador «Comentar»;
 - Las desviaciones del programador (Deshacer/Rehacer ya estaban en `MainToolbar`; `disabled`/`swatch` en `MenuButton`; etiquetas de `PALETTE` con mayúscula) son razonables y no rompen nada.
 - (opcional) `CommentToolbar.tsx`: al cerrar «Comentar» con el foco dentro de la barra, el foco se pierde; devolverlo al conmutador.
 - Nota para el tester: `pnpm test` dentro de `apps/lector-pdf` falla con "Missing script" (solo funciona desde la raíz o con `npx vitest run`); ajeno a esta ficha.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Conmutador Comentar | OK | `tests/ui/comment-toolbar.test.tsx` + E2E nuevo (aria-pressed, barra aparece/desaparece) |
+| Dibujar / Grosor / Tamaño de letra | OK | test UI y E2E (Grosor visible con Dibujar, ausente Tamaño de letra) |
+| Teclado (→ ← Inicio Fin, tabindex itinerante) | OK | test UI + E2E en Chromium |
+| Color Verde (`[0.4,0.73,0.42]`, aria-checked) | OK | test UI + E2E (aria-checked true) |
+| Deshacer en MainToolbar | OK | `tests/ui/main-toolbar.test.tsx`; E2E: deshabilitado sin cambios |
+| aria-label/tooltip, tema | OK | CSS solo con `var(--color-*)`; revisado |
+| lint/typecheck/test/coverage/build | OK | lint 0 avisos; typecheck OK; 131 ficheros, 1541 tests; cobertura líneas 98,9 %; build web OK |
+
+Tests añadidos: `apps/lector-pdf/tests/e2e/comment-toolbar-qa.spec.ts` (pasa con `LECTOR_E2E_PORT=4391 pnpm exec playwright test comment-toolbar-qa`).
+Rendimiento: no aplica a esta ficha. Observación menor (ya anotada por el revisor): al cerrar «Comentar» con el foco en la barra, el foco se pierde.
