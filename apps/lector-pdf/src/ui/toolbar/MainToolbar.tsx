@@ -4,6 +4,7 @@ import { IconAppearance, IconComment, IconHand, IconNextPage, IconOpen, IconPrev
 import { msg } from '../messages';
 import { formatOpenShortcut, formatShortcut } from '../shortcuts';
 import { ZoomControls } from './ZoomControls';
+import { DocumentMenu } from './DocumentMenu';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
@@ -172,6 +173,8 @@ export function MainToolbar() {
       >
         <IconAppearance />
       </MenuButton>
+      <div role="separator" aria-orientation="vertical" className={styles.separator} />
+      <DocumentMenu />
     </header>
   );
 }
