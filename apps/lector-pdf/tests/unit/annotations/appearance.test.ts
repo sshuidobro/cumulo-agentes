@@ -5,12 +5,15 @@ import type { Annotation, AnnotationType, Quad } from '../../../src/core/annotat
 import { decodeStreamData } from '../../../src/core/pdf/filters';
 import { dict, name, type PdfValue } from '../../../src/core/pdf/objects';
 import { serializeValue } from '../../../src/core/pdf/serialize';
-import { AnnotationMode, OPS } from '../../../src/engine/pdfjs';
+import { pdfjs } from '../../../src/engine/pdfjs';
 import { loadPdf } from '../../../src/engine';
 import { buildDocument } from '../../fixtures/document.ts';
 import { textPage, type PdfBuilder } from '../../fixtures/pdf-builder.ts';
 import { nodeAssetBase } from '../../helpers/pdfjs-node';
 import { newAnnotation } from './factories';
+
+/** pdf.js ya está cargado: lo carga `tests/setup/setup.ts` (ADR-0017). */
+const { AnnotationMode, OPS } = pdfjs();
 
 const DECODER = new TextDecoder();
 

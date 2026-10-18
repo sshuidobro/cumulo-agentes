@@ -4,6 +4,7 @@ import { createIdbDraftStore, loadPlatform } from '@suite/platform';
 import './ui/theme.css';
 import './engine/styles';
 import './engine/worker';
+import { loadPdfjs } from './engine/pdfjs';
 import { App } from './ui/App';
 import { openRequested } from './state/document-actions';
 import { initServices } from './state/services';
@@ -28,3 +29,10 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+// ADR-0017: pdf.js se evalúa en otra tarea, después de pintar la ventana. Si falla, loadPdf lo reintenta y muestra el error.
+const preloadPdfjs = (): void => {
+  loadPdfjs().catch(() => undefined);
+};
+if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(preloadPdfjs, { timeout: 2000 });
+else window.setTimeout(preloadPdfjs, 0);

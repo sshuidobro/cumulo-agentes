@@ -1,5 +1,5 @@
 import type { ByteSource } from '@suite/platform';
-import { PDFDataRangeTransport } from './pdfjs';
+import { pdfjs, type PDFDataRangeTransport } from './pdfjs';
 
 /**
  * Transporte de pdf.js que pide cada rango al `ByteSource`, de modo que solo se leen los bytes
@@ -7,7 +7,7 @@ import { PDFDataRangeTransport } from './pdfjs';
  * entrega ningún trozo.
  */
 export function createRangeTransport(source: ByteSource, onError: (e: unknown) => void): PDFDataRangeTransport {
-  class SourceRangeTransport extends PDFDataRangeTransport {
+  class SourceRangeTransport extends pdfjs().PDFDataRangeTransport {
     override requestDataRange(begin: number, end: number): void {
       source.read(begin, Math.min(end, source.size)).then(
         (chunk) => { this.onDataRange(begin, chunk); },

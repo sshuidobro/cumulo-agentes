@@ -1,4 +1,4 @@
-import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { setPdfjsWorkerSrc } from './pdfjs';
 
-GlobalWorkerOptions.workerSrc = workerUrl;
+setPdfjsWorkerSrc(workerUrl);

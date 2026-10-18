@@ -1,6 +1,9 @@
-import { TextLayer, type PDFPageProxy, type PageViewport, type TextContent } from './pdfjs';
+import { pdfjs, type PDFPageProxy, type PageViewport, type TextContent } from './pdfjs';
 
-export { normalizeUnicode } from './pdfjs';
+/** Normaliza el texto como pdf.js (solo con un documento abierto, ver `pdfjs()`). */
+export function normalizeUnicode(text: string): string {
+  return pdfjs().normalizeUnicode(text);
+}
 
 /**
  * Parámetros de texto fijos para toda la app (PDF-013). La búsqueda (PDF-017) usa los mismos,
@@ -37,7 +40,7 @@ export function createTextLayer(
   container: HTMLElement,
   viewport: PageViewport,
 ): TextLayerHandle {
-  const layer = new TextLayer({
+  const layer = new (pdfjs().TextLayer)({
     textContentSource: page.streamTextContent(TEXT_CONTENT_PARAMS),
     container,
     viewport,

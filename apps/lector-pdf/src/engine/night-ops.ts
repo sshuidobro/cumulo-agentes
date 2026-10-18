@@ -1,6 +1,6 @@
 import type { Matrix, PaintStep } from '../core/night';
 import { IDENTITY } from '../core/night';
-import { OPS } from './pdfjs';
+import { pdfjs } from './pdfjs';
 
 /** Forma mínima de la lista de operadores de pdf.js (`PDFPageProxy.getOperatorList`). */
 export interface OperatorListLike {
@@ -30,6 +30,7 @@ export function asMatrix(v: unknown): Matrix | null {
  * Las máscaras de imagen son tinta y no emiten nada.
  */
 export function toPaintSteps(list: OperatorListLike): PaintStep[] {
+  const OPS = pdfjs().OPS;
   const steps: PaintStep[] = [];
   const count = Math.min(list.fnArray.length, list.argsArray.length);
 

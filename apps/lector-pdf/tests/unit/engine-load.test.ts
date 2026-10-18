@@ -2,13 +2,21 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { ByteSource } from '@suite/platform';
 import type * as PdfjsModule from '../../src/engine/pdfjs';
 import { loadPdf, type LoadedPdf } from '../../src/engine/load';
-import { getDocument } from '../../src/engine/pdfjs';
 import { countingSource, fixtureSource, nodeAssetBase } from '../helpers/pdfjs-node';
 
 // Espía sobre getDocument: pasa la llamada al original, pero permite comprobar si pdf.js se invocó.
+// pdf.js se carga en diferido (ADR-0017): el espía va en el objeto que devuelve loadPdfjs().
+const spy = vi.hoisted(() => ({ getDocument: vi.fn() }));
 vi.mock('../../src/engine/pdfjs', async (importOriginal) => {
   const actual = await importOriginal<typeof PdfjsModule>();
-  return { ...actual, getDocument: vi.fn(actual.getDocument) };
+  return {
+    ...actual,
+    loadPdfjs: async () => {
+      const lib = await actual.loadPdfjs();
+      spy.getDocument.mockImplementation(lib.getDocument);
+      return { ...lib, getDocument: spy.getDocument };
+    },
+  };
 });
 
 const assetBaseUrl = nodeAssetBase();
@@ -34,7 +42,7 @@ async function pageText(loaded: LoadedPdf, pageNumber: number): Promise<string> 
 }
 
 beforeEach(() => {
-  vi.mocked(getDocument).mockClear();
+  spy.getDocument.mockClear();
 });
 
 describe('loadPdf · casos correctos', () => {
@@ -104,7 +112,7 @@ describe('loadPdf · errores tipados', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('not-pdf');
-    expect(getDocument).not.toHaveBeenCalled();
+    expect(spy.getDocument).not.toHaveBeenCalled();
     expect(source.reads).toBe(1);
   });
 
