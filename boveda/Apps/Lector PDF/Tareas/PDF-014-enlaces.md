@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-014
 titulo: Enlaces internos y externos, destinos e historial atrás/adelante
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-012, PDF-003]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, formatos-ofimatica, calidad-profesional, pruebas-calidad]
@@ -78,7 +78,7 @@ Los enlaces del PDF funcionan: los internos llevan a la página y posición del 
 ### [programador] ronda 1 — 2026-10-18
 - Ficheros cambiados (apps/lector-pdf): nuevos `src/core/links.ts`, `src/core/dest.ts`, `src/engine/links.ts`, `src/engine/dest.ts`, `src/state/history.ts`, `src/state/notice.ts`, `src/ui/kit/Dialog.tsx`, `src/ui/kit/Notice.tsx` (+ `.module.css`), `src/ui/viewer/LinkLayer.tsx` (+ `.module.css`); editados `src/state/viewer-store.ts` (campos `historyState` y `notice`), `src/ui/viewer/PageView.tsx` (monta `LinkLayer`), `src/ui/App.tsx` (atajos atrás/adelante y `Notice`), `src/ui/toolbar/MainToolbar.tsx` (botones «Vista anterior»/«Vista siguiente»), `src/ui/messages.ts`, `src/ui/shortcuts.ts` (`back` Alt+← y `forward` Alt+→). Tests nuevos: `tests/unit/links.test.ts`, `tests/unit/dest.test.ts`, `tests/unit/engine-links.test.ts`, `tests/unit/history.test.ts`, `tests/ui/link-layer.test.tsx`, `tests/ui/dialog.test.tsx`, `tests/ui/notice.test.tsx`, `tests/e2e/links.spec.ts`.
 - Qué he hecho: clasificación de URLs y destinos (núcleo puro), resolución de destinos con pdf.js, historial atrás/adelante (máx. 50, se vacía al abrir otro documento), capa de enlaces sobre el texto con confirmación para URLs externas y bloqueo de lo no permitido, diálogo accesible (foco, Tab atrapado, Esc, retorno de foco) y aviso temporal de 4 s. Reutilizo `currentYFraction` y `setCurrentYFraction` que PDF-019 ha añadido al store; no he tocado sus ficheros.
-- Comandos ejecutados y resultado: `pnpm typecheck` OK (app). ESLint sobre todos mis ficheros: 0 avisos. `vitest --project lector-pdf --coverage --coverage.reportsDirectory=<scratchpad>` OK: 79 ficheros, 1032 tests en verde con la cobertura de mis ficheros de `core/` por encima del 80 %. `pnpm --filter lector-pdf e2e`: 52 pasan y 1 falla (`viewer.spec.ts:88`, ver abajo). `links.spec.ts`: 4/4 en verde.
+- Comandos ejecutados y resultado: `pnpm typecheck` OK (app). ESLint sobre todos mis ficheros: 0 avisos. `vitest --project lector-pdf --coverage --coverage.reportsDirectory=<scratchpad>` OK (cobertura de `core/` por encima del 80 %); tras añadir los últimos tests, `vitest --project lector-pdf`: 80 ficheros, 1036 tests en verde. `pnpm --filter lector-pdf e2e`: 52 pasan y 1 falla (`viewer.spec.ts:88`, ver abajo). `links.spec.ts`: 4/4 en verde.
 - Dudas o cosas que no he podido hacer:
   1. pdf.js 6.4 no tiene `convertToViewportRectangle` (la ficha lo pedía): convierto las cuatro esquinas con `convertToViewportPoint` y tomo la envolvente.
   2. `parseExplicitDest` acepta `null` en las coordenadas (la interfaz es `number | null`); cualquier otro valor no numérico da `null`.
@@ -90,3 +90,9 @@ Los enlaces del PDF funcionan: los internos llevan a la página y posición del 
   8. Fallo ajeno: `pnpm lint` global falla en `tests/e2e/text-qa.spec.ts` (PDF-013, en curso); mis ficheros pasan.
   9. El puerto 4173 lo usaba otro agente durante mi primera ejecución de e2e; la repetí cuando quedó libre.
   10. No he hecho commit (la orden era no tocar git mientras trabajan otros en el árbol). Pendiente de que el líder decida el commit de la ficha.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Typecheck OK; ESLint sin avisos en los ficheros de la ficha; 7 ficheros de test de la ficha (64 tests) en verde. El e2e no se pudo relanzar (puerto 4173 ocupado por otro agente); se da por buena la ejecución del programador (links.spec 4/4) tras revisar el spec. `window.open` solo existe en `platform-web.ts`, que revalida el protocolo, y la UI solo llega a él tras `classifyUrl` + Dialog; no hay `location`. El fallo de `viewer.spec.ts:88` (Tab) es por la parada extra de la barra lateral (PDF-015), no por esta ficha: los botones atrás/adelante nacen deshabilitados.
+1. (opcional) `LinkLayer.tsx` — el menú contextual «abrir en pestaña nueva» sobre un `<a href={url}>` externo salta el diálogo (solo http/https/mailto, ya clasificado). Se podría quitar el `href` real.
+2. (opcional) `MainToolbar.tsx` — iconos de página reutilizados para atrás/adelante; crear iconos propios.
+3. (opcional) Falta aplicar `ctrl+clic`/`shift+clic` explícitamente en test; hoy pasan por `onClick` y quedan cubiertos.
