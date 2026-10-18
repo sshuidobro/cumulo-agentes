@@ -1,15 +1,25 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { translateAnnotation, type Annotation, type AnnotationType, type RectPt } from '../../core/annotations/model';
+import {
+  translateAnnotation,
+  type Annotation,
+  type AnnotationType,
+  type FreeTextAnnotation,
+  type RectPt,
+} from '../../core/annotations/model';
+import { freeTextClickRect, freeTextDragRect, resizeFreeTextRect } from '../../core/annotations/freetext';
 import { newNoteAnnotation, noteRectAt } from '../../core/annotations/note';
 import type { PageViewport } from '../../engine/pdfjs';
 import {
   addAnnotation,
+  beginEditFreeText,
+  beginFreeText,
   deleteAnnotation,
   getEffective,
   newAnnotationId,
   nowIso,
   openPopup,
   pageAnnotations,
+  resizeFreeText,
   select,
   setTool,
   updateAnnotation,
@@ -18,11 +28,17 @@ import { useAnnotations } from '../../state/annotation-store';
 import { msg } from '../messages';
 import { annotationOutline } from './annotation-geometry';
 import { AnnotationShape, ZoneShape } from './annotation-shapes';
+import { FreeTextEditor } from './FreeTextEditor';
+import { toPx } from './freetext-box';
 import styles from './AnnotationLayer.module.css';
 import viewerStyles from './Viewer.module.css';
 
 /** Movimiento mínimo del puntero para que un clic se convierta en arrastre, en píxeles. */
 const DRAG_THRESHOLD_PX = 3;
+/** Movimiento mínimo para que un clic con «Texto» se convierta en un cuadro arrastrado (PDF-034), en píxeles. */
+const FREETEXT_DRAG_PX = 5;
+/** Lado del tirador de tamaño de un texto libre, en píxeles. */
+const HANDLE_PX = 8;
 /** Paso de las flechas, en puntos PDF; con Mayús, diez veces más. */
 const ARROW_STEP_PT = 1;
 const ARROW_STEP_SHIFT_PT = 10;
@@ -56,6 +72,12 @@ interface Offset {
   readonly dy: number;
 }
 
+/** Cambio de tamaño en vista previa de un texto libre, en puntos PDF. */
+interface Resizing {
+  readonly id: string;
+  readonly rect: RectPt;
+}
+
 /**
  * Capa SVG de las anotaciones de una página, encima del lienzo y la capa de texto. Dibuja las nuevas y las
  * modificadas; las del fichero sin tocar las sigue dibujando pdf.js. Cada anotación soportada tiene una zona
@@ -68,9 +90,16 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   const selectedId = useAnnotations((s) => s.selectedId);
   // Cacheadas por versión de la página (ver `pageAnnotations`): cambiar la selección no recalcula la lista.
   const items = pageAnnotations(pageIndex, version);
+  // Cuadro de texto libre en edición, si es de esta página (PDF-034).
+  const editing = useAnnotations((s) => s.editing);
+  const editingHere = editing !== null && editing.base.pageIndex === pageIndex ? editing : null;
 
   const [stopId, setStopId] = useState<string | null>(null);
   const [offset, setOffset] = useState<Offset | null>(null);
+  /** Cuadro que se traza con la herramienta «Texto» mientras se arrastra, en puntos PDF (PDF-034). */
+  const [sketch, setSketch] = useState<RectPt | null>(null);
+  /** Tirador de tamaño en curso: id del texto libre y rectángulo de vista previa (PDF-034). */
+  const [resizing, setResizing] = useState<Resizing | null>(null);
   const zones = useRef(new Map<string, SVGGElement>());
   const layerRef = useRef<SVGSVGElement>(null);
   /** Dónde poner el foco tras un render (p. ej. tras borrar): id de zona, `FOCUS_VIEWER` o nada. */
@@ -105,6 +134,28 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     const origin = viewport.convertToPdfPoint(0, 0);
     const moved = viewport.convertToPdfPoint(dxPx, dyPx);
     return [(moved[0] ?? 0) - (origin[0] ?? 0), (moved[1] ?? 0) - (origin[1] ?? 0)];
+  }
+
+  /** Sigue el puntero en `window` hasta que se suelta; `onEnd` recibe el evento final (`pointerup` o `pointercancel`). */
+  function followPointer(
+    onMove: (e: globalThis.PointerEvent) => void,
+    onEnd: (e: globalThis.PointerEvent) => void,
+  ): void {
+    endDrag.current?.();
+    const stop = (): void => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      endDrag.current = null;
+    };
+    const finish = (e: globalThis.PointerEvent): void => {
+      stop();
+      onEnd(e);
+    };
+    endDrag.current = stop;
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
   }
 
   function moveAnnotation(id: string, dx: number, dy: number, mergeKey?: string): void {
@@ -152,6 +203,76 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   }
 
   /**
+   * Herramienta «Texto» (PDF-034): un clic crea un cuadro de 200 pt con la esquina superior izquierda en el punto;
+   * arrastrar más de 5 px crea el rectángulo arrastrado. Abre el editor en el sitio: el cuadro se añade al confirmar.
+   */
+  function beginFreeTextCreate(event: PointerEvent<SVGSVGElement>): void {
+    const state = useAnnotations.getState();
+    if (event.button !== 0 || state.tool !== 'freetext') return;
+    // Con un editor abierto, el clic solo confirma su texto (lo hace la pérdida de foco); no crea otro cuadro.
+    if (state.editing !== null) return;
+    // Un clic sobre una anotación o sobre su tirador es de esa anotación, no de una nueva.
+    if (event.target instanceof Element && event.target.closest('[data-annot-id], [data-resize-id]') !== null) return;
+    event.preventDefault();
+    const box = event.currentTarget.getBoundingClientRect();
+    const toPdf = (clientX: number, clientY: number): readonly [number, number] => {
+      const [x = 0, y = 0] = viewport.convertToPdfPoint(clientX - box.left, clientY - box.top);
+      return [x, y];
+    };
+    const [sx, sy] = toPdf(event.clientX, event.clientY);
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const bounds = pageBoundsPt();
+    followPointer(
+      (e) => {
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) <= FREETEXT_DRAG_PX) return;
+        const [ex, ey] = toPdf(e.clientX, e.clientY);
+        setSketch(freeTextDragRect(sx, sy, ex, ey, useAnnotations.getState().fontSize));
+      },
+      (e) => {
+        setSketch(null);
+        if (e.type === 'pointercancel') return;
+        const fontSize = useAnnotations.getState().fontSize;
+        const dragged = Math.hypot(e.clientX - startX, e.clientY - startY) > FREETEXT_DRAG_PX;
+        const [ex, ey] = toPdf(e.clientX, e.clientY);
+        const rect = dragged ? freeTextDragRect(sx, sy, ex, ey, fontSize) : freeTextClickRect(sx, sy, fontSize, bounds);
+        beginFreeText(pageIndex, rect, bounds[1]);
+      },
+    );
+  }
+
+  /** Tirador de tamaño de un texto libre (PDF-034): arrastrarlo cambia ancho y alto, con la esquina superior izquierda fija. */
+  function beginResize(event: PointerEvent<SVGRectElement>, a: FreeTextAnnotation): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const original = a.rect;
+    const rectAt = (e: globalThis.PointerEvent): RectPt => {
+      // Arrastrar hacia abajo (PDF y decreciente) hace más alto el cuadro: dh = -dy.
+      const [dx, dy] = pdfDelta(e.clientX - startX, e.clientY - startY);
+      return resizeFreeTextRect(original, dx, -dy, a.fontSize);
+    };
+    followPointer(
+      (e) => {
+        setResizing({ id: a.id, rect: rectAt(e) });
+      },
+      (e) => {
+        setResizing(null);
+        if (e.type === 'pointercancel') return;
+        resizeFreeText(a.id, rectAt(e));
+      },
+    );
+  }
+
+  /** Clic o arrastre sobre la capa: primero la herramienta «Nota», luego «Texto» (cada una comprueba la suya). */
+  function onLayerPointerDown(event: PointerEvent<SVGSVGElement>): void {
+    createNoteAt(event);
+    beginFreeTextCreate(event);
+  }
+
+  /**
    * Herramienta «Nota» (PDF-033): un clic crea una nota de 20 × 20 pt con la esquina superior izquierda en el punto,
    * la selecciona, abre su ventana de comentario y devuelve la herramienta a «ninguna», como Acrobat.
    */
@@ -190,9 +311,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     switch (event.key) {
       case 'Enter':
         // Intro abre la ventana de comentario (como el doble clic) y deja la anotación seleccionada.
+        // Un texto libre se edita en el sitio (PDF-034).
         stopHere();
         select(a.id);
-        openPopup(a.id);
+        if (a.type === 'freetext') beginEditFreeText(a.id, pageBoundsPt()[1]);
+        else openPopup(a.id);
         return;
       case ' ':
         stopHere();
@@ -212,7 +335,16 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
       case 'ArrowRight':
       case 'ArrowUp':
       case 'ArrowDown': {
-        const movable = a.id === selectedId && MOVABLE.has(a.type);
+        const selected = a.id === selectedId;
+        // Mayús+flechas cambian el tamaño de un texto libre seleccionado, 1 pt cada vez (PDF-034).
+        if (selected && a.type === 'freetext' && event.shiftKey) {
+          stopHere();
+          const dw = event.key === 'ArrowRight' ? ARROW_STEP_PT : event.key === 'ArrowLeft' ? -ARROW_STEP_PT : 0;
+          const dh = event.key === 'ArrowDown' ? ARROW_STEP_PT : event.key === 'ArrowUp' ? -ARROW_STEP_PT : 0;
+          resizeFreeText(a.id, resizeFreeTextRect(a.rect, dw, dh, a.fontSize), `resize:${a.id}`);
+          return;
+        }
+        const movable = selected && MOVABLE.has(a.type);
         if (movable) {
           stopHere();
           const step = event.shiftKey ? ARROW_STEP_SHIFT_PT : ARROW_STEP_PT;
@@ -235,63 +367,98 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     }
   }
 
+  // Tirador del texto libre seleccionado, en la esquina inferior derecha (PDF-034); no aparece mientras se edita.
+  const selectedText = items.find((a): a is FreeTextAnnotation => a.id === selectedId && a.type === 'freetext');
+  const handleRect = selectedText === undefined ? undefined : resizing?.id === selectedText.id ? resizing.rect : selectedText.rect;
+  const handle =
+    selectedText === undefined || handleRect === undefined || editingHere !== null
+      ? null
+      : { a: selectedText, ...toPx(viewport.transform, handleRect) };
+
   return (
-    <svg
-      ref={layerRef}
-      className={viewerStyles.annotationLayer}
-      width={viewport.width}
-      height={viewport.height}
-      onPointerDown={createNoteAt}
-    >
-      {items.length > 0 && (
-        <g transform={`matrix(${viewport.transform.join(' ')})`}>
-          {items.map((a, index) => {
-            const drawn = a.origin.kind === 'new' || edits.upserts.has(a.id);
-            const shift = offset !== null && offset.id === a.id ? `translate(${offset.dx} ${offset.dy})` : undefined;
-            const selected = a.id === selectedId;
-            const outline = annotationOutline(a);
-            return (
-              <g key={a.id} transform={shift}>
-                {drawn && <AnnotationShape a={a} />}
-                <g
-                  ref={(el) => {
-                    if (el !== null) zones.current.set(a.id, el);
-                    else zones.current.delete(a.id);
-                  }}
-                  role="button"
-                  tabIndex={a.id === tabStop ? 0 : -1}
-                  aria-label={zoneLabel(a)}
-                  data-annot-id={a.id}
-                  className={styles.zoneGroup}
-                  onPointerDown={(e) => {
-                    beginPointer(e, a);
-                  }}
-                  onKeyDown={(e) => {
-                    onZoneKeyDown(e, a, index);
-                  }}
-                  onFocus={() => {
-                    setStopId(a.id);
-                  }}
-                  onDoubleClick={() => {
-                    openPopup(a.id);
-                  }}
-                >
-                  {a.contents !== '' && <title>{Array.from(a.contents).slice(0, TOOLTIP_CHARS).join('')}</title>}
-                  <ZoneShape a={a} />
-                  <rect
-                    x={outline[0]}
-                    y={outline[1]}
-                    width={outline[2] - outline[0]}
-                    height={outline[3] - outline[1]}
-                    className={selected ? styles.outlineOn : styles.outline}
-                  />
+    <>
+      <svg
+        ref={layerRef}
+        className={viewerStyles.annotationLayer}
+        width={viewport.width}
+        height={viewport.height}
+        onPointerDown={onLayerPointerDown}
+      >
+        {sketch !== null && (
+          <g transform={`matrix(${viewport.transform.join(' ')})`}>
+            <rect x={sketch[0]} y={sketch[1]} width={sketch[2] - sketch[0]} height={sketch[3] - sketch[1]} className={styles.sketch} />
+          </g>
+        )}
+        {items.length > 0 && (
+          <g transform={`matrix(${viewport.transform.join(' ')})`}>
+            {items.map((a, index) => {
+              // Un texto que se edita en el sitio no se dibuja: lo muestra el editor.
+              const drawn = (a.origin.kind === 'new' || edits.upserts.has(a.id)) && editingHere?.base.id !== a.id;
+              const shift = offset !== null && offset.id === a.id ? `translate(${offset.dx} ${offset.dy})` : undefined;
+              const selected = a.id === selectedId;
+              const view = resizing?.id === a.id ? { ...a, rect: resizing.rect } : a;
+              const outline = annotationOutline(view);
+              return (
+                <g key={a.id} transform={shift}>
+                  {drawn && <AnnotationShape a={view} />}
+                  <g
+                    ref={(el) => {
+                      if (el !== null) zones.current.set(a.id, el);
+                      else zones.current.delete(a.id);
+                    }}
+                    role="button"
+                    tabIndex={a.id === tabStop ? 0 : -1}
+                    aria-label={zoneLabel(a)}
+                    data-annot-id={a.id}
+                    className={styles.zoneGroup}
+                    onPointerDown={(e) => {
+                      beginPointer(e, a);
+                    }}
+                    onKeyDown={(e) => {
+                      onZoneKeyDown(e, a, index);
+                    }}
+                    onFocus={() => {
+                      setStopId(a.id);
+                    }}
+                    onDoubleClick={() => {
+                      if (a.type === 'freetext') beginEditFreeText(a.id, pageBoundsPt()[1]);
+                      else openPopup(a.id);
+                    }}
+                  >
+                    {a.contents !== '' && <title>{Array.from(a.contents).slice(0, TOOLTIP_CHARS).join('')}</title>}
+                    <ZoneShape a={view} />
+                    <rect
+                      x={outline[0]}
+                      y={outline[1]}
+                      width={outline[2] - outline[0]}
+                      height={outline[3] - outline[1]}
+                      className={selected ? styles.outlineOn : styles.outline}
+                    />
+                  </g>
                 </g>
-              </g>
-            );
-          })}
-        </g>
-      )}
-    </svg>
+              );
+            })}
+          </g>
+        )}
+        {handle !== null && (
+          <rect
+            x={handle.x - HANDLE_PX / 2}
+            y={handle.y - HANDLE_PX / 2}
+            width={HANDLE_PX}
+            height={HANDLE_PX}
+            role="button"
+            tabIndex={-1}
+            aria-label={msg.resizeHandle}
+            data-resize-id={handle.a.id}
+            className={styles.handle}
+            onPointerDown={(e) => {
+              beginResize(e, handle.a);
+            }}
+          />
+        )}
+      </svg>
+    {editingHere !== null && <FreeTextEditor key={editingHere.base.id} editing={editingHere} viewport={viewport} />}
+    </>
   );
 }
 

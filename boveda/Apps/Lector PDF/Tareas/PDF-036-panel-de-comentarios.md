@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-036
 titulo: Panel de comentarios - lista, filtros, ir a, editar y borrar
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-031, PDF-015, PDF-033]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -73,3 +73,35 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
   3. La ficha dice «`openPopup(id)` cuando la página esté montada», pero no define cómo se espera a que la página monte (tras `goToPage` puede no estar montada). Eso también debería definirlo PDF-033.
   4. Menor: `IconComment` no existe en `src/ui/icons.tsx`. Lo crearé si se desbloquea; no es el bloqueo.
   Decisión que pido al líder: añadir PDF-033 (y, por ello, PDF-069) a `depende_de` de PDF-036, o decir explícitamente que `openPopup` lo implementa esta ficha. Lo segundo duplicaría trabajo y diseño de PDF-033, así que no lo he hecho.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/comment-list.ts`, `apps/lector-pdf/src/ui/sidebar/CommentsPanel.tsx` (+ `.module.css`), `apps/lector-pdf/src/ui/sidebar/Sidebar.tsx`, `apps/lector-pdf/src/state/annotation-actions.ts` (`scanAllAnnotations`, `cancelScanAll`, `openPopupWhenPageCurrent`), `apps/lector-pdf/src/state/annotation-store.ts` (`scanCancelable`), `apps/lector-pdf/src/ui/messages.ts` (textos `comments*`), tests `tests/unit/annotations/comment-list.test.ts`, `tests/ui/comments-panel.test.tsx`, `tests/perf/comment-list.perf.test.ts`, `tests/e2e/comments-panel.spec.ts`, `tests/unit/annotations/scan-all.test.ts`.
+- Qué he hecho: retomado el trabajo sin commitear. La duda de la ronda 1 queda resuelta: `openPopup` ya existe (PDF-033 está `hecha` y en el commit 146cc1c), así que `openPopupWhenPageCurrent` espera a que la página sea la actual antes de abrir la ventana. Revisado y cerrado el panel: cabecera, filtros, lista virtualizada con teclado, aviso de documento grande con escaneo cancelable, borrado, nombre del autor, y fila activa al seleccionar en la página. No he tocado el código de texto libre (PDF-034) salvo que comparte archivos (`annotation-actions.ts`, `annotation-store.ts`, `messages.ts`, `core/annotations/index.ts`) y lo he dejado como estaba.
+- Comandos ejecutados y resultado: `pnpm typecheck` OK; `pnpm lint` OK (0 avisos); `pnpm test` OK (141 ficheros, 1665 tests); `pnpm coverage` OK (`comment-list.ts` 100 % líneas); `pnpm perf` OK en la segunda pasada (24 tests); en la primera falló una vez `annotation-layer.perf.test.ts` (montar 500 anotaciones 126,7 ms frente a 100 ms; al repetirlo, pasa en las dos ejecuciones siguientes, así que es ruido de carga, no de este cambio); `pnpm --filter lector-pdf e2e` OK (141 tests, incluidos los 2 de `comments-panel.spec.ts`).
+- Dudas o cosas que no he podido hacer:
+  1. No he hecho commit. El árbol mezcla este trabajo con el de PDF-034 (texto libre) en los mismos ficheros (`annotation-actions.ts`, `annotation-store.ts`, `messages.ts`, `core/annotations/index.ts`, `AnnotationLayer.tsx`). Separarlo exige partir hunks, así que lo dejo sin commitear para que el líder o el usuario decidan el reparto de commits.
+  2. Quedan fuera de mi alcance los avisos de rendimiento de la capa de anotaciones (`annotation-layer.perf.test.ts`) si vuelven a fallar en carga.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (1665) OK; cobertura OK (con directorio propio porque otro proceso bloqueaba `coverage/`; `comment-list.ts` 100 % líneas); `comment-list.perf.test.ts` OK; E2E `comments-panel` 2/2 OK. Criterios cubiertos, núcleo sin React, textos en `messages.ts`, listbox accesible con teclado.
+1. (opcional) `annotation-actions.ts` `openPopupWhenPageCurrent` — la suscripción pendiente no se cancela en `endAnnotationSession`; cancelarla ahí evitaría abrir una ventana tras cerrar el documento.
+2. (opcional) `CommentsPanel.tsx` — sin atajo Supr para borrar la fila activa (el botón Borrar sí es alcanzable con Tab).
+3. Nota para el líder: el trabajo está sin commitear y mezclado con PDF-034 en `annotation-actions.ts`, `annotation-store.ts`, `messages.ts`, `core/annotations/index.ts`.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint, typecheck | OK | `pnpm lint && pnpm typecheck` salida 0 |
+| `pnpm test` | OK | 141 ficheros, 1665 tests |
+| `pnpm coverage` | OK | líneas 98,96 % |
+| `pnpm perf` (2 pasadas limpias) | OK | 15 ficheros, 24 tests, ambas veces; `comment-list.perf` 3/3 |
+| `pnpm --filter lector-pdf e2e` | OK | 141 pasados (1,8 min), incluidos los 2 de `comments-panel.spec.ts` |
+| (T) filas de `annotated.pdf` (3 cabeceras + 6, Square «Rectángulo» solo lectura) | OK | `comment-list.test.ts:302` |
+| (T) filtro «previo» | OK con matiz | Deja resaltado y texto libre. La nota se llama «Nota previa» y no contiene «previo»: el criterio de la ficha está mal redactado (la nota sale con «previa», test en `comment-list.test.ts:320`). No es un fallo de código; conviene corregir el texto del criterio. |
+| (T) 10 000 anotaciones < 40 filas en el DOM | OK | `comments-panel.test.tsx:92` |
+| (T) Intro / solo lectura / «Ana» | OK | `comments-panel.test.tsx:103,123,146` |
+| E2E annotated y pages-100000 (aviso, progreso, cancelar) | OK | `comments-panel.spec.ts:18,37` |
+Sin `skip`/`only` en tests. Los fallos intermitentes previos de `annotation-layer.perf` no se han reproducido en 3 ejecuciones limpias de perf (2 + 1 filtrada).
+Tests añadidos: ninguno nuevo; la cobertura existente basta.
+Rendimiento: `buildCommentRows` 10 000 anotaciones dentro de presupuesto (< 100 ms, test perf verde).
+Opcionales del revisor (Supr para borrar, cancelar suscripción en `endAnnotationSession`) sin tocar.

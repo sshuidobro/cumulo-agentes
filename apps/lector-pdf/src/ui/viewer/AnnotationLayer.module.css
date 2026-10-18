@@ -49,3 +49,22 @@
 .zoneGroup:focus-visible > .outline {
   display: inline;
 }
+
+/* Trazo del texto libre que se arrastra con la herramienta «Texto» (PDF-034). */
+.sketch {
+  fill: none;
+  stroke: var(--color-focus);
+  stroke-width: 1px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* Tirador de tamaño del texto libre seleccionado: recibe el puntero aunque la capa no lo reciba (PDF-034). */
+.handle {
+  fill: var(--color-focus);
+  stroke: var(--color-surface, #fff);
+  stroke-width: 1px;
+  cursor: nwse-resize;
+  pointer-events: visiblePainted;
+}

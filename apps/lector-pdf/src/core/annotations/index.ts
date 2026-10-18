@@ -6,3 +6,5 @@ export * from './import';
 export * from './to-pdf';
 export * from './draft';
 export * from './note';
+export * from './freetext';
+export * from './comment-list';

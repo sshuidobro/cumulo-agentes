@@ -3,6 +3,7 @@ import type { SidebarTab } from '../../core/sidebar';
 import { showSidebarTab } from '../../state/sidebar-actions';
 import { useViewer } from '../../state/viewer-store';
 import { msg } from '../messages';
+import { CommentsPanel } from './CommentsPanel';
 import { OutlinePanel } from './OutlinePanel';
 import { Thumbnails } from './Thumbnails';
 import styles from './Sidebar.module.css';
@@ -13,10 +14,11 @@ interface SidebarTabDef {
   readonly panel: () => ReactElement;
 }
 
-/** Pestañas del panel. PDF-036 (comentarios) añade la suya aquí. */
+/** Pestañas del panel. */
 const SIDEBAR_TABS: readonly SidebarTabDef[] = [
   { id: 'thumbnails', label: msg.thumbnails, panel: () => <Thumbnails /> },
   { id: 'outline', label: msg.bookmarks, panel: () => <OutlinePanel /> },
+  { id: 'comments', label: msg.comments, panel: () => <CommentsPanel /> },
 ];
 
 function tabDomId(id: SidebarTab): string {

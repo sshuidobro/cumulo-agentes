@@ -12,8 +12,11 @@ import {
   EMPTY_EDITS,
   type Annotation,
   type AnnotationEdits,
+  type FreeTextAnnotation,
+  type RectPt,
   type Rgb,
 } from '../core/annotations/model';
+import { fitFreeTextRect, isBlankText, newFreeTextAnnotation } from '../core/annotations/freetext';
 import {
   DEFAULT_AUTHOR,
   DEFAULT_FONT_SIZE,
@@ -29,6 +32,7 @@ import { setFileAnnotationHidden } from '../engine/annotation-visibility';
 import {
   initialAnnotationState,
   useAnnotations,
+  type FreeTextEditing,
   type AnnotationState,
   type AnnotationTool,
   type ColorTool,
@@ -42,6 +46,13 @@ const log = createLogger('annotation-actions');
 const SCAN_PAGE_LIMIT = 20_000;
 /** Profundidad del historial de deshacer (ADR-0005). */
 const MAX_UNDO_DEPTH = 100;
+/** Páginas por lote de fusión y entre dos cesiones del hilo durante el escaneo completo desde el panel (PDF-036). */
+const SCAN_ALL_BATCH = 50;
+
+interface IndexedPage {
+  readonly index: number;
+  readonly page: ImportedPage;
+}
 
 const COLOR_TOOLS: readonly ColorTool[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
 
@@ -64,6 +75,8 @@ interface Session {
 }
 
 let session: Session | null = null;
+/** Escaneo completo de un documento 'lazy' lanzado desde el panel (PDF-036). Solo uno a la vez. */
+let fullScan: AbortController | null = null;
 let stack = createStack();
 let memo: { readonly baseline: AnnotationState['baseline']; readonly edits: AnnotationEdits; readonly result: ReadonlyMap<string, Annotation> } | null = null;
 /** Anotaciones de cada página ya calculadas, con la versión de la página con que se calcularon. */
@@ -153,6 +166,8 @@ export function endAnnotationSession(): void {
   const current = session;
   session = null;
   current?.stop.abort();
+  fullScan?.abort();
+  fullScan = null;
   stack = createStack();
   memo = null;
   pageMemo.clear();
@@ -187,32 +202,109 @@ export async function ensurePageAnnotations(pageIndex: number): Promise<void> {
 }
 
 async function importLazyPage(current: Session, pageIndex: number): Promise<void> {
+  const imported = await readLazyPage(current, pageIndex);
+  if (imported !== null) mergeIndexed([{ index: pageIndex, page: imported }]);
+}
+
+/** Lee las anotaciones de una página de la sesión. `null` si la sesión ya no es la misma, se aborta o falla la lectura. */
+async function readLazyPage(current: Session, pageIndex: number): Promise<ImportedPage | null> {
   try {
     const page = await current.pdf.doc.getPage(pageIndex + 1);
     const imported = await readPageAnnotations(page, nowIso());
-    if (session !== current || current.stop.signal.aborted) return;
-    mergePages(pageIndex, [imported]);
+    if (session !== current || current.stop.signal.aborted) return null;
+    return imported;
   } catch (cause) {
     log.warn('ensurePageAnnotations', cause);
+    return null;
   }
+}
+
+/**
+ * Importa las anotaciones de todas las páginas de un documento 'lazy' (PDF-036, botón «Buscar en todo el documento»).
+ * El progreso va en `scanProgress`. Se cancela con `cancelScanAll()` o al cerrar el documento: entonces `scan` vuelve a
+ * 'lazy' y las páginas ya importadas se quedan. Al terminar, `scan` pasa a 'done'.
+ */
+export function scanAllAnnotations(): void {
+  const current = session;
+  if (current === null || fullScan !== null) return;
+  if (useAnnotations.getState().scan !== 'lazy') return;
+  const controller = new AbortController();
+  fullScan = controller;
+  useAnnotations.setState({
+    scan: 'scanning',
+    scanCancelable: true,
+    scanProgress: useAnnotations.getState().importedPages.size,
+  });
+  void runScanAll(current, controller);
+}
+
+/** Cancela el escaneo completo en curso (no hace nada si no hay ninguno). */
+export function cancelScanAll(): void {
+  fullScan?.abort();
+}
+
+async function runScanAll(current: Session, controller: AbortController): Promise<void> {
+  // Las páginas se fusionan por lotes: cada fusión copia el estado, así que hacerlo por página sería cuadrático.
+  let batch: IndexedPage[] = [];
+  const flush = (): void => {
+    if (batch.length > 0 && session === current) mergeIndexed(batch);
+    batch = [];
+  };
+  try {
+    for (let index = 0; index < current.pdf.numPages; index++) {
+      if (controller.signal.aborted || session !== current) break;
+      if (!useAnnotations.getState().importedPages.has(index)) {
+        const imported = await readLazyPage(current, index);
+        if (imported !== null) batch.push({ index, page: imported });
+      }
+      if (batch.length >= SCAN_ALL_BATCH) {
+        flush();
+        await yieldNow();
+      }
+    }
+  } finally {
+    flush();
+    if (fullScan === controller) fullScan = null;
+  }
+  if (session !== current) return;
+  const finished = !controller.signal.aborted && importedAll(current.pdf.numPages);
+  useAnnotations.setState({ scan: finished ? 'done' : 'lazy', scanCancelable: false });
+}
+
+function importedAll(numPages: number): boolean {
+  const { importedPages } = useAnnotations.getState();
+  for (let index = 0; index < numPages; index++) {
+    if (!importedPages.has(index)) return false;
+  }
+  return true;
+}
+
+function yieldNow(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
 }
 
 /** Fusiona páginas importadas (desde `from`, en orden) en la línea base y sube la versión de las que tienen anotaciones. */
 function mergePages(from: number, pages: readonly ImportedPage[]): void {
+  mergeIndexed(pages.map((page, i) => ({ index: from + i, page })));
+}
+
+/** Fusiona páginas con su índice (en un único cambio de estado). */
+function mergeIndexed(entries: readonly IndexedPage[]): void {
   useAnnotations.setState((s) => {
     const baseline = new Map(s.baseline);
     const foreign = new Map<string, ForeignAnnotation>(s.foreign);
     const importedPages = new Set(s.importedPages);
     const pageVersion = new Map(s.pageVersion);
-    pages.forEach((page, i) => {
-      const index = from + i;
+    for (const { index, page } of entries) {
       importedPages.add(index);
       for (const a of page.supported) baseline.set(a.id, a);
       for (const f of page.foreign) foreign.set(f.id, f);
       if (page.supported.length > 0 || page.foreign.length > 0) {
         pageVersion.set(index, (pageVersion.get(index) ?? 0) + 1);
       }
-    });
+    }
     return { baseline, foreign, importedPages, pageVersion, scanProgress: importedPages.size };
   });
 }
@@ -333,6 +425,121 @@ export function deleteAnnotation(id: string): void {
   }
 }
 
+/**
+ * Abre el editor en el sitio de un cuadro de texto libre nuevo (PDF-034). El cuadro todavía no es una anotación: se
+ * crea al confirmar, si tiene texto. `floor` es el borde inferior de la página (puntos PDF).
+ */
+export function beginFreeText(pageIndex: number, rect: RectPt, floor: number): void {
+  const { colors, author, fontSize } = useAnnotations.getState();
+  stack.closeGroup();
+  const base = newFreeTextAnnotation({
+    id: newAnnotationId(),
+    pageIndex,
+    rect,
+    fontSize,
+    color: colors.freetext,
+    textColor: colors.freetext,
+    author,
+    now: nowIso(),
+  });
+  useAnnotations.setState({ editing: { base, inStore: false, floor }, selectedId: null });
+}
+
+/** Abre el editor en el sitio de un texto libre existente (doble clic o Intro, PDF-034). */
+export function beginEditFreeText(id: string, floor: number): void {
+  const current = getEffective().get(id);
+  if (current?.type !== 'freetext') return;
+  stack.closeGroup();
+  // Un texto del fichero lo pinta pdf.js: se oculta mientras se edita, para no ver el texto dos veces.
+  if (current.origin.kind === 'file' && session !== null) {
+    setFileAnnotationHidden(session.pdf.doc, current.origin.ref, true);
+  }
+  useAnnotations.setState({ editing: { base: current, inStore: true, floor }, selectedId: id });
+}
+
+/**
+ * Confirma la edición de un texto libre (PDF-034). Nuevo con texto → se añade; nuevo sin texto → no pasa nada.
+ * Existente que cambia → «editar texto»; existente que queda vacío → se borra. Idempotente: sin edición activa no hace nada.
+ */
+export function commitFreeText(text: string): void {
+  const editing: FreeTextEditing | null = useAnnotations.getState().editing;
+  if (editing === null) return;
+  useAnnotations.setState({ editing: null });
+  const { base, inStore, floor } = editing;
+  if (!inStore) {
+    if (isBlankText(text)) return;
+    const created: FreeTextAnnotation = {
+      ...base,
+      contents: text,
+      rect: fitFreeTextRect(base.rect, text, base.fontSize, floor),
+    };
+    addAnnotation(created);
+    select(created.id);
+    return;
+  }
+  const current = getEffective().get(base.id);
+  if (current?.type !== 'freetext') return;
+  if (isBlankText(text)) {
+    deleteAnnotation(current.id);
+    return;
+  }
+  if (text !== current.contents) {
+    updateAnnotation(
+      {
+        ...current,
+        contents: text,
+        rect: fitFreeTextRect(current.rect, text, current.fontSize, floor),
+        modified: nowIso(),
+      },
+      'editar texto',
+    );
+  }
+  // Vuelve a mostrar el texto del fichero si no quedó editado (si lo está, la pila ya lo oculta).
+  syncFileVisibility(useAnnotations.getState().baseline, stack.doc, new Set([base.id]));
+}
+
+/**
+ * Cambia el cuadro de un texto libre (tirador o Mayús+flechas, PDF-034). `mergeKey` agrupa una ráfaga de flechas en
+ * una sola entrada de deshacer. Sin cambio real no crea entrada.
+ */
+export function resizeFreeText(id: string, rect: RectPt, mergeKey?: string): void {
+  const current = getEffective().get(id);
+  if (current?.type !== 'freetext') return;
+  const same = current.rect.every((v, i) => v === rect[i]);
+  if (same) return;
+  updateAnnotation({ ...current, rect }, 'cambiar tamaño', mergeKey);
+}
+
+/**
+ * Tamaño de letra de la barra «Comentar» (PDF-034): fija el de la herramienta «Texto» y, si hay un texto libre
+ * seleccionado, también el suyo.
+ */
+export function setFreeTextFontSize(size: AnnotationState['fontSize']): void {
+  setFontSize(size);
+  const current = selectedFreeText();
+  if (current === undefined || current.fontSize === size) return;
+  updateAnnotation({ ...current, fontSize: size }, 'cambiar tamaño de letra');
+}
+
+/**
+ * Color de la barra «Comentar» (PDF-034): fija el de la herramienta «Texto» y, si hay un texto libre seleccionado,
+ * el color de su texto. El borde del cuadro no cambia.
+ */
+export function setFreeTextColor(rgb: Rgb): void {
+  setToolColor('freetext', rgb);
+  const current = selectedFreeText();
+  if (current === undefined || current.textColor.every((v, i) => v === rgb[i])) return;
+  updateAnnotation({ ...current, textColor: rgb }, 'cambiar color del texto');
+}
+
+/** Texto libre seleccionado y visible, o `undefined`. */
+export function selectedFreeText(): FreeTextAnnotation | undefined {
+  const id = useAnnotations.getState().selectedId;
+  if (id === null) return undefined;
+  const current = getEffective().get(id);
+  return current?.type === 'freetext' ? current : undefined;
+}
+
 /** Etiqueta de la entrada de deshacer que aplica un borrador recuperado (PDF-038). */
 const RECOVER_LABEL = 'recuperar cambios';
 
@@ -375,6 +582,30 @@ export function select(id: string | null): void {
 export function openPopup(id: string): void {
   stack.closeGroup();
   useAnnotations.setState({ openPopupId: id });
+}
+
+/** Apertura de ventana pendiente de que su página sea la actual (ver `openPopupWhenPageCurrent`). */
+let pendingPopup: (() => void) | null = null;
+
+/**
+ * Abre la ventana de comentario de `id` cuando la página `pageIndex` ya es la actual del visor (PDF-036). El salto a una
+ * página es asíncrono: una ventana abierta antes se cerraría al no estar la página visible (PDF-033). Una nueva llamada
+ * anula la pendiente.
+ */
+export function openPopupWhenPageCurrent(id: string, pageIndex: number): void {
+  pendingPopup?.();
+  pendingPopup = null;
+  if (useViewer.getState().currentPage === pageIndex) {
+    openPopup(id);
+    return;
+  }
+  const unsubscribe = useViewer.subscribe((state) => {
+    if (state.currentPage !== pageIndex) return;
+    unsubscribe();
+    pendingPopup = null;
+    openPopup(id);
+  });
+  pendingPopup = unsubscribe;
 }
 
 /** Cierra la ventana de comentario y corta la agrupación de deshacer (la escritura queda como una entrada). */
