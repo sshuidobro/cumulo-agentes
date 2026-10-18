@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { memorySource } from '@suite/platform';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PageDimsTable } from '../../src/core/page-dims';
 import { App } from '../../src/ui/App';
 import { addAnnotation, endAnnotationSession, getEffective, select } from '../../src/state/annotation-actions';
 import { initialAnnotationState, useAnnotations } from '../../src/state/annotation-store';
 import { initServices } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
-import { createFakePlatform } from '../helpers/fake-platform';
+import { createFakePlatform, openedFile } from '../helpers/fake-platform';
 import { newAnnotation } from '../unit/annotations/factories';
 
 beforeEach(() => {
@@ -162,6 +164,56 @@ describe('barra «Comentar» · teclado', () => {
     const reachable = toolbar.querySelectorAll('[tabindex="0"]');
     expect(reachable).toHaveLength(1);
     expect(reachable[0]).toBe(color);
+  });
+
+  it('→ ← Inicio Fin en la barra no cambian de página y no llegan a los atajos globales', async () => {
+    const user = userEvent.setup();
+    // Documento de 10 páginas en la 3.ª (índice 2): con él, next-page, prev-page, first-page y last-page sí actuarían.
+    useViewer.setState({
+      ...initialViewerState,
+      status: 'ready',
+      file: openedFile('pages.pdf', memorySource(new Uint8Array([0x25]))),
+      dims: PageDimsTable.uniform(10, 612, 792, 0),
+      dimsVersion: 1,
+      zoom: 1,
+      zoomMode: { kind: 'custom', zoom: 1 },
+      currentPage: 2,
+    });
+    const toolbar = await openCommentBar(user);
+    const resaltar = within(toolbar).getByRole('button', { name: 'Resaltar' });
+    const subrayar = within(toolbar).getByRole('button', { name: 'Subrayar' });
+    const dibujar = within(toolbar).getByRole('button', { name: 'Dibujar' });
+    const spy = vi.fn();
+    window.addEventListener('keydown', spy);
+    act(() => {
+      resaltar.focus();
+    });
+
+    try {
+      await user.keyboard('{ArrowRight}');
+      expect(subrayar).toHaveFocus();
+      expect(useViewer.getState().currentPage).toBe(2);
+      expect(useViewer.getState().navRequest).toBeNull();
+
+      await user.keyboard('{End}');
+      expect(dibujar).toHaveFocus();
+      expect(useViewer.getState().currentPage).toBe(2);
+      expect(useViewer.getState().navRequest).toBeNull();
+
+      await user.keyboard('{Home}');
+      expect(resaltar).toHaveFocus();
+      expect(useViewer.getState().currentPage).toBe(2);
+      expect(useViewer.getState().navRequest).toBeNull();
+
+      await user.keyboard('{ArrowLeft}');
+      expect(dibujar).toHaveFocus();
+      expect(useViewer.getState().currentPage).toBe(2);
+      expect(useViewer.getState().navRequest).toBeNull();
+
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('keydown', spy);
+    }
   });
 });
 

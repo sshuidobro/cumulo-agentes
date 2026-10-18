@@ -179,6 +179,10 @@ export function CommentToolbar() {
     elements.current.get(id)?.focus();
   };
 
+  /**
+   * Mueve el foco itinerante con → ← Inicio Fin. Las teclas tratadas no llegan a los atajos globales de la ventana
+   * (p. ej. las flechas, que pasan de página); las demás teclas siguen su curso.
+   */
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     // Las teclas dentro de un menú abierto no son de la barra.
     const from = indexOfTarget(event.target);
@@ -201,6 +205,7 @@ export function CommentToolbar() {
         return;
     }
     event.preventDefault();
+    event.stopPropagation();
   };
 
   // Un control enfocado (por clic o por teclado) pasa a ser el de foco itinerante.
