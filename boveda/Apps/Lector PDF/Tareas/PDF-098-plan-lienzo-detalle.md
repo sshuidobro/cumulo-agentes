@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-098
 titulo: Zoom hasta 6 400 % y cálculo de la zona de detalle
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -63,3 +63,8 @@ export function needsRedraw(drawn: PxRect, visible: PxRect): boolean;
 - Qué he hecho: `MAX_ZOOM = 64` y pasos 12-64 en `ZOOM_STEPS`; mensaje `zoomInvalid` a 10-6400; `core/detail.ts` con `visibleInFrame`, `detailRect`, `planDetail`, `needsRedraw` y `DETAIL_MARGIN`, según la ficha (valores no finitos o tamaños negativos → `RangeError`; tamaños 0 no lanzan). Los tests que asumían 800 % como máximo se han actualizado al nuevo límite; `ZoomControls` no se ha tocado (sigue con su propia lista).
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (186 ficheros, 2180 tests); `pnpm coverage` código 0, `core/detail.ts` y `core/zoom.ts` al 100 % de líneas, funciones y ramas. E2E y perf NO ejecutados (los pide el tester): el criterio «los E2E de zoom siguen en verde» queda pendiente. He actualizado `tests/e2e/zoom-qa.spec.ts` (antes esperaba 800 %; ahora escribe 9000 y espera «6400 %») para que no quede en rojo por el cambio de máximo.
 - Dudas o cosas que no he podido hacer: el criterio de `planDetail` a 3 200 % de A4 está cubierto como test unitario, pero la comprobación de los E2E de zoom queda para el tester. El texto de la ficha dice «6 400 %» y `formatZoom` muestra «6400 %» (sin espacio de miles), que es el formato existente.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Lint, typecheck y test (2180) en verde; E2E no ejecutados (los corre el tester). Criterios cubiertos con tests; sin código fuera de alcance; `ZoomControls` intacto.
+1. (opcional) `boveda/Apps/Lector PDF/Manual.md:30` — sigue diciendo «10-800 %» — actualizar a 6 400 % al cerrar la iteración.
+2. (opcional) Tester: verificar en E2E que `zoom-qa.spec.ts` (ahora espera «6400 %») y los demás de zoom siguen en verde.
