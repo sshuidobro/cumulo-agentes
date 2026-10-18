@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-012
 titulo: Ir a página y navegación entre páginas (campo, etiquetas, atajos)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-011, PDF-003]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -40,13 +40,13 @@ La barra muestra la página actual («4 de 300», o «iv (4 de 300)» si el PDF 
 7. Tests `tests/unit/page-input.test.ts`, `tests/ui/page-navigator.test.tsx`, `tests/e2e/navigation.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] (T) `parsePageInput('iv', 12, labels)` → 3; `'1'` con etiquetas → 4 (etiqueta «1»); `'A-1'`/`'a-1'` → 11; `'12'` con etiquetas → 11 (no hay etiqueta «12», se usa el número); `'0'`, `'13'`, `'x'` → `null`; sin etiquetas `'5'` → 4.
-- [ ] (T) `formatPageIndicator(3, 12, labels)` → `{ inputValue: 'iv', suffix: '(4 de 12)' }`; `(4, 5000, null)` → `{ '5', 'de 5000' }`; `(0, 100000, null)` → sufijo `'de 100.000'`.
-- [ ] (T) UI: escribir `250` + Intro con 300 páginas → `goToPage(249)`; `400` → `aria-invalid="true"` y el mensaje; Esc restaura el valor. Botón «Página anterior» deshabilitado en la página 1.
-- [ ] (T) Atajos: `ArrowRight` → `nextPage`; con `hasHorizontalOverflow` → no hace nada; dentro del campo de página, `ArrowRight` mueve el cursor del texto (no cambia de página); `Ctrl+Mayús+N` enfoca el campo con el texto seleccionado.
-- [ ] E2E: `page-labels.pdf` → el campo muestra `i` y «(1 de 12)»; escribir `A-1` + Intro → página 12 visible y campo `A-1`.
-- [ ] E2E: `pages-5000.pdf` → `End` → «5000 de 5000» (sufijo «de 5000») en < 1,5 s; `Home` → página 1; `Ctrl+Mayús+N`, `4321`, Intro → el marco «Página 4321 de 5000» es visible.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+- [x] (T) `parsePageInput('iv', 12, labels)` → 3; `'1'` con etiquetas → 4 (etiqueta «1»); `'A-1'`/`'a-1'` → 11; `'12'` con etiquetas → 11 (no hay etiqueta «12», se usa el número); `'0'`, `'13'`, `'x'` → `null`; sin etiquetas `'5'` → 4.
+- [x] (T) `formatPageIndicator(3, 12, labels)` → `{ inputValue: 'iv', suffix: '(4 de 12)' }`; `(4, 5000, null)` → `{ '5', 'de 5000' }`; `(0, 100000, null)` → sufijo `'de 100.000'`.
+- [x] (T) UI: escribir `250` + Intro con 300 páginas → `goToPage(249)`; `400` → `aria-invalid="true"` y el mensaje; Esc restaura el valor. Botón «Página anterior» deshabilitado en la página 1.
+- [x] (T) Atajos: `ArrowRight` → `nextPage`; con `hasHorizontalOverflow` → no hace nada; dentro del campo de página, `ArrowRight` mueve el cursor del texto (no cambia de página); `Ctrl+Mayús+N` enfoca el campo con el texto seleccionado.
+- [x] E2E: `page-labels.pdf` → el campo muestra `i` y «(1 de 12)»; escribir `A-1` + Intro → página 12 visible y campo `A-1`.
+- [x] E2E: `pages-5000.pdf` → `End` → «5000 de 5000» (sufijo «de 5000») en < 1,5 s; `Home` → página 1; `Ctrl+Mayús+N`, `4321`, Intro → el marco «Página 4321 de 5000» es visible.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Historial atrás/adelante (PDF-014). Miniaturas (PDF-015).
@@ -73,3 +73,17 @@ La barra muestra la página actual («4 de 300», o «iv (4 de 300)» si el PDF 
 - Cada criterio tiene test; el núcleo no importa React; mensajes centralizados; `aria-invalid`, `aria-describedby` y `role="alert"` correctos; las etiquetas se leen sin bloquear la apertura y se reinician al abrir otro documento.
 1. (opcional) `apps/lector-pdf/tests/ui/page-navigator.test.tsx` — el test de ArrowRight dentro del campo solo comprueba que no hay `navRequest`; podría comprobar también la posición del cursor.
 2. (opcional) Los cambios de esta ficha y de PDF-013 comparten ficheros sin commit (`MainToolbar.tsx`, `shortcuts.ts`, `App.tsx`, `Viewer.tsx`); al hacer commit, separar o commitear juntos con cuidado.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| parsePageInput / formatPageIndicator | OK | `pnpm test`: 93 ficheros, 1235 tests pasan (incluye `tests/unit/page-input.test.ts`) |
+| UI campo, Esc, aria-invalid, botón deshabilitado | OK | `tests/ui/page-navigator.test.tsx` en verde; E2E extra confirma lo mismo en Chromium |
+| Atajos (flechas, desbordamiento, campo, Ctrl+Mayús+N) | OK | tests de UI + `navigation-qa.spec.ts` (selección completa al enfocar, flechas dentro del campo no cambian página) |
+| E2E page-labels y pages-5000 | OK | `navigation.spec.ts` 2/2; End < 1,5 s cumplido |
+| lint, typecheck, test, coverage, e2e | OK | todos código 0; cobertura 98,82 % líneas; e2e completo 42/42 (puerto 4391 para evitar choques) |
+
+Casos límite probados: `  3 `, `1.5`, vacío, `99` (inválido con mensaje y texto conservado), salir del campo restaura, extremos con Inicio/Fin/Ctrl+Mayús+Re Pág.
+Tests añadidos: `apps/lector-pdf/tests/e2e/navigation-qa.spec.ts` (2).
+Rendimiento: Fin en 5000 páginas y 100 000 páginas dentro de 1,5 s (viewer.spec/navigation.spec).
+Nota: el árbol tiene cambios sin commitear compartidos con PDF-013; no toqué código de producción.
