@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-020
 titulo: Tema claro/oscuro/sistema y modo noche de las páginas
 app: pdf
-estado: en-curso
+estado: bloqueada
 depende_de: [PDF-015]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, tema, accesibilidad]
 ---
 
@@ -50,3 +50,15 @@ Un menú «Apariencia» permite elegir el tema de la interfaz (Sistema, Claro, O
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/core/appearance.ts`, `src/core/night.ts`, `src/state/appearance-store.ts`, `src/state/appearance-actions.ts`, `src/ui/use-theme.ts`, `src/ui/kit/MenuButton.tsx` y `MenuButton.module.css`, `tests/ui/menu-button.test.tsx`, `tests/ui/appearance.test.tsx`, `tests/e2e/appearance.spec.ts`. Modificados (cambios puntuales): `src/ui/icons.tsx` (`IconAppearance`), `src/ui/messages.ts`, `src/ui/toolbar/MainToolbar.tsx`, `src/ui/App.tsx`, `src/main.tsx`, `src/ui/viewer/PageView.tsx`, `PageFrame.tsx`, `Viewer.module.css`, `src/ui/sidebar/ThumbnailItem.tsx`, `Sidebar.module.css`, `src/ui/theme.css`, `src/ui/toolbar/ZoomControls.module.css`, `PageNavigator.module.css`, `src/ui/search/SearchBar.module.css`, `tests/ui/open.test.tsx` (ajuste del orden de Tab, ver abajo).
+- Qué he hecho: menú «Apariencia» (`MenuButton` reutilizable, ARIA menu button) con Tema Sistema/Claro/Oscuro y «Modo noche de las páginas»; tema aplicado a `<html>` con `data-theme` y `color-scheme`; preferencias `theme` y `nightMode` con guards, cargadas al arrancar. Modo noche: `PageView` y miniaturas redibujan con `pageColors: NIGHT_PAGE_COLORS`; el marco usa el fondo oscuro. Revisión de `theme.css`: papel y texto de página en variables, nueva `--color-control-border` para bordes de controles.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 1470/1470 OK (el único fallo intermedio, `open.test.tsx` Tab, lo causó el botón nuevo y se ajustó); `pnpm coverage` OK (All files 96,76 % líneas). E2E con config temporal en puerto 4410 (`pw-all.config.ts` en el scratchpad): 79 pasan y 1 falla: `appearance.spec.ts` «modo noche… conservan sus colores». Tests de la ficha: T-menú (`MenuButton`), T-tema, T-modo noche con `pageColors` y E2E de tema según el sistema, tras recargar y escalado 1,5 × con barra completa: todos en verde.
+- Contrastes comprobados (WCAG): claro: texto #1d1d1f sobre #f5f5f7 15,5 / #fff 16,8 / #e8e8ed 13,8; muted #55555c sobre #e8e8ed 6,1 y sobre #d1d1d6 4,9; acento #0a58ca sobre #fff 6,4; texto de acento #fff sobre acento 6,4; peligro #b3261e sobre #fff 6,5; borde de control #76767c sobre #f5f5f7 4,2; número de página #55555c sobre #fff 7,4. Oscuro: texto #f2f2f7 sobre #1c1c1e 15,3 / #2c2c2e 12,5 / #3a3a3c 10,2; muted #aeaeb2 sobre #2c2c2e 6,3 / #3a3a3c 5,1; acento #4da3ff sobre #2c2c2e 5,3; texto de acento #002b52 sobre acento 5,5; peligro #ff8a80 sobre #2c2c2e 6,1; borde de control #8e8e93 sobre #2c2c2e 4,3; número en noche #c7c7cc sobre #1f1f23 9,8. Todos ≥ 4,5 (texto) y ≥ 3 (controles).
+- Dudas o cosas que no he podido hacer:
+  1. **Bloqueo (decisión de producto/diseño):** la ficha dice que `pageColors` «no toca las imágenes». Falso en pdf.js 6.4.299: `#drawFilter` (pdf.mjs, ~línea 11066) vuelve a dibujar **todo el lienzo** con un filtro HCM que asigna brillo a un degradado entre el color de texto y el de fondo. Resultado medido: la imagen de `images-200.pdf` pasa de colores (p. ej. 215/48/37) a gris (diferencia de 225 en un canal). El criterio E2E «la imagen conserva sus colores (tolerancia 10)» no se puede cumplir con `pageColors` tal como está especificado. No lo he resuelto por mi cuenta porque cambiaría el diseño. Opciones a decidir por el líder: (a) aceptar que el modo noche convierte imágenes a gris y cambiar el criterio; (b) otro mecanismo que preserve imágenes (p. ej. filtro CSS sobre el lienzo más compensación de imágenes), que requiere diseño y un ADR. Capturas: `scratchpad/normal.png` (normal) y `pw-results` (noche).
+  2. El test E2E de imagen **no está saltado ni modificado**: queda en rojo a propósito hasta que se decida 1.
+  3. `tests/ui/open.test.tsx`: el segundo Tab de «se puede llegar a los botones con el teclado» ahora cae en «Apariencia» (siempre activo); he añadido ese paso y se mantiene la comprobación de «Abrir…» del visor. Lo señalo por si el revisor quiere otra solución.
+  4. Sin commit: el árbol de trabajo tiene cambios de otros agentes sin confirmar; no he hecho git commit/stash/checkout, como se pidió.
+  5. Pendiente de la ficha: `pnpm --filter lector-pdf e2e` con código 0 no se cumple mientras esté el bloqueo 1; el resto de criterios sí.
