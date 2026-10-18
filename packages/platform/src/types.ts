@@ -63,4 +63,9 @@ export interface Platform {
   openRecent(id: string): Promise<Result<OpenedFile | null>>;
   removeRecent(id: string): Promise<void>;
   clearRecents(): Promise<void>;
+  /** Pone o quita la pantalla completa. err('unsupported') si el entorno no lo permite. */
+  setFullscreen(on: boolean): Promise<Result<void>>;
+  isFullscreen(): boolean;
+  /** Avisa cuando cambia (también si lo cambia el usuario o el SO). Devuelve la baja. */
+  onFullscreenChange(cb: (on: boolean) => void): () => void;
 }

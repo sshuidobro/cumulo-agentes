@@ -50,6 +50,12 @@
   cursor: crosshair;
 }
 
+/* Con «Firmar», un clic en la página coloca la firma pendiente (PDF-043). */
+.viewer[data-tool='signature'] .annotationLayer {
+  pointer-events: auto;
+  cursor: copy;
+}
+
 /* Con «Dibujar», el dedo traza en vez de desplazar la página (PDF-035). */
 .viewer[data-tool='ink'] .annotationLayer {
   touch-action: none;

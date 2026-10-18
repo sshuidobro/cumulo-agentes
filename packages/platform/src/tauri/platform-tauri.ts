@@ -152,6 +152,22 @@ export function createTauriPlatform(
     }
   };
 
+  // Estado de pantalla completa: se refresca en cada cambio de tamaño y solo se avisa si cambia de verdad.
+  let fullscreen = false;
+  let watching = false;
+  const fullscreenListeners = new Set<(on: boolean) => void>();
+  const refreshFullscreen = async (): Promise<void> => {
+    let on: boolean;
+    try {
+      on = await api.isFullscreen();
+    } catch (cause) {
+      log.warn('No se ha podido leer el estado de pantalla completa.', cause);
+      return;
+    }
+    if (on === fullscreen) return;
+    fullscreen = on;
+    for (const cb of [...fullscreenListeners]) cb(on);
+  };
   return {
     kind: 'tauri',
     isMac: navigator.userAgent.includes('Mac'),
@@ -292,6 +308,30 @@ export function createTauriPlatform(
       } catch (cause) {
         log.warn('No se han podido vaciar los documentos recientes.', cause);
       }
+    },
+
+    async setFullscreen(on: boolean): Promise<Result<void>> {
+      try {
+        await api.setFullscreen(on);
+        return ok(undefined);
+      } catch (cause) {
+        return err(platformError('io', cause));
+      }
+    },
+
+    isFullscreen(): boolean {
+      return fullscreen;
+    },
+
+    onFullscreenChange(cb: (on: boolean) => void): () => void {
+      fullscreenListeners.add(cb);
+      // Un único listener de tamaño por ventana, que se registra al primer suscriptor (no al crear la plataforma).
+      if (!watching) {
+        watching = true;
+        subscribe(api.onResized(() => { void refreshFullscreen(); }), 'cambios de tamaño de la ventana');
+        void refreshFullscreen();
+      }
+      return () => { fullscreenListeners.delete(cb); };
     },
   };
 }

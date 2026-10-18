@@ -100,6 +100,9 @@ export function setupSaveHarness(): SaveHarness {
     openRecent: vi.fn(async () => err(platformError('unsupported'))),
     removeRecent: vi.fn(async () => undefined),
     clearRecents: vi.fn(async () => undefined),
+    setFullscreen: vi.fn(async () => ok(undefined)),
+    isFullscreen: () => false,
+    onFullscreenChange: () => () => undefined,
   };
   const harness: SaveHarness = { original, platform, save, saveAs, closeFile, closeWindow, setTitle, onCloseRequested };
 

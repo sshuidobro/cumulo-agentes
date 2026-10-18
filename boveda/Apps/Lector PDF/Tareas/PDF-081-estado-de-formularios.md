@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-081
 titulo: Estado de formularios y sincronización con el lienzo de pdf.js
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-080]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional]
@@ -82,3 +82,24 @@ export const useForms: UseBoundStore<StoreApi<FormState>>;
 - Qué he hecho: store `useForms` y sesión de formularios sobre los avisos de anotaciones; los cambios de valor (`setFieldValue`, `undo`/`redo`, borradores) escriben en `annotationStorage` de los widgets y suben `pageVersion` de sus páginas; las páginas importadas más tarde reciben el valor ya cambiado. Los avisos viven en `annotation-actions.ts` y `form-actions.ts` solo lo importa, sin ciclos.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (174 ficheros, 2033 tests); `pnpm coverage` OK (exit 0; líneas 98,96 %, sentencias 97,16 %). `tests/unit/forms-actions.test.ts` 8/8.
 - Dudas o cosas que no he podido hacer: (1) El test no está en `tests/ui/form-actions.test.ts` como pide la ficha: en jsdom los helpers de fixtures fallan (`new URL(import.meta.url)`: «The URL must be of scheme file») y el glob de Vitest solo recoge `tests/ui/**/*.test.tsx`. Lo he puesto en `tests/unit/` (entorno node, sin DOM). (2) La ficha pide `getValue(id, null)`; con pdfjs-dist 6.4.299 eso lanza, así que el test usa `getValue(id, {})`. (3) No he añadido un test del caso «borrador recuperado antes de importar la página»; el código lo cubre pero solo está probado indirectamente. (4) No commiteo `package.json`, `pnpm-lock.yaml` ni ficheros de PDF-086/088/089 (son de otras fichas).
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: `forms-actions.test.ts` 8/8, eslint de los ficheros de la ficha sin avisos, `tsc --noEmit` limpio. Sin ciclos (`form-actions` importa de `annotation-actions`), listeners con baja, `recoverEdits` en un solo grupo, storage solo en `engine/form-storage.ts`. La ubicación `tests/unit` y `getValue(id, {})` están justificadas.
+1. (opcional) `apps/lector-pdf/tests/unit/forms-actions.test.ts` — falta un test del caso «borrador recuperado antes de importar la página» (`importPages` → `showWidget`) — añadirlo en una ficha posterior.
+2. (opcional) mismo fichero — el test de cierre solo comprueba que `setFieldValue` no hace nada; podría comprobar además que `endFormSession` no deja listeners (p. ej. `recoverEdits` tras cerrar no toca el storage).
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 14 campos y `byPage(0)` empieza por nombre, comentarios, codigo | OK | `forms-actions.test.ts` «importa los 14 campos…» |
+| `setFieldValue('nombre')`: storage en 2 widgets, `pageVersion` +1 en págs. 0 y 1, etiqueta `rellenar «nombre»`, `isDirty` | OK | test «escribe el valor en los dos widgets…» |
+| undo quita claves e `isDirty=false`; redo las devuelve | OK | test «undo quita las claves…» |
+| `solo_lectura` y `no_existe` sin entrada de deshacer | OK | test «un campo de solo lectura o inexistente…» |
+| Radio `color` Azul: solo el widget elegido a true, el resto false | OK | test «una opción de grupo…» |
+| Borrador v2 `nombre: 'Eva'`: storage y una sola entrada «recuperar cambios» | OK | test «recuperar un borrador…» |
+| Cerrar: store vacío, sin listeners | OK | test de cierre + test nuevo (recoverEdits tras cerrar no toca storage) |
+| Tests existentes en verde | OK | `pnpm test`: 178 ficheros, 2071 tests |
+| lint, typecheck, test, coverage con código 0 | OK | los cuatro con exit 0; líneas 98,78 %, ramas 91,54 % |
+
+Tests añadidos (en `apps/lector-pdf/tests/unit/forms-actions.test.ts`, 8 a 10 tests): recuperar tras cerrar la sesión no toca el storage; borrador recuperado antes de importar las páginas se pinta al importarlas (cubre las dos sugerencias opcionales del revisor).
+Nota: el test está en `tests/unit` y no en `tests/ui` (justificado por el programador y aprobado por el revisor). Rendimiento: no aplica, fuera del alcance pedido.

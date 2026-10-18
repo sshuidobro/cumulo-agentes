@@ -170,6 +170,37 @@ describe('sesión de formularios sobre form-full.pdf', () => {
     expect(useAnnotations.getState().undo.undoDepth).toBe(0);
   });
 
+  it('tras cerrar la sesión, recuperar un borrador ya no toca el storage (sin listeners vivos)', async () => {
+    const pdf = await openDocument();
+    doc = pdf.doc;
+    const ids = widgetIds(TEXT_NAME);
+    endFormSession();
+
+    recoverEdits({ ...EMPTY_EDITS, fields: new Map([[TEXT_NAME, { kind: 'text', text: 'Eva' }]]) });
+
+    for (const id of ids) expect(storedValue(doc, id)).toBeUndefined();
+  });
+
+  it('un borrador recuperado antes de importar las páginas se pinta al importarlas', async () => {
+    const pdf = await openForm();
+    useViewer.setState({
+      ...initialViewerState,
+      status: 'ready',
+      file: openedFile('form-full.pdf', memorySource(new Uint8Array([0x25]))),
+    });
+    startAnnotationSession(pdf, new AbortController().signal);
+    recoverEdits({ ...EMPTY_EDITS, fields: new Map([[TEXT_NAME, { kind: 'text', text: 'Eva' }]]) });
+    startFormSession(pdf);
+    expect(useForms.getState().fields.size).toBe(0);
+    await vi.waitFor(
+      () => {
+        expect(useForms.getState().fields.size).toBe(14);
+      },
+      { timeout: OPEN_TIMEOUT },
+    );
+    for (const id of widgetIds(TEXT_NAME)) expect(storedValue(pdf.doc, id)).toBe('Eva');
+  });
+
   it('el resaltado se guarda como preferencia y se reutiliza al abrir de nuevo', async () => {
     await openDocument();
     expect(useForms.getState().highlight).toBe(true);

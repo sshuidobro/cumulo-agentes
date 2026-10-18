@@ -266,6 +266,23 @@ export function createWebPlatform(
     return ok(toOpened(file, canSaveInPlace ? handle : null));
   };
 
+  /** Pantalla completa de la página entera (`documentElement`), sin barra de navegación cuando el navegador lo permite. */
+  const setFullscreen = async (on: boolean): Promise<Result<void>> => {
+    const { document: doc } = env.window;
+    try {
+      if (on) {
+        if (typeof doc.documentElement.requestFullscreen !== 'function') return err(platformError('unsupported'));
+        await doc.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      } else {
+        if (typeof doc.exitFullscreen !== 'function') return err(platformError('unsupported'));
+        await doc.exitFullscreen();
+      }
+    } catch (cause) {
+      return err(platformError('unsupported', cause));
+    }
+    return ok(undefined);
+  };
+
   const platform: Platform = {
     kind: 'web',
     isMac: /Mac|iPhone|iPad/.test(env.window.navigator.userAgent),
@@ -358,6 +375,19 @@ export function createWebPlatform(
       } catch (cause) {
         log.warn('No se han podido borrar los ficheros recientes.', cause);
       }
+    },
+
+    setFullscreen,
+
+    isFullscreen(): boolean {
+      return env.window.document.fullscreenElement !== null;
+    },
+
+    onFullscreenChange(cb: (on: boolean) => void): () => void {
+      const { document: doc } = env.window;
+      const listener = (): void => { cb(doc.fullscreenElement !== null); };
+      doc.addEventListener('fullscreenchange', listener);
+      return () => { doc.removeEventListener('fullscreenchange', listener); };
     },
   };
   return platform;

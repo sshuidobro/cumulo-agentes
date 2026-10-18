@@ -60,6 +60,9 @@ function fakeTauri(respond: Respond = () => undefined): FakeTauri {
       openedUrls.push(url);
       return Promise.resolve();
     },
+    setFullscreen: () => Promise.resolve(),
+    isFullscreen: () => Promise.resolve(false),
+    onResized: () => Promise.resolve(() => undefined),
   };
 
   return {

@@ -1,6 +1,7 @@
 import { IconButton } from '../kit/IconButton';
 import { MenuButton } from '../kit/MenuButton';
 import { IconAppearance, IconComment, IconFormFields, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
+import { SignatureMenu } from '../signature/SignatureMenu';
 import { msg } from '../messages';
 import { printMsg } from '../messages-print';
 import { formMsg } from '../messages-forms';
@@ -10,7 +11,7 @@ import { DocumentMenu } from './DocumentMenu';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
-import { redo, setCommentBarOpen, setTool, undo } from '../../state/annotation-actions';
+import { chooseSignature, redo, setCommentBarOpen, setTool, undo } from '../../state/annotation-actions';
 import { useAnnotations, type AnnotationTool } from '../../state/annotation-store';
 import { save, saveAs, useSaving } from '../../state/save-actions';
 import { services } from '../../state/services';
@@ -156,6 +157,7 @@ export function MainToolbar() {
       >
         <IconComment />
       </IconButton>
+      <SignatureMenu onPick={chooseSignature} disabled={!ready} />
       {hasFields && (
         <IconButton
           label={formMsg.highlight}

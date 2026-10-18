@@ -12,6 +12,9 @@ function api(over: Partial<TauriApi> = {}): TauriApi {
     onCloseRequested: () => Promise.resolve(() => undefined),
     destroyWindow: () => Promise.resolve(),
     openUrl: () => Promise.resolve(),
+    setFullscreen: () => Promise.resolve(),
+    isFullscreen: () => Promise.resolve(false),
+    onResized: () => Promise.resolve(() => undefined),
     ...over,
   };
 }

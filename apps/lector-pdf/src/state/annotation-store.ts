@@ -8,6 +8,7 @@ import {
   type Rgb,
 } from '../core/annotations/model';
 import type { ForeignAnnotation } from '../core/annotations/import';
+import type { SignatureArt } from '../core/annotations/model';
 import {
   DEFAULT_AUTHOR,
   DEFAULT_FONT_SIZE,
@@ -17,8 +18,9 @@ import {
   type INK_WIDTHS,
 } from '../core/annotations/palette';
 
-export type AnnotationTool = 'none' | 'highlight' | 'underline' | 'strikeout' | 'note' | 'freetext' | 'ink';
-export type ColorTool = Exclude<AnnotationTool, 'none'>;
+/** `signature`: la firma elegida se coloca con un clic o con Intro (PDF-043). No tiene color propio. */
+export type AnnotationTool = 'none' | 'highlight' | 'underline' | 'strikeout' | 'note' | 'freetext' | 'ink' | 'signature';
+export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature'>;
 export type ScanState = 'idle' | 'scanning' | 'done' | 'lazy';
 
 /**
@@ -51,6 +53,8 @@ export interface AnnotationState {
   /** Anotación cuya ventana emergente de comentario está abierta (PDF-033), o ninguna. */
   readonly openPopupId: string | null;
   readonly tool: AnnotationTool;
+  /** Firma elegida con «Firmar» y pendiente de colocar (herramienta `signature`), o ninguna (PDF-043). */
+  readonly pendingSignature: SignatureArt | null;
   /** Cuadro de texto libre que se edita en el sitio, o ninguno (PDF-034). */
   readonly editing: FreeTextEditing | null;
   readonly colors: Readonly<Record<ColorTool, Rgb>>;
@@ -86,6 +90,7 @@ export function initialAnnotationState(): AnnotationState {
     selectedId: null,
     openPopupId: null,
     tool: 'none',
+    pendingSignature: null,
     editing: null,
     colors: { ...DEFAULT_TOOL_COLORS },
     inkWidth: DEFAULT_INK_WIDTH,

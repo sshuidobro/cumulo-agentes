@@ -19,6 +19,10 @@ export interface TauriApi {
   /** Destruye la ventana: no emite `close-requested`. */
   destroyWindow(): Promise<void>;
   openUrl(url: string): Promise<void>;
+  setFullscreen(on: boolean): Promise<void>;
+  isFullscreen(): Promise<boolean>;
+  /** Avisa de cada cambio de tamaño de la ventana; devuelve la baja. */
+  onResized(handler: () => void): Promise<() => void>;
 }
 
 /** Implementación real sobre la API de Tauri 2. Solo se usa dentro de la app de escritorio. */
@@ -43,6 +47,15 @@ export function realTauriApi(): TauriApi {
     },
     openUrl(url: string): Promise<void> {
       return pluginOpenUrl(url);
+    },
+    setFullscreen(on: boolean): Promise<void> {
+      return getCurrentWindow().setFullscreen(on);
+    },
+    isFullscreen(): Promise<boolean> {
+      return getCurrentWindow().isFullscreen();
+    },
+    onResized(handler: () => void): Promise<() => void> {
+      return getCurrentWindow().onResized(() => { handler(); });
     },
   };
 }

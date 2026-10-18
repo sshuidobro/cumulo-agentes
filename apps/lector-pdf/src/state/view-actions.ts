@@ -1,6 +1,12 @@
 import { nextZoom, wheelZoom, type ZoomMode } from '../core/zoom';
 import { normalizeRotation } from '../core/rotation';
+import { DEFAULT_VIEW_MODE, isViewMode, rowFirstPage, type ViewMode } from '../core/view-mode';
+import { goToPage } from './navigation';
+import { services } from './services';
 import { useViewer, type ViewTool } from './viewer-store';
+
+/** Clave de preferencia del modo de vista (la app ya añade su prefijo). */
+export const VIEW_MODE_PREF = 'viewMode';
 
 /** Pasos de rueda pendientes de aplicar en el próximo fotograma. */
 interface WheelStep {
@@ -60,4 +66,24 @@ export function rotateView(direction: 1 | -1): void {
 /** Cambia la herramienta del puntero (seleccionar o mano). */
 export function setViewTool(tool: ViewTool): void {
   useViewer.setState({ tool });
+}
+
+/** Carga el modo de vista guardado. Un valor no válido cuenta como ausente. Se llama al arrancar. */
+export function loadViewMode(): void {
+  const mode = services().platform.prefs.get(VIEW_MODE_PREF, isViewMode);
+  useViewer.setState({ viewMode: mode ?? DEFAULT_VIEW_MODE });
+}
+
+/**
+ * Cambia el modo de vista y lo guarda como preferencia. Al cambiar las páginas por fila, el visor va a la
+ * primera página de la fila de la página actual para no perder la posición.
+ */
+export function setViewMode(mode: ViewMode): void {
+  const { currentPage, dims, viewMode } = useViewer.getState();
+  useViewer.setState({ viewMode: mode });
+  services().platform.prefs.set(VIEW_MODE_PREF, mode);
+  if (viewMode.spread === mode.spread || dims === null) return;
+  const page = rowFirstPage(currentPage, mode.spread);
+  useViewer.setState({ currentPage: page });
+  goToPage(page);
 }
