@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-083
 titulo: Casillas, botones de opción, tabulación entre páginas y E2E de formularios
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-041, PDF-042]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -79,3 +79,13 @@ Typecheck OK; tests de la ficha (41) OK; e2e no ejecutado por indicación. Lint 
 
 ### [revisor] ronda 2 — 2026-10-18 — APROBADO
 Typecheck OK; 45 tests de la ficha OK. Los dos puntos de la ronda 1 resueltos (Tab por parada de grupo con tests; nombre «color: Azul»). Lint (`dist-firma/`) y test de zoom: fallos ajenos conocidos, a decidir por el líder; no bloquean esta ficha.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| UI checkbox/radio/firma, Tab entre páginas | OK | `pnpm coverage`: 2334 pasan, 1 falla ajena |
+| E2E teclado, reabrir, Ctrl+Z, aviso cerrar, recuperar borrador, axe | OK | `playwright test forms.spec.ts --project=chromium`: 5/5 |
+| typecheck | OK | código 0 |
+| lint | Solo `apps/lector-pdf/dist-firma/` (9622 errores, build versionado en c047858); `eslint . --ignore-pattern 'apps/lector-pdf/dist-firma/**'` → 0 | Arreglo seguro: añadir `dist-firma/` a los ignores de ESLint (decisión del líder) |
+| coverage | Falla `tests/ui/zoom-controls.test.tsx:117` (bucle Tab de 10 iteraciones no llega a «Reducir»; probable aumento de controles en la barra) | Ajena a la ficha |
+| e2e completo | 2 fallos en la tanda completa (`pdfjs-deferred`, `recover-qa` Ctrl+Z) que pasan aislados (10/10): temporización bajo carga, no de esta ficha | Vigilar flakiness |
