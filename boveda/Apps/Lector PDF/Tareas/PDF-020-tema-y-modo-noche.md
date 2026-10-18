@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-020
 titulo: Tema claro/oscuro/sistema y modo noche de las páginas
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-015]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -164,3 +164,14 @@ Si el dibujo se cancela, `opsPromise` no debe dejar un rechazo sin capturar: cr�
 - Cambios en la ficha: Contexto corregido, pasos 3–4 remiten a la nueva sección «Modo noche (revisado)» (N1–N5, con firmas, tabla de operadores y pseudocódigo de `render.ts`), criterios nuevos con valores exactos y dos exclusiones nuevas en «Fuera de alcance».
 - Lo ya hecho en la ronda 1 (tema, `MenuButton`, preferencias, contrastes) sigue valiendo; solo cambia el modo noche. El ajuste de `tests/ui/open.test.tsx` (Tab que cae en «Apariencia») es correcto: se mantiene.
 - Estado → `cambios-pedidos`, `intentos: 0`.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/engine/night-ops.ts`, `tests/unit/night.test.ts`, `tests/unit/engine-night-ops.test.ts`, `tests/perf/night.perf.test.ts`. Reescritos: `src/core/night.ts` (N1), `src/engine/render.ts` (N3, `night` en vez de `pageColors`), `tests/unit/engine-render.test.ts`. Cambios puntuales: `src/ui/viewer/PageView.tsx` y `src/ui/sidebar/ThumbnailItem.tsx` (`night: NIGHT_PAGE_COLORS`), `src/state/appearance-store.ts` (comentario), `tests/ui/appearance.test.tsx` (`night`), `tests/e2e/appearance.spec.ts` (nuevo E2E de la miniatura). `grep -rn pageColors apps/lector-pdf/src` sin resultados.
+- Qué he hecho: modo noche por píxeles según ADR-0015 y N1–N5. `core/night.ts` (matrices, `imageRects`, `applyNightMode` con tablas por canal); `engine/night-ops.ts` traduce `getOperatorList` a pasos de pintado; `renderPageToCanvas` pide la lista en paralelo, transforma el lienzo tras el dibujo y conserva las imágenes; `PageView` y miniaturas pasan `night`. Ya no se usa `pageColors`.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` 1510/1510 OK; `pnpm coverage` OK (All files 96,86 % líneas; `core/night.ts` 100 % líneas); `pnpm --filter lector-pdf e2e` 82/82 OK, código 0 (incluye `appearance.spec.ts`: el criterio de la imagen de `images-200.pdf` pasa, con tolerancia 10, y el nuevo E2E de la miniatura); `pnpm perf`: `night.perf` OK (applyNightMode sobre 2 000 000 px con un rectángulo de 400×267 < 100 ms). En la primera ejecución completa de `pnpm perf` falló `annotation-layer.perf.test.ts` (102,3 ms frente a 100 ms, montar 500 anotaciones); en solitario pasa. No es código de esta ficha.
+- Dudas o cosas que no he podido hacer:
+  1. **Criterio de integración inconsistente con el fichero.** La ficha pide `imageRects(..., 595, 842) = { x: 97, y: 125, … }`. `images-200.pdf` tiene la página de 612×792 (viewport `[1,0,0,-1,0,792]`) y la imagen en `y0 = 450`, alto 267: el borde superior queda en `y = 75`. Con esa geometría, `y = 125` solo sale de una página de 842 pt de alto. He puesto el test con el tamaño real (612×792) y `y: 75`, con un comentario que lo explica. El líder debe confirmar que la cifra de la ficha era un error y no un tamaño de página que se quería usar.
+  2. `toPaintSteps`: la ficha dice que un argumento inválido «ignora ese operador», pero eso desequilibraría `save`/`restore`. He mantenido el `save` y el `restore` siempre y omito solo la matriz inválida (`paintFormXObjectBegin` y `beginAnnotation`). Lo indico por si el revisor quiere otra cosa.
+  3. El `log.warn` de «sin modo noche» no lleva el error original, porque `opsPromise` se crea con `.catch(() => null)` tal como pide N3.
+  4. No he hecho commit: lo pediste así y el árbol tiene cambios de PDF-038 y otros sin confirmar.
+  5. La salida de `pnpm test` muestra «Not implemented: HTMLCanvasElement's getContext()» de jsdom. No viene de la ruta del modo noche (los tests de UI mockean `renderPageToCanvas` y los unitarios usan lienzos falsos). No he comprobado si ya aparecía antes de esta ronda.
