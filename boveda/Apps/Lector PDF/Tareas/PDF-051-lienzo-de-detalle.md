@@ -14,7 +14,7 @@ tags: [tarea, pdf, iteracion-4, visor, rendimiento]
 
 # PDF-051 · Lienzo de detalle para zoom alto
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0025-lienzo-de-detalle]] · [[ADR-0007-zoom-y-render]] · Paridad: [[Paridad Adobe Acrobat]] (área 1)
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0025-lienzo-de-detalle]] · [[ADR-0007-motor-y-visor-pdf]] · Paridad: [[Paridad Adobe Acrobat]] (área 1)
 
 > 2026-10-18 (líder): detallada; la lógica pura está en [[PDF-098-plan-lienzo-detalle]].
 

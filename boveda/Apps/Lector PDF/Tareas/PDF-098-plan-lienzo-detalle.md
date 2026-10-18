@@ -14,7 +14,7 @@ tags: [tarea, pdf, iteracion-4, core, visor, zoom]
 
 # PDF-098 · Zoom hasta 6 400 % y cálculo de la zona de detalle
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0025-lienzo-de-detalle]] · [[ADR-0007-zoom-y-render]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0025-lienzo-de-detalle]] · [[ADR-0007-motor-y-visor-pdf]]
 
 ## Objetivo
 El zoom llega a 6 400 % como en Adobe, y existe la lógica pura que decide qué zona de una página se dibuja a resolución completa cuando el lienzo de la página entera está limitado.

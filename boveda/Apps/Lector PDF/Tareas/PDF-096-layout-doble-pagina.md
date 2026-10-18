@@ -14,7 +14,7 @@ tags: [tarea, pdf, iteracion-4, core, visor]
 
 # PDF-096 · Layout de doble página (pares y con portada)
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0024-modos-de-pagina]] · [[ADR-0005-visor-virtualizado]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0024-modos-de-pagina]] · [[ADR-0007-motor-y-visor-pdf]]
 
 ## Objetivo
 `computeLayout` coloca las páginas en filas de una o dos (pares 1-2, 3-4… o con portada 1, 2-3, 4-5…) manteniendo el coste lineal y las consultas en O(log n). Con `spread: 'none'` el resultado es idéntico al actual.
