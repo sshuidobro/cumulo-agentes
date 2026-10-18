@@ -1,5 +1,5 @@
 import { createLogger } from '@suite/shared';
-import { AnnotationMode, RenderingCancelledException, type PDFPageProxy, type PageViewport } from './pdfjs';
+import { pdfjs, type PDFPageProxy, type PageViewport } from './pdfjs';
 import type { Rotation } from '../core/rotation';
 import { applyNightMode, imageRects, multiply, type NightColors } from '../core/night';
 import { asMatrix, toPaintSteps, type OperatorListLike } from './night-ops';
@@ -36,14 +36,14 @@ export async function renderPageToCanvas(
   const params: RenderParams = {
     canvas,
     viewport,
-    annotationMode: AnnotationMode.ENABLE_STORAGE,
+    annotationMode: pdfjs().AnnotationMode.ENABLE_STORAGE,
     ...(o.outputScale !== 1 ? { transform: [o.outputScale, 0, 0, o.outputScale, 0, 0] } : {}),
   };
 
   // La lista de operadores se pide antes del dibujo para que pdf.js la analice en paralelo.
   const opsPromise = o.night
     ? page
-        .getOperatorList({ intent: 'display', annotationMode: AnnotationMode.ENABLE_STORAGE })
+        .getOperatorList({ intent: 'display', annotationMode: pdfjs().AnnotationMode.ENABLE_STORAGE })
         .catch(() => null)
     : null;
 
@@ -65,7 +65,7 @@ export async function renderPageToCanvas(
     }
     return 'done';
   } catch (error: unknown) {
-    if (error instanceof RenderingCancelledException) return 'cancelled';
+    if (error instanceof pdfjs().RenderingCancelledException) return 'cancelled';
     throw error;
   } finally {
     o.signal.removeEventListener('abort', onAbort);

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-075
 titulo: Cargar pdf.js con import() diferido para partir la tarea de arranque
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-074]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
@@ -122,3 +122,27 @@ Que el arranque no evalúe pdf.js: hoy todo el JavaScript (917 KB) se evalúa en
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/engine/pdfjs.ts`, `src/engine/worker.ts`, `src/engine/load.ts`, `src/engine/render.ts`, `src/engine/text.ts`, `src/engine/night-ops.ts`, `src/engine/range-transport.ts`, `src/main.tsx`, `package.json` (script `build`), `tests/setup/setup.ts`, `tests/unit/engine-render.test.ts`, `tests/unit/engine-load.test.ts`, `tests/unit/engine-night-ops.test.ts`, `tests/unit/annotations/appearance.test.ts`; nuevos `tests/unit/engine-pdfjs.test.ts` y `tests/unit/engine-load-no-pdfjs.test.ts`. Ficha PDF-075 (estado).
+- Qué he hecho: `pdfjs.ts` exporta solo tipos, `loadPdfjs()` (import() cacheado con reintento) y `pdfjs()`; el resto del motor usa `pdfjs().X` dentro de funciones y `loadPdf` espera a `loadPdfjs()`. `main.tsx` precarga pdf.js en `requestIdleCallback`. `build` ejecuta `bundle:check`. Tests de carga diferida, de error claro si pdf.js no carga y de adaptación de los tests que importaban valores.
+- Rojo previo (paso 1): `pnpm --filter lector-pdf build` código 0; `bundle:check` código 1:
+  ```
+  Arranque: 919635 bytes en 2 ficheros JS (máximo 500000).
+  El JavaScript de arranque pesa 919635 bytes (máximo 500000).
+  pdf.js no está en un chunk diferido (import()).
+  ```
+- Después: `build` código 0, `Arranque: 433662 bytes en 3 ficheros JS (máximo 500000)`; chunk de pdf.js `pdf-*.js` 487 617 bytes (diferido).
+- Comandos y resultado:
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/engine-pdfjs.test.ts tests/unit/engine-render.test.ts tests/unit/engine-load.test.ts tests/unit/engine-load-no-pdfjs.test.ts tests/unit/engine-night-ops.test.ts tests/unit/annotations/appearance.test.ts`: 6 ficheros, 64 tests, verde.
+  - `pnpm lint`: 0 · `pnpm typecheck`: 0 · `pnpm test`: 147 ficheros, 1724 tests, verde · `pnpm coverage`: 0 (All files 97,05 % líneas).
+  - `pnpm perf`: 0 (25 tests, 16 ficheros).
+  - Rendimiento `images-200`, máquina en reposo (`uptime` 10:45: carga 1 min 0,03; `pgrep` de playwright/vitest/vite sin procesos reales): `--repeat-each=10`, 10 pasan. Tareas largas máximas (ms): `0 0 0 0 55 55 58 58 0 0 0 0 0 0 0 0 0 0 0 0 max 58` (antes 67-101). Cumple ≤ 85. Salida JSON en el scratchpad de la sesión, no en `/tmp`.
+  - `pnpm --filter lector-pdf e2e --project=chromium`: 151 pasan, código 0 (última ejecución, 10:48, carga 3,5). Dos ejecuciones previas fallaron por carga: (a) «abrir basic-5 hasta la página 1» 1 126 ms con carga 6,9 del tester, y (b) timeout de `viewer-stress` 100 000 páginas con carga alta. Ambas pasan aisladas (dos repeticiones de `basic-5` y `viewer-stress` completo) y en la última ejecución completa.
+  - `git diff`: sin cambios de umbrales ni de pruebas e2e; sin `retries`, `test.skip`, `.only` ni `waitForTimeout`.
+- Dudas o cosas que no he podido hacer:
+  - Desvío menor 1: `export type PdfjsModule = typeof import(...)` lo prohíbe el lint (`consistent-type-imports`); usado `import type * as PdfjsNamespace` y `typeof PdfjsNamespace`. Mismo tipo.
+  - Desvío menor 2: `'requestIdleCallback' in window` deja `window` en `never` y no compila; usado `typeof window.requestIdleCallback === 'function'`. Misma lógica.
+  - La ficha solo nombraba `engine-render.test.ts`, pero el paso 10 exige que ningún test importe valores de pdf.js. Adapté también `engine-night-ops.test.ts` y `annotations/appearance.test.ts` (leen `OPS`/`AnnotationMode` de `pdfjs()` a nivel de módulo; el setup ya lo carga) y `engine-load.test.ts`, cuyo espía `getDocument` ahora va dentro del objeto que devuelve `loadPdfjs()`. No cambié ninguna expectativa.
+  - Riesgo a vigilar: si el usuario abre un PDF antes de que termine la precarga en reposo (timeout 2000 ms), `loadPdf` espera a la carga del chunk de pdf.js. No medido en frío; el presupuesto de «abrir < 1 s» se verifica en el E2E `performance.spec.ts` bajo carga normal.
+  - No he tocado la ficha ni los cambios sin commitear de PDF-076 (son del tester). Commit solo de mis ficheros.

@@ -2,10 +2,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { IDENTITY, imageRects, type Matrix, type PaintStep } from '../../src/core/night';
-import { AnnotationMode, getDocument, OPS } from '../../src/engine/pdfjs';
+import { pdfjs } from '../../src/engine/pdfjs';
 import { asMatrix, toPaintSteps, type OperatorListLike } from '../../src/engine/night-ops';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
 import { ensureFixtures } from '../fixtures/ensure.ts';
+
+/** pdf.js ya está cargado: lo carga `tests/setup/setup.ts` (ADR-0017). */
+const { AnnotationMode, getDocument, OPS } = pdfjs();
 
 /** Lista de operadores sintética con las mismas posiciones en `fnArray` y `argsArray`. */
 function listOf(...ops: readonly (readonly [number, unknown])[]): OperatorListLike {

@@ -3,7 +3,7 @@
   "scripts": {
     "assets": "node scripts/copy-pdfjs-assets.mjs",
     "dev": "pnpm assets && vite",
-    "build": "pnpm assets && vite build",
+    "build": "pnpm assets && vite build && node tests/bundle/check-bundle.ts dist",
     "bundle:check": "node tests/bundle/check-bundle.ts dist",
     "preview": "vite preview --port 4173 --strictPort",
     "typecheck": "tsc -p tsconfig.json",

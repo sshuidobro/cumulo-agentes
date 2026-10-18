@@ -3,10 +3,9 @@ import { createLogger, err, type AppError, type Result } from '@suite/shared';
 import { pdfError } from '../core/errors';
 import { createRangeTransport } from './range-transport';
 import {
-  getDocument,
-  InvalidPDFException,
-  PasswordException,
-  PasswordResponses,
+  loadPdfjs,
+  pdfjs,
+  type PdfjsModule,
   type PDFDocumentLoadingTask,
   type PDFDocumentProxy,
 } from './pdfjs';
@@ -52,6 +51,13 @@ type OpenOutcome =
 export async function loadPdf(source: ByteSource, opts: LoadOptions): Promise<Result<LoadedPdf>> {
   if (source.size === 0) return err(pdfError('empty'));
 
+  let lib: PdfjsModule;
+  try {
+    lib = await loadPdfjs();
+  } catch (cause) {
+    return err(pdfError('io', cause));
+  }
+
   let head: Uint8Array;
   try {
     head = await source.read(0, Math.min(HEAD_BYTES, source.size));
@@ -61,10 +67,15 @@ export async function loadPdf(source: ByteSource, opts: LoadOptions): Promise<Re
   if (!latin1(head).includes('%PDF-')) return err(pdfError('not-pdf'));
   if (opts.signal?.aborted) return err(pdfError('cancelled'));
 
-  return openDocument(source, head, opts);
+  return openDocument(lib, source, head, opts);
 }
 
-async function openDocument(source: ByteSource, head: Uint8Array, opts: LoadOptions): Promise<Result<LoadedPdf>> {
+async function openDocument(
+  lib: PdfjsModule,
+  source: ByteSource,
+  head: Uint8Array,
+  opts: LoadOptions,
+): Promise<Result<LoadedPdf>> {
   const ioListeners = new Set<(e: AppError) => void>();
   let phase: 'opening' | 'open' = 'opening';
 
@@ -83,7 +94,7 @@ async function openDocument(source: ByteSource, head: Uint8Array, opts: LoadOpti
 
   let loadingTask: PDFDocumentLoadingTask;
   try {
-    loadingTask = getDocument({
+    loadingTask = lib.getDocument({
       range,
       rangeChunkSize: RANGE_CHUNK_SIZE,
       disableAutoFetch: true,
@@ -155,6 +166,7 @@ async function openDocument(source: ByteSource, head: Uint8Array, opts: LoadOpti
 
 /** Traduce el error de pdf.js a un `AppError`. Lo inesperado se registra y se trata como dañado. */
 function mapOpenError(cause: unknown): AppError {
+  const { PasswordException, PasswordResponses, InvalidPDFException } = pdfjs();
   if (cause instanceof PasswordException) {
     const code = cause.code === PasswordResponses.INCORRECT_PASSWORD ? 'password-incorrect' : 'password-required';
     return pdfError(code, cause);

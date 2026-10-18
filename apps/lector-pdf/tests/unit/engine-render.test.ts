@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AnnotationMode, RenderingCancelledException } from '../../src/engine/pdfjs';
+import { pdfjs } from '../../src/engine/pdfjs';
 import type { PDFPageProxy } from '../../src/engine/pdfjs';
 import { renderPageToCanvas } from '../../src/engine/render';
 import { NIGHT_PAGE_COLORS } from '../../src/core/night';
@@ -67,6 +67,7 @@ describe('renderPageToCanvas', () => {
   });
 
   it('dibuja con las anotaciones del fichero y sin transform si la densidad es 1', async () => {
+    const { AnnotationMode } = pdfjs();
     const canvas = {} as HTMLCanvasElement;
     const { page, render, getViewport } = fakePage(ok());
     const outcome = await renderPageToCanvas(page, canvas, {
@@ -97,6 +98,7 @@ describe('renderPageToCanvas', () => {
   });
 
   it('abortar durante el dibujo cancela la tarea de pdf.js y devuelve cancelled', async () => {
+    const { RenderingCancelledException } = pdfjs();
     const controller = new AbortController();
     let reject: (reason: unknown) => void = () => undefined;
     const t = task(new Promise<void>((_resolve, rej) => {
@@ -143,6 +145,7 @@ describe('renderPageToCanvas · modo noche', () => {
   });
 
   it('con modo noche pide los operadores con el mismo modo de anotaciones y transforma el lienzo una vez', async () => {
+    const { AnnotationMode } = pdfjs();
     const { page, render, getOperatorList } = fakePage(ok());
     const { canvas, putImageData, data } = fakeCanvas(2, 2);
     const outcome = await renderPageToCanvas(page, canvas, {
