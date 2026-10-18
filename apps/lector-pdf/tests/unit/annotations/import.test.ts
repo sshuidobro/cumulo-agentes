@@ -283,12 +283,12 @@ describe('importPageAnnotations · filtrado', () => {
       raw({ id: '11R', subtype: 'Link' }),
       raw({ id: '12R', subtype: 'Widget' }),
     ], FALLBACK);
-    expect(page).toEqual({ supported: [], foreign: [] });
+    expect(page).toEqual({ supported: [], foreign: [], widgets: [] });
   });
 
   it('ignora las anotaciones ocultas, con la bandera Hidden (bit 2)', () => {
-    expect(importOne(raw({ annotationFlags: 2 }))).toEqual({ supported: [], foreign: [] });
-    expect(importOne(raw({ subtype: 'Square', annotationFlags: 3 }))).toEqual({ supported: [], foreign: [] });
+    expect(importOne(raw({ annotationFlags: 2 }))).toEqual({ supported: [], foreign: [], widgets: [] });
+    expect(importOne(raw({ subtype: 'Square', annotationFlags: 3 }))).toEqual({ supported: [], foreign: [], widgets: [] });
   });
 
   it('una bandera que no es número queda como ajena', () => {
@@ -318,6 +318,7 @@ describe('importPageAnnotations · filtrado', () => {
     }));
     expect(page).toEqual({
       supported: [],
+      widgets: [],
       foreign: [{
         id: 'ref:20R',
         pageIndex: 0,
@@ -360,7 +361,7 @@ describe('importPageAnnotations · filtrado', () => {
   });
 
   it('una lista vacía no produce nada', () => {
-    expect(importPageAnnotations(0, [], FALLBACK)).toEqual({ supported: [], foreign: [] });
+    expect(importPageAnnotations(0, [], FALLBACK)).toEqual({ supported: [], foreign: [], widgets: [] });
   });
 
   it('usa la fecha de importación solo como respaldo de modified', () => {

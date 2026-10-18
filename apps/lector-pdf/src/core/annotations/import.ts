@@ -7,6 +7,8 @@
  * un tipo inesperado hace que la anotación sea ajena.
  */
 import { parsePdfDate } from '../pdf-date';
+import { importWidget } from '../forms/import';
+import type { FormField } from '../forms/model';
 import {
   quadFromRect,
   type Annotation,
@@ -41,6 +43,8 @@ export interface ForeignAnnotation {
 export interface ImportedPage {
   readonly supported: readonly Annotation[];
   readonly foreign: readonly ForeignAnnotation[];
+  /** Widgets de formulario de la página, un `FormField` por widget (se agrupan por nombre al unir páginas). */
+  readonly widgets: readonly FormField[];
 }
 
 type BaseFields = Omit<NoteAnnotation, 'type' | 'icon' | 'open'>;
@@ -54,8 +58,8 @@ const DEFAULT_INK_WIDTH = 1;
 const DEFAULT_NOTE_ICON: NoteIcon = 'Note';
 /** Bit 2 de `/F` (ISO 32000 §12.5.3): la anotación está oculta. */
 const HIDDEN_FLAG = 2;
-/** Subtipos con capa propia o asociados a otra anotación: no se importan ni se muestran. */
-const IGNORED_SUBTYPES: readonly unknown[] = ['Popup', 'Link', 'Widget'];
+/** Subtipos con capa propia o asociados a otra anotación: no se importan ni se muestran. Los widgets van a `forms`. */
+const IGNORED_SUBTYPES: readonly unknown[] = ['Popup', 'Link'];
 const NOTE_ICONS: readonly unknown[] = ['Comment', 'Note', 'Key', 'Help', 'NewParagraph', 'Paragraph', 'Insert'];
 /** `<num>R` o `<num>R<gen>`, tal como lo escribe pdf.js en `id` y `popupRef`. */
 const REF_PATTERN = /^(\d+)R(\d*)$/;
@@ -67,9 +71,15 @@ export function importPageAnnotations(
 ): ImportedPage {
   const supported: Annotation[] = [];
   const foreign: ForeignAnnotation[] = [];
+  const widgets: FormField[] = [];
   for (let i = 0; i < raws.length; i++) {
     const raw = raws[i];
     if (!isRecord(raw) || IGNORED_SUBTYPES.includes(raw.subtype)) continue;
+    if (raw.subtype === 'Widget') {
+      const field = importWidget(raw, pageIndex);
+      if (field !== null) widgets.push(field);
+      continue;
+    }
     const hidden = hiddenOf(raw.annotationFlags);
     if (hidden === true) continue;
     const annotation = hidden === false ? importSupported(raw, pageIndex, fallbackDate) : null;
@@ -79,7 +89,7 @@ export function importPageAnnotations(
       foreign.push(importForeign(raw, pageIndex, i));
     }
   }
-  return { supported, foreign };
+  return { supported, foreign, widgets };
 }
 
 /** Convierte una anotación de tipo soportado; `null` si el tipo no lo es o algún dato no encaja. */
