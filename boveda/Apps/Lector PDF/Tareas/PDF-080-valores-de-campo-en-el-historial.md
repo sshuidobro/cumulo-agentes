@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-080
 titulo: Valores de campo en el historial común y en los borradores
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-079]
 intentos: 0
 skills: [stack-typescript-react]
@@ -78,3 +78,15 @@ export function diffFields(fields: ReadonlyMap<string, FormField>, edits: Annota
 - Guarda `onState !== null` en `storageValue` aceptada (solo afecta a casos mal formados y tiene test).
 - Los criterios tienen test que falla si se incumplen (undo/redo, `color` -> false/false/true, `diffFields`, v1/v2 de borradores).
 1. (opcional) `forms/commands.ts` — `invert` conserva bien el valor previo; sin cambios necesarios.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| undo/redo de `setFieldCommand`, `addAnnotationCommand` conserva `fields` | OK | `forms-commands.test.ts` en verde; añadido caso con varios campos, Unicode (ñ, emoji, hebreo) y deshacer en orden |
+| `storageValue` color Azul = false,false,true | OK | `forms-effective.test.ts` en verde |
+| `diffFields` ignora igual al fichero y solo lectura | OK | código revisado + tests en verde |
+| Borrador v1 sin campos; v2 ida y vuelta; inválidos -> null | OK | `draft.test.ts` + mi `forms-history-qa.test.ts` (JSON real, basura, `fields` no array, valor `kind` desconocido) |
+| Tests existentes en verde (desviación `version` 1->2 aceptada por el revisor) | OK | `pnpm test`: 164 ficheros, 1895 tests |
+| lint, typecheck, test, coverage | OK | los cuatro con código 0; coverage 165 ficheros, 1898 tests |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/forms-history-qa.test.ts` (3). Rendimiento: no aplica (modelo puro).
