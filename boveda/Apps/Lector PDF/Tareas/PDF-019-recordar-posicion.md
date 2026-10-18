@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-019
 titulo: Recordar la última página, el zoom y la rotación de cada documento
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-012]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, preferencias]
 ---
 
