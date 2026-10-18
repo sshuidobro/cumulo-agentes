@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-072
 titulo: Colocar una nota solo con el teclado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-033, PDF-070, PDF-071]
 intentos: 0
 skills: [calidad-profesional]
@@ -91,3 +91,15 @@ Lint, typecheck y `pnpm test` (1709) con código 0. El e2e no pude relanzarlo (p
 2. (opcional) Registro del programador, duda 2 — dice que Ctrl+Z/Ctrl+Y no está en e2e, pero sí lo está en `tests/e2e/notes.spec.ts`.
 3. (opcional) Hay cambios sin commitear ajenos a la ficha (`comments-panel.test.tsx`, PDF-039/070/071 y Plan); no mezclarlos en el commit de PDF-072.
 
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| Unit `keyboardNoteRect` (valores de la ficha, -90 = 270) | OK | `note.test.ts` dentro de `pnpm test`: 143 ficheros, 1709 tests passed |
+| Unit `addNoteFromKeyboard` (id, rect, tool none, selectedId, undo, dims null) | OK | `annotation-actions.test.ts`, mismo run |
+| UI Intro crea nota y `aria-pressed` false; clic no crea y `aria-pressed` true; descripción accesible y nombre «Nota» | OK | `comment-toolbar.test.tsx` línea 291 y siguientes, mismo run |
+| E2E sin ratón sobre basic-5.pdf (foco, Esc, flechas ×10, Ctrl+S, `Text` «Hola») | OK | `notes.spec.ts:190` ✓ en `pnpm --filter lector-pdf e2e` |
+| Deshacer/rehacer con Ctrl+Z / Ctrl+Y | OK | `notes.spec.ts` líneas 203-210 (e2e) y unit |
+| Lint, typecheck, test, e2e con código 0 | OK | lint+typecheck+test exit 0; e2e `156 passed (3.1m)`, exit 0 |
+
+Incidencia de entorno: había un `vite preview` huérfano (PID 2898, puerto 4173) de una ejecución anterior; la primera ejecución del e2e falló con «already used». Lo detuve (`kill`), confirmé el puerto libre (`curl` devuelve 000) y relancé: e2e verde y puerto libre al terminar. Sin skip/only/expect(true) en los ficheros tocados.
+Tests añadidos: ninguno nuevo (los del programador cubren todos los criterios). Rendimiento: no aplica a esta ficha.
