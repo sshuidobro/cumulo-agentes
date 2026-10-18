@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-073
 titulo: Ejecutar las pruebas e2e de long tasks en un proyecto Playwright en serie
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-075, PDF-076, PDF-077, PDF-078]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -154,3 +154,33 @@ Ronda 2 aceptada en lo verificado (listas 160 = 153 + 7, `@perf` solo en `chromi
 - **No es una regresión de la app.** Trazas de Chromium de la misma prueba con la máquina en reposo: sin limitar CPU, ninguna tarea del hilo principal pasa de 18,5 ms en los 35 s del trazo y el `pointerup` procesa en 9-11 ms (Event Timing). Con la CPU limitada ×2 sigue sin *long tasks* (tarea del `pointerup`: 22,6 ms). Solo con ×3 aparece una (197 ms, a mitad del trazo). El coste real está a más de ×2 del umbral de 50 ms de esta prueba: para llegar a 52 ms algo tuvo que quitarle CPU al navegador. No se crea ficha de optimización; los umbrales no cambian.
 - **Por qué la condición de medida no lo evitó**: `loadavg` va con ~1 min de retraso (0,12 antes de lanzar, 4,69 al empezar `ink`, heredado del proyecto `chromium` y de las `@perf` anteriores) y no mide si la CPU está libre en ese instante; y `ps -o pcpu` de PDF-077 es la media de toda la vida de cada proceso, no su uso actual, así que el «top 5» de la ronda 2 no dice quién usaba la CPU. No sabemos si hubo intruso; sí sabemos que no lo podíamos saber.
 - **Decisión** ([[ADR-0016-e2e-long-tasks-en-serie]], «Revisión 2»): puerta de reposo antes de cada prueba `@perf` midiendo la CPU real con `os.cpus()` (< 15 % en 3 ventanas seguidas de 1 s, máximo 150 s; si no, la prueba **falla** con mensaje claro, no se salta), y diagnóstico con `cpu-durante` y `top` actual → [[PDF-078-reposo-cpu-antes-de-perf]]. La verificación de esta ficha se repite entera tras PDF-078.
+
+### [programador] ronda 3 — 2026-10-18
+- Ficheros cambiados: esta ficha (`estado` y este Registro); `boveda/Apps/Lector PDF/Plan.md` (línea «E2E» de «Comandos»: quitado «— vigente cuando PDF-073 esté hecha», criterio de la replanificación). Sin cambios de código: configuración y etiquetas `@perf` ya están en `a54642d` y la puerta de reposo en `0524aac` (PDF-078).
+- Qué he hecho: he esperado a que no hubiera otras baterías (otra sesión tenía dos `node` busy-loop de 200 s; terminaron solos antes de empezar). Comprobados listados, etiquetas, `grep longtask` y ausencia de umbrales/`retries`/`test.skip`/`.only`/`fixme` nuevos. Lanzadas tres ejecuciones seguidas de la batería, y las repeticiones ×3 por proyecto. Todo en verde; sin fallos de `@perf`, así que no hubo que devolver nada al líder.
+- Condición de medida (antes de cada ejecución):
+  - `uptime` antes de la ejecución 1: `12:00:07 up 1:06, load average: 0.29, 1.34, 1.55`. Antes de cada ejecución y de cada repetición: `ps` sin `playwright|vitest|vite build` (vacío).
+  - La carga de 1 min sube a 4-6 durante el proyecto `chromium` (heredada, como se vio en la ronda 2); la puerta de reposo pasó en las 7 pruebas de cada ejecución (`reposo-cpu` 0-5 %).
+- Comandos ejecutados y resultado:
+  - `playwright test --list` (sin filtro): **160 tests en 41 ficheros** (igual que la ronda 2). `--list --project=chromium-perf --no-deps`: **7 tests** (las de la tabla). `--list --project=chromium`: **153 tests**; `grep -c "@perf"` = **0**.
+  - `grep -ln "longTasks\|longtask" apps/lector-pdf/tests/e2e/*.spec.ts`: los 7 ficheros de la tabla.
+  - `pnpm --filter lector-pdf e2e`, **ejecuciones 1, 2 y 3: código 0, 160 pasan, 0 fallos** (3,7 min cada una). Anotaciones de las 7 `@perf` (carga inicial → final; `reposo-cpu`; `cpu-durante`; long tasks):
+
+    | Prueba | Ejec. 1 | Ejec. 2 | Ejec. 3 |
+    |---|---|---|---|
+    | annotations-layer | 5,86→5,86; 1 %; 43 %; ninguna | 5,06→4,82; 1 %; 44 %; ninguna | 5,72→5,72; 1 %; 43 %; ninguna |
+    | annotations-performance | 5,39→5,11; 2 %; 36 %; 61 ms @ 59 ms | 4,43→4,08; 1 %; 43 %; ninguna | 5,26→5,00; 1 %; 42 %; ninguna |
+    | ink | 4,70→2,94; 1 %; 26 %; 55 ms @ 51 ms | 4,08→2,72; 0 %; 29 %; ninguna | 4,60→3,10; 1 %; 29 %; ninguna |
+    | performance | 2,94→2,79; 1 %; 40 %; 50 ms @ 44 ms | 2,51→2,71; 1 %; 46 %; ninguna | 2,85→2,71; 1 %; 48 %; ninguna |
+    | render (`images-200`) | 2,56→2,84; 1 %; 41 %; ninguna | 2,49→2,49; 1 %; 40 %; 70 ms @ 48 ms | 2,49→2,49; 1 %; 44 %; 52 ms @ 51 ms |
+    | search | 2,84→2,85; 1 %; 56 %; ninguna | 2,29→2,29; 1 %; 54 %; ninguna | 2,37→2,37; 1 %; 55 %; ninguna |
+    | viewer | 2,85→2,62; 1 %; 36 %; ninguna | 2,11→2,10; 1 %; 39 %; 50 ms @ 48 ms | 2,58→2,45; 0 %; 40 %; ninguna |
+
+    Tarea larga máxima de `search` / `viewer`: ejecución 1 ninguna / ninguna; ejecución 2 ninguna / 50 ms; ejecución 3 ninguna / ninguna. Tarea larga de `images-200` (`render`): 0 / 70 / 52 ms. Ninguna supera 100 ms.
+  - Repetición ×3 de toda la batería, por proyectos: `e2e --project=chromium --repeat-each=3`: **código 0, 459 pasan** (= 3 × 153), 7,1 min. `e2e --project=chromium-perf --no-deps --repeat-each=3`: **código 0, 21 pasan** (= 3 × 7), 4,2 min. Long tasks de las repeticiones: `images-200`, `search`, `annotations-layer`, `annotations-performance`, `ink` sin long tasks en las tres; `pages-5000` 52 ms @ 58 ms en la repetición 3; `viewer` 53 ms @ 54 ms en la 2; ninguna supera 100 ms.
+  - `pnpm lint`: código 0. `pnpm typecheck`: código 0. `pnpm test`: código 0 (148 ficheros, 1732 tests).
+  - `git diff` de la batería (desde `385ad77^`): ningún umbral cambiado, ningún `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout` añadido (los `waitForTimeout` de `search`, `save-qa`, `links-qa` y `recover-qa` son anteriores a esta ficha).
+- Dudas o cosas que no he podido hacer:
+  - La ficha pide «Tarea larga máxima» y `tarea-larga-maxima-ms` en el Registro; el fixture no crea esa anotación (solo `long-tasks`, con la duración y el instante de cada tarea). He puesto esos valores, sacados de `long-tasks`.
+  - `cpu-durante` (26-56 %) es más alto que la referencia de PDF-078 (27 % en `ink` aislado) en pruebas que se ejecutan con otro proceso de Chromium en la misma máquina. Solo es un dato, la puerta pasó siempre.
+  - Quedan a la espera del revisor. PDF-039 sigue esperando a esta ficha.
