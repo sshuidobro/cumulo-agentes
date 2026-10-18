@@ -306,6 +306,22 @@ describe('Panel de comentarios (PDF-036)', () => {
     expect(rowNamed('uno')).toBeInTheDocument();
   });
 
+  it('al borrar con Supr la última fila, la activa pasa a la anterior', async () => {
+    const user = userEvent.setup();
+    load([
+      { ...fileAnnotation(1, 'note', 0), contents: 'uno' },
+      { ...fileAnnotation(2, 'note', 0), contents: 'dos' },
+    ]);
+    const list = setup();
+
+    act(() => list.focus());
+    await user.keyboard('{ArrowDown}{ArrowDown}{Delete}');
+
+    expect(getEffective().has('ref:2R')).toBe(false);
+    expect(getEffective().has('ref:1R')).toBe(true);
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('uno').id);
+  });
+
   it('Retroceso también borra la fila activa editable', async () => {
     const user = userEvent.setup();
     load([{ ...fileAnnotation(1, 'note', 0), contents: 'uno' }]);
