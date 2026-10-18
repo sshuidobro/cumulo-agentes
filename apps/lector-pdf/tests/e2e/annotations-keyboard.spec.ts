@@ -89,6 +89,12 @@ test('resaltar, crear una nota, navegar y borrar solo con el teclado', async ({ 
   await expect(commentDialog(page)).toHaveCount(0);
   await expect(zoneNamed(page, 'Nota de Usuario')).toBeFocused();
 
+  // Las flechas mueven la nota seleccionada (hacia la derecha, su caja crece en x).
+  const noteBefore = await zoneNamed(page, 'Nota de Usuario').boundingBox();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await zoneNamed(page, 'Nota de Usuario').boundingBox())?.x ?? 0).toBeGreaterThan(noteBefore?.x ?? Infinity);
+  await expect(zoneNamed(page, 'Nota de Usuario')).toBeFocused();
+
   // Panel con flechas: dos filas. Intro abre la ventana de la nota; Esc la cierra; Supr borra la anotación.
   await openCommentsPanelByKeyboard(page);
   await expect(commentRows(page)).toHaveCount(2);
