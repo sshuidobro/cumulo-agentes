@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-075
 titulo: Cargar pdf.js con import() diferido para partir la tarea de arranque
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-074]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
@@ -150,3 +150,20 @@ Que el arranque no evalúe pdf.js: hoy todo el JavaScript (917 KB) se evalúa en
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 Comprobado: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 147 ficheros / 1724 tests en verde, `build` 0 con `Arranque: 433662 bytes` (máx. 500 000). Diff coherente con la ficha: ningún valor de pdf.js se importa fuera de `pdfjs.ts` (salvo `worker.ts` con `?url` y tests de integración previos); sin cambios de umbrales ni de e2e; test de `io` con mock y tests de carga presentes. Los dos desvíos (type import, `typeof requestIdleCallback`) son equivalentes y están justificados.
 1. (opcional) `src/main.tsx` — la precarga puede competir con una apertura inmediata; el tester debe verificar «abrir < 1 s» en frío con e2e y `images-200` con la máquina en reposo (el revisor no re-ejecutó e2e ni perf).
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Build + presupuesto de arranque | OK | `pnpm --filter lector-pdf build` código 0; `Arranque: 433662 bytes en 3 ficheros JS (máximo 500000)`; chunk `pdf-hDixE7Rz.js` 487,61 kB (diferido) |
+| Tests dirigidos | OK | vitest engine-pdfjs, engine-render, engine-load, engine-load-no-pdfjs: 4 ficheros, 23 tests verdes |
+| Rendimiento `images-200` (reposo: `uptime` carga 1 min 0,87; `pgrep` vacío) | OK | 10 pasan, 0 inesperados; tareas largas (ms): `0 0 0 0 0 0 53 53 0 0 0 0 0 0 0 0 0 0 0 0 max 53` (límite 85; antes 67-101) |
+| E2E sin regresión | OK | `pnpm --filter lector-pdf e2e --project=chromium`: 153 pasan (151 + 2 nuevos), código 0 |
+| Error claro si pdf.js no carga | OK | unit `engine-load-no-pdfjs` verde + e2e nuevo: alerta en español, sin pageerror |
+| Sin cambios de umbrales/e2e/skip/retries | OK | árbol limpio antes de empezar; solo se añade un spec nuevo |
+| lint, typecheck, test, perf | OK | 0, 0, 147 ficheros / 1724 tests, 16 ficheros / 25 tests perf |
+
+Sugerencia del revisor (abrir antes de acabar la precarga): e2e nuevo con el chunk retrasado 400 ms por red; basic-5 muestra la página 1 dentro de 1 000 + 400 ms, el chunk se pide una sola vez, sin errores de página ni alertas.
+
+Observación (no bloqueante): si el chunk falla, Chromium recuerda el fallo del `import()` dinámico en el documento, así que el «reintento» de `loadPdfjs()` no se recupera sin recargar la página (comprobado con sondeo). El mensaje es claro y tras recargar funciona; en Tauri el chunk es local, así que es muy improbable. El e2e lo documenta recargando. Sugerencia: el texto del error podría decir «recarga la aplicación».
+
+Tests añadidos: `apps/lector-pdf/tests/e2e/pdfjs-deferred.spec.ts` (2). Rendimiento: ver tabla.
