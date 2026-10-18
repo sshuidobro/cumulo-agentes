@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-044
 titulo: Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-087, PDF-045, COM-014]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]

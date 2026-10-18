@@ -1,6 +1,7 @@
 import { ShortcutRegistry } from '@suite/shared';
 import { msg } from './messages';
 import { propertiesMsg } from './messages-properties';
+import { printMsg } from './messages-print';
 
 /** Acciones de la app que tienen atajo. Cada ficha añade las suyas aquí. */
 export type ShortcutId =
@@ -31,7 +32,8 @@ export type ShortcutId =
   | 'find'
   | 'find-next'
   | 'find-prev'
-  | 'properties';
+  | 'properties'
+  | 'print';
 
 /** Registro único de atajos de la app (COM-011). */
 export const shortcuts = new ShortcutRegistry<ShortcutId>([
@@ -63,6 +65,7 @@ export const shortcuts = new ShortcutRegistry<ShortcutId>([
   { id: 'find-next', chords: ['F3'], description: msg.nextMatch },
   { id: 'find-prev', chords: ['Shift+F3'], description: msg.prevMatch },
   { id: 'properties', chords: ['Mod+D'], description: propertiesMsg.title },
+  { id: 'print', chords: ['Mod+P'], description: printMsg.title },
 ]);
 
 /** Atajo de una acción formateado para mostrar (p. ej. «Ctrl+O»); vacío si no tiene. */

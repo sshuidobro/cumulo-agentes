@@ -1,7 +1,8 @@
 import { IconButton } from '../kit/IconButton';
 import { MenuButton } from '../kit/MenuButton';
-import { IconAppearance, IconComment, IconHand, IconNextPage, IconOpen, IconPrevPage, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
+import { IconAppearance, IconComment, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
 import { msg } from '../messages';
+import { printMsg } from '../messages-print';
 import { formatOpenShortcut, formatShortcut } from '../shortcuts';
 import { ZoomControls } from './ZoomControls';
 import { DocumentMenu } from './DocumentMenu';
@@ -16,6 +17,7 @@ import { useAppearance } from '../../state/appearance-store';
 import { setTheme, toggleNightMode } from '../../state/appearance-actions';
 import { toggleSidebar } from '../../state/sidebar-actions';
 import { rotateView, setViewTool } from '../../state/view-actions';
+import { openPrintDialog } from '../../state/print-actions';
 import { useViewer } from '../../state/viewer-store';
 import styles from './MainToolbar.module.css';
 
@@ -67,6 +69,14 @@ export function MainToolbar() {
         onClick={() => { void saveAs(); }}
       >
         <IconSaveAs />
+      </IconButton>
+      <IconButton
+        label={printMsg.print}
+        shortcut={formatShortcut('print', platform.isMac)}
+        disabled={!ready}
+        onClick={() => { openPrintDialog(); }}
+      >
+        <IconPrint />
       </IconButton>
       <div role="separator" aria-orientation="vertical" className={styles.separator} />
       <IconButton

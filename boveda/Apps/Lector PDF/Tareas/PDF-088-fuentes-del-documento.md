@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-088
 titulo: Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable
 app: pdf
-estado: bloqueada
+estado: cambios-pedidos
 depende_de: [PDF-045]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -45,14 +45,47 @@ export function mergeFonts(a: readonly FontInfo[], b: readonly FontInfo[]): read
 ## Criterios de aceptación
 - [ ] `basic-5.pdf` → 1 fuente `Helvetica`, `Type1`, `WinAnsiEncoding`, no incrustada.
 - [ ] `fixtures/pdf/corpus/libreoffice/multilingue.pdf` → incluye fuentes `TrueType` o `Type0` incrustadas y con `subset: true`; ningún nombre conserva el prefijo `XXXXXX+`.
-- [ ] `fixtures/pdf/corpus/verapdf/7.21.4.1-t01-pass-a.pdf` (fuentes incrustadas, 3 actualizaciones) → la lista coincide con las `/BaseFont` que da `qpdf --json` del fichero (test que las compara).
+- [ ] ~~`fixtures/pdf/corpus/verapdf/7.21.4.1-t01-pass-a.pdf` (fuentes incrustadas, 3 actualizaciones) → la lista coincide con las `/BaseFont` que da `qpdf --json` del fichero (test que las compara).~~ Sustituido por el siguiente (replanificación del líder, 2026-10-18).
+- [ ] `fixtures/pdf/corpus/verapdf/7.21.4.1-t01-pass-a.pdf` → el conjunto ordenado de nombres de `scanFonts` (todas las páginas) es **igual** a `qpdfPageFontNames(path)` (oráculo calculado en el test con qpdf, ver «Replanificación»), y ese oráculo vale `['Arial']`; `Helvetica` y `ZapfDingbats` (solo en `/AcroForm /DR`) **no** aparecen. Se mantiene la aserción de `Arial` = `CIDFontType2`, `Identity-H`, incrustada, subconjunto.
+- [ ] Mensaje al detener: «Búsqueda detenida tras revisar 1.200 de 5.000 páginas.» (números con `toLocaleString('es-ES')`); con 0 páginas se mantiene «Búsqueda detenida antes de terminar la primera página.».
 - [ ] Perf: `scanFonts` de `pages-5000.pdf` completo < 3 s; en la app, durante el escaneo de `pages-100000.pdf` ninguna *long task* > 100 ms (E2E `@perf`) y «Detener» lo para en < 200 ms.
 - [ ] Cerrar el diálogo a mitad del escaneo lo cancela (no quedan lecturas en curso: test con `countingSource`).
 - [ ] Axe sin incidencias `serious`/`critical` en la pestaña.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf` con código 0; `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
+- Fuentes de `/AcroForm /DR` (recursos por defecto de formularios: no son fuentes usadas por las páginas) y de las apariencias de los campos.
 - Fuentes dentro de anotaciones y de Form XObjects anidados. Fuentes Type3 con nombre (se listan como «Type3» sin nombre si no tienen `/Name`).
+
+## Replanificación del líder (2026-10-18)
+**Decisión:** se corrige el criterio, no se amplía el alcance. La pestaña lista las fuentes **usadas por las páginas** (como «Fuentes» de Adobe). `/AcroForm /DR` es un diccionario de recursos *por defecto* para generar apariencias de campos: suele traer `Helvetica` y `ZapfDingbats` aunque no se usen, y listarlas sería informar de fuentes que el documento no muestra. El código de `fonts.ts` (commit 2bf5c4c) no cambia.
+
+Qué falta (solo esto):
+1. `tests/support/qpdf.ts`: añadir
+```ts
+/** /BaseFont (sin prefijo «XXXXXX+», sin repetir, orden `localeCompare('es')`) de las fuentes de /Resources /Font
+ *  de todas las páginas (con herencia desde /Pages) y de los Form XObject de primer nivel de esas /Resources. */
+export function qpdfPageFontNames(path: string): string[];
+```
+   Pseudocódigo sobre `qpdfObjects(path)` (`objs`; referencias como cadena `"N G R"`, nombres como `"/Nombre"`):
+```
+deref(v) = typeof v === 'string' && /^\d+ \d+ R$/.test(v) ? objs['obj:' + v]?.value : v
+root  = deref(objs['trailer'].value['/Root']); visit(deref(root['/Pages']), undefined)
+visit(node, inheritedRes):
+  res = deref(node['/Resources']) ?? inheritedRes
+  if node['/Type'] === '/Pages': for kid of deref(node['/Kids']): visit(deref(kid), res); return
+  addFonts(res)
+  for xo of values(deref(res?.['/XObject'])): x = deref(xo); if x?.['/Subtype'] === '/Form': addFonts(deref(x['/Resources']))
+addFonts(res): for f of values(deref(res?.['/Font'])): name = deref(f)['/BaseFont'];
+  if string: add(name.replace(/^\//, '').replace(/^[A-Z]{6}\+/, ''))
+```
+   Los Form XObject son streams: en `--json=2` su diccionario está en `value.stream.dict`; `deref` debe devolver ese `dict` cuando el objeto tenga `stream`. Si `trailer` no está en `qpdf[1]`, lanzar `Error` (el test falla, no se salta).
+2. `tests/unit/pdf-fonts.test.ts`, caso verapdf: `expect(names).toEqual(qpdfPageFontNames(path))`, `expect(qpdfPageFontNames(path)).toEqual(['Arial'])`, `expect(names).not.toContain('Helvetica')` y `'ZapfDingbats'`; conservar la aserción del objeto `Arial`. Añadir el mismo `toEqual(qpdfPageFontNames(...))` para `basic-5.pdf` y `libreoffice/multilingue.pdf` (así el oráculo se prueba con más de un fichero).
+3. Mensaje al detener: `stopped(done: string, total: string)` en `src/ui/messages-properties.ts` → `` `Búsqueda detenida tras revisar ${done} de ${total} páginas.` ``; `PropertiesDialog.tsx` le pasa `pagesDone` y `total`. `stoppedEarly` se queda igual (aceptado). Actualizar `tests/ui/properties-fonts.test.tsx` con un caso que detenga tras ≥ 1 lote y compruebe el texto exacto. El E2E (`/Búsqueda detenida/`) sigue valiendo.
+
+Dudas de la ronda 1 resueltas: (1) criterio corregido, ver arriba; (2) no se publica progreso por página: el mensaje pasa a decir páginas revisadas, que es exacto; (3) texto «antes de terminar la primera página» aceptado.
+
+Verificación: `pnpm lint`, `pnpm --filter lector-pdf typecheck`, `pnpm test`, `pnpm coverage` con código 0 y `playwright test properties.spec.ts --project=chromium`. Los rojos ajenos `open-qa.spec.ts:59` y `render.spec.ts:158` los investiga el tester por separado: no bloquean esta ficha ni se tocan aquí.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
@@ -65,3 +98,6 @@ export function mergeFonts(a: readonly FontInfo[], b: readonly FontInfo[]): read
   1. **Criterio de verapdf no cumplido tal como está escrito.** El criterio pide que la lista «coincida con las `/BaseFont` que da `qpdf --json`». Esas `/BaseFont` son `Helvetica` y `ZapfDingbats` (solo en `/AcroForm /DR`, no en `/Resources` de ninguna página) y `BRYEGL+Arial`. El escaneo, según el «Contexto», solo mira `/Resources` de páginas y Form XObject, así que da solo `Arial`. El test `pdf-fonts.test.ts` asegura lo que hace el código (solo `Arial`), no el criterio. Hay que decidir: (a) añadir `/AcroForm /DR` al escaneo, o (b) cambiar el criterio a «fuentes de las páginas». No lo he decidido yo.
   2. Menor: «Búsqueda detenida en la página n.» usa `pagesDone`, que avanza por lotes de 200; la página exacta donde se detuvo puede ser anterior. Si se quiere la página exacta, hay que publicar progreso por página.
   3. Menor: con 0 páginas leídas, el mensaje es «Búsqueda detenida antes de terminar la primera página.» (texto mío, no está en la ficha).
+
+### [lider] replanificación — 2026-10-18
+- Desbloqueada: criterio de verapdf corregido (fuentes de páginas, `/AcroForm /DR` fuera de alcance) con oráculo `qpdfPageFontNames`; mensaje de «Detener» con páginas revisadas. Código de la app sin cambios salvo el mensaje. Estado → `cambios-pedidos`, `intentos: 0`.

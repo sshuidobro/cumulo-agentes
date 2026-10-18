@@ -160,6 +160,16 @@ export function IconSaveAs() {
   );
 }
 
+export function IconPrint() {
+  return (
+    <Svg>
+      <path d="M6 7V3.5h8V7" />
+      <rect x="3" y="7" width="14" height="6" rx="1" />
+      <path d="M6 13v3.5h8V13" />
+    </Svg>
+  );
+}
+
 export function IconAppearance() {
   return (
     <Svg>

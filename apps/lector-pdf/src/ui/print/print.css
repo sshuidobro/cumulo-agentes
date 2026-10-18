@@ -1,0 +1,38 @@
+/* Impresión de documentos (PDF-044). #print-container lo llena PrintContainer solo durante una impresión. */
+
+/* En pantalla el contenedor de impresión no se ve. */
+#print-container {
+  display: none;
+}
+
+@media print {
+  /* Al imprimir solo sale el contenedor: se oculta toda la aplicación, sus diálogos y sus portales. */
+  body > *:not(#print-container) {
+    display: none !important;
+  }
+
+  #print-container {
+    display: block;
+  }
+
+  #print-container .sheet {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  #print-container .sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  /* La imagen ocupa la hoja entera sin deformarse; el giro lo pone PrintContainer en línea. */
+  #print-container img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    object-fit: contain;
+  }
+}
