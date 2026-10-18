@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-086
 titulo: Crear firma (dibujar, escribir o imagen) y firmas guardadas
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-085]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -70,3 +70,17 @@ Tests de la ficha (27) en verde; `tsc` y ESLint sin avisos sobre los ficheros de
 2. (opcional) `SignatureDialog.tsx:accept` — si `rasterizeSignatureText` devuelve `null` (sin canvas) el botón no hace nada y no avisa; mostrar un mensaje.
 3. (opcional) `src/ui/signature/image-art.ts` — un JPEG con orientación EXIF: `createImageBitmap` aplica la rotación pero los bytes se guardan tal cual con ancho/alto del bitmap; comprobar en PDF-043.
 No he ejecutado build/coverage/suite global (otros agentes trabajan en el árbol); el programador reporta build 459 861 bytes.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `inkArtFromStrokes` y `null` | OK | `signature-stored.test.ts` (box [44,34], trazo [2,32,42,2]) |
+| `addStored` / `isStoredSignatures` | OK | mismo fichero, 27 tests verdes ×3 ejecuciones |
+| UI Aceptar/Esc/flechas/foco | OK | `signature-dialog.test.tsx` |
+| Escribir «Ana Pérez» → rgba-deflate | OK | test «la pestaña Escribir…» |
+| Guardar marcada/desmarcada + preferencia | OK | test «con Guardar esta firma…» |
+| Sin red | OK | `grep -rl fonts.googleapis dist` sin resultados |
+| Build + bundle:check | OK | «Arranque: 459861 bytes … (máximo 500000)» |
+| tsc / ESLint sobre ficheros de la ficha | OK | sin salida |
+Alcance limitado por indicación: no ejecuté `pnpm test`/`coverage` globales (otros agentes compilan); el programador reporta 2065 tests y cobertura OK. Sin tests skip/only. Sugerencias opcionales del revisor (doble clic en Aceptar, canvas nulo, EXIF) pendientes para PDF-043.
+Tests añadidos: ninguno nuevo. Rendimiento: no aplica.
