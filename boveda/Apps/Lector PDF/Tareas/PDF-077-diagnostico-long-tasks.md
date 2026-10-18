@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-077
 titulo: Adjuntar a cada prueba @perf el diagnóstico de long tasks y la carga de la máquina
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -100,3 +100,13 @@ Que cada prueba `@perf` deje en su informe **cuándo** ocurrió cada *long task*
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 - Verificado: `--list` 156 tests/39 ficheros y `chromium-perf --no-deps` 7; lint y typecheck con código 0; diff de los 7 specs solo cambia imports; `perf-fixture` en exactamente los 7 ficheros; sin retries/skip/only/fixme/waitForTimeout; teardown en try/catch y solo con `@perf`. No he repetido la batería e2e ni `pnpm test` (indicación del coordinador; el programador reportó verde).
 1. (opcional) `perf-fixture.ts` — el observador se instala también en pruebas sin `@perf`; coste mínimo, decisión del líder.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `--list` igual y perf = 7 | OK | `Total: 156 tests in 39 files`; `--project=chromium-perf --no-deps`: `Total: 7 tests in 7 files` |
+| Diagnóstico en pruebas @perf | OK | Las 7 pruebas @perf pasan (rc=0, JSON reporter) y todas llevan `perf-diagnostico.json` + `carga-cpu-1min` + `long-tasks`. Ej. images-200: `2.95 → 2.96 (4 núcleos)`, `77 ms @ 77 ms`; trazo 2 000: `3.80 → 2.86 (4 núcleos)`, `69 ms @ 82 ms` |
+| Sin @perf no recibe anotaciones | OK | `-g "zigzag de 5"` en chromium: 0 apariciones de `carga-cpu`/`perf-diagnostico` |
+| Sin retries/skip/only/fixme/waitForTimeout | OK | grep del diff de `tests/e2e`: vacío; fixture en commit ee37936; `grep -l perf-fixture` = 7 |
+| lint, typecheck, test | OK con salvedad | lint y typecheck rc=0. `pnpm test` solo falla en `tests/unit/bundle-budget.test.ts` (2 tests, sin commitear, es de PDF-074 en curso por otro agente, no de esta ficha). Resto: 117 ficheros, 1397 tests verdes |
+Tests añadidos: ninguno (la propia batería @perf es la verificación). Rendimiento: long tasks observadas 51-77 ms, por debajo de los umbrales; carga de CPU 2.8-4.1 en 4 núcleos.
