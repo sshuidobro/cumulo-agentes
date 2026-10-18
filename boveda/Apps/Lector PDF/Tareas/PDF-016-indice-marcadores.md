@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-016
 titulo: Índice (marcadores) del documento en el panel lateral
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-015, PDF-014]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
