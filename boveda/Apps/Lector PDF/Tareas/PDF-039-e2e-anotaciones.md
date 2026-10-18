@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072, PDF-073]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
@@ -121,3 +121,10 @@ Decisión técnica (infraestructura de pruebas, no de producto) → [[ADR-0016-e
   1. `annotations-performance.spec.ts`, la prueba de 100 000 páginas no lleva `@perf` (solo mide el guardado, no long tasks). Por eso corre en el proyecto `chromium`, en paralelo con el resto, y su 19,5 s de duración incluye la carga. Su medida de guardado (242 ms) la he tomado en serie, aislada; en la batería en paralelo también cumplió su presupuesto. Si el líder quiere que la medida sea siempre en serie, hay que añadir `@perf` a esa prueba. No lo he tocado, porque la ficha dice que no toque este fichero.
   2. Hay `waitForTimeout` en `save-qa.spec.ts`, `search.spec.ts`, `links-qa.spec.ts` y `recover-qa.spec.ts`. Son pruebas de otras fichas, no de las de anotaciones de esta ficha, que no usan `waitForTimeout`. No las cambio: quitarlos es trabajo para otra ficha.
   3. Comandos de las pruebas guardados en `/tmp/claude-0/` (logs), no en el repositorio.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` y `pnpm typecheck` en verde (no relanzado e2e completo; se da por buena la evidencia de la ronda 3: 160 / 459 / 21 pasan, código 0). Las 5 specs de anotaciones no contienen `waitForTimeout`, `test.skip` ni `.only`; las medidas del punto 3 están en el Registro y dentro de presupuesto; axe y `qpdf --check` cubiertos.
+Los dos puntos del programador, valorados:
+1. 100 000 páginas sin `@perf` — **no bloqueante**. `@perf` (ADR-0016) es para pruebas que miden long tasks; esta solo mide el tiempo de guardado (242-352 ms frente a 3 000 ms, margen de 8x o más), así que la carga paralela no la hace inestable. Además lo acordado en PDF-073 fue no tocar este fichero aquí. (opcional) Añadirle `@perf` si se quiere medida siempre en serie.
+2. `waitForTimeout` en `save-qa`, `search` (l.197), `links-qa` y `recover-qa` — **no bloqueante para esta ficha**. Son specs de otras fichas, previas a esta; el criterio se cumple en los ficheros de PDF-039. Pero es deuda real (esperas fijas = pruebas frágiles y lentas, p. ej. 2,5 s en `recover-qa.spec.ts:55`). Recomiendo al líder crear una ficha de limpieza que las sustituya por esperas a condición (`expect.poll`/`toBeVisible`) y, si se quiere, una regla ESLint que lo prohíba en `tests/e2e`.
+Problemas bloqueantes: 0.
