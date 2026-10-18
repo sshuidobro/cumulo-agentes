@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-042
 titulo: Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-081, PDF-082, PDF-087]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -57,3 +57,9 @@ export async function planFieldWrites(reader: ObjectReader, changes: readonly Fi
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/forms/to-pdf.ts` (nuevo: `planFieldWrites`, `ObjectWrite`), `apps/lector-pdf/src/core/forms/index.ts`, `apps/lector-pdf/src/core/pdf/incremental.ts` (`IncrementalInput.fields`), `apps/lector-pdf/src/state/save-actions.ts` (`currentDiff` devuelve `{ diff, fields }`), `apps/lector-pdf/tests/unit/forms-write.test.ts` (nuevo, 13 tests), `apps/lector-pdf/tests/unit/save-actions.test.ts` (bloque «solo valores de formulario»), `apps/lector-pdf/tests/support/form-fields.ts` (nuevo: valores del criterio 1, lectura de campos y guardado compartidos), `apps/lector-pdf/tests/support/interop-samples.ts` (muestra `formulario-relleno.pdf`).
+- Qué he hecho: `planFieldWrites` escribe `/V`, `/AS`, `/I` y `/AP` por campo, con los diccionarios fusionados (campo y widget) escritos una sola vez; se llama en el escritor incremental tras las anotaciones modificadas y antes de reservar la xref. Guardar, guardar como, imprimir y «nada que guardar» usan `{ diff, fields }`. La muestra `formulario-relleno.pdf` se genera con los valores del criterio 1.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK (tras corregir tres errores de tipos en mis tests); `pnpm test` OK: 188 ficheros, 2203 tests. `pnpm coverage` falló con «directorio de cobertura en uso» porque otro Vitest (del tester) estaba activo, no por código; lo repetí con `--coverage.reportsDirectory` propio: exit 0, líneas 98,71 %, ramas 92,11 %. `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/incremental.perf.test.ts`: 2/2 OK (solo esta suite de rendimiento, las del tester no las he lanzado). `pnpm --filter lector-pdf interop:samples` OK y `qpdf --check` de `formulario-relleno.pdf` sin errores. qpdf 11 valida el resultado en todos los tests que escriben.
+- Dudas o cosas que no he podido hacer: (1) Una casilla marcada cuyo primer widget no tiene `exportValue` lanza `save-unreadable` en vez de escribir un estado inventado; la ficha no lo cubre. (2) Una lista de selección múltiple sin elegidos escribe `/I []`; la ficha no lo dice. (3) La lista de comprobación del Manual no está actualizada con `formulario-relleno.pdf`: el Manual lo cierra el líder. (4) Los criterios de la ficha siguen sin marcar: los verifica el tester.

@@ -13,6 +13,8 @@ import type { Annotation, PdfObjRef } from '../annotations/model';
 import { annotationDict, popupDict, updatedDict } from '../annotations/to-pdf';
 import { fromBase64 } from '../base64';
 import { pdfError } from '../errors';
+import type { FieldChange } from '../forms/diff';
+import { planFieldWrites } from '../forms/to-pdf';
 import { jpegImageObject, rgbaImageObjects } from './image';
 import {
   bytesString,
@@ -38,6 +40,8 @@ export interface IncrementalInput {
   readonly diff: AnnotationDiff;
   /** ISO 8601; lo pasa quien llama (así el resultado es determinista). */
   readonly now: string;
+  /** Valores de formulario cambiados (PDF-042). Por defecto, ninguno. */
+  readonly fields?: readonly FieldChange[];
 }
 
 export interface IncrementalOutput {
@@ -113,7 +117,8 @@ export async function openForSave(source: ByteSource): Promise<Result<ObjectRead
 
 async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> {
   const { source, reader, diff, now } = input;
-  if (isEmptyDiff(diff)) {
+  const fields = input.fields ?? [];
+  if (isEmptyDiff(diff) && fields.length === 0) {
     return { delta: new Uint8Array(0), expectedSize: source.size, written: new Map() };
   }
 
@@ -132,6 +137,7 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
     return { a, annot, ap, popup, extra };
   });
   const modified: ModifiedPlan[] = diff.modified.map((a) => ({ a, origin: fileOrigin(a).ref, ap: ref(next++) }));
+  const fieldWrites = await planFieldWrites(reader, fields, () => ref(next++));
   const xrefNum = reader.xref.lastKind === 'stream' ? next++ : null;
   const size = next;
   const objectCount = size - reader.xref.size;
@@ -175,6 +181,9 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
     writer.object(m.origin.num, m.origin.gen, updatedDict(original, m.a, { apRef: m.ap, now }));
     writer.object(m.ap.num, 0, buildAppearance(m.a).stream);
   }
+
+  // Valores de formulario (PDF-042): tras las anotaciones modificadas y antes de las páginas.
+  for (const w of fieldWrites) writer.object(w.num, w.gen, w.value);
 
   // Páginas tocadas, en orden para que la salida sea determinista.
   const pages = [...new Set([...addedByPage.keys(), ...removedByPage.keys()])].sort((x, y) => x - y);

@@ -1,9 +1,11 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { memorySource, platformError, type SaveData } from '@suite/platform';
+import { memorySource, platformError, type OpenedFile, type SaveData } from '@suite/platform';
 import { err, ok } from '@suite/shared';
 import { PDF_ERROR_MESSAGES } from '../../src/core/errors';
 import { addAnnotation, endAnnotationSession } from '../../src/state/annotation-actions';
 import { useAnnotations } from '../../src/state/annotation-store';
+import { setFieldValue } from '../../src/state/form-actions';
+import { useForms } from '../../src/state/form-store';
 import { PDF_FILTERS, openDocument } from '../../src/state/document-actions';
 import { setCurrentPage } from '../../src/state/navigation';
 import { isSaving, save, saveAs } from '../../src/state/save-actions';
@@ -201,6 +203,46 @@ describe('saveAs: guardar como', () => {
   it('sin documento abierto no hace nada', async () => {
     endAnnotationSession();
     await openDocument(openedFile(FIXTURE, memorySource(new Uint8Array(0))));
+    expect(await save()).toBe('nothing');
+    expect(h.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('save: solo valores de formulario (PDF-042)', () => {
+  const FORM = 'form-full.pdf';
+
+  it('cambiar solo un campo y guardar anexa el incremento; al reabrir, el campo tiene el valor nuevo', async () => {
+    const formBytes = fixtureBytes(FORM);
+    await openFixture(memorySource(formBytes), FORM);
+    setFieldValue('nombre', { kind: 'text', text: 'Luis' });
+    h.save.mockImplementationOnce(async (target: OpenedFile, data: SaveData) => {
+      if (data.kind !== 'append') throw new Error('se esperaba append');
+      return ok({ ...openedFile(target.name, memorySource(concat(formBytes, data.delta))), canSaveInPlace: true });
+    });
+
+    expect(await save()).toBe('saved');
+
+    expect(h.save).toHaveBeenCalledTimes(1);
+    const [, data] = h.save.mock.calls[0] as unknown as [unknown, SaveData];
+    if (data.kind !== 'append') throw new Error('se esperaba append');
+    expect(data.delta.byteLength).toBeGreaterThan(0);
+    expect(useViewer.getState().notice?.text).toBe('Guardado.');
+    await waitForScan();
+    expect(useForms.getState().fields.get('nombre')?.initial).toEqual({ kind: 'text', text: 'Luis' });
+    expect(h.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin cambios en el formulario → nothing y la plataforma no se llama', async () => {
+    await openFixture(memorySource(fixtureBytes(FORM)), FORM);
+    expect(await save()).toBe('nothing');
+    expect(h.save).not.toHaveBeenCalled();
+  });
+
+  it('un campo cambiado y devuelto a su valor del fichero no cuenta como cambio', async () => {
+    await openFixture(memorySource(fixtureBytes(FORM)), FORM);
+    setFieldValue('nombre', { kind: 'text', text: 'Luis' });
+    setFieldValue('nombre', { kind: 'text', text: 'Ana' });
+
     expect(await save()).toBe('nothing');
     expect(h.save).not.toHaveBeenCalled();
   });
