@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-077
 titulo: Adjuntar a cada prueba @perf el diagnóstico de long tasks y la carga de la máquina
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -81,3 +81,18 @@ Que cada prueba `@perf` deje en su informe **cuándo** ocurrió cada *long task*
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/perf-fixture.ts` (nuevo); cambio de import de `test`/`expect` en `annotations-layer`, `annotations-performance`, `ink`, `performance`, `render`, `search`, `viewer` (`.spec.ts`, 1 línea cada una + import de tipos).
+- Qué he hecho: fixture `perfDiagnostics` (auto) con observador de long tasks propio, que en teardown solo para pruebas `@perf` añade las anotaciones `carga-cpu-1min` y `long-tasks` y el adjunto `perf-diagnostico.json` (carga de CPU, núcleos y top 5 procesos con `ps` en Linux). Todo el teardown va en `try/catch`. Los observadores de cada prueba no se tocan.
+- Desviación menor: el tipo de la fixture es `perfDiagnostics: undefined` y se llama `use(undefined)` en lugar de `void`, porque `@typescript-eslint/no-invalid-void-type` rechaza `void` ahí. Sin efecto funcional.
+- Comandos ejecutados y resultado:
+  - `playwright test --list`: antes 156 tests en 39 ficheros; después 156 tests en 39 ficheros (igual).
+  - `playwright test --list --project=chromium-perf --no-deps`: 7 antes y 7 después.
+  - `pnpm lint`: código 0. `pnpm typecheck`: código 0. `pnpm test`: 143 ficheros, 1709 tests, código 0.
+  - `playwright test --project=chromium-perf --no-deps -g "trazo de 2 000|images-200" --reporter=json > /tmp/pdf077.json`: código 0, 2 passed. Ambos tienen adjunto `perf-diagnostico.json`. Anotaciones:
+    - «dibujar un trazo de 2 000 eventos no produce long tasks»: `carga-cpu-1min` = `3.55 → 2.53 (4 núcleos)`; `long-tasks` = `70 ms @ 89 ms`.
+    - «images-200: al recorrer las 20 primeras páginas…»: `carga-cpu-1min` = `2.53 → 2.53 (4 núcleos)`; `long-tasks` = `70 ms @ 89 ms`.
+  - Prueba sin `@perf` «un zigzag de 5 segmentos…» (`--project=chromium -g "zigzag de 5"`): código 0, passed, sin anotaciones `carga-cpu-1min` ni `long-tasks` ni adjunto.
+  - `grep -l "perf-fixture"`: exactamente los 7 ficheros. `grep "@perf"`: sin cambios. `git diff`: sin `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout`.
+- Dudas o cosas que no he podido hacer: los observadores de long tasks de la fixture se instalan también en las pruebas sin `@perf` de esos 7 ficheros (así lo pide el paso 1 de la ficha); solo cuesta un observador por prueba. Si se quiere evitarlo, habría que condicionar el `addInitScript` a la etiqueta, y eso es decisión de diseño del líder.

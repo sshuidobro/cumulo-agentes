@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from './perf-fixture.ts';
 import { clearLongTasks, installPerfProbes, longTasks, openFixture, pageFrame, waitPageRendered } from './helpers.ts';
 
 /** Rectángulo en coordenadas de ventana (CSS px). */
