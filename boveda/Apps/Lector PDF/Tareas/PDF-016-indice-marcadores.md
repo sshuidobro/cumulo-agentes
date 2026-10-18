@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-016
 titulo: Índice (marcadores) del documento en el panel lateral
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-015, PDF-014]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -85,3 +85,6 @@ Comprobado: `pnpm lint` OK; tests de la ficha (32) OK; `pnpm perf` OK (12 ficher
 - Qué he hecho: corregido el error TS2769 del revisor (línea 50). El comportamiento del test no cambia.
 - Comandos ejecutados y resultado: `pnpm typecheck` OK (exit 0); `pnpm lint` OK (0 avisos); E2E `outline.spec.ts` con config temporal en puerto 4407: primera ejecución 3/4 (fallo transitorio en el primer test: `getByTestId('viewer')` no apareció en 10 s tras cargar `outline.pdf`); segunda ejecución 4/4 OK. Config temporal borrada. No he hecho commit, stash ni checkout.
 - Dudas o cosas que no he podido hacer: el fallo transitorio del primer test no se ha reproducido; si reaparece conviene revisar la espera de carga inicial (`expectViewerReady`/arranque del preview tras el build), no es un fallo de lógica de marcadores. Hay un directorio `apps/lector-pdf/test-results/` de otra ejecución (no mío, propiedad de root) que no he tocado.
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: `pnpm typecheck` OK (exit 0, error TS2769 corregido); `pnpm lint` OK; 32 tests de la ficha OK; E2E `outline.spec.ts` 4/4 OK en el puerto 4412 (config temporal borrada). Sin problemas pendientes. El fallo transitorio del primer E2E que cita el programador no se ha reproducido.
