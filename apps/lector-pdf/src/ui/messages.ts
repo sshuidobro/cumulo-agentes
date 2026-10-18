@@ -37,6 +37,11 @@ export const msg = {
   },
   /** «Resaltado de Ana»; sin autor, solo el tipo. */
   annotationName: (kind: string, author: string): string => (author.trim() === '' ? kind : `${kind} de ${author}`),
+  /** Ventana emergente de comentario (PDF-033): nombre del diálogo, campo de texto y botones. */
+  popupLabel: (author: string): string => (author.trim() === '' ? 'Comentario' : `Comentario de ${author}`),
+  popupText: 'Comentario',
+  popupDelete: 'Borrar',
+  popupClose: 'Cerrar',
   zoomIn: 'Ampliar',
   zoomOut: 'Reducir',
   zoomInput: 'Zoom',
@@ -119,4 +124,20 @@ export const msg = {
   themeLight: 'Tema: Claro',
   themeDark: 'Tema: Oscuro',
   nightMode: 'Modo noche de las páginas',
+  /** Barra «Comentar» (PDF-069): conmutador de la barra principal y nombre de la segunda barra. */
+  commentToggle: 'Comentar',
+  commentToolbar: 'Comentar',
+  toolHighlight: 'Resaltar',
+  toolUnderline: 'Subrayar',
+  toolStrikeout: 'Tachar',
+  toolNote: 'Nota',
+  toolFreeText: 'Texto',
+  toolInk: 'Dibujar',
+  color: 'Color',
+  inkWidth: 'Grosor',
+  fontSize: 'Tamaño de letra',
+  pointSize: (n: number): string => `${String(n)} pt`,
+  /** Barra flotante sobre una selección de texto (PDF-032). */
+  selectionActions: 'Acciones de la selección',
+  copy: 'Copiar',
 } as const;

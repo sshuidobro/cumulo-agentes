@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-033
 titulo: Notas emergentes y comentarios sobre resaltados
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones, accesibilidad]
 ---
 
@@ -36,13 +36,13 @@ Con la herramienta «Nota», un clic en la página coloca un icono de nota y abr
 6. Tests `tests/ui/annotation-popup.test.tsx` y `tests/e2e/notes.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] (T) Herramienta «Nota» + clic en (100, 100) px con escala 1 → nota con `rect` cuya esquina superior izquierda corresponde a ese punto (±0,5 pt); la ventana se abre con el foco en el `textarea`; la herramienta queda en `'none'`.
-- [ ] (T) Escribir «hola» (4 cambios en < 500 ms con reloj falso) → 1 entrada de deshacer «escribir comentario»; Ctrl+Z con el foco **fuera** del `textarea` → `contents ''`.
-- [ ] (T) Esc devuelve el foco a la zona activa de la nota; «Borrar» la elimina.
-- [ ] (T) Doble clic en un resaltado del fichero → la ventana muestra su `contents` («Comentario previo» en `annotated.pdf`) y el autor «Otra persona».
-- [ ] E2E: crear una nota en `basic-5.pdf`, escribir «Revisar esta cifra», cerrar, reabrir con doble clic → el texto sigue; el icono se ve en la página (píxel del color de la nota).
-- [ ] E2E accesibilidad: la ventana tiene `role="dialog"` y `aria-label`; el `textarea` tiene nombre accesible; Tab recorre `textarea` → «Borrar» → «Cerrar» y sale de la ventana (no modal).
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+- [x] (T) Herramienta «Nota» + clic en (100, 100) px con escala 1 → nota con `rect` cuya esquina superior izquierda corresponde a ese punto (±0,5 pt); la ventana se abre con el foco en el `textarea`; la herramienta queda en `'none'`.
+- [x] (T) Escribir «hola» (4 cambios en < 500 ms con reloj falso) → 1 entrada de deshacer «escribir comentario»; Ctrl+Z con el foco **fuera** del `textarea` → `contents ''`.
+- [x] (T) Esc devuelve el foco a la zona activa de la nota; «Borrar» la elimina.
+- [x] (T) Doble clic en un resaltado del fichero → la ventana muestra su `contents` («Comentario previo» en `annotated.pdf`) y el autor «Otra persona».
+- [x] E2E: crear una nota en `basic-5.pdf`, escribir «Revisar esta cifra», cerrar, reabrir con doble clic → el texto sigue; el icono se ve en la página (píxel del color de la nota).
+- [x] E2E accesibilidad: la ventana tiene `role="dialog"` y `aria-label`; el `textarea` tiene nombre accesible; Tab recorre `textarea` → «Borrar» → «Cerrar» y sale de la ventana (no modal).
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Respuestas y estados (PDF-058). Texto enriquecido. Iconos distintos por tipo de nota.
@@ -52,3 +52,39 @@ Con la herramienta «Nota», un clic en la página coloca un icono de nota y abr
 
 ### [lider] replanificación — 2026-10-17
 - `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `src/core/annotations/note.ts` (nuevo, exportado desde `index.ts`), `src/state/annotation-store.ts` (`openPopupId`), `src/state/annotation-actions.ts` (`openPopup`, `closePopup`; la ventana se cierra si su anotación desaparece), `src/ui/viewer/AnnotationPopup.tsx` y `AnnotationPopup.module.css` (nuevos), `src/ui/viewer/popup-placement.ts` (nuevo), `src/ui/viewer/AnnotationLayer.tsx` (herramienta Nota, doble clic e Intro, `title`), `src/ui/viewer/PageView.tsx`, `src/ui/messages.ts`, `src/ui/icons.tsx` (`IconTrash`, `IconClose`); tests `tests/unit/annotations/note.test.ts`, `tests/ui/annotation-popup.test.tsx`, `tests/e2e/notes.spec.ts`. No he tocado `selection-to-pages.ts` ni `markup-actions.ts`. Sin commit.
+- Qué he hecho: herramienta Nota con clic (nota 20 × 20 pt, esquina superior izquierda en el clic, limitada a la página, `addAnnotation` «añadir nota», selecciona, abre su ventana y vuelve a «ninguna»). Ventana no modal con autor, fecha, textarea (escritura agrupada con `note-text:<id>`), Borrar y Cerrar; Esc cierra y devuelve el foco a la zona; se cierra si la página deja de ser visible, si la anotación sale de la página o si desaparece. Doble clic o Intro abren la ventana en cualquier anotación soportada; `title` con 200 caracteres.
+- Comandos ejecutados y resultado:
+  - `pnpm typecheck`: OK (código 0).
+  - `pnpm lint` (raíz): falla solo por `apps/lector-pdf/dist-e2e-pdf032/` (build de otra ejecución, no ignorado, ~9 400 errores ajenos). Con ese directorio excluido, `eslint --max-warnings 0 .`: OK.
+  - `pnpm test`: 135 ficheros, 1586 tests, OK. `pnpm coverage`: código 0.
+  - E2E con puerto 4431 y `LECTOR_E2E_OUTDIR=dist-e2e-pdf033` (directorio borrado después): `notes.spec.ts` 5/5 OK; `annotations-layer.spec.ts` + `keyboard.spec.ts` 5/5 OK.
+- Dudas o cosas que no he podido hacer:
+  1. `openPopup`/`closePopup` están en `annotation-actions.ts` (las acciones escriben el store desde ahí); `annotation-store.ts` solo guarda `openPopupId`. PDF-036 debe importarlas de `annotation-actions`.
+  2. Borrar y Cerrar van en el pie de la ventana, no en la cabecera: con la cabecera, el orden DOM no cumple Tab textarea → Borrar → Cerrar.
+  3. Cada tecla pasa por `publish` y sube `pageVersion`, así que el lienzo de la página se vuelve a dibujar. Es el comportamiento existente; no lo he tocado, pero puede notarse en páginas grandes.
+  4. Intro abre la ventana y selecciona; Espacio solo selecciona.
+  5. No he ejecutado `pnpm --filter lector-pdf e2e` completo (árbol compartido); solo los specs relacionados. No hay medición de rendimiento nueva.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm typecheck` OK; `eslint --max-warnings 0` sobre `apps/lector-pdf/src`, `apps/lector-pdf/tests` y `packages` OK (el lint de raíz solo falla por `dist-e2e-pdf032/` de otra ejecución, ajeno a esta ficha); `pnpm test` 135 ficheros / 1586 tests OK; E2E `notes.spec.ts` con puerto 4441 y `LECTOR_E2E_OUTDIR=dist-e2e-rev033` (borrado después): 5/5 OK.
+- Criterios cubiertos por tests: nota con clic (±0,5 pt, foco, herramienta a `none`), una entrada «escribir comentario» y Ctrl+Z, Esc devuelve el foco, Borrar, doble clic en `annotated.pdf` («Comentario previo», «Otra persona»), E2E de reabrir y de accesibilidad (Tab textarea, Borrar, Cerrar).
+- Guardado como estándar de Adobe: una nota nueva se escribe como `/Subtype /Text` (`/Name`, `/Open`, `/Contents`, `/T`, `/AP`) más un `/Popup` hijo (`/Parent`, `/Rect` 200x100 a la derecha, flags 28) en `core/annotations/to-pdf.ts` e `incremental.ts`. El texto escrito en la ventana actualiza la anotación en `edits` y se serializa en `/Contents`. Los tests de PDF-029 (`tests/unit/pdf/incremental.test.ts`, `to-pdf.test.ts`) lo verifican releyendo con pdf.js (Text + Popup, contenido con ñ y emoji). Sin cambios requeridos.
+- (opcional) Añadir un test que encadene escribir en la ventana, guardar y releer el `/Contents` con su Popup, para cubrir el extremo a extremo de esta ficha.
+- (opcional) Los resaltados nuevos con comentario se guardan sin `/Popup` (solo las notas lo llevan); Acrobat lo tolera, pero convendría valorarlo en PDF-036/PDF-039.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Nota con clic (±0,5 pt), foco en textarea, herramienta a `none` | OK | `tests/ui/annotation-popup.test.tsx` dentro de `pnpm test` (135 ficheros, 1586 tests) |
+| Escribir «hola» = 1 entrada de deshacer; Ctrl+Z fuera del textarea deja `''` | OK | test UI + E2E `notes.spec.ts` «Ctrl+Z…» |
+| Esc devuelve el foco; Borrar elimina | OK | test UI + E2E «Esc cierra…» |
+| Doble clic en resaltado de `annotated.pdf` («Comentario previo», «Otra persona») | OK | E2E y test UI |
+| E2E crear, escribir, cerrar, reabrir; icono con píxel del color | OK | `notes.spec.ts` 1 |
+| E2E accesibilidad (dialog, aria-label, Tab textarea, Borrar, Cerrar, sale) | OK | `notes.spec.ts` 2 |
+| lint / typecheck / test / coverage / e2e | OK | typecheck 0; eslint `--max-warnings 0` sobre `apps/lector-pdf/src`, `tests` y `packages` 0 (el lint de raíz lo rompen los `dist` de otras ejecuciones); coverage 0 (líneas 98,92 %, ramas 92,74 %); E2E completo 137/137 (puerto 4452, `dist/e2e-pdf033-qa`, borrado) |
+
+Tests añadidos: E2E `escribir en la nota y guardar descarga un PDF con /Text, su /Contents y su /Popup…` en `apps/lector-pdf/tests/e2e/notes.spec.ts`: crea nota, escribe «Revisar esta cifra», cierra, Ctrl+Mayús+S, comprueba en los bytes `/Subtype /Text`, `/Subtype /Popup`, `/Parent`, `/Popup n n R` y el `/Contents`, y reabre el fichero guardado comprobando que el texto sigue.
+Rendimiento: sin presupuesto nuevo aplicable; el E2E completo (incluido el de long tasks < 100 ms) pasa. Nota del programador sobre redibujo del lienzo en cada tecla: no medido, vigilar en PDF-039.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import buttonStyles from './IconButton.module.css';
 import styles from './MenuButton.module.css';
 
@@ -7,6 +7,8 @@ export interface MenuItemSpec {
   readonly kind: 'radio' | 'checkbox';
   readonly label: string;
   readonly checked: boolean;
+  /** Color CSS de una muestra junto al nombre (decorativa). */
+  readonly swatch?: string;
   readonly onSelect: () => void;
 }
 
@@ -17,6 +19,18 @@ export interface MenuButtonProps {
   readonly label: string;
   readonly entries: readonly MenuEntry[];
   readonly children: ReactNode;
+  /** Botón deshabilitado: no se abre el menú. */
+  readonly disabled?: boolean;
+  /** Orden de tabulación del botón (barras con foco itinerante). */
+  readonly tabIndex?: number;
+  /** Referencia al botón (React 19: `ref` es una prop normal). */
+  readonly ref?: Ref<HTMLButtonElement>;
+}
+
+/** Entrega el nodo a una referencia de cualquier tipo (función u objeto). */
+function assignRef(ref: Ref<HTMLButtonElement> | undefined, node: HTMLButtonElement | null): void {
+  if (typeof ref === 'function') ref(node);
+  else if (ref !== undefined && ref !== null) ref.current = node;
 }
 
 const ITEM_SELECTOR = '[role="menuitemradio"], [role="menuitemcheckbox"]';
@@ -31,11 +45,17 @@ function itemsOf(menu: HTMLElement | null): HTMLElement[] {
  * primer elemento; ↑/↓ (con Inicio y Fin) mueven el foco; Intro o Espacio activan; Esc y Tab cierran y devuelven
  * el foco al botón; un clic fuera cierra sin robar el foco.
  */
-export function MenuButton({ label, entries, children }: MenuButtonProps) {
+export function MenuButton({ label, entries, children, disabled, tabIndex, ref }: MenuButtonProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // El botón propio (para devolverle el foco) y la referencia recibida apuntan al mismo nodo.
+  const setButton = (node: HTMLButtonElement | null): void => {
+    buttonRef.current = node;
+    assignRef(ref, node);
+  };
 
   const close = (restoreFocus: boolean): void => {
     setOpen(false);
@@ -110,13 +130,15 @@ export function MenuButton({ label, entries, children }: MenuButtonProps) {
   return (
     <div ref={wrapRef} className={styles.wrap}>
       <button
-        ref={buttonRef}
+        ref={setButton}
         type="button"
         className={buttonStyles.button}
         aria-label={label}
         title={label}
         aria-haspopup="menu"
         aria-expanded={open}
+        disabled={disabled}
+        tabIndex={tabIndex}
         onClick={() => {
           setOpen((value) => !value);
         }}
@@ -144,6 +166,9 @@ export function MenuButton({ label, entries, children }: MenuButtonProps) {
                 <span className={styles.mark} aria-hidden="true">
                   {entry.checked ? '✓' : ''}
                 </span>
+                {entry.swatch !== undefined && (
+                  <span className={styles.swatch} style={{ background: entry.swatch }} aria-hidden="true" />
+                )}
                 {entry.label}
               </button>
             ),

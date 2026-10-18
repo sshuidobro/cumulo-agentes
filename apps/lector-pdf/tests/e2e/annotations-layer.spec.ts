@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { buildDocument } from '../fixtures/document.ts';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
 import { textPage } from '../fixtures/pdf-builder.ts';
+import { settleFrames } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 /** Tamaño de la página 1 de annotated.pdf (US Letter). */
@@ -170,7 +171,7 @@ test('una página con 500 anotaciones se desplaza sin tareas largas de más de 1
   for (let i = 0; i < 30; i++) {
     await page.mouse.wheel(0, 100);
   }
-  await page.waitForTimeout(300);
+  await settleFrames(page);
 
   const longest = await page.evaluate((from: number) => {
     const tasks = (window as unknown as { __longTasks: { start: number; duration: number }[] }).__longTasks;

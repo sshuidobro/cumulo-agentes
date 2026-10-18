@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TextLayerHandle } from '../../src/engine/text';
+import type { PageViewport } from '../../src/engine/pdfjs';
 import { attachSelectionBehavior, selectPageText } from '../../src/ui/viewer/text-selection';
 import * as registry from '../../src/ui/viewer/text-layer-registry';
 
@@ -19,9 +20,12 @@ function makeLayer(): { layer: HTMLDivElement; spans: HTMLSpanElement[] } {
 }
 
 function handleFor(spans: HTMLSpanElement[]): TextLayerHandle {
+  const container = spans[0]?.parentElement ?? document.createElement('div');
   return {
     textDivs: spans,
     items: spans.map((s) => s.textContent ?? ''),
+    container,
+    viewport: { convertToPdfPoint: (x: number, y: number) => [x, y] } as unknown as PageViewport,
     render: () => Promise.resolve(),
     update: () => undefined,
     cancel: () => undefined,

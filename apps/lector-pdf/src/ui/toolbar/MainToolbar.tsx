@@ -1,14 +1,14 @@
 import { IconButton } from '../kit/IconButton';
 import { MenuButton } from '../kit/MenuButton';
-import { IconAppearance, IconHand, IconNextPage, IconOpen, IconPrevPage, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
+import { IconAppearance, IconComment, IconHand, IconNextPage, IconOpen, IconPrevPage, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
 import { msg } from '../messages';
 import { formatOpenShortcut, formatShortcut } from '../shortcuts';
 import { ZoomControls } from './ZoomControls';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
-import { redo, undo } from '../../state/annotation-actions';
-import { useAnnotations } from '../../state/annotation-store';
+import { redo, setCommentBarOpen, setTool, undo } from '../../state/annotation-actions';
+import { useAnnotations, type AnnotationTool } from '../../state/annotation-store';
 import { save, saveAs, useSaving } from '../../state/save-actions';
 import { services } from '../../state/services';
 import { useAppearance } from '../../state/appearance-store';
@@ -18,11 +18,23 @@ import { rotateView, setViewTool } from '../../state/view-actions';
 import { useViewer } from '../../state/viewer-store';
 import styles from './MainToolbar.module.css';
 
+/** Abre o cierra la barra «Comentar». Al cerrarla se deja la herramienta de anotación (no queda ninguna activa). */
+function toggleCommentBar(open: boolean, annotationTool: AnnotationTool): void {
+  if (open) {
+    if (annotationTool !== 'none') setTool('none');
+    setCommentBarOpen(false);
+  } else {
+    setCommentBarOpen(true);
+  }
+}
+
 /** Barra principal: abrir, deshacer/rehacer, zoom y giro de la vista. Lo de documento se activa con uno abierto. */
 export function MainToolbar() {
   const { platform } = services();
   const ready = useViewer((s) => s.status === 'ready');
   const undoState = useAnnotations((s) => s.undo);
+  const annotationTool = useAnnotations((s) => s.tool);
+  const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
   const tool = useViewer((s) => s.tool);
   const history = useViewer((s) => s.historyState);
   const sidebar = useViewer((s) => s.sidebar);
@@ -59,7 +71,7 @@ export function MainToolbar() {
       <IconButton
         label={undoState.undoLabel === null ? msg.undo : msg.undoWith(undoState.undoLabel)}
         shortcut={formatShortcut('undo', platform.isMac)}
-        disabled={!undoState.canUndo}
+        disabled={!ready || !undoState.canUndo}
         onClick={undo}
       >
         <IconUndo />
@@ -67,7 +79,7 @@ export function MainToolbar() {
       <IconButton
         label={undoState.redoLabel === null ? msg.redo : msg.redoWith(undoState.redoLabel)}
         shortcut={formatShortcut('redo', platform.isMac)}
-        disabled={!undoState.canRedo}
+        disabled={!ready || !undoState.canRedo}
         onClick={redo}
       >
         <IconRedo />
@@ -119,6 +131,14 @@ export function MainToolbar() {
         onClick={() => { setViewTool('hand'); }}
       >
         <IconHand />
+      </IconButton>
+      <IconButton
+        label={msg.commentToggle}
+        pressed={commentBarOpen}
+        disabled={!ready}
+        onClick={() => { toggleCommentBar(commentBarOpen, annotationTool); }}
+      >
+        <IconComment />
       </IconButton>
       <div role="separator" aria-orientation="vertical" className={styles.separator} />
       <ZoomControls />

@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-032
 titulo: Resaltar, subrayar y tachar texto seleccionado
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-031, PDF-013, PDF-069]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones]
 ---
 
@@ -58,3 +58,45 @@ El usuario selecciona texto y lo resalta, subraya o tacha: (a) con la herramient
 
 ### [lider] replanificación — 2026-10-17
 - `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/core/annotations/line-quads.ts`, `src/ui/viewer/selection-to-pages.ts`, `src/state/markup-actions.ts`, `src/ui/viewer/SelectionActions.tsx` y `SelectionActions.module.css`, `tests/unit/annotations/line-quads.test.ts`, `tests/ui/markup.test.tsx`, `tests/e2e/markup.spec.ts`. Modificados: `src/engine/text.ts` (`container` y `viewport` en `TextLayerHandle`), `src/ui/viewer/text-layer-registry.ts` (`all()`), `src/ui/viewer/TextLayerView.tsx` (pointerup sobre la capa), `src/ui/toolbar/CommentToolbar.tsx`, `src/ui/App.tsx`, `src/ui/messages.ts`, `src/ui/icons.tsx` (`IconCopy`), y fakes de `tests/ui/text-selection.test.tsx`, `tests/ui/search-highlights.test.tsx`, `tests/ui/text-layer.test.tsx`.
+- Qué he hecho: quads por línea (puro) y mapeo de la selección a páginas en puntos PDF; `markupSelection` crea una anotación por página en un solo paso de deshacer. Herramienta de marcado activa: al soltar sobre una capa marca la selección. Barra flotante «Acciones de la selección» (resaltar, subrayar, tachar, copiar) sin herramienta activa; «Resaltar/Subrayar/Tachar» de «Comentar» marcan la selección sin cambiar la herramienta.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` (raíz) OK; `pnpm test` 133 ficheros, 1557 tests OK; `pnpm coverage` OK (core 100 % en `line-quads.ts`); `LECTOR_E2E_PORT=4217 pnpm --filter lector-pdf e2e` 129/129 OK (incluye `markup.spec.ts` 5/5).
+- Dudas o cosas que no he podido hacer: (1) `markup-actions.ts` (state) importa `selection-to-pages.ts` (ui), porque la ficha lo pide así; si se quiere separar, sería decisión del líder. (2) El arrastre de subrayado debe empezar dentro de un carácter: un `mousedown` en el hueco de la capa no inicia selección en Chromium; el E2E lo hace así. (3) Con clic de ratón en «Resaltar» de «Comentar», no he verificado en navegador real que el `mousedown` no colapse la selección (los tests de jsdom usan `fireEvent`); la barra flotante sí evita ese colapso. (4) «Copiar» usa `navigator.clipboard`; si falla solo se registra en el log, sin aviso al usuario. (5) `markupSelection` vacía la selección aunque no cree nada (decisión tomada: la ficha dice «vacía la selección»). (6) El E2E construye en `dist/` compartido: no lo ejecuté en paralelo con otro E2E. No he hecho commit.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Lint, typecheck (raíz), tests de la ficha (24) en verde. Clic de ratón en «Resaltar» de «Comentar» verificado en Chromium real (puerto 4391, build propio fuera de `dist/`): la selección se conserva, se crea el resaltado y la herramienta no cambia. Quads en orden Z (sup-izq, sup-der, inf-izq, inf-der) y apariencia Multiply correctos para Adobe.
+1. `apps/lector-pdf/src/ui/viewer/selection-to-pages.ts:13` — BLOQUEANTE: `Range.getClientRects()` devuelve también las cajas de los elementos contenedores totalmente incluidos en el rango (div de la capa, marco de página: p. ej. `[538,65,204,264]` = la página entera a zoom 25 %). `layerAt` las acepta porque su centro cae dentro de la capa. Comprobado en navegador: selección desde la mitad de p1 hasta la p3 con «Resaltar» → la anotación de p1 y la de p2 miden 205×265 (página completa); en Adobe se vería la página entera resaltada. Hay que quedarse solo con los rectángulos de nodos de texto (p. ej. recorrer los nodos de texto de cada capa con `range.intersectsNode`, crear un sub-rango por nodo recortado a los extremos del rango y usar su `getClientRects()`), o descartar rectángulos que sean cajas de elementos. Descartar también los rects de ancho o alto 0.
+2. `apps/lector-pdf/tests/e2e/markup.spec.ts` (test multipágina) y `tests/ui/markup.test.tsx` — el test de dos páginas solo cuenta anotaciones, por eso no detectó el fallo anterior. Añadir un E2E de selección que cruce 3 páginas (la de en medio completa) comprobando que el `rect` de cada anotación no excede la caja del texto de su página (no es la página entera), y un test unitario con un `Range` falso que devuelva una caja de contenedor entera junto a rects de texto.
+3. `apps/lector-pdf/tests/e2e/markup.spec.ts` — añadir un E2E del clic de ratón en «Resaltar» de la barra «Comentar» con texto seleccionado (hoy solo se prueba con teclado); la comprobación manual pasó, falta que quede fijada.
+4. (opcional) `src/ui/viewer/SelectionActions.tsx:58` — si falla `clipboard.writeText` el usuario no recibe aviso.
+5. (opcional) `src/state/markup-actions.ts:3` — `state` importa de `ui`; valorar mover `selection-to-pages` a `engine/`.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/selection-to-pages.ts` (reescrito), `apps/lector-pdf/tests/ui/markup.test.tsx` (fakes por nodo de texto, 2 tests nuevos), `apps/lector-pdf/tests/e2e/markup.spec.ts` (2 E2E nuevos y 2 funciones auxiliares). Sin commit.
+- Qué he hecho: (1) el bloqueante: `selectionPageRects` ya no usa `getClientRects` del rango completo; recorta cada nodo de texto a los extremos del rango y solo cuenta nodos dentro del contenedor de una capa registrada, asignados a su capa por contención. Descarta área nula y fragmentos fuera de su capa. Al depurar en navegador aparecía también un marcador de número de página (`aria-hidden`, dentro del marco y fuera de la capa) que se colaba en la selección: también queda excluido, con test unitario. (2) Test unitario con caja de contenedor entera en el rango, y E2E de selección de p1 (mitad) a p3 (mitad) con la 2 entera y «Tachar»: cada marcado debe caber en la caja de su texto. (3) E2E de clic de ratón en «Resaltar» de «Comentar» con Ctrl+A: crea el resaltado y `aria-pressed` queda en `false`.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (135 ficheros, 1586 tests; una ejecución anterior mostró ELIFECYCLE con todos los ficheros en verde, y las dos siguientes salieron con código 0); `pnpm coverage` OK (código 0); E2E completo con `LECTOR_E2E_PORT=4522 LECTOR_E2E_OUTDIR=dist/e2e-pdf032 pnpm exec playwright test` → 136 passed (`markup.spec.ts` 7/7). Build propio dentro de `dist/`, que ESLint y git ignoran (un directorio fuera de `dist/` hacía fallar el lint con 9438 errores por el build).
+- Dudas o cosas que no he podido hacer: (a) Los puntos opcionales 4 (aviso si falla el portapapeles) y 5 (`state` importa de `ui`) no los he tocado: el revisor los marcó como opcionales y no son bloqueantes. (b) La ejecución que dio ELIFECYCLE no la he podido reproducir; conviene vigilarla. (c) Playwright sigue usando `dist/` compartido si otra ficha lanza el E2E sin `LECTOR_E2E_OUTDIR`.
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Lint, typecheck y `pnpm test` (135 ficheros, 1586 tests, código 0) en verde; E2E `markup.spec.ts` 7/7 con puerto 4611 y build en `dist/e2e-rev032`. El bloqueante de la ronda 1 queda resuelto (recorte por nodo de texto, exclusión de contenedores y de rects nulos) y fijado con tests unitario y E2E de 3 páginas; el clic de ratón en «Resaltar» también tiene E2E.
+1. (opcional) `src/ui/viewer/SelectionActions.tsx` — sin aviso si falla `clipboard.writeText`.
+2. (opcional) `src/state/markup-actions.ts:3` — `state` importa de `ui`; valorar mover `selection-to-pages` a `engine/`.
+3. Nota para el tester: una ejecución de `pnpm test` bajo carga paralela acabó con ELIFECYCLE sin ficheros en rojo; repetida, salió con código 0. Vigilar posible flaky (probablemente timeout por carga).
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| rectsToLineQuads (3 palabras, 2 líneas, hueco 20 pt, rect 0,2 pt) | OK | `pnpm test`: 135 ficheros, 1586 tests, código 0 (`line-quads.test.ts`) |
+| markupSelection p2+p3 → 2 anotaciones, 1 paso de undo | OK | `tests/ui/markup.test.tsx` en verde |
+| E2E doble clic + «Resaltar» + píxel amarillo + Ctrl+Z | OK | `markup.spec.ts` 7/7 en Chromium real |
+| E2E herramienta Subrayar, línea 3 ≥ 80 % | OK | ídem |
+| E2E multipágina (p1→p2 y p1→p3 con la 2 entera, rect no excede el texto de su página) | OK | ídem |
+| E2E zoom 150 % + rotación 90° | OK | ídem |
+| E2E teclado (Ctrl+A + Intro) y clic de ratón en la barra «Comentar» | OK | ídem |
+| lint / typecheck / test / coverage / e2e | OK | lint 0, typecheck 0, test 0, coverage 0 (líneas 98,92 %), E2E completo 136 passed |
+
+Observaciones: (1) En la primera ejecución completa del E2E falló `performance.spec.ts` «pages-5000: ninguna long task…» mientras corrían a la vez el otro tester y la suite; repetido en solitario (`--workers=1`, performance + markup) 17/17 OK: flake por carga, no regresión. (2) Un primer `pnpm coverage` falló por colisión del directorio `coverage/` con el otro tester (Vitest lo bloquea); repetido sin concurrencia, código 0. (3) Sigue abierto, opcional: sin aviso si falla `clipboard.writeText`; `state` importa de `ui`.
+Tests añadidos: ninguno (la cobertura de la ficha ya cubre cada criterio). Rendimiento: abrir pages-100000 en 1,2 s (presupuesto < 5 s), sin long tasks > 100 ms en solitario.
+Build E2E en `dist/e2e-tester032`, puerto 4733, borrado al terminar.

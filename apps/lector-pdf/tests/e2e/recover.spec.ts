@@ -1,10 +1,9 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
+import { waitDraftSaved } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
-/** Espera del borrador (PDF-038): el guardado automático tarda 2 s tras el último cambio. */
-const DRAFT_WAIT_MS = 2_500;
 
 async function openAnnotated(page: Page): Promise<void> {
   await page.locator('[data-testid=open-input]').setInputFiles(join(FIXTURES_DIR, 'annotated.pdf'));
@@ -27,7 +26,7 @@ test('una supresión sin guardar se ofrece para recuperar tras recargar; «Recup
   await zone.focus();
   await page.keyboard.press('Delete');
   await expect(zone).toHaveCount(0);
-  await page.waitForTimeout(DRAFT_WAIT_MS);
+  await waitDraftSaved(page);
 
   await page.reload();
   await page.locator('[data-testid=open-input]').setInputFiles(join(FIXTURES_DIR, 'annotated.pdf'));

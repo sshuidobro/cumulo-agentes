@@ -52,3 +52,12 @@
   margin: 0.25rem 0.375rem;
   background: var(--color-border);
 }
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+}

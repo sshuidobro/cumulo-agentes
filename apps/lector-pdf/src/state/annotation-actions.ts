@@ -244,6 +244,11 @@ function publish(before: AnnotationEdits): void {
     for (const index of pages) pageVersion.set(index, (pageVersion.get(index) ?? 0) + 1);
     return { edits: after, undo: stack.getState(), pageVersion };
   });
+  // Si la ventana de comentario era de una anotación que ya no existe (borrada o deshecha), se cierra.
+  const open = useAnnotations.getState().openPopupId;
+  if (open !== null && !getEffective().has(open)) {
+    useAnnotations.setState({ openPopupId: null });
+  }
 }
 
 /** Ids cuya entrada en `edits` (cambio o borrado) es distinta entre dos estados. */
@@ -364,6 +369,18 @@ export function closeUndoGroup(): void {
 export function select(id: string | null): void {
   stack.closeGroup();
   useAnnotations.setState({ selectedId: id });
+}
+
+/** Abre la ventana de comentario de una anotación (PDF-033). Cambiar de ventana corta la agrupación de deshacer. */
+export function openPopup(id: string): void {
+  stack.closeGroup();
+  useAnnotations.setState({ openPopupId: id });
+}
+
+/** Cierra la ventana de comentario y corta la agrupación de deshacer (la escritura queda como una entrada). */
+export function closePopup(): void {
+  stack.closeGroup();
+  useAnnotations.setState({ openPopupId: null });
 }
 
 export function setTool(tool: AnnotationTool): void {

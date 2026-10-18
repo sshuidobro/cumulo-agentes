@@ -5,3 +5,4 @@ export * from './diff';
 export * from './import';
 export * from './to-pdf';
 export * from './draft';
+export * from './note';

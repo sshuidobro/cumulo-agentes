@@ -117,9 +117,11 @@ describe('TextLayerView · ciclo de vida de la capa', () => {
   it('si se desmonta antes de terminar de pintar, no se registra la capa', async () => {
     let finish: () => void = () => undefined;
     const cancel = vi.fn();
-    vi.mocked(createTextLayer).mockImplementationOnce((_page, container: HTMLElement) => ({
+    vi.mocked(createTextLayer).mockImplementationOnce((_page, container: HTMLElement, viewport) => ({
       textDivs: [],
       items: [],
+      container,
+      viewport,
       render: () =>
         new Promise<void>((resolve) => {
           finish = () => {

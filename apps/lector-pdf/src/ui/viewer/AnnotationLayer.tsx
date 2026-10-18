@@ -1,7 +1,19 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { translateAnnotation, type Annotation, type AnnotationType } from '../../core/annotations/model';
+import { translateAnnotation, type Annotation, type AnnotationType, type RectPt } from '../../core/annotations/model';
+import { newNoteAnnotation, noteRectAt } from '../../core/annotations/note';
 import type { PageViewport } from '../../engine/pdfjs';
-import { deleteAnnotation, getEffective, pageAnnotations, select, updateAnnotation } from '../../state/annotation-actions';
+import {
+  addAnnotation,
+  deleteAnnotation,
+  getEffective,
+  newAnnotationId,
+  nowIso,
+  openPopup,
+  pageAnnotations,
+  select,
+  setTool,
+  updateAnnotation,
+} from '../../state/annotation-actions';
 import { useAnnotations } from '../../state/annotation-store';
 import { msg } from '../messages';
 import { annotationOutline } from './annotation-geometry';
@@ -16,6 +28,8 @@ const ARROW_STEP_PT = 1;
 const ARROW_STEP_SHIFT_PT = 10;
 /** Caracteres del comentario que entran en el nombre accesible. */
 const LABEL_CONTENTS_CHARS = 80;
+/** Caracteres del comentario que muestra el `title` nativo al pasar el ratón (PDF-033). */
+const TOOLTIP_CHARS = 200;
 /** Tipos que se pueden mover. El marcado de texto va unido al texto y no se mueve. */
 const MOVABLE: ReadonlySet<AnnotationType> = new Set<AnnotationType>(['note', 'freetext', 'ink']);
 /** Marcador del foco tras borrar: se lleva el foco al visor (la región del documento). */
@@ -100,8 +114,9 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     updateAnnotation(translateAnnotation(current, dx, dy), 'mover', mergeKey);
   }
 
+  /** Con la herramienta «Nota», un clic en la página crea una nota (ver `createNoteAt`); la zona no selecciona. */
   function beginPointer(event: PointerEvent<SVGGElement>, a: Annotation): void {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || useAnnotations.getState().tool === 'note') return;
     select(a.id);
     if (!MOVABLE.has(a.type)) return;
     event.preventDefault();
@@ -136,6 +151,37 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     window.addEventListener('pointercancel', onEnd);
   }
 
+  /**
+   * Herramienta «Nota» (PDF-033): un clic crea una nota de 20 × 20 pt con la esquina superior izquierda en el punto,
+   * la selecciona, abre su ventana de comentario y devuelve la herramienta a «ninguna», como Acrobat.
+   */
+  function createNoteAt(event: PointerEvent<SVGSVGElement>): void {
+    if (event.button !== 0 || useAnnotations.getState().tool !== 'note') return;
+    event.preventDefault();
+    const box = event.currentTarget.getBoundingClientRect();
+    const [x = 0, y = 0] = viewport.convertToPdfPoint(event.clientX - box.left, event.clientY - box.top);
+    const { colors, author } = useAnnotations.getState();
+    const note = newNoteAnnotation({
+      id: newAnnotationId(),
+      pageIndex,
+      rect: noteRectAt(x, y, pageBoundsPt()),
+      color: colors.note,
+      author,
+      now: nowIso(),
+    });
+    addAnnotation(note);
+    setTool('none');
+    select(note.id);
+    openPopup(note.id);
+  }
+
+  /** Página completa en puntos PDF, con los ejes ordenados (la rotación de vista los invierte). */
+  function pageBoundsPt(): RectPt {
+    const [ax = 0, ay = 0] = viewport.convertToPdfPoint(0, 0);
+    const [bx = 0, by = 0] = viewport.convertToPdfPoint(viewport.width, viewport.height);
+    return [Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)];
+  }
+
   function onZoneKeyDown(event: KeyboardEvent<SVGGElement>, a: Annotation, index: number): void {
     const stopHere = (): void => {
       event.preventDefault();
@@ -143,6 +189,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     };
     switch (event.key) {
       case 'Enter':
+        // Intro abre la ventana de comentario (como el doble clic) y deja la anotación seleccionada.
+        stopHere();
+        select(a.id);
+        openPopup(a.id);
+        return;
       case ' ':
         stopHere();
         select(a.id);
@@ -190,6 +241,7 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
       className={viewerStyles.annotationLayer}
       width={viewport.width}
       height={viewport.height}
+      onPointerDown={createNoteAt}
     >
       {items.length > 0 && (
         <g transform={`matrix(${viewport.transform.join(' ')})`}>
@@ -220,7 +272,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
                   onFocus={() => {
                     setStopId(a.id);
                   }}
+                  onDoubleClick={() => {
+                    openPopup(a.id);
+                  }}
                 >
+                  {a.contents !== '' && <title>{Array.from(a.contents).slice(0, TOOLTIP_CHARS).join('')}</title>}
                   <ZoneShape a={a} />
                   <rect
                     x={outline[0]}

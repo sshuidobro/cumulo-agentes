@@ -28,6 +28,11 @@ export function get(pageIndex: number): TextLayerHandle | undefined {
   return layers.get(pageIndex);
 }
 
+/** Todas las capas montadas, por índice de página. Solo para leer (PDF-032 localiza la selección con ellas). */
+export function all(): ReadonlyMap<number, TextLayerHandle> {
+  return layers;
+}
+
 /** Avisa cada vez que se registra o desregistra una capa. Devuelve la función que cancela la suscripción. */
 export function subscribe(listener: () => void): () => void {
   listeners.add(listener);

@@ -19,6 +19,10 @@ export interface TextLayerHandle {
   readonly textDivs: readonly HTMLElement[];
   /** Cadenas de los ítems de texto (`str`), en el mismo orden que `textDivs`. */
   readonly items: readonly string[];
+  /** Contenedor de la capa (`div.textLayer`): su caja en la ventana sirve para situar la selección (PDF-032). */
+  readonly container: HTMLElement;
+  /** Viewport con el que está colocada la capa: el último que se le pasó en `update` (o el inicial). */
+  readonly viewport: PageViewport;
   /** Crea los `div` de texto. Rechaza si la capa se cancela antes. */
   render(): Promise<void>;
   /** Recoloca el texto para un nuevo viewport (zoom o rotación). */
@@ -38,6 +42,7 @@ export function createTextLayer(
     container,
     viewport,
   });
+  let current = viewport;
   return {
     get textDivs(): readonly HTMLElement[] {
       return layer.textDivs;
@@ -45,8 +50,13 @@ export function createTextLayer(
     get items(): readonly string[] {
       return layer.textContentItemsStr;
     },
+    container,
+    get viewport(): PageViewport {
+      return current;
+    },
     render: () => layer.render(),
     update: (next) => {
+      current = next;
       layer.update({ viewport: next });
     },
     cancel: () => {

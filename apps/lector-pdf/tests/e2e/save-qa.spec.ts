@@ -34,6 +34,7 @@ test('Ctrl+S sin cambios no descarga nada y no deja el título con aviso de camb
   let downloads = 0;
   page.on('download', () => downloads++);
   await page.keyboard.press('Control+S');
+  // Espera negativa legítima: no existe ningún estado que esperar cuando lo correcto es que no se descargue nada.
   await page.waitForTimeout(500);
   expect(downloads).toBe(0);
   await expect(page).toHaveTitle('basic-5.pdf — Lector PDF');
