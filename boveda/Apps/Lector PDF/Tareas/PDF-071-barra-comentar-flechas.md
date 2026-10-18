@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-071
 titulo: Las flechas, Inicio y Fin de la barra «Comentar» no deben cambiar de página
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-069]
 intentos: 0
 skills: []
@@ -43,3 +43,13 @@ Con el foco en un control de la barra «Comentar», → ← Inicio Fin solo muev
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/toolbar/CommentToolbar.tsx`, `apps/lector-pdf/tests/ui/comment-toolbar.test.tsx`, `apps/lector-pdf/tests/e2e/comment-toolbar-qa.spec.ts`, esta ficha.
+- Qué he hecho: añadido el test `→ ← Inicio Fin en la barra no cambian de página y no llegan a los atajos globales` (documento de 10 páginas en la 3.ª, foco en «Resaltar», comprobaciones de `currentPage`, `navRequest` y de un listener de `window`). Antes del arreglo falló en `navRequest` (ArrowRight pedía la página 3, `next-page` global). Arreglo: `event.stopPropagation()` en `onKeyDown` de la barra, tras el `preventDefault()`, solo para las teclas tratadas; comentario de la función actualizado. Nuevo caso e2e en `comment-toolbar-qa.spec.ts` (basic-5.pdf, → → desde «Resaltar» lleva a «Tachar» y el campo de página sigue en 1).
+- Comandos ejecutados y resultado:
+  - `vitest run tests/ui/comment-toolbar.test.tsx`: rojo antes del arreglo (1 fallo, el nuevo); tras el arreglo, 11/11 verde.
+  - `playwright test comment-toolbar-qa`: 2/2 verde.
+  - `pnpm lint`: código 0. `pnpm typecheck`: código 0.
+  - `pnpm test` (raíz): 143 ficheros, 1693 tests verde (en una pasada intermedia fallaban 2 tests de `comments-panel.test.tsx`, trabajo en curso de PDF-070, no relacionado; en la pasada final ya pasan).
+- Dudas o cosas que no he podido hacer: ninguna. No he tocado los ficheros de PDF-070 ni he hecho `git add -A`; el commit incluye solo los ficheros de esta ficha.
