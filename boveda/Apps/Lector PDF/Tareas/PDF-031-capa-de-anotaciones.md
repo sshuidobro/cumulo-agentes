@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-031
 titulo: Capa de anotaciones - dibujar, seleccionar, mover y borrar
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-030, PDF-010, PDF-011, PDF-013]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -97,3 +97,6 @@ Comprobado: lint 0 avisos; tests de la ficha (18 ficheros, 225 tests) OK; E2E `a
   2. `pnpm e2e` completo no lo he ejecutado: el árbol lo usan otras fichas. Solo he corrido el E2E de esta ficha.
   3. El perf de jsdom queda en `pnpm perf` sin JSX. Si se quiere `.tsx`, hay que ampliar el `include` de `vitest.perf.config.ts` (config compartida, no la he tocado).
   4. No he hecho commit (instrucción de no usar git commit/stash/checkout con las otras fichas en el árbol).
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` 0 avisos; `pnpm typecheck` OK (ya sin el fallo ajeno); `pnpm test` 122 ficheros, 1457 tests OK; tests de la ficha 226 OK; perf de jsdom OK; E2E `annotations-layer` 4 tests x2 repeticiones = 8/8 en puerto 4409 (el de 500 anotaciones sin long tasks). Los tres puntos de la ronda 1 resueltos. Supr sobre la zona enfocada y la decisión ↑/↓ (mover si hay movible seleccionada, si no recorrer) son razonables y quedan aceptadas. Sin problemas bloqueantes.
