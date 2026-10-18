@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, e2e, rendimiento, anotaciones]
 ---
 
@@ -48,3 +48,22 @@ Demostrar el flujo completo que pidió el usuario —subrayar y hacer notas, gua
 
 ### [lider] replanificación — 2026-10-17
 - `depende_de` gana [[PDF-069-barra-comentar]] (la barra «Comentar» que se prueba con teclado y axe sale ahora de esa ficha, no de PDF-030).
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/package.json` (`@axe-core/playwright` 4.14.0 exacta en devDependencies), `pnpm-lock.yaml`; nuevos `apps/lector-pdf/tests/e2e/annotations-kit.ts` (utilidades compartidas), `annotations-live.ts` (anotaciones referenciadas desde `/Annots` vía qpdf), `annotations-flow.spec.ts`, `annotations-foreign.spec.ts`, `annotations-keyboard.spec.ts`, `annotations-performance.spec.ts`, `annotations-a11y.spec.ts`.
+- Qué he hecho: flujo completo (6 anotaciones, deshacer/rehacer por el panel, Ctrl+S, qpdf, reapertura, edición y borrado, segundo guardado); `annotated.pdf` y `7.18.1-t02-pass-a.pdf` con nota nueva (Square, Link y enlace externo tras guardar); teclado (resaltado con Ctrl+A e Intro, navegación del panel con ↑↓, Intro y Supr); rendimiento en 5 000 y 100 000 páginas; axe en las tres vistas. No se usan `waitForTimeout`, `test.skip` ni `.only`.
+- Medidas (Chromium, qpdf 11.9.0):
+  - pages-5000, escaneo de anotaciones desde abrir hasta el panel «sin comentarios»: 1 721 ms (< 10 000). Long tasks desde el inicio del documento (carga y escaneo): 1, máxima 82 ms (< 100).
+  - pages-5000, 10 resaltados en páginas aleatorias (semilla fija) y Ctrl+S → descarga: 103 ms (< 1 000). Crecimiento del fichero: 9 077 bytes (< 51 200).
+  - pages-100000, resaltado en la página 99 999 y Ctrl+S → descarga: 237 ms (< 3 000).
+  - Nota: en 5 000 páginas el panel escanea solo al abrir el documento (no hay botón «Buscar en todo el documento»); la medida incluye la carga, así que es una cota superior.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: sin errores. `pnpm typecheck`: sin errores. `pnpm test`: 143 ficheros, 1 685 tests, todos en verde.
+  - `pnpm --filter lector-pdf e2e`: 153 pasan, 1 falla (`annotations-a11y.spec.ts`, panel de comentarios). Con `--repeat-each=3`: 459 pasan, 3 fallan (la misma prueba en cada repetición).
+  - `qpdf --check` (código 0, «No syntax or stream encoding errors found») en `basic-5-anotado.pdf`, `basic-5-revisado.pdf`, `annotated-con-nota.pdf`, `verapdf-con-nota.pdf`, `pages-5000-anotado.pdf` y `pages-100000-anotado.pdf`. Las pruebas comprueban el código 0 en cada guardado.
+- Dudas o cosas que no he podido hacer:
+  1. **Axe en el panel de comentarios: falla (no relajado).** Según axe, en `src/ui/sidebar/CommentsPanel.tsx` (PDF-036): (a) `label-content-name-mismatch` en 6 filas: el `aria-label` «Resaltado de Usuario, página 1» no contiene el texto visible (extracto, fecha); (b) `nested-interactive` en 5 nodos: el botón «Borrar» va dentro de `role="option"`. Arreglarlo cambia cómo se nombran las filas y dónde va el botón «Borrar»: es decisión del líder y está fuera del alcance de esta ficha; no lo he tocado. Hace falta reabrir PDF-036 o crear una ficha de corrección.
+  2. **Nota solo con teclado: no es posible en la app.** `createNoteAt` solo responde al puntero; no hay forma de colocar una nota con teclado. La prueba `annotations-keyboard` activa «Nota» con foco y Intro, y la coloca con un clic. Decidir cómo colocarla con teclado es una decisión de producto.
+  3. **Bug en la barra «Comentar» (PDF-069), fuera de alcance:** con el foco en un botón de la barra, ←/→ mueven el foco entre botones y además cambian de página (el atajo global `next-page` también recibe la tecla; `CommentToolbar` no detiene la propagación). Reproducción: foco en «Resaltar», pulsar → una vez: página +1. La prueba de teclado no usa ←→ en la barra para no depender de ese bug; conviene arreglarlo con un test rojo previo en PDF-069.
+  4. Por lo anterior, la ficha no cumple «`pnpm --filter lector-pdf e2e` con código 0» ni el criterio de axe. No la paso a `en-revision` con pruebas en rojo: queda `bloqueada` hasta que el líder decida sobre los puntos 1 y 2 (y corrija el 3).
+  5. Commit: solo los ficheros de esta ficha. Quedan sin commitear cambios ajenos que ya había (`apps/lector-pdf/tests/ui/ink.test.tsx` y la ficha PDF-035), que no tocan esta ficha.
