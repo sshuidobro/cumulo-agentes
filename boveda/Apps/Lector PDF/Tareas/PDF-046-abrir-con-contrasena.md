@@ -4,35 +4,46 @@ id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
 estado: pendiente
-depende_de: [PDF-022]
+depende_de: [PDF-091]
 intentos: 0
-skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
+skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
-tags: [tarea, pdf, iteracion-4, seguridad, por-detallar]
+actualizado: 2026-10-18
+tags: [tarea, pdf, iteracion-4, seguridad, ui]
 ---
 
 # PDF-046 · Abrir PDF con contraseña
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Paridad: [[Paridad Adobe Acrobat]]
-
-> **Ficha por detallar.** El líder la completará (firmas, ficheros, pasos y criterios exactos, y ADR si hace falta) al cerrar la iteración anterior. No empezar hasta entonces.
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0022-pdf-cifrados]] · Paridad: [[Paridad Adobe Acrobat]] (área 9)
 
 ## Objetivo
-Pedir la contraseña con un diálogo propio (`onPassword` de pdf.js), reintentar si es incorrecta y no guardarla nunca en disco. Fixtures cifrados generados (RC4 40/128, AES-128, AES-256) con `qpdf --encrypt` en el script de fixtures.
+Al abrir un PDF protegido aparece un diálogo propio que pide la contraseña; si es incorrecta se avisa y se puede reintentar; Cancelar vuelve al estado anterior. La contraseña vive solo en memoria mientras el documento está abierto (para reabrir tras guardar).
 
 ## Contexto
-- Leer cuando se detalle: [[Paridad Adobe Acrobat]], [[Librerias y arquitectura PDF]] y los ADR enlazados en el Plan.
+- Leer: `src/engine/load.ts` (ya acepta `password` y devuelve `password-required` / `password-incorrect`), `src/state/document-actions.ts` (`openDocument`, `Session`, `showError`), `src/state/save-actions.ts` (`reopenSaved`), `src/core/errors.ts`, `src/ui/kit/Dialog.tsx`, `src/ui/open/ErrorState.tsx`.
+- Textos en `src/ui/messages-security.ts` (`securityMsg`).
 
 ## Qué hay que hacer
-Por detallar.
+1. `src/state/password-prompt.ts`: store `usePasswordPrompt` `{ request: { name: string; incorrect: boolean } | null }` y `askPassword(name: string, incorrect: boolean): Promise<string | null>` (resuelve con la contraseña o `null` si se cancela). Un solo diálogo a la vez.
+2. `openDocument(file, opts?: { restore?; password?: string })`: si `loadPdf` devuelve `password-required` o `password-incorrect`, `askPassword(file.name, code === 'password-incorrect')`; con contraseña, reintenta `loadPdf` con ella (bucle hasta abrir o cancelar); con `null`, vuelve al estado vacío (si había otro documento abierto antes, este ya se cerró: estado vacío, igual que hoy al cancelar una apertura) y cierra el fichero. La contraseña aceptada se guarda en `Session.password` (`string | null`) y se expone con `currentPassword(): string | null`. Nunca se registra (logger), ni en preferencias, ni en borradores.
+3. `reopenSaved` (guardar) reabre con `password: currentPassword()` para no volver a pedirla.
+4. `src/ui/security/PasswordDialog.tsx`: `Dialog` «Contraseña necesaria» con texto «“<nombre>” está protegido. Escribe la contraseña para abrirlo.», `<input type="password" autocomplete="off">` con etiqueta «Contraseña» y foco inicial en él, casilla «Mostrar contraseña», mensaje de error `role="alert"` «La contraseña no es correcta.» cuando `incorrect`, botones «Abrir» (deshabilitado con campo vacío; Intro también) y «Cancelar» (Esc).
+5. `errors.ts`: `password-required` pasa a «Este PDF está protegido con contraseña.» (ya no dice «próxima versión»).
+6. Tests: UI del diálogo, acciones (`FakePlatform` + fixtures cifrados) y E2E `tests/e2e/password.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] Abrir los 4 cifrados con la contraseña correcta; mensaje «La contraseña no es correcta.» con la incorrecta; cancelar vuelve al estado vacío.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0; presupuestos de rendimiento del Plan sin regresiones.
+- [ ] E2E: abrir cada uno de los 5 cifrados con contraseña de usuario (`encrypted-rc4-40`, `-rc4-128`, `-aes-128`, `-aes-256`, `-aes-256-objstm`) → diálogo → «usuario» + Intro → página 1 visible con su texto.
+- [ ] E2E: contraseña «mal» → el diálogo sigue abierto con «La contraseña no es correcta.» y el campo vacío y enfocado; después «propietario» también abre.
+- [ ] E2E: Cancelar (y Esc) → estado vacío «Abre un PDF para empezar», sin mensaje de error.
+- [ ] E2E: `encrypted-owner-only.pdf` abre sin diálogo.
+- [ ] E2E: tras abrir con contraseña, añadir una nota y Ctrl+S → (hoy) aviso de `save-encrypted` sin pedir de nuevo la contraseña; tras PDF-047, guardado y reapertura sin diálogo (este criterio lo comprueba PDF-047).
+- [ ] UI: la contraseña no aparece en ningún `log.*` (espía del logger) ni en `platform.prefs` tras abrir.
+- [ ] Recordar posición (PDF-019) y borradores funcionan igual con un PDF cifrado (abrir, ir a la p3, cerrar, reabrir con contraseña → p3).
+- [ ] Axe sin incidencias `serious`/`critical` con el diálogo, con y sin error.
+- [ ] `pnpm --filter lector-pdf e2e` con código 0; `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
-- Por detallar.
+- Guardar anotaciones en cifrados (PDF-047). Permisos (PDF-048). Recordar contraseñas.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->

@@ -26,8 +26,8 @@ Ninguna prueba e2e usa `page.waitForTimeout`: las que esperan a un temporizador 
 
 ## Qué hay que hacer
 1. `tests/e2e/helpers.ts`: `export async function settle(page: Page): Promise<void>` — espera dos `requestAnimationFrame` y una vuelta de `setTimeout(0)` dentro de la página (`page.evaluate`), para que los manejadores síncronos y sus microtareas hayan terminado.
-2. `recover-qa.spec.ts` y `search.spec.ts`: `page.clock.install()` al principio de la prueba y `await page.clock.runFor(2_500)` / `runFor(1_000)` en lugar de la espera.
-3. `links-qa.spec.ts` y `save-qa.spec.ts`: `await settle(page)` en lugar de la espera (los eventos que no deben ocurrir se lanzarían en el propio manejador del clic o de la tecla).
+2. `recover-qa.spec.ts`: `await page.clock.install()` antes de `page.goto`; tras abrir el documento, `await page.clock.runFor(2_500)` en lugar de la espera (el reloj falso sigue avanzando solo, así que la importación y el visor funcionan; `runFor` dispara el *debounce* de 2 s de forma determinista).
+3. `search.spec.ts`, `links-qa.spec.ts` y `save-qa.spec.ts`: `await settle(page)` en lugar de la espera (lo que no debe ocurrir se lanzaría en el propio manejador del clic, de la tecla o en el siguiente lote de búsqueda, que cede con `setTimeout(0)`; en `search.spec.ts` llama a `settle` 3 veces seguidas para cubrir 3 lotes). No uses `page.clock` en `search.spec.ts`: la búsqueda cede el hilo con temporizadores.
 4. `eslint.config.js`: bloque `{ files: ['apps/*/tests/e2e/**/*.ts'], rules: { 'no-restricted-properties': ['error', { property: 'waitForTimeout', message: 'Espera a una condición (expect, page.clock o settle), no a un tiempo fijo.' }] } }`.
 
 ## Criterios de aceptación
