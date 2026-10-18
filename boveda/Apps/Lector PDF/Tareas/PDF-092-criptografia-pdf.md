@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-092
 titulo: Manejador de seguridad estándar - claves, contraseñas y cifrado por objeto
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-091]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
