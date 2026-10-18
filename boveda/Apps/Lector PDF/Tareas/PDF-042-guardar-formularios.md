@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-042
 titulo: Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-081, PDF-082, PDF-087]
-intentos: 0
+intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -63,3 +63,11 @@ export async function planFieldWrites(reader: ObjectReader, changes: readonly Fi
 - Qué he hecho: `planFieldWrites` escribe `/V`, `/AS`, `/I` y `/AP` por campo, con los diccionarios fusionados (campo y widget) escritos una sola vez; se llama en el escritor incremental tras las anotaciones modificadas y antes de reservar la xref. Guardar, guardar como, imprimir y «nada que guardar» usan `{ diff, fields }`. La muestra `formulario-relleno.pdf` se genera con los valores del criterio 1.
 - Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK (tras corregir tres errores de tipos en mis tests); `pnpm test` OK: 188 ficheros, 2203 tests. `pnpm coverage` falló con «directorio de cobertura en uso» porque otro Vitest (del tester) estaba activo, no por código; lo repetí con `--coverage.reportsDirectory` propio: exit 0, líneas 98,71 %, ramas 92,11 %. `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/incremental.perf.test.ts`: 2/2 OK (solo esta suite de rendimiento, las del tester no las he lanzado). `pnpm --filter lector-pdf interop:samples` OK y `qpdf --check` de `formulario-relleno.pdf` sin errores. qpdf 11 valida el resultado en todos los tests que escriben.
 - Dudas o cosas que no he podido hacer: (1) Una casilla marcada cuyo primer widget no tiene `exportValue` lanza `save-unreadable` en vez de escribir un estado inventado; la ficha no lo cubre. (2) Una lista de selección múltiple sin elegidos escribe `/I []`; la ficha no lo dice. (3) La lista de comprobación del Manual no está actualizada con `formulario-relleno.pdf`: el Manual lo cierra el líder. (4) Los criterios de la ficha siguen sin marcar: los verifica el tester.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Comprobado: `pnpm lint` y `pnpm typecheck` OK; `forms-write.test.ts` 6 veces seguidas (13/13) y 8 veces con la CPU saturada (6 bucles, junto a `save-actions.test.ts`, 28/28): sin no determinismo. Cada test dura <130 ms, no hay hora, red, aleatoriedad ni rutas compartidas (`mkdtempSync` único). El fallo de «casilla desmarcada a /Off» no se reproduce; lo más probable es que el tester lo viese con el árbol de trabajo compartido a medio editar por otro programador. Si vuelve a verse, que anote la salida completa. No lancé e2e/perf ni la suite completa.
+Código y diseño correctos (fusión campo+widget en una sola escritura, `/I` ordenado, `/AP` sustituido, xref tras los campos, errores como `Result`). Solo faltan pruebas de las dos decisiones y un criterio sin cubrir:
+1. `apps/lector-pdf/tests/unit/forms-write.test.ts` — la decisión (1), casilla marcada sin `exportValue` → `PdfSyntaxError`/`save-unreadable`, no tiene ningún test. La acepto (no inventar un estado `Yes` sin apariencia correspondiente es lo prudente), pero hay que fijarla: añade un test de `planFieldWrites` con un campo `checkbox` cuyos widgets tengan `onState: null` y valor `checked: true` (lanza `PdfSyntaxError`) y otro con `checked: false` (escribe `/AS /Off` y `/V /Off` sin lanzar).
+2. `apps/lector-pdf/tests/unit/forms-write.test.ts` — la decisión (2), lista múltiple sin elegidos → `/V []` y `/I []`, tampoco tiene test. La acepto (ambos son arreglos válidos según ISO 32000-1 §12.7.4.4 y es el estado coherente tras deseleccionar todo). Añade un test que guarde `idiomas` con `selected: []` y compruebe con qpdf (`qpdf --check` 0, `/V` = `[]`, `/I` = `[]`) y que al reimportar con pdf.js `initial.selected` es `[]` (ida y vuelta). Si pdf.js no lo devolviera así, decide con el líder.
+3. `apps/lector-pdf/tests/unit/forms-write.test.ts:148-153` — el criterio 1 pide `pais`=`pt` en los `fieldValue` de pdf.js y el test del 133 no comprueba `pais` (solo la ida y vuelta). Añade `expect(byName('pais')[0]?.fieldValue).toBe('pt')`.
+4. (opcional) `apps/lector-pdf/src/core/errors.ts:24` — `save-unreadable` dice «No se pueden guardar las anotaciones», y ahora también salta por campos de formulario; reformularlo («…guardar los cambios») en el fichero de mensajes.
