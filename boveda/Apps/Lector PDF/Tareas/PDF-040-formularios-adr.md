@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-040
 titulo: Generar el documento de prueba de formularios completo (form-full.pdf)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
@@ -74,3 +74,15 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 3) · Decisiones: [[ADR-0019-for
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 Comprobado: fixtures (18 generados), `qpdf --check` código 0, lint 0, typecheck 0, `pnpm test` 0, tests de fixtures en verde. Tabla de campos, orden de `/Annots` (15 + 2) y `/Fields` conforme a la ficha; tests cubren los criterios.
 1. (opcional) `apps/lector-pdf/tests/fixtures/structure.ts:409,417` — `importe` y `rotado` tienen apariencia sin alinear/girar (ya anotado por el programador); revisar en PDF-079 si hace falta.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| fixtures + qpdf | OK | `pnpm --filter lector-pdf fixtures` (18 generados); `qpdf --check` código 0 |
+| 15 + 2 widgets y atributos | OK | `tests/unit/fixtures-form-full.test.ts` en verde (3 ficheros de fixtures, 40 tests) |
+| `hasAppearance` en todos | OK | cubierto por el mismo test |
+| Fixtures anteriores intactos | OK | `fixtures.test.ts` en verde |
+| lint / typecheck | OK | ambos código 0 |
+| test / coverage | OK con matiz | Con carga de máquina 27, fallan por `Test timed out in 5000ms` tests ajenos y distintos en cada pasada (search-actions, annotations/commands, qa-drafts, concat-source, fuzz-roundtrip). Los dos de la 1.ª pasada pasan al ejecutarlos solos. No relacionados con esta ficha; conviene subir `testTimeout` o bajar paralelismo. Coverage lanzado con `reportsDirectory` propio porque otro proceso bloqueaba `coverage/`. |
+
+Tests añadidos: ninguno nuevo (los del programador cubren los criterios). Rendimiento: generación de fixtures 4,66 s.
