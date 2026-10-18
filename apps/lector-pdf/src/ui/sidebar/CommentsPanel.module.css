@@ -184,9 +184,19 @@
   color: var(--color-text-muted);
 }
 
-.type {
+.name {
   font-weight: 600;
   color: var(--color-text);
+}
+
+/* Texto solo para lectores de pantalla (como en PageNavigator): forma parte del nombre accesible de la fila. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .excerpt {
@@ -205,4 +215,5 @@
 
 .rowActions {
   flex: 0 0 auto;
+  cursor: pointer;
 }

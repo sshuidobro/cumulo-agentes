@@ -6,6 +6,7 @@ import {
   openCommentBar,
   openCommentsPanel,
   openFixtureWithDownloads,
+  optionName,
   zoneOf,
 } from './annotations-kit.ts';
 
@@ -20,11 +21,11 @@ import {
  *   vez): la barra se recorre por foco directo, no con ←→.
  */
 
-/** Nombre de la fila activa del panel (la del foco de teclado, `aria-activedescendant`), o `null`. */
-async function activeRowName(list: Locator): Promise<string | null> {
+/** Texto de la fila activa del panel (la del foco de teclado, `aria-activedescendant`), o `''` si no hay. */
+async function activeRowText(list: Locator): Promise<string> {
   return list.evaluate((el) => {
     const id = el.getAttribute('aria-activedescendant');
-    return id === null ? null : (document.getElementById(id)?.getAttribute('aria-label') ?? null);
+    return id === null ? '' : (document.getElementById(id)?.textContent ?? '');
   });
 }
 
@@ -34,10 +35,10 @@ async function selectRowByKeyboard(page: Page, name: string): Promise<void> {
   await list.focus();
   const total = await commentRows(page).count();
   for (let i = 0; i <= total; i++) {
-    if ((await activeRowName(list)) === name) return;
+    if (optionName(name).test(await activeRowText(list))) return;
     await page.keyboard.press('ArrowDown');
   }
-  await expect.poll(() => activeRowName(list)).toBe(name);
+  await expect.poll(() => activeRowText(list)).toMatch(optionName(name));
 }
 
 /** Zona de anotación de la página 1 con su nombre accesible (prefijo: el nombre puede añadir el texto de la anotación). */

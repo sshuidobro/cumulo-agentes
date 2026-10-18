@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-070
 titulo: Hacer accesible el panel de comentarios (nombre visible y Borrar fuera de la fila)
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-036]
 intentos: 0
 skills: [calidad-profesional]
@@ -118,3 +118,14 @@ Instrucciones exactas (única corrección pendiente):
 2. El criterio «nombre que cumple `optionName('Nota de Ana, página 1')`» se entiende con esta `optionName`. No cambia ningún otro criterio.
 3. Desviaciones de la ronda 1, **aceptadas** tal como están: `{' '}` entre `.name` y la fecha (punto 2); papelera siempre visible con `cursor: pointer`, porque la ficha se equivocaba al decir que hoy aparece solo al pasar el ratón (punto 3); localizadores de E2E del punto 4.
 4. Ejecutar y anotar en el Registro: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter lector-pdf exec playwright test annotations-a11y` (3 en verde) y **`pnpm --filter lector-pdf e2e` completo** con código 0.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/annotations-kit.ts`, `apps/lector-pdf/tests/ui/comments-panel.test.tsx` (solo `optionName`); más los de la ronda 1 que quedaban sin commitear: `apps/lector-pdf/src/ui/messages.ts`, `apps/lector-pdf/src/ui/sidebar/CommentsPanel.tsx`, `apps/lector-pdf/src/ui/sidebar/CommentsPanel.module.css`, `apps/lector-pdf/tests/e2e/annotations-flow.spec.ts`, `apps/lector-pdf/tests/e2e/annotations-keyboard.spec.ts`, `apps/lector-pdf/tests/e2e/comments-panel.spec.ts`.
+- Qué he hecho: aplicada la corrección (a) del líder en las dos funciones `optionName`: tras escapar, cada coma admite espacios opcionales antes (`\s*,`). Sin más cambios de estructura, CSS ni localizadores.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: código 0, sin avisos.
+  - `pnpm --filter lector-pdf typecheck`: código 0.
+  - `pnpm test`: 143 ficheros, 1693 tests en verde, código 0.
+  - `pnpm --filter lector-pdf exec playwright test annotations-a11y`: 3 de 3 en verde (0 violaciones serious/critical).
+  - `pnpm --filter lector-pdf e2e`: 155 pruebas en verde, código 0 (incluye `annotations-flow` y `annotations-keyboard`, que en la ronda 1 fallaban).
+- Dudas o cosas que no he podido hacer: ninguna. Commit solo de los ficheros de esta ficha; `Plan.md`, PDF-039, PDF-071, PDF-072 y la bitácora quedan sin commitear porque pertenecen a otras fichas.

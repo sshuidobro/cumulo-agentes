@@ -106,6 +106,15 @@ export function zoneOf(page: Page, n: number, kind: string): Locator {
   return pageFrame(page, n).locator(`[role="button"][aria-label^="${kind}"]`);
 }
 
+/**
+ * Nombre accesible de una fila del panel: empieza por `name` (p. ej. «Nota de Ana, página 1») y va seguido de un
+ * espacio o del final. El resto del nombre es el contenido visible de la fila (fecha y extracto).
+ */
+export function optionName(name: string): RegExp {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/,/g, '\\s*,');
+  return new RegExp('^' + escaped + '(?:\\s|$)');
+}
+
 /** Lista de comentarios del panel lateral (solo las filas de la lista). */
 export function commentRows(page: Page): Locator {
   return page.getByRole('listbox', { name: 'Comentarios del documento' }).getByRole('option');
