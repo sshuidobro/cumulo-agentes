@@ -111,7 +111,10 @@ describe('Controles de zoom', () => {
     openView();
     render(<App />);
     // Tab hasta «Reducir»: antes puede haber otros controles de la barra (Abrir, campo de página, herramientas).
-    for (let i = 0; i < 10 && !screen.getByRole('button', { name: 'Reducir' }).matches(':focus'); i++) {
+    // El límite es holgado (la barra crece con las funciones); si no llega, la aserción de abajo falla con claridad.
+    const reducir = screen.getByRole('button', { name: 'Reducir' });
+    const maxTabs = document.querySelectorAll('button, input, select, textarea, a[href]').length;
+    for (let i = 0; i < maxTabs && !reducir.matches(':focus'); i++) {
       await user.tab();
     }
     expect(screen.getByRole('button', { name: 'Reducir' })).toHaveFocus();
