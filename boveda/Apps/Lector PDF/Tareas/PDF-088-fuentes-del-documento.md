@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-088
 titulo: Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-045]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -112,3 +112,17 @@ Verificación: `pnpm lint`, `pnpm --filter lector-pdf typecheck`, `pnpm test`, `
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 - Verificado: `pnpm lint` y `pnpm --filter lector-pdf typecheck` OK; tests de fonts (unit, acciones, UI) 26/26 OK. Criterios cubiertos: oráculo `qpdfPageFontNames` coherente con la replanificación y probado con 3 ficheros, mensaje «detenida tras revisar n de m páginas» con test determinista, cancelación al cerrar/cambiar de documento, núcleo sin React.
 - Sin problemas bloqueantes. Pendiente para el tester: `pnpm perf`, E2E `@perf` (pages-100000, long tasks, «Detener» < 200 ms), axe y `pnpm coverage`.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| basic-5 / multilingue / verapdf (oráculo qpdf) | OK | `pnpm test` 183 ficheros / 2148 tests OK (incluye `pdf-fonts`, `fonts-actions`, `properties-fonts`) |
+| Mensaje al detener (n de m, es-ES) | OK | caso UI determinista en `properties-fonts.test.tsx` y E2E `/Búsqueda detenida/` |
+| Perf `scanFonts` pages-5000 < 3 s | OK | `pnpm perf` 17 ficheros / 28 tests OK (`fonts.perf` pasa, mejor de 3 < 3000 ms) |
+| pages-100000: sin long tasks > 100 ms, «Detener» < 200 ms | OK | E2E `chromium-perf` properties.spec.ts:249 (1,8 s) |
+| Cerrar el diálogo cancela | OK | `fonts-actions.test.ts` con `countingSource` + E2E Esc |
+| Axe pestaña «Fuentes» | OK | properties.spec.ts:242 |
+| lint, typecheck, test, coverage, perf, e2e | OK | todo con código 0; `fonts.ts` 96,7 % líneas, global 98,98 %; `pnpm e2e` 184/184 (4,3 min, en reposo) |
+
+Los dos fallos de presupuesto de la 044 (pdfjs-deferred, performance) no han reaparecido: `performance.spec.ts:170` pasa y no hay fallos en toda la batería; eran por carga. Tampoco fallan `open-qa.spec.ts:59` ni `render.spec.ts:158`.
+Tests añadidos: ninguno (cobertura suficiente).
