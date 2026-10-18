@@ -3,8 +3,8 @@ tipo: tarea
 id: PDF-073
 titulo: Ejecutar las pruebas e2e de long tasks en un proyecto Playwright en serie
 app: pdf
-estado: bloqueada
-depende_de: []
+estado: pendiente
+depende_de: [PDF-075, PDF-076, PDF-077]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
 creado: 2026-10-18
@@ -14,7 +14,7 @@ tags: [tarea, pdf, e2e, rendimiento]
 
 # PDF-073 · Pruebas e2e de long tasks en serie
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (secciones "Presupuestos" y "Comandos") · Decisiones: [[ADR-0016-e2e-long-tasks-en-serie]], [[ADR-0012-suite-de-rendimiento]] · Origen: [[PDF-039-e2e-anotaciones]] (ronda 2)
+Plan: [[Apps/Lector PDF/Plan|Plan]] (secciones "Presupuestos" y "Comandos") · Decisiones: [[ADR-0016-e2e-long-tasks-en-serie]], [[ADR-0012-suite-de-rendimiento]], [[ADR-0017-carga-diferida-de-pdfjs]], [[ADR-0018-vista-previa-del-trazo-en-canvas]] · Origen: [[PDF-039-e2e-anotaciones]] (ronda 2)
 
 ## Objetivo
 Que `pnpm --filter lector-pdf e2e` mida las *long tasks* sin otra ventana de Chromium compitiendo por la CPU, sin cambiar ningún umbral, y termine con código 0 de forma estable.
@@ -60,7 +60,7 @@ Que `pnpm --filter lector-pdf e2e` mida las *long tasks* sin otra ventana de Chr
 - [ ] `pnpm --filter lector-pdf exec playwright test --list --project=chromium-perf --no-deps` lista exactamente 7 pruebas (las de la tabla). Salida en el Registro.
 - [ ] `pnpm --filter lector-pdf exec playwright test --list --project=chromium | grep -c "@perf"` da `0`.
 - [ ] El total de `--list` sin filtro es el mismo que antes del cambio (anotar ambos números): ninguna prueba se pierde ni se duplica.
-- [ ] `pnpm --filter lector-pdf e2e` con código 0 tres veces seguidas, y `pnpm --filter lector-pdf e2e --repeat-each=3` con código 0. En el Registro: totales y el valor `long-task-max-ms`/«Tarea larga máxima» de `search.spec.ts` y `viewer.spec.ts` en cada ejecución.
+- [ ] ~~`pnpm --filter lector-pdf e2e` con código 0 tres veces seguidas, y `pnpm --filter lector-pdf e2e --repeat-each=3` con código 0.~~ Sustituido por los criterios de la sección «Replanificación (líder, 2026-10-18)».
 - [ ] `git diff` no cambia ningún número de umbral, ni añade `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout`.
 - [ ] `pnpm lint`, `pnpm typecheck` y `pnpm test` con código 0.
 
@@ -68,6 +68,18 @@ Que `pnpm --filter lector-pdf e2e` mida las *long tasks* sin otra ventana de Chr
 - Optimizar la búsqueda o el scroll para ganar margen bajo los 100 ms (si una prueba falla también en serie, es una regresión real: anótala con su valor y devuelve la ficha al líder).
 - Las pruebas de tiempo de reloj con margen amplio (no se etiquetan en esta ficha).
 - `apps/lector-pdf/tests/perf/` (Vitest, ya en serie por [[ADR-0012-suite-de-rendimiento]]).
+
+## Replanificación (líder, 2026-10-18)
+Condición de medida (ADR-0016, revisión punto 2): antes de cada ejecución, `uptime` con carga de 1 min < 1,0 y `pgrep -fa "playwright|vitest|vite build"` vacío (salvo la propia ejecución). Pegar ambos en el Registro. Si la máquina está cargada, esperar a que baje; no ejecutar con carga y no repetir hasta que salga verde.
+
+### Criterios de aceptación (sustituyen al 4.º de la lista original)
+- [ ] `pnpm --filter lector-pdf e2e` con código 0 **tres veces seguidas**. En el Registro, por ejecución: totales y las anotaciones `carga-cpu-1min` y `long-tasks` de las 7 pruebas `@perf` (con `--reporter=list,json` o leyendo `test-results`), más «Tarea larga máxima» de `search` y `viewer` y `tarea-larga-maxima-ms` de `images-200`.
+- [ ] Repetición ×3 de **toda** la batería, en dos órdenes (ninguna prueba se queda sin repetir):
+  - `pnpm --filter lector-pdf e2e --project=chromium --repeat-each=3` → código 0 y total = 3 × (pruebas de `chromium`).
+  - `pnpm --filter lector-pdf e2e --project=chromium-perf --no-deps --repeat-each=3` → código 0 y total = 21.
+- [ ] Si alguna `@perf` falla: no repetir ni tocar nada; pegar su `perf-diagnostico.json` y la carga, y devolver la ficha al líder (`bloqueada`).
+- [ ] Plan, línea «E2E» de «Comandos»: quitar «— vigente cuando PDF-073 esté hecha» (único cambio de la bóveda además de este Registro).
+- [ ] El resto de criterios originales (listas, totales, `git diff`, lint/typecheck/test) se vuelven a comprobar con el estado final.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
@@ -87,3 +99,11 @@ Que `pnpm --filter lector-pdf e2e` mida las *long tasks* sin otra ventana de Chr
   - Regresión 1: `images-200` 101 ms (1 ms sobre el presupuesto), una vez de 4 ejecuciones completas y una de 3 repeticiones (77, 69, 96 ms).
   - Regresión 2: `ink` «dibujar un trazo de 2 000 eventos…» con dos long tasks (79 y 145 ms) en serie. Con `workers: 2` estos valores no se medían, así que no sé si la regresión es nueva o de siempre. Hay que analizarlo; no se toca el umbral.
   - Pendiente del líder: decidir si estas dos pruebas deben optimizarse o si el presupuesto se vuelve intermitente (ADR-0016 no lo prevé).
+
+### [lider] replanificación — 2026-10-18
+Ronda 1 aceptada en lo hecho (configuración `chromium-perf` y 7 etiquetas `@perf`, commit `a54642d`): **no se repite**. La ficha vuelve a `pendiente`, `intentos: 0`, y queda solo la verificación, tras [[PDF-075-pdfjs-diferido]], [[PDF-076-vista-previa-trazo-canvas]] y [[PDF-077-diagnostico-long-tasks]]. Lo que se ha averiguado:
+- **`images-200` (101 ms) es real y de la app.** Traza de Chromium, 4 ejecuciones aisladas: la única *long task* está a 70-100 ms de cargar la página, antes de abrir el PDF, y es `v8.evaluateModule` del chunk de entrada de 917 KB (67, 93, 96, 99 ms). El arranque congela la ventana casi 100 ms. Se arregla difiriendo pdf.js → [[ADR-0017-carga-diferida-de-pdfjs]], [[PDF-074-presupuesto-bundle-arranque]] (rojo previo) y [[PDF-075-pdfjs-diferido]]. Umbral sin cambios.
+- **`ink` ([79, 145] ms) no se reproduce**: 6 ejecuciones aisladas, cero *long tasks* (el trazo de 2 000 pasos dura ~33 s porque cada paso espera un frame). Había otras baterías de agentes en la máquina (carga de 15 min > 2,5 en 4 núcleos). Pero el código tiene un coste O(n²) real por trazo y re-renderiza toda la capa en cada frame → [[ADR-0018-vista-previa-del-trazo-en-canvas]] y [[PDF-076-vista-previa-trazo-canvas]] (test rojo previo con `Profiler`). Umbral sin cambios.
+- **`--repeat-each` no repite `chromium`**: es diseño de Playwright 1.56.1 (el `repeatEach` de la CLI solo se aplica a proyectos `top-level`; un proyecto que es dependencia de otro seleccionado siempre es `dependency`; ver `lib/runner/loadUtils.js` y `projectUtils.js`). Se cumple el criterio lanzando los dos proyectos por separado (abajo). Detalle en [[ADR-0016-e2e-long-tasks-en-serie]], «Revisión 2026-10-18».
+- Para clasificar futuros rojos, cada prueba `@perf` adjuntará instante y duración de cada *long task* y la carga de CPU → [[PDF-077-diagnostico-long-tasks]].
+
