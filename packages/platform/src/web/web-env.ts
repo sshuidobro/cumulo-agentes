@@ -4,6 +4,8 @@ import type { ShowOpenFilePicker, ShowSaveFilePicker } from './fs-access';
 export interface WebEnv {
   readonly window: Window;
   readonly storage: Storage | null;
+  /** IndexedDB para los recientes (handles); `null` = sin persistencia, solo memoria. */
+  readonly indexedDB: IDBFactory | null;
   readonly showOpenFilePicker: ShowOpenFilePicker | undefined;
   readonly showSaveFilePicker: ShowSaveFilePicker | undefined;
   /** Crea un <input type=file accept=...>, hace click y resuelve con el fichero o null si llega el evento 'cancel'. */
@@ -63,6 +65,7 @@ export function defaultWebEnv(): WebEnv {
   return {
     window: win,
     storage: readStorage(win),
+    indexedDB: globalThis.indexedDB ?? null,
     // Se enlazan a window: los métodos de File System Access fallan si se invocan con otro `this`.
     showOpenFilePicker: win.showOpenFilePicker?.bind(win),
     showSaveFilePicker: win.showSaveFilePicker?.bind(win),

@@ -36,6 +36,10 @@ export function createFakePlatform(overrides: Partial<Platform> = {}): Platform 
     onCloseRequested: () => () => undefined,
     closeWindow: vi.fn(async () => undefined),
     print: vi.fn(async () => ok(undefined)),
+    recentFiles: vi.fn(async () => []),
+    openRecent: vi.fn(async () => err(platformError('unsupported'))),
+    removeRecent: vi.fn(async () => undefined),
+    clearRecents: vi.fn(async () => undefined),
     ...overrides,
   };
 }

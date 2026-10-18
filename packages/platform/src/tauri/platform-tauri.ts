@@ -235,5 +235,22 @@ export function createTauriPlatform(
         return err(platformError('io', cause));
       }
     },
+
+    // Recientes de escritorio: pendientes de COM-016.
+    recentFiles() {
+      return Promise.resolve([]);
+    },
+
+    openRecent() {
+      return Promise.resolve(err(platformError('unsupported')));
+    },
+
+    removeRecent() {
+      return Promise.resolve();
+    },
+
+    clearRecents() {
+      return Promise.resolve();
+    },
   };
 }

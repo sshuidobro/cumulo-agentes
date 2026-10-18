@@ -6,6 +6,7 @@ export type {
   SaveOutcome,
   PlatformErrorCode,
   KeyValueStore,
+  RecentFile,
   Platform,
 } from './types';
 export { PLATFORM_MESSAGES } from './messages';

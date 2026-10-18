@@ -96,6 +96,10 @@ export function setupSaveHarness(): SaveHarness {
     onCloseRequested,
     closeWindow,
     print: vi.fn(async () => ok(undefined)),
+    recentFiles: vi.fn(async () => []),
+    openRecent: vi.fn(async () => err(platformError('unsupported'))),
+    removeRecent: vi.fn(async () => undefined),
+    clearRecents: vi.fn(async () => undefined),
   };
   const harness: SaveHarness = { original, platform, save, saveAs, closeFile, closeWindow, setTitle, onCloseRequested };
 
