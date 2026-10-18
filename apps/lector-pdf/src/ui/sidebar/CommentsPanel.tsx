@@ -112,6 +112,8 @@ export function CommentsPanel(): ReactElement {
   );
   const range = visibleRowRange(layout, scrollTop, viewHeight, OVERSCAN);
   const activeIndex = activeId === null ? -1 : rows.findIndex((row) => row.kind === 'item' && row.id === activeId);
+  const activeCandidate = activeIndex < 0 ? undefined : rows[activeIndex];
+  const activeRow = activeCandidate?.kind === 'item' ? activeCandidate : undefined;
 
   // Al seleccionarse una anotación en la página, su fila pasa a ser la activa (ajuste de estado durante el render).
   if (selectedId !== shownSelection) {
@@ -149,8 +151,27 @@ export function CommentsPanel(): ReactElement {
     openPopupWhenPageCurrent(row.id, row.pageIndex);
   }
 
+  /**
+   * Borra una anotación (PDF-070). La fila activa pasa a la siguiente fila de comentario o, si no hay, a la anterior;
+   * si no queda ninguna, no hay fila activa. El foco no se mueve.
+   */
+  function deleteRow(id: string): void {
+    const index = rows.findIndex((row) => row.kind === 'item' && row.id === id);
+    const target = nextItemRow(rows, index, 'next') ?? nextItemRow(rows, index, 'prev');
+    const targetRow = target === null ? undefined : rows[target];
+    deleteAnnotation(id);
+    setActiveId(targetRow?.kind === 'item' ? targetRow.id : null);
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.ctrlKey || event.altKey || event.metaKey) return;
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault();
+      event.stopPropagation();
+      const row = rows[activeIndex];
+      if (row !== undefined && row.kind === 'item' && !row.readOnly) deleteRow(row.id);
+      return;
+    }
     const step = keyStep(event.key);
     if (step === null && event.key !== 'Enter') return;
     // Las teclas de la lista no deben llegar a los atajos globales (Inicio, Fin, flechas de página).
@@ -234,7 +255,6 @@ export function CommentsPanel(): ReactElement {
           id={rowDomId(i)}
           role="option"
           aria-selected={row.id === selectedId}
-          aria-label={msg.commentOption(msg.annotationName(row.typeLabel, row.author), row.pageIndex + 1)}
           className={row.id === selectedId ? `${styles.row} ${styles.rowSelected}` : styles.row}
           style={{ top, height }}
           onClick={() => {
@@ -250,29 +270,30 @@ export function CommentsPanel(): ReactElement {
           </span>
           <div className={styles.body}>
             <div className={styles.meta}>
-              <span className={styles.type}>{row.typeLabel}</span>
-              {row.author.trim() !== '' && <span className={styles.author}>{row.author}</span>}
+              <span className={styles.name}>
+                {msg.annotationName(row.typeLabel, row.author)}
+                <span className={styles.srOnly}>{msg.commentOptionPage(row.pageIndex + 1)}</span>
+              </span>
+              {/* Espacio de separación en el nombre accesible (en flex no se pinta). */}
+              {' '}
               {date !== null && <span className={styles.date}>{date}</span>}
               {row.readOnly && <span className={styles.readOnly}>{msg.commentReadOnly}</span>}
             </div>
             <p className={styles.excerpt}>{row.excerpt}</p>
           </div>
           {!row.readOnly && (
-            // El botón va dentro de la fila: su clic no debe llegar a la fila (que navegaría).
+            // Icono decorativo (el borrado accesible es el botón de la barra o Supr): su clic borra y no navega.
             <span
               className={styles.rowActions}
+              aria-hidden="true"
+              title={msg.commentDelete}
+              data-testid="comment-row-delete"
               onClick={(event) => {
                 event.stopPropagation();
+                deleteRow(row.id);
               }}
             >
-              <IconButton
-                label={msg.commentDelete}
-                onClick={() => {
-                  deleteAnnotation(row.id);
-                }}
-              >
-                <IconTrash />
-              </IconButton>
+              <IconTrash />
             </span>
           )}
         </div>,
@@ -310,6 +331,15 @@ export function CommentsPanel(): ReactElement {
           <MenuButton label={msg.commentsFilter} entries={filterEntries} disabled={filterEntries.length === 0}>
             <span className={styles.filterLabel}>{msg.commentsFilter}</span>
           </MenuButton>
+          <IconButton
+            label={msg.commentDeleteActive}
+            disabled={activeRow === undefined || activeRow.readOnly}
+            onClick={() => {
+              if (activeRow !== undefined) deleteRow(activeRow.id);
+            }}
+          >
+            <IconTrash />
+          </IconButton>
         </div>
         <p className={styles.count} aria-live="polite">
           {msg.commentsCount(itemCount)}

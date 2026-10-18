@@ -29,7 +29,7 @@ test.describe('panel de comentarios (PDF-036)', () => {
 
     // Borrar el resaltado desde el panel.
     const highlight = comments(page).filter({ hasText: 'Comentario previo' });
-    await highlight.getByRole('button', { name: 'Borrar' }).click();
+    await highlight.getByTestId('comment-row-delete').click();
     await expect(comments(page)).toHaveCount(5);
     await expect(page.locator('[data-annot-id="ref:9R"]')).toHaveCount(0);
   });

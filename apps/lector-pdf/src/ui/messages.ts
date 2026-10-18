@@ -155,10 +155,13 @@ export const msg = {
   commentsEmpty: 'Este documento no tiene comentarios. Usa la barra «Comentar» para añadir uno.',
   commentsNoMatches: 'Ningún comentario coincide con el filtro.',
   commentPage: (n: number): string => `Página ${n.toLocaleString('es-ES')}`,
-  /** Nombre accesible de una fila, p. ej. «Resaltado de Ana, página 2». */
-  commentOption: (name: string, page: number): string => `${name}, página ${page.toLocaleString('es-ES')}`,
+  /** Parte del nombre accesible de una fila que va oculta visualmente: «, página 2» (de «Resaltado de Ana, página 2»). */
+  commentOptionPage: (page: number): string => `, página ${page.toLocaleString('es-ES')}`,
   commentReadOnly: 'solo lectura',
+  /** `title` del icono de papelera decorativo de cada fila (el borrado accesible es «Borrar comentario»). */
   commentDelete: 'Borrar',
+  /** Botón de la barra del panel: borra la fila activa. */
+  commentDeleteActive: 'Borrar comentario',
   /** Texto libre (PDF-034): editor en el sitio y tirador de tamaño. */
   freeTextBox: 'Texto del cuadro',
   resizeHandle: 'Cambiar tamaño',

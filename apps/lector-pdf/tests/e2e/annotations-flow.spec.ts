@@ -8,6 +8,7 @@ import {
   commentField,
   commentRows,
   dragOverLine,
+  optionName,
   drawStroke,
   createNoteWithText,
   openCommentsPanel,
@@ -98,7 +99,7 @@ test('subrayar y hacer notas, deshacer y rehacer, guardar, validar con qpdf y re
   await openCommentsPanel(page);
   await expect(page.locator('p', { hasText: '6 comentarios' })).toBeVisible();
   for (const name of SIX_ROWS) {
-    await expect(page.getByRole('option', { name, exact: true })).toHaveCount(1);
+    await expect(page.getByRole('option', { name: optionName(name) })).toHaveCount(1);
   }
 
   // Deshacer dos veces (quita el dibujo y el texto libre) y rehacer dos veces; el panel lo confirma.
@@ -109,8 +110,8 @@ test('subrayar y hacer notas, deshacer y rehacer, guardar, validar con qpdf y re
   await expect(rows).toHaveCount(5);
   await page.keyboard.press('Control+z');
   await expect(rows).toHaveCount(4);
-  await expect(page.getByRole('option', { name: `Dibujo de ${AUTHOR}, página 1`, exact: true })).toHaveCount(0);
-  await expect(page.getByRole('option', { name: `Texto de ${AUTHOR}, página 1`, exact: true })).toHaveCount(0);
+  await expect(page.getByRole('option', { name: optionName(`Dibujo de ${AUTHOR}, página 1`) })).toHaveCount(0);
+  await expect(page.getByRole('option', { name: optionName(`Texto de ${AUTHOR}, página 1`) })).toHaveCount(0);
   await page.keyboard.press('Control+y');
   await expect(rows).toHaveCount(5);
   await page.keyboard.press('Control+y');
@@ -128,7 +129,7 @@ test('subrayar y hacer notas, deshacer y rehacer, guardar, validar con qpdf y re
   await openCommentsPanel(reopened);
   await expect(reopened.locator('p', { hasText: '6 comentarios' })).toBeVisible();
   for (const name of SIX_ROWS) {
-    await expect(reopened.getByRole('option', { name, exact: true })).toHaveCount(1);
+    await expect(reopened.getByRole('option', { name: optionName(name) })).toHaveCount(1);
   }
   await expect(commentRows(reopened).filter({ hasText: HIGHLIGHT_COMMENT })).toHaveCount(1);
   await expect(commentRows(reopened).filter({ hasText: NOTE_TEXT })).toHaveCount(1);
@@ -155,7 +156,7 @@ test('subrayar y hacer notas, deshacer y rehacer, guardar, validar con qpdf y re
   const final = await openInNewPage(reopened, second);
   await openCommentsPanel(final);
   await expect(final.locator('p', { hasText: '5 comentarios' })).toBeVisible();
-  await expect(final.getByRole('option', { name: `Dibujo de ${AUTHOR}, página 1`, exact: true })).toHaveCount(0);
+  await expect(final.getByRole('option', { name: optionName(`Dibujo de ${AUTHOR}, página 1`) })).toHaveCount(0);
   await expect(commentRows(final).filter({ hasText: NOTE_EDITED })).toHaveCount(1);
   await expect(commentRows(final).filter({ hasText: NOTE_TEXT })).toHaveCount(0);
 });

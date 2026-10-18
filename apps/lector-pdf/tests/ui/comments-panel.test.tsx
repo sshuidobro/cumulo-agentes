@@ -13,6 +13,7 @@ import {
   endAnnotationSession,
   getEffective,
   startAnnotationSession,
+  undo,
 } from '../../src/state/annotation-actions';
 import { initialAnnotationState, useAnnotations } from '../../src/state/annotation-store';
 import { initServices, services } from '../../src/state/services';
@@ -60,6 +61,16 @@ function load(baseline: readonly Annotation[], foreign: readonly ForeignAnnotati
     scan,
     author: 'Usuario',
   });
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Nombre accesible de una fila: empieza por `name` y va seguido de espacio o del final (el resto es el contenido). */
+function optionName(name: string): RegExp {
+  const escaped = escapeRegExp(name).replace(/,/g, '\\s*,');
+  return new RegExp('^' + escaped + '(?:\\s|$)');
 }
 
 function rowNamed(text: string): HTMLElement {
@@ -163,7 +174,7 @@ describe('Panel de comentarios (PDF-036)', () => {
     load([{ ...fileAnnotation(9, 'highlight', 1), contents: 'Para borrar' }]);
     setup();
 
-    await user.click(within(rowNamed('Para borrar')).getByRole('button', { name: 'Borrar' }));
+    await user.click(within(rowNamed('Para borrar')).getByTestId('comment-row-delete'));
 
     expect(getEffective().has('ref:9R')).toBe(false);
     await waitFor(() => {
@@ -183,7 +194,7 @@ describe('Panel de comentarios (PDF-036)', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Buscar en comentarios' }), 'cifra');
 
     expect(screen.getByText('1 comentario', { selector: 'p' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Nota de Ana, página 1' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: optionName('Nota de Ana, página 1') })).toBeInTheDocument();
   });
 
   it('sin comentarios muestra el mensaje de vacío; con un filtro sin resultados, el de filtro', async () => {
@@ -247,5 +258,114 @@ describe('Panel de comentarios (PDF-036)', () => {
     render(<Sidebar />);
     expect(screen.getByRole('tab', { name: 'Comentarios' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('Tu nombre')).toBeInTheDocument();
+  });
+
+  it('la fila tiene como nombre su contenido visible: «Nota de Ana, página 1» seguido del extracto', () => {
+    load([{ ...fileAnnotation(1, 'note', 0), contents: 'Revisar esto' }]);
+    setup();
+    const row = screen.getByRole('option', { name: optionName('Nota de Ana, página 1') });
+    expect(row).toHaveTextContent('Revisar esto');
+    expect(row).not.toHaveAttribute('aria-label');
+  });
+
+  it('ninguna fila contiene botones ni elementos enfocables ( ni con comentario de solo lectura)', () => {
+    load(
+      [{ ...fileAnnotation(1, 'note', 0), contents: 'uno' }],
+      [{ id: 'ref:17R', pageIndex: 0, subtype: 'Square', rect: [72, 100, 200, 150], contents: 'dos', author: 'Otra', modified: null }],
+    );
+    setup();
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(2);
+    for (const option of options) {
+      expect(within(option).queryAllByRole('button')).toHaveLength(0);
+      expect(option.querySelectorAll('[tabindex]')).toHaveLength(0);
+    }
+  });
+
+  it('con el foco en la lista, Supr borra la fila activa; la activa pasa a la siguiente y Ctrl+Z la recupera', async () => {
+    const user = userEvent.setup();
+    load([
+      { ...fileAnnotation(1, 'note', 0), contents: 'uno' },
+      { ...fileAnnotation(2, 'note', 0), contents: 'dos' },
+    ]);
+    const list = setup();
+
+    act(() => list.focus());
+    await user.keyboard('{ArrowDown}');
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('uno').id);
+    await user.keyboard('{Delete}');
+
+    expect(screen.queryByText('uno')).toBeNull();
+    expect(getEffective().has('ref:1R')).toBe(false);
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('dos').id);
+
+    act(() => {
+      undo();
+    });
+    expect(getEffective().has('ref:1R')).toBe(true);
+    expect(rowNamed('uno')).toBeInTheDocument();
+  });
+
+  it('Retroceso también borra la fila activa editable', async () => {
+    const user = userEvent.setup();
+    load([{ ...fileAnnotation(1, 'note', 0), contents: 'uno' }]);
+    const list = setup();
+
+    act(() => list.focus());
+    await user.keyboard('{ArrowDown}{Backspace}');
+
+    expect(getEffective().has('ref:1R')).toBe(false);
+    expect(list).not.toHaveAttribute('aria-activedescendant');
+  });
+
+  it('Supr sobre una fila de solo lectura no borra nada', async () => {
+    const user = userEvent.setup();
+    load(
+      [],
+      [{ id: 'ref:17R', pageIndex: 2, subtype: 'Square', rect: [72, 100, 200, 150], contents: 'Ver tabla', author: 'Otra persona', modified: null }],
+    );
+    const list = setup();
+
+    act(() => list.focus());
+    await user.keyboard('{ArrowDown}{Delete}');
+
+    expect(useAnnotations.getState().foreign.has('ref:17R')).toBe(true);
+    expect(rowNamed('Ver tabla')).toBeInTheDocument();
+  });
+
+  it('«Borrar comentario» está deshabilitado sin fila activa y con una de solo lectura; con una editable la borra', async () => {
+    const user = userEvent.setup();
+    load(
+      [{ ...fileAnnotation(1, 'note', 0), contents: 'uno' }],
+      [{ id: 'ref:17R', pageIndex: 1, subtype: 'Square', rect: [72, 100, 200, 150], contents: 'Ver tabla', author: 'Otra persona', modified: null }],
+    );
+    const list = setup();
+    const button = screen.getByRole('button', { name: 'Borrar comentario' });
+    expect(button).toBeDisabled();
+
+    act(() => list.focus());
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('Ver tabla').id);
+    expect(button).toBeDisabled();
+
+    await user.keyboard('{ArrowUp}');
+    expect(button).toBeEnabled();
+    await user.click(button);
+
+    expect(getEffective().has('ref:1R')).toBe(false);
+    expect(useAnnotations.getState().foreign.has('ref:17R')).toBe(true);
+  });
+
+  it('el icono de borrar de una fila borra el comentario sin navegar a su página', async () => {
+    const user = userEvent.setup();
+    load([{ ...fileAnnotation(1, 'note', 4), contents: 'Para borrar' }]);
+    useViewer.setState({ currentPage: 7 });
+    setup();
+
+    await user.click(within(rowNamed('Para borrar')).getByTestId('comment-row-delete'));
+
+    expect(getEffective().has('ref:1R')).toBe(false);
+    expect(goToPage).not.toHaveBeenCalled();
+    expect(useViewer.getState().currentPage).toBe(7);
   });
 });
