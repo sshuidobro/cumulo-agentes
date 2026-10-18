@@ -9,3 +9,4 @@ export { BlockCache, type BlockCacheOptions } from './block-cache';
 export { ObjectReader } from './object-reader';
 export { buildIncrementalUpdate, openForSave, type IncrementalInput, type IncrementalOutput } from './incremental';
 export * from './image';
+export { concatSource } from './concat-source';

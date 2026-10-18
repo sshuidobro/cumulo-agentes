@@ -33,19 +33,18 @@ export async function save(): Promise<SaveResult> {
   return runExclusive(async () => {
     const file = openedFile();
     if (file === null) return 'nothing';
-    const diff = currentDiff();
-    if (isEmptyDiff(diff)) {
+    if (isEmptyDiff(currentDiff())) {
       markAnnotationsSaved();
       return 'nothing';
     }
-    if (!file.canSaveInPlace) return writeCopy(file, diff);
-    const built = await buildDelta(file, diff);
+    if (!file.canSaveInPlace) return writeCopy(file);
+    const built = await buildCurrentDelta(file);
     if (!built.ok) return fail(built.error);
     const saved = await services().platform.save(file, {
       kind: 'append',
       base: file,
       expectedSize: file.size,
-      delta: built.value,
+      delta: built.value ?? new Uint8Array(0),
     });
     if (!saved.ok) return reportWriteError(saved.error, file);
     return reopenSaved(saved.value);
@@ -57,7 +56,7 @@ export async function saveAs(): Promise<SaveResult> {
   return runExclusive(async () => {
     const file = openedFile();
     if (file === null) return 'nothing';
-    return writeCopy(file, currentDiff());
+    return writeCopy(file);
   });
 }
 
@@ -82,24 +81,29 @@ function currentDiff(): AnnotationDiff {
   return diffAnnotations(baseline, edits);
 }
 
-/** Construye el incremento. Los fallos (cifrado, estructura dañada) vuelven como `Result`, sin tocar la plataforma. */
-async function buildDelta(file: OpenedFile, diff: AnnotationDiff): Promise<Result<Uint8Array, AppError>> {
+/**
+ * Incremento con las anotaciones y valores de formulario actuales sobre `file`. `null` = sin cambios.
+ * Los fallos (cifrado, estructura dañada) vuelven como `Result`, sin tocar la plataforma.
+ * Lo usan guardar, guardar como e imprimir (PDF-087).
+ */
+export async function buildCurrentDelta(file: OpenedFile): Promise<Result<Uint8Array | null, AppError>> {
+  const diff = currentDiff();
   const reader = await openForSave(file.source);
   if (!reader.ok) return err(reader.error);
   const built = await buildIncrementalUpdate({ source: file.source, reader: reader.value, diff, now: nowIso() });
   if (!built.ok) return err(built.error);
-  return ok(built.value.delta);
+  return ok(isEmptyDiff(diff) ? null : built.value.delta);
 }
 
 /** Guarda una copia con el incremento (la plataforma pide el nombre). */
-async function writeCopy(file: OpenedFile, diff: AnnotationDiff): Promise<SaveResult> {
-  const built = await buildDelta(file, diff);
+async function writeCopy(file: OpenedFile): Promise<SaveResult> {
+  const built = await buildCurrentDelta(file);
   if (!built.ok) return fail(built.error);
   const outcome = await services().platform.saveAs(file.name, PDF_FILTERS, {
     kind: 'append',
     base: file,
     expectedSize: file.size,
-    delta: built.value,
+    delta: built.value ?? new Uint8Array(0),
   });
   if (!outcome.ok) return reportWriteError(outcome.error, file);
   switch (outcome.value.kind) {
@@ -140,6 +144,6 @@ async function reportWriteError(error: AppError, file: OpenedFile): Promise<Save
     ],
     cancel: 'cancel',
   });
-  if (choice === 'save-as') return writeCopy(file, currentDiff());
+  if (choice === 'save-as') return writeCopy(file);
   return 'cancelled';
 }
