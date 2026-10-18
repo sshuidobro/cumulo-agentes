@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-014
 titulo: Enlaces internos y externos, destinos e historial atrás/adelante
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-012, PDF-003]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, formatos-ofimatica, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, enlaces, seguridad]
 ---
 
@@ -74,3 +74,19 @@ Los enlaces del PDF funcionan: los internos llevan a la página y posición del 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados (apps/lector-pdf): nuevos `src/core/links.ts`, `src/core/dest.ts`, `src/engine/links.ts`, `src/engine/dest.ts`, `src/state/history.ts`, `src/state/notice.ts`, `src/ui/kit/Dialog.tsx`, `src/ui/kit/Notice.tsx` (+ `.module.css`), `src/ui/viewer/LinkLayer.tsx` (+ `.module.css`); editados `src/state/viewer-store.ts` (campos `historyState` y `notice`), `src/ui/viewer/PageView.tsx` (monta `LinkLayer`), `src/ui/App.tsx` (atajos atrás/adelante y `Notice`), `src/ui/toolbar/MainToolbar.tsx` (botones «Vista anterior»/«Vista siguiente»), `src/ui/messages.ts`, `src/ui/shortcuts.ts` (`back` Alt+← y `forward` Alt+→). Tests nuevos: `tests/unit/links.test.ts`, `tests/unit/dest.test.ts`, `tests/unit/engine-links.test.ts`, `tests/unit/history.test.ts`, `tests/ui/link-layer.test.tsx`, `tests/ui/dialog.test.tsx`, `tests/ui/notice.test.tsx`, `tests/e2e/links.spec.ts`.
+- Qué he hecho: clasificación de URLs y destinos (núcleo puro), resolución de destinos con pdf.js, historial atrás/adelante (máx. 50, se vacía al abrir otro documento), capa de enlaces sobre el texto con confirmación para URLs externas y bloqueo de lo no permitido, diálogo accesible (foco, Tab atrapado, Esc, retorno de foco) y aviso temporal de 4 s. Reutilizo `currentYFraction` y `setCurrentYFraction` que PDF-019 ha añadido al store; no he tocado sus ficheros.
+- Comandos ejecutados y resultado: `pnpm typecheck` OK (app). ESLint sobre todos mis ficheros: 0 avisos. `vitest --project lector-pdf --coverage --coverage.reportsDirectory=<scratchpad>` OK: 79 ficheros, 1032 tests en verde con la cobertura de mis ficheros de `core/` por encima del 80 %. `pnpm --filter lector-pdf e2e`: 52 pasan y 1 falla (`viewer.spec.ts:88`, ver abajo). `links.spec.ts`: 4/4 en verde.
+- Dudas o cosas que no he podido hacer:
+  1. pdf.js 6.4 no tiene `convertToViewportRectangle` (la ficha lo pedía): convierto las cuatro esquinas con `convertToViewportPoint` y tomo la envolvente.
+  2. `parseExplicitDest` acepta `null` en las coordenadas (la interfaz es `number | null`); cualquier otro valor no numérico da `null`.
+  3. Añadido un mensaje no listado en la ficha: `msg.openLinkFailed` («No se ha podido abrir el enlace en el navegador.») para el aviso si `openExternalUrl` falla.
+  4. Los enlaces externos también interceptan el clic de rueda (`onAuxClick`) para que no abran sin confirmación.
+  5. Los botones atrás/adelante reutilizan los iconos de página (`IconPrevPage`/`IconNextPage`); no hay iconos propios de historial.
+  6. No he usado `outline.pdf` en los tests del motor: la ficha lo menciona pero ningún criterio lo exige; queda para PDF-016.
+  7. Fallo ajeno: `tests/e2e/viewer.spec.ts:88` («el visor es enfocable con Tab») falla de forma determinista: la barra tiene una parada de tabulación más (el botón de la barra lateral de PDF-015, en curso) y el test solo admite 12 pulsaciones. Mis botones atrás/adelante están deshabilitados al inicio y no añaden paradas. No he tocado el test.
+  8. Fallo ajeno: `pnpm lint` global falla en `tests/e2e/text-qa.spec.ts` (PDF-013, en curso); mis ficheros pasan.
+  9. El puerto 4173 lo usaba otro agente durante mi primera ejecución de e2e; la repetí cuando quedó libre.
+  10. No he hecho commit (la orden era no tocar git mientras trabajan otros en el árbol). Pendiente de que el líder decida el commit de la ficha.
