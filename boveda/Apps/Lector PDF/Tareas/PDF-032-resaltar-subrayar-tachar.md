@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-032
 titulo: Resaltar, subrayar y tachar texto seleccionado
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-031, PDF-013, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones]
 ---
 
@@ -58,3 +58,9 @@ El usuario selecciona texto y lo resalta, subraya o tacha: (a) con la herramient
 
 ### [lider] replanificación — 2026-10-17
 - `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/core/annotations/line-quads.ts`, `src/ui/viewer/selection-to-pages.ts`, `src/state/markup-actions.ts`, `src/ui/viewer/SelectionActions.tsx` y `SelectionActions.module.css`, `tests/unit/annotations/line-quads.test.ts`, `tests/ui/markup.test.tsx`, `tests/e2e/markup.spec.ts`. Modificados: `src/engine/text.ts` (`container` y `viewport` en `TextLayerHandle`), `src/ui/viewer/text-layer-registry.ts` (`all()`), `src/ui/viewer/TextLayerView.tsx` (pointerup sobre la capa), `src/ui/toolbar/CommentToolbar.tsx`, `src/ui/App.tsx`, `src/ui/messages.ts`, `src/ui/icons.tsx` (`IconCopy`), y fakes de `tests/ui/text-selection.test.tsx`, `tests/ui/search-highlights.test.tsx`, `tests/ui/text-layer.test.tsx`.
+- Qué he hecho: quads por línea (puro) y mapeo de la selección a páginas en puntos PDF; `markupSelection` crea una anotación por página en un solo paso de deshacer. Herramienta de marcado activa: al soltar sobre una capa marca la selección. Barra flotante «Acciones de la selección» (resaltar, subrayar, tachar, copiar) sin herramienta activa; «Resaltar/Subrayar/Tachar» de «Comentar» marcan la selección sin cambiar la herramienta.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` (raíz) OK; `pnpm test` 133 ficheros, 1557 tests OK; `pnpm coverage` OK (core 100 % en `line-quads.ts`); `LECTOR_E2E_PORT=4217 pnpm --filter lector-pdf e2e` 129/129 OK (incluye `markup.spec.ts` 5/5).
+- Dudas o cosas que no he podido hacer: (1) `markup-actions.ts` (state) importa `selection-to-pages.ts` (ui), porque la ficha lo pide así; si se quiere separar, sería decisión del líder. (2) El arrastre de subrayado debe empezar dentro de un carácter: un `mousedown` en el hueco de la capa no inicia selección en Chromium; el E2E lo hace así. (3) Con clic de ratón en «Resaltar» de «Comentar», no he verificado en navegador real que el `mousedown` no colapse la selección (los tests de jsdom usan `fireEvent`); la barra flotante sí evita ese colapso. (4) «Copiar» usa `navigator.clipboard`; si falla solo se registra en el log, sin aviso al usuario. (5) `markupSelection` vacía la selección aunque no cree nada (decisión tomada: la ficha dice «vacía la selección»). (6) El E2E construye en `dist/` compartido: no lo ejecuté en paralelo con otro E2E. No he hecho commit.
