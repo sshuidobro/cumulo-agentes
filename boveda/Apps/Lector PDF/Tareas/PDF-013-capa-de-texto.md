@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-013
 titulo: Capa de texto - seleccionar y copiar texto; herramientas selección y mano
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-011, PDF-004]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, calidad-profesional, pruebas-calidad]
@@ -77,3 +77,11 @@ En cada página visible hay una capa de texto transparente alineada con el dibuj
   6. Los botones de herramienta se desactivan sin documento abierto, igual que zoom y giro (sin esto, rompían el orden de Tab de `open.test.tsx`).
   7. La prueba de H/V usa un componente con los mismos manejadores que `App` sobre el registro real de atajos, no `App` completo (App necesita un documento cargado).
 - Dudas o cosas que no he podido hacer: (a) No he hecho `git commit`: el usuario pidió no hacer commits mientras PDF-012 trabaja en paralelo. Los ficheros compartidos `App.tsx`, `shortcuts.ts`, `messages.ts`, `MainToolbar.tsx`, `icons.tsx`, `viewer-store.ts`, `viewer.test.tsx` y `zoom-controls.test.tsx` tienen también cambios de PDF-012 sin commitear; un commit de esta ficha debe separar esas partes. (b) Los criterios de aceptación siguen sin marcar: los verifica el tester. (c) No he ejecutado `pnpm perf`: la ficha no lo pide.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint` (0 avisos), `pnpm typecheck`, `pnpm test` (93 ficheros, 1235 tests) y `text.spec.ts` (6/6) en verde. No he repetido `pnpm coverage` ni el e2e completo (los reporta el programador; los repite el tester).
+- Desviaciones 1-7 aceptadas: la rotación con remontaje está bien justificada y cubierta por test; el resto no cambia el comportamiento exigido.
+- Sin problemas bloqueantes. Sugerencias (opcional):
+  1. `apps/lector-pdf/src/ui/App.tsx` (`select-all`) — el atajo hace `preventDefault` aunque `selectPageText` devuelva `false` (página sin capa o sin texto) y anula el Ctrl+A nativo — devolver `false` del manejador en ese caso (ya soportado por `useShortcuts`).
+  2. `apps/lector-pdf/src/ui/viewer/text-selection.ts` — el manejador `copy` está en cada capa; con una selección que abarca varias páginas el evento no pasa por ellas y se copia sin `normalizeUnicode` (como en pdf.js, pero con `disableNormalization: true` pueden quedar ligaduras). Valorar un único `copy` en el visor. No hay criterio que lo exija.
+- Nota para el commit: la ficha comparte ficheros sin commitear con PDF-012 (`App.tsx`, `shortcuts.ts`, `messages.ts`, `MainToolbar.tsx`, `Viewer.tsx`, `use-shortcuts.ts`); hay que separar las partes al comitear.
