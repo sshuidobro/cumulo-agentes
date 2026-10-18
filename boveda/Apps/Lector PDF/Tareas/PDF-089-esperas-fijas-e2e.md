@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-089
 titulo: Quitar las esperas fijas de las pruebas e2e y prohibirlas con ESLint
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -63,3 +63,15 @@ Ninguna prueba e2e usa `page.waitForTimeout`: las que esperan a un temporizador 
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 1. Verificado: 0 `waitForTimeout` en `apps/*/tests/e2e`; `settle`, `page.clock` y regla ESLint según la ficha; `pnpm lint` (raíz) con código 0 (el error ajeno de PDF-080 ya no está); las 4 specs pasan (`--repeat-each=3`, 39/39).
 2. (opcional) Mutaciones C y D fallan en una aserción previa a la que da nombre a la prueba; el tester puede confirmar que las aserciones finales (estado congelado, `popups`) son alcanzables.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+Alcance acotado por encargo (otros agentes compilan): solo las 4 specs; lint/typecheck/test globales los verificó el revisor (lint raíz 0).
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Sin `waitForTimeout` | OK | `grep -rn waitForTimeout apps/lector-pdf/tests/e2e` sin salida |
+| Specs estables | OK | `e2e --project=chromium --repeat-each=3` de las 4 specs: 39 passed (programador: 130/130 con x10) |
+| Mutación C (aserción final alcanzable) | OK | La mutación del programador (quitar `session.cancel()`) falla antes en `toBeHidden`. Nueva mutación: `cancelSearch` cancela pero un `setInterval` de 10 ms sigue incrementando `total`; falla en `search.spec.ts:201` (`toBe(frozen)`, esperado «1 de 125», recibido «1 de 141») tras los 3 `settle`. |
+| Mutación D (aserción final alcanzable) | OK | `LinkLayer.tsx`: `if (event.ctrlKey) window.open(url,'_blank')` además del diálogo; falla en `links-qa.spec.ts:52` (`opened(page)` recibe `["https://example.org/ruta?x=1","_blank"]`). La línea 51 (`popups`) no detecta `window.open` simulado (el espía `opened` sí); ambas son alcanzables. |
+| Restauración | OK | `git checkout` de `search-actions.ts` y `LinkLayer.tsx`; `git status` sin cambios en esos ficheros |
+Tests añadidos: ninguno (las mutaciones demuestran que los existentes cubren el criterio). Rendimiento: no aplica.
+Nota: `settle` cubre ~50 ms por llamada (2 rAF); una mutación con un temporizador único de 20 ms pasa porque se dispara antes de leer `frozen`, no es un hueco real del criterio.
