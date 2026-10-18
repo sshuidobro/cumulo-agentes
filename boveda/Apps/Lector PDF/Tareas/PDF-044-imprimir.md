@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-044
 titulo: Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-087, PDF-045, COM-014]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -78,3 +78,11 @@ Código revisado (print-actions, PrintDialog, PrintContainer, print.css): correc
 2. `apps/lector-pdf/tests/e2e/print.spec.ts:282-284` — el criterio @perf pide «Cancelar deja `job.status === 'idle'` en < 300 ms» y el test solo espera que el diálogo se oculte. Qué hacer: leer `usePrintJob` (o comprobar que `#print-container` sigue vacío y que no se llama a `print`) y, tras cancelar, que `created === revoked` en el balance de URL.
 3. Criterio «Manual» (`tauri dev` → Ctrl+P): imposible aquí; es aceptable que quede como verificación manual, pero añade al final del Registro una línea «Pendiente Manual» con los pasos exactos, y que el tester lo marque como comprobación en la máquina del usuario (no se da por cumplido). El riesgo de que `print()` resuelva antes de que el webview lea el DOM (duda 6) debe constar ahí.
 4. (opcional) `print.spec.ts:118-131` — `printedPdf` reconstruye el DOM con data URL; vale, pero comprueba también que el PDF no esté vacío (cada página con imagen) para que el conteo de 3 páginas no pase con hojas en blanco.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/print.spec.ts`; `boveda/Apps/Lector PDF/Tareas/PDF-044-imprimir.md` (estado y este Registro).
+- Qué he hecho: (1) Criterio 1 (orden de páginas): la e2e de rango 2-4 compara cada hoja, en el orden del HTML del contenedor, con la misma página impresa sola (rango «2», «3», «4»); exige que sean idénticas por parejas y que las tres sean distintas. Además comprueba con pdf.js que cada una de las 3 páginas del PDF de `page.pdf()` lleva exactamente una imagen (`[1, 1, 1]`, no hay páginas en blanco). Sustitución documentada: el criterio «texto "Página N de 5000"» pasa a «imagen equivalente a su página», porque Chromium imprime las hojas como imágenes y no hay texto que extraer. (2) `@perf` Cancelar: tras cancelar comprueba que el diálogo de progreso se oculta en < 300 ms (solo se muestra con `job.status === 'preparing'`), que la impresión se ha cortado antes de las 5 000 páginas, que `#print-container` está vacío, que `print` no se ha llamado y que URL creadas = revocadas. (3) Criterio «Manual» sigue sin cumplirse aquí, ver abajo.
+- Comandos ejecutados y resultado: `pnpm exec eslint tests/e2e/print.spec.ts` OK; `pnpm lint` OK; `pnpm typecheck` OK (el fallo de `FormLayer.tsx` ya no aparece); `pnpm --filter lector-pdf test` OK (183 ficheros, 2148 tests); `pnpm coverage` OK (líneas 98,98 %); `pnpm --filter lector-pdf build` OK (arranque 478 040 bytes de 500 000); e2e completa: 173 pasan en `chromium`, con 2 fallos ajenos a esta ficha (`pdfjs-deferred.spec.ts` y `performance.spec.ts`, presupuestos de tiempo de apertura con la máquina cargada por otros agentes); proyecto `chromium-perf` (`--no-deps`): 9/9 OK, incluido el `@perf` de impresión. El filtro por ruta de Playwright no se aplica en este entorno, por eso se ejecutó la suite completa.
+- Dudas o cosas que no he podido hacer:
+  - **Pendiente Manual** (no cumplido, no se da por cerrado): en la máquina del usuario, `pnpm --filter lector-pdf tauri dev` → abrir `basic-5.pdf` → Ctrl+P → «Página actual» → Imprimir: debe abrirse el diálogo de impresión del sistema con la página. Riesgo a comprobar: `platform.print()` resuelve en cuanto se pide el diálogo; si el webview lee el DOM de `#print-container` después, las hojas pueden faltar (duda 6 de la ronda 1). Por eso las hojas se revocan al resolver o en `afterprint`.
+  - La e2e sigue limitada a Chromium: no comprueba el contenido del PDF de impresión de Tauri.

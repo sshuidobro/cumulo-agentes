@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-041
 titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-081]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -66,3 +66,8 @@ Sobre cada página visible hay una capa con un control HTML por widget de texto,
   - El aviso «hay campos» no estaba en la lista de ficheros de la ficha: se dispara en `importPages` de `form-actions.ts`, el único sitio donde llegan los campos.
   - E2E de «pais»: la tecla «p» (búsqueda por inicial) elige Portugal en un solo cambio; dos flechas darían dos entradas de deshacer.
   - Para revisar: tras Ctrl+Z el «Ana» lo pinta pdf.js desde el valor, no la apariencia original del fichero (en `form-full.pdf` difieren unos 12 500 píxeles de la p2). Es coherente con ADR-0019, pero la comparación de píxeles en el E2E se ha escrito contando ese caso.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` (raíz) 0 avisos, `pnpm --filter lector-pdf typecheck` OK, tests de la ficha (19) en verde. Criterios cubiertos por tests UI y E2E; sin ficheros fuera de la ficha salvo `form-actions.ts` (aviso), justificado en el Registro. Las desviaciones del programador (esquinas con `convertToViewportPoint`, combo editable confirma al salir/Intro, `disabled` en select de solo lectura) son razonables.
+1. (opcional) `apps/lector-pdf/src/ui/theme.css:39-40` — la línea `--shadow-page` del bloque oscuro de `prefers-color-scheme` perdió la sangría tras insertar `--form-highlight` — reindentar.
+2. (opcional) `theme.css` — `--form-highlight` idéntico en claro y oscuro; vale, pero conviene que el tester compruebe el contraste en tema oscuro.

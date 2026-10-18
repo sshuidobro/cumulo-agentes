@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { type Locator, type Page } from '@playwright/test';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { expect, test } from './perf-fixture.ts';
 import { clearLongTasks, heapMB, installPerfProbes, longTasks, openFixture, waitPageRendered } from './helpers.ts';
 import { dragOverLine, pickTool } from './annotations-kit.ts';
@@ -75,6 +75,40 @@ async function openPrintDialog(page: Page): Promise<Locator> {
 /** Pulsa «Imprimir» dentro del diálogo indicado (el nombre accesible del botón de la barra es el mismo). */
 async function pressPrint(dialog: Locator): Promise<void> {
   await dialog.getByRole('button', { name: 'Imprimir', exact: true }).click();
+}
+
+/**
+ * Imprime un rango de páginas con el diálogo (Ctrl+P) y devuelve la instantánea de esa impresión.
+ * Espera a que `window.print` se haya llamado una vez más que antes.
+ */
+async function printRange(page: Page, range: string): Promise<PrintSnapshot> {
+  const before = await printCount(page);
+  const dialog = await openPrintDialog(page);
+  await dialog.getByRole('radio', { name: 'Páginas', exact: true }).check();
+  await dialog.getByRole('textbox', { name: 'Rango de páginas' }).fill(range);
+  await pressPrint(dialog);
+  await expect.poll(() => printCount(page)).toBe(before + 1);
+  return lastSnapshot(page);
+}
+
+/** Data URL de cada hoja en el orden en que aparecen en el contenedor de impresión. */
+function orderedSheetImages(snapshot: PrintSnapshot): readonly string[] {
+  return Array.from(snapshot.html.matchAll(/blob:[^"]+/g), (match) => snapshot.images[match[0]] ?? '');
+}
+
+/** Número de imágenes pintadas por cada página de un PDF (0 si una página sale vacía). */
+async function imagesPerPage(pdf: Buffer): Promise<number[]> {
+  const task = getDocument({ data: new Uint8Array(pdf), verbosity: 0 });
+  const doc = await task.promise;
+  const counts: number[] = [];
+  for (let n = 1; n <= doc.numPages; n += 1) {
+    const page = await doc.getPage(n);
+    const ops = await page.getOperatorList();
+    counts.push(ops.fnArray.filter((fn) => fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject).length);
+    page.cleanup();
+  }
+  await task.destroy();
+  return counts;
 }
 
 async function printCount(page: Page): Promise<number> {
@@ -188,6 +222,16 @@ test.describe('imprimir', () => {
 
     const pdf = await printedPdf(page, snapshot);
     expect(await pageCountOf(pdf)).toBe(3);
+    expect(await imagesPerPage(pdf), 'ninguna página del PDF sale en blanco').toEqual([1, 1, 1]);
+
+    // Orden e identidad (el texto de las hojas no se puede leer: Chromium las imprime como imágenes). Cada hoja
+    // del rango 2-4 tiene que ser idéntica a la de su página impresa por separado, y las tres distintas entre sí.
+    const inOrder = orderedSheetImages(snapshot);
+    const alone: string[] = [];
+    for (const p of ['2', '3', '4']) alone.push(orderedSheetImages(await printRange(page, p))[0] ?? '');
+    expect(inOrder).toEqual(alone);
+    expect(new Set(inOrder).size).toBe(3);
+    expect(inOrder.every((src) => src.startsWith('data:image/png'))).toBe(true);
   });
 
   test('sin comentarios no sale ningún resaltado; con comentarios sí (resaltado sin guardar en la página 1)', async ({ page }) => {
@@ -280,7 +324,14 @@ test.describe('imprimir', () => {
     expect(await seriousViolations(page)).toEqual([]);
 
     await progress.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    // El diálogo de progreso solo se muestra mientras `job.status === 'preparing'`: ocultarse = estado `idle`.
     await expect(progress).toBeHidden({ timeout: 300 });
-    await expect.poll(() => printCount(page)).toBe(1);
+    // Cancelado a mitad: las 20 páginas de la primera impresión más, como mucho, una parte de las 5 000 siguientes.
+    const { created } = await urlBalance(page);
+    expect(created, 'se ha cancelado antes de preparar todas las páginas').toBeLessThan(20 + 5000);
+    // Lo creado se revoca al terminar el bucle de render; Cancelar no llama a `print` y deja el contenedor vacío.
+    await expect.poll(() => urlBalance(page)).toEqual({ created, revoked: created });
+    await expect(page.locator('#print-container')).toBeEmpty();
+    expect(await printCount(page)).toBe(1);
   });
 });
