@@ -157,7 +157,7 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[PDF-075-pdfjs-diferido]] | Cargar pdf.js con `import()` diferido (arranque sin tarea de ~100 ms) | PDF-074 | hecha |
 | [[PDF-076-vista-previa-trazo-canvas]] | Vista previa del trazo incremental en canvas temporal (test rojo previo) | — | hecha |
 | [[PDF-077-diagnostico-long-tasks]] | Diagnóstico de long tasks y carga de CPU en las pruebas @perf | — | hecha |
-| [[PDF-078-reposo-cpu-antes-de-perf]] | Puerta de reposo de CPU antes de cada prueba @perf y CPU real en el diagnóstico | — | pendiente |
+| [[PDF-078-reposo-cpu-antes-de-perf]] | Puerta de reposo de CPU antes de cada prueba @perf y CPU real en el diagnóstico | — | hecha |
 | [[PDF-073-e2e-long-tasks-en-serie]] | Pruebas e2e de long tasks en un proyecto Playwright en serie (config hecha; queda verificar) | PDF-075, PDF-076, PDF-077, PDF-078 | pendiente |
 | [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072, PDF-073 | pendiente (rondas 1-2 commiteadas; espera a PDF-073) |
 

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-078
 titulo: Esperar a que la CPU esté en reposo antes de cada prueba @perf y medir la CPU real durante ella
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -122,3 +122,16 @@ Que ninguna prueba `@perf` empiece a medir con la CPU ocupada: antes de cada una
 Comprobado: lint y typecheck en 0; 8/8 tests unitarios de `cpu-usage`; el código sigue la ficha (única desviación, `let last: number;` sin valor inicial, es correcta y justificada). Sin umbrales, `.spec.ts`, `retries`, `skip`, `only`, `fixme` ni `waitForTimeout` añadidos.
 Duda del programador (170 ms con carga): **no es un problema real**. Repetí la prueba con dos bucles `node` ocupando 2 núcleos y el tiempo de pared fue de 158 s (cronometrado con `date`), con fallo y sin dejar procesos. El reporte `list` solo cuenta la duración del cuerpo de la prueba, no la preparación de la fixture automática, que es donde falla y espera.
 1. (opcional) `perf-fixture.ts` — el aviso de duración engañosa podría anotarse en ADR-0016 para quien lea el reporte; no bloquea.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unitarios cpu-usage | PASA | `vitest run tests/unit/cpu-usage.test.ts`: 8/8 |
+| Puerta en reposo | PASA | código 0; anotaciones: `carga-cpu-1min` 1.87 → 1.44 (4 núcleos); `reposo-cpu` 2 % tras 3 s de espera; `cpu-durante` 27 % de 4 núcleos (referencia en reposo para [[PDF-073-e2e-long-tasks-en-serie]]); `long-tasks` ninguna. `topProcesses` con %CPU actual (`2.0 claude`, `2.0 headless_shell.`, `2.0 top`...); `restBusy`, `restWaitedMs`, `cpuDuring` en `perf-diagnostico.json` |
+| Puerta con carga | PASA | código 1, pared 157 s: «La máquina no está en reposo: CPU ocupada 51 % (máximo 15 %) tras 150 s. La medida de long tasks no sería válida (ADR-0016); repite cuando no haya otras baterías en marcha.»; `pgrep` sin restos |
+| Sin `@perf` no espera | PASA | `zigzag de 5`: 1,6 s la prueba, 7,96 s de pared (programador: 8,5 s antes/después); sin anotaciones |
+| `--list` | PASA | 160 tests en 41 ficheros; `chromium-perf --no-deps`: 7 |
+| Sin umbrales/spec/prohibidos | PASA | diff 385ad77..HEAD: ningún `.spec.ts`; sin retries/skip/only/fixme/waitForTimeout |
+| lint, typecheck, test | PASA | código 0; 148 ficheros, 1732 tests |
+
+Al empezar había dos bucles `node` huérfanos de otra sesión; esperé a que terminaran y repetí en reposo (la parte de lint/test no se vio afectada). Tests añadidos: ninguno (los 8 de la ficha cubren el módulo). Rendimiento: n/a.
