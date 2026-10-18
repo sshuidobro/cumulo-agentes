@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-080
 titulo: Valores de campo en el historial común y en los borradores
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-079]
 intentos: 0
 skills: [stack-typescript-react]
