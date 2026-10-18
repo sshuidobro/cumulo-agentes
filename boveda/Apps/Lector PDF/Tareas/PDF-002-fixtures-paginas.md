@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-002
 titulo: Generador de fixtures PDF (páginas, tamaños, imágenes y ficheros dañados)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-001]
 intentos: 1
 skills: [pruebas-calidad, formatos-ofimatica]
@@ -105,3 +105,21 @@ Lint y typecheck OK; `fixtures.test.ts` pasa aislado (17/17), el diseño del gen
 - Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm typecheck` OK; `pnpm test` OK (35 ficheros, 426 tests); `pnpm perf` OK (3 ficheros, 5 tests, incluidos los 2 nuevos de generación). `pnpm perf` ejecutado a la vez con trabajo de otra ficha en curso: un test de `annotation-commands.perf.test.ts` (PDF-023, no tocado por mí) superó el timeout de 5 s en una pasada con carga y pasó en la siguiente.
 - Dudas o cosas que no he podido hacer: no he ejecutado `pnpm coverage` (lo bloquea el fallo de PDF-006 anotado por el líder). El fichero `commands.test.ts` de PDF-023 y `annotation-commands.perf.test.ts` están sin commitear; no son de esta ficha y no los he incluido en el commit.
 
+### [revisor] ronda 2 — 2026-10-17 — APROBADO
+Lint, typecheck y `pnpm test` (35 ficheros, 426 tests, dos ejecuciones) y `pnpm perf` (5 tests) en verde. Los tests pesados llevan `HEAVY_TEST_MS`; los asserts de tiempo viven en `tests/perf/fixtures.perf.test.ts` con los umbrales de la ficha (ADR-0012). Los dos puntos de la ronda 1 quedan resueltos; el 3 era de otras fichas.
+- (opcional) Documentar en el ADR-0011 que `images-200.pdf` pesa 44 MB.
+- (opcional) `pnpm coverage` sin confirmar por el fallo de PDF-006; el tester debe valorarlo según la nota del líder.
+
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Árbol 100 000 págs fanout 32; flat 20 000 | OK | `fixtures.test.ts` en verde; `pdfinfo` pages-100000 = 100000, pages-20000-flat = 20000 |
+| `fixtures` crea 10 ficheros; `pnpm test` no regenera | OK | "10 generados en 3.19 s"; mtimes idénticos antes/después de `pnpm test` |
+| basic-5, acentos | OK | tests + `pdftotext` (poppler, independiente): "Página 1 de 5", "marcador-1", "murciélago hindú" |
+| pages-5000 / 100000 (texto, tamaño, tiempos) | OK | 1,49 MB / 31,1 MB; `pnpm perf` 5/5; `pdftotext` p.4999 contiene "aguja" |
+| sizes-mixed | OK | `pdfinfo -box`: 595x842, 792x612, 842x1191, 420x595, p5 rot 90, 595x842 |
+| images-200 | OK | 200 págs (pdfinfo) y test OPS.paintImageXObject |
+| Dañados fallan sin colgarse | OK | pdfinfo y tests: empty/not-pdf/truncated/bad-startxref dan error |
+| `generated/` fuera de git; lint/typecheck/test | OK | `git check-ignore` → .gitignore:7; lint 0, typecheck 0, test 0 (426 tests) |
+Tests añadidos: ninguno nuevo (la cobertura existente basta). Rendimiento: `pnpm perf` una vez, 5/5 en 17 s; fixtures en 3,2 s. No ejecuté `pnpm coverage` (bloqueado por PDF-006, según nota del líder). Aviso: images-200.pdf pesa 44 MB.

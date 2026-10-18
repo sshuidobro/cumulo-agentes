@@ -10,7 +10,7 @@ tags: [plan, pdf]
 
 # Plan · Lector PDF
 
-Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]] (se crea al cerrar la iteración 1)
+Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0014-localizar-paginas-por-count]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]] (se crea al cerrar la iteración 1)
 
 ## Objetivo
 Sustituir a Adobe Acrobat Reader (y a lo más usado de Acrobat Pro) para uso personal, en escritorio (Tauri) y navegador.
@@ -76,13 +76,14 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 - Requisitos del sistema (una vez, Linux): `apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev qpdf` (WebKitGTK solo para compilar Tauri; `qpdf` para validar PDFs escritos).
 - Instalar: `pnpm install`
 - Lint / typecheck / test / cobertura (raíz): `pnpm lint && pnpm typecheck && pnpm test && pnpm coverage`
+- Rendimiento (raíz, [[ADR-0012-suite-de-rendimiento]]): `pnpm perf` — asserts de tiempo de reloj en `apps/lector-pdf/tests/perf/*.perf.test.ts`, sin cobertura y en serie. Nunca `performance.now()` en `tests/unit/` ni `tests/ui/`. Benchmarks informativos: `pnpm exec vitest bench --run`.
 - Fixtures: `pnpm --filter lector-pdf fixtures` (los tests los generan solos si faltan)
 - Desarrollo web: `pnpm --filter lector-pdf dev` (http://localhost:5173)
 - Build web: `pnpm --filter lector-pdf build` · Previsualizar: `pnpm --filter lector-pdf preview`
 - E2E (web, Chromium de `/opt/pw-browsers`): `pnpm --filter lector-pdf e2e` (o `pnpm e2e` en la raíz)
 - Rust: `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace --all-features`
 - Escritorio (solo en la máquina del usuario): `pnpm --filter lector-pdf tauri dev` · `pnpm --filter lector-pdf tauri build`
-- Comprobación completa de una ficha: `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm coverage` + lo que pida la ficha (e2e, cargo).
+- Comprobación completa de una ficha: `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm coverage` + lo que pida la ficha (`pnpm perf`, e2e, cargo).
 
 ## Tareas
 ### Iteración 1 · Base común (en [[Apps/Comun/Plan|Comun]])
@@ -105,11 +106,11 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 | [[PDF-003-fixtures-estructura]] | Generador de fixtures: índice, enlaces, etiquetas, xref comprimido, anotaciones, formulario | PDF-002 | pendiente |
 | [[PDF-004-corpus-publico]] | Corpus público (veraPDF) y de LibreOffice | PDF-005 | pendiente |
 | [[PDF-005-motor-carga-por-rangos]] | Motor: carga por rangos y errores | PDF-002, COM-005 | pendiente |
-| [[PDF-006-layout-virtual]] | Núcleo: dimensiones y layout virtual | PDF-001 | pendiente |
+| [[PDF-006-layout-virtual]] | Núcleo: dimensiones y layout virtual | PDF-001 | cambios-pedidos (replanificada, [[ADR-0012-suite-de-rendimiento]]) |
 | [[PDF-007-zoom-y-cola-de-render]] | Núcleo: zoom, cola de render y tamaño de lienzo | PDF-001 | pendiente |
-| [[PDF-008-abrir-documento]] | Abrir documento en la app | PDF-005, PDF-006, COM-006, COM-011 | pendiente |
+| [[PDF-008-abrir-documento]] | Abrir documento en la app | PDF-005, PDF-006, COM-006, COM-011 | cambios-pedidos (desbloqueada, [[ADR-0013-pdfjs-build-legacy]]) |
 | [[PDF-009-visor-virtualizado]] | Visor virtualizado (marcos y scroll) | PDF-008, PDF-007 | pendiente |
-| [[PDF-010-render-de-paginas]] | Render de páginas en lienzos | PDF-009 | pendiente |
+| [[PDF-010-render-de-paginas]] | Render de páginas en lienzos | PDF-009 | hecha |
 | [[PDF-011-zoom-y-rotacion-ui]] | Zoom y rotación de vista en la interfaz | PDF-010 | pendiente |
 | [[PDF-012-ir-a-pagina]] | Ir a página y navegación | PDF-011, PDF-003 | pendiente |
 | [[PDF-013-capa-de-texto]] | Capa de texto: seleccionar y copiar; herramienta mano | PDF-011, PDF-004 | pendiente |
@@ -132,23 +133,25 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[COM-013-cerrar-ventana]] | `Platform.closeWindow()` | COM-007, COM-010 | pendiente |
 | [[PDF-023-modelo-anotaciones]] | Modelo de anotaciones, comandos y fechas PDF | PDF-001 | pendiente |
 | [[PDF-024-importar-anotaciones]] | Importar anotaciones existentes | PDF-023, PDF-005, PDF-003 | pendiente |
-| [[PDF-025-objetos-pdf]] | Léxico, analizador y serializador de objetos PDF | PDF-023 | pendiente |
-| [[PDF-026-lector-xref]] | Lector de xref y objetos por rangos | PDF-025, PDF-003 | pendiente |
+| [[PDF-025-objetos-pdf]] | Léxico, analizador y serializador de objetos PDF | PDF-023 | en-revision (criterio corregido por el líder) |
+| [[PDF-026-lector-xref]] | Lector de xref y filtros (partida, ver [[ADR-0014-localizar-paginas-por-count]]) | PDF-025, PDF-003 | cambios-pedidos |
+| [[PDF-068-lector-objetos]] | Lector de objetos por rangos y `pageRef` por `/Count` | PDF-026 | pendiente |
 | [[PDF-027-apariencias]] | Apariencias /AP de anotaciones | PDF-023, PDF-026 | pendiente |
-| [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-026, PDF-027, PDF-024 | pendiente |
+| [[PDF-028-escritor-incremental]] | Escritor incremental de anotaciones | PDF-068, PDF-027, PDF-024 | cambios-pedidos |
 | [[PDF-029-interoperabilidad-anotaciones]] | Interoperabilidad (qpdf, pdf.js, corpus) | PDF-028, PDF-004 | pendiente |
-| [[PDF-030-estado-de-anotaciones]] | Estado de anotaciones, deshacer/rehacer y barra «Comentar» | PDF-023, PDF-024, PDF-009, COM-011 | pendiente |
-| [[PDF-031-capa-de-anotaciones]] | Capa de anotaciones: dibujar, seleccionar, mover, borrar | PDF-030 | pendiente |
-| [[PDF-032-resaltar-subrayar-tachar]] | Resaltar, subrayar y tachar | PDF-031, PDF-013 | pendiente |
-| [[PDF-033-notas-emergentes]] | Notas emergentes y comentarios | PDF-031 | pendiente |
-| [[PDF-034-texto-libre]] | Texto libre | PDF-031 | pendiente |
-| [[PDF-035-dibujo-a-mano]] | Dibujo a mano | PDF-031 | pendiente |
+| [[PDF-030-estado-de-anotaciones]] | Estado de anotaciones, deshacer/rehacer y atajos (UI movida a PDF-069 y PDF-031) | PDF-023, PDF-024, PDF-009, COM-011 | en-revision |
+| [[PDF-069-barra-comentar]] | Barra «Comentar» y deshacer/rehacer en la barra principal | PDF-030, PDF-011, PDF-020 | pendiente |
+| [[PDF-031-capa-de-anotaciones]] | Capa de anotaciones: dibujar, seleccionar, mover, borrar; cursor por herramienta; importación perezosa | PDF-030, PDF-010, PDF-011, PDF-013 | pendiente |
+| [[PDF-032-resaltar-subrayar-tachar]] | Resaltar, subrayar y tachar | PDF-031, PDF-013, PDF-069 | pendiente |
+| [[PDF-033-notas-emergentes]] | Notas emergentes y comentarios | PDF-031, PDF-069 | pendiente |
+| [[PDF-034-texto-libre]] | Texto libre | PDF-031, PDF-069 | pendiente |
+| [[PDF-035-dibujo-a-mano]] | Dibujo a mano | PDF-031, PDF-069 | pendiente |
 | [[PDF-036-panel-de-comentarios]] | Panel de comentarios | PDF-031, PDF-015 | pendiente |
 | [[PDF-037-guardar-anotaciones]] | Guardar y guardar como dentro del PDF; aviso de cambios | PDF-028, PDF-030, PDF-019, COM-007, COM-010, COM-013 | pendiente |
 | [[PDF-038-recuperar-anotaciones]] | Recuperar anotaciones tras cierre inesperado | PDF-037, COM-012 | pendiente |
-| [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038 | pendiente |
+| [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069 | pendiente |
 
-Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → PDF-027 → PDF-028 → PDF-029. Tras PDF-031: PDF-032 a PDF-036 en paralelo.
+Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. PDF-031 y PDF-069 en paralelo (ambas tras PDF-030; PDF-031 tras PDF-013, PDF-069 tras PDF-020). Tras PDF-031 y PDF-069: PDF-032 a PDF-035 en paralelo; PDF-036 solo necesita PDF-031 y PDF-015.
 
 ### Iteraciones 3-6 (fichas por detallar)
 | Id | Título | Depende de | Estado |
@@ -184,6 +187,7 @@ Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PD
 
 ## Historial de iteraciones
 - 2026-10-17: plan creado. Iteraciones 1 y 2 detalladas; 3-6 con fichas de título y dependencias.
+- 2026-10-17: PDF-030 desbloqueada partiendo su UI: barra «Comentar» → [[PDF-069-barra-comentar]]; cursor e importación perezosa por página → [[PDF-031-capa-de-anotaciones]] (que corrige su `depende_de`).
 
 ## Mejoras conocidas (no planificadas)
 - Texto libre con caracteres no latinos: incrustar una fuente en la apariencia.

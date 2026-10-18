@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-015
 titulo: Panel lateral con pestañas y miniaturas virtualizadas
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-012]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, miniaturas, rendimiento]
 ---
 
@@ -50,3 +50,49 @@ Un panel lateral izquierdo que se abre/cierra (F4) con pestañas («Miniaturas»
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos: `apps/lector-pdf/src/core/sidebar.ts`, `src/state/sidebar-actions.ts`, `src/ui/sidebar/Sidebar.tsx`, `src/ui/sidebar/Thumbnails.tsx`, `src/ui/sidebar/ThumbnailItem.tsx`, `src/ui/sidebar/Sidebar.module.css`; tests `tests/unit/sidebar.test.ts`, `tests/unit/sidebar-actions.test.ts`, `tests/ui/sidebar.test.tsx`, `tests/ui/thumbnails.test.tsx`, `tests/e2e/thumbnails.spec.ts`. Cambios añadidos a ficheros compartidos: `src/state/viewer-store.ts` (campo `sidebar`), `src/state/document-actions.ts` (lee el PageMode y fija el panel al abrir), `src/ui/App.tsx` y `App.module.css` (F4, cuerpo con panel y visor), `src/ui/toolbar/MainToolbar.tsx` (botón «Panel lateral»), `src/ui/shortcuts.ts` (`toggle-sidebar` = F4), `src/ui/messages.ts`, `src/ui/icons.tsx` (`IconSidebar`).
+- Qué he hecho: panel con pestaña «Miniaturas» (`role=tablist`/`tab`/`tabpanel`, flechas izquierda y derecha entre pestañas), lista `role=listbox` virtualizada con `computeLayout` + `scrollMap` (overscan 2), miniaturas en `renderQueue` con prioridad 2, marcado de la página actual, clic y teclado (↑/↓, Inicio/Fin, Re/Av Pág) que llevan al visor con `goToPage`. Store `sidebar` con `toggleSidebar`/`showSidebarTab` y prefs `sidebar` con guarda de 4 valores; al abrir, `PageMode` (`UseThumbs`/`UseOutlines`) manda sobre lo guardado.
+- Comandos ejecutados y resultado: `pnpm typecheck` sin errores; `pnpm test` 105 ficheros, 1344 tests en verde; `pnpm coverage` código 0; `pnpm exec eslint` sobre todos mis ficheros sin avisos; `pnpm --filter lector-pdf e2e`: 52 pasan y 1 falla (ver dudas); `tests/e2e/thumbnails.spec.ts` 3/3 en verde (miniatura 1 dibujada en < 3 s, ≤ 20 lienzos tras recorrer la lista, clic en la 5000, miniatura 40 marcada). `pnpm lint` falla solo en `tests/e2e/text-qa.spec.ts` (no es mío).
+- Dudas o cosas que no he podido hacer:
+  1. **e2e `viewer.spec.ts:88` (Tab hasta el visor) falla, y no es por este cambio en exclusiva.** El bucle da 12 pulsaciones y antes del visor hay ya 16 controles tabulables (Abrir, Deshacer, Rehacer, Atrás, Adelante, navegador de página ×3, Seleccionar, Mano, zoom ×4, girar ×2); mi botón «Panel lateral» añade el 17.º. No lo he tocado porque no es mío (viene de PDF-012 y PDF-014); quien lo posea debe ampliar el bucle o ajustar el test.
+  2. Persistencia de la última pestaña: `prefs.sidebar` guarda también `none`, así que tras cerrar el panel la pestaña recordada vive solo en memoria de sesión; al reabrir la app, «Panel lateral» abre miniaturas. Lo he interpretado como la ficha pide (guarda los 4 valores). Es decisión del líder si debe persistir la última pestaña aparte.
+  3. Un PDF con `PageMode /UseOutlines` deja el store en `outline`: el panel se abre con la barra de pestañas sin ninguna seleccionada y sin contenido hasta que PDF-016 añada la pestaña «Marcadores».
+  4. No he hecho `git commit`: el árbol tiene cambios de PDF-012/014/019 sin confirmar y no quería mezclarlos con este trabajo.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Comprobado: `pnpm typecheck` OK; `pnpm test` 1348 en verde. `pnpm lint` falla (ver punto 2). Código del panel, miniaturas, virtualización, prioridad 2, cancelación/liberación de lienzos y teclado: correcto, sin hallazgos bloqueantes.
+1. `apps/lector-pdf/tests/e2e/viewer.spec.ts:88` — el test «el visor es enfocable con Tab» falla porque el botón «Panel lateral» (esta ficha) eleva a 17 los controles previos al visor y el bucle solo da 12 pulsaciones. El criterio exige `pnpm --filter lector-pdf e2e` con código 0 y el test está sin tocar — hacerlo robusto, igual que se hizo con zoom-controls: sin número fijo de pulsaciones, pulsar Tab hasta que el visor tenga el foco con un límite holgado (p. ej. 40) o enfocar por rol y comprobar el orden relativo.
+2. `apps/lector-pdf/tests/e2e/text-qa.spec.ts:6,20` — `pnpm lint` falla (`consistent-type-imports` y `no-non-null-assertion`). NO atribuible al programador: es de un tester (PDF-013/014). Se señala para que el líder lo derive al tester; hasta que se arregle el criterio `pnpm lint` código 0 no puede darse por cumplido, pero no es trabajo de esta ficha.
+3. (opcional) `src/state/sidebar-actions.ts` — `lastTab` solo vive en memoria; decisión del líder si debe persistirse (duda 2 del programador).
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/viewer.spec.ts` (test «el visor es enfocable con Tab»: bucle de hasta 40 pulsaciones que para al enfocar el visor, sin número fijo), `apps/lector-pdf/tests/e2e/text-qa.spec.ts` (lint: `import type { Page }` en vez de `import()`, y `boundingBox()` comprobado con error en vez de `!`; la prueba no cambia).
+- Qué he hecho: atendido el punto 1 del revisor (Tab del visor robusto con el botón «Panel lateral») y el punto 2 (los dos errores de lint de `text-qa.spec.ts`, que el líder me ha autorizado a arreglar). Sin cambios en código de producción.
+- Comandos ejecutados y resultado: `pnpm lint` código 0; `pnpm typecheck` código 0; `pnpm test` 106 ficheros, 1348 tests en verde. E2E completo en el puerto 4394 (config temporal fuera del repo, retirada después): 57/57 en la última pasada. En dos pasadas anteriores fallaron tests de tareas largas (`viewer.spec.ts:101` y `render.spec.ts:116`, límite 100 ms) con la carga de la máquina a 15–18 por otros testers en paralelo; aislados pasan 4/4 veces y en la pasada final todo pasó.
+- Dudas o cosas que no he podido hacer: `pnpm --filter lector-pdf e2e` fija el puerto 4173 en `playwright.config.ts`, así que usé una copia temporal con 4394 (no modificada en el repo). Los dos tests de tareas largas dependen de la carga del equipo: si el tester los ve rojos con otros procesos corriendo, conviene repetirlos aislados antes de tocar código. No he hecho commit.
+
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` código 0, `pnpm typecheck` OK, `pnpm test` 106 ficheros / 1348 en verde. Los puntos 1 y 2 de la ronda 1 están resueltos (Tab del visor sin número fijo de pulsaciones; lint de `text-qa.spec.ts` limpio). Sin cambios en código de producción.
+1. (opcional) Persistir la última pestaña usada aparte de `none` en `prefs` (decisión del líder). No bloquea.
+2. Nota para el tester: repetir aislados los e2e de tareas largas (`viewer.spec.ts:101`, `render.spec.ts:116`) si fallan por carga de la máquina.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) 100 000 páginas, ≤ 12 opciones, también al final | OK | `tests/ui/thumbnails.test.tsx:75`; e2e QA `pages-100000.pdf`: tras `End` ≤ 12 opciones y la última existe |
+| (T) Clic en la 7 → `goToPage(6)`; ArrowDown; End | OK | `thumbnails.test.tsx:104,115`; e2e QA: End/Home/AvPág sobre 100 000 páginas |
+| (T) Prioridad 2 tras la cola de prioridad 0 | OK | `thumbnails.test.tsx:157` |
+| (T) F4, prefs, `PageMode /UseOutlines` | OK | `sidebar.test.tsx:70`, `unit/sidebar-actions.test.ts:46`; e2e QA: sin documento F4 no hace nada |
+| E2E pages-5000: miniatura 1 con píxeles < 3 s, ≤ 20 lienzos, clic en la última | OK | `thumbnails.spec.ts` 3/3 (1,2 s) |
+| E2E visor en página 40 → miniatura 40 marcada | OK | `thumbnails.spec.ts:67`; QA: con rueda del ratón la miniatura marcada queda visible y coincide con la página del visor |
+| Accesibilidad (teclado, foco visible) | OK | QA: flechas entre pestañas, foco con outline/box-shadow no nulo en la lista |
+| lint / typecheck / test / e2e | OK | `pnpm lint` 0; `pnpm typecheck` 0; `pnpm test` 106 ficheros / 1348 en verde; e2e puerto 4398 con config temporal (retirada): 57/57, antes de añadir mi spec, y 4/4 de mi spec |
+| `pnpm coverage` | Ajeno a la ficha | Falla `unit/document-actions.test.ts > openBrowserFile…` (status `loading`): PDF-037 en curso añade `await confirmDiscardOrSave()` antes de fijar `loading` en `openRequested`, y el test sondea `!== 'loading'` demasiado pronto. Ignorado por indicación; pasaba en `pnpm test` previo. El responsable de PDF-037 debe actualizarlo. |
+
+Casos límite: documento sin abrir, abrir/cerrar el panel conservando la página 77, `sizes-mixed` (apaisadas y giradas; escala común, las apaisadas miden ≈170 px, es lo que pide la ficha), 100 000 páginas.
+Tests añadidos: `apps/lector-pdf/tests/e2e/thumbnails-qa.spec.ts` (4 tests, lint limpio).
+Rendimiento: miniatura 1 dibujada en < 3 s (e2e 1,2 s en total, incluida apertura); sin tareas largas en esta pasada (`viewer.spec.ts:101` y `render.spec.ts:116` pasaron con carga baja).
+Observación no bloqueante: la última pestaña usada solo persiste en memoria (opcional del revisor).

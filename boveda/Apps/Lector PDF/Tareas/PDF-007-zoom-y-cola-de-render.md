@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-007
 titulo: Núcleo - zoom, cola de render con prioridades y tamaño de lienzo
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-001]
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -95,4 +95,24 @@ Tres módulos puros: cálculo de zoom (pasos, ajustar ancho/página, rueda, text
   - Cobertura de los tres módulos (`--coverage.include` sobre `core/zoom.ts`, `core/render-queue.ts`, `core/canvas-size.ts`): líneas 100 %, ramas 98,3 %. El informe se escribió en un directorio propio porque otro proceso de vitest tenía bloqueado `coverage/`.
   - ESLint sobre mis ficheros: limpio. Prettier con el estilo del repo (`--single-quote --print-width 120`): limpio.
   - `pnpm lint` y `pnpm typecheck` del proyecto fallan por ficheros que no son míos y están sin commitear de otro programador (PDF-005): `tests/unit/engine-load.test.ts` (import type) y `src/engine/load.ts` / `src/engine/range-transport.ts` (propiedad inexistente y falta `override`). En mis ficheros no hay errores.
-- Dudas o cosas que no he podido hacer: `pnpm lint` y `pnpm typecheck` a nivel de repo no pasan hasta que PDF-005 corrija sus ficheros. Los criterios de cobertura se han comprobado solo para los tres módulos. Decisiones menores tomadas dentro de la ficha: `parseZoomInput` redondea a 10 decimales para evitar ruido de coma flotante; `planCanvas` acepta `devicePixelRatio` no finito o menor que 1 como 1; `clampZoom`, `fitZoom` y `planCanvas` lanzan `RangeError` ante valores no finitos (bug del llamante).
+- Dudas o cosas que no he podido hacer (ver revisión posterior: lint y typecheck ya pasan): `pnpm lint` y `pnpm typecheck` a nivel de repo no pasan hasta que PDF-005 corrija sus ficheros. Los criterios de cobertura se han comprobado solo para los tres módulos. Decisiones menores tomadas dentro de la ficha: `parseZoomInput` redondea a 10 decimales para evitar ruido de coma flotante; `planCanvas` acepta `devicePixelRatio` no finito o menor que 1 como 1; `clampZoom`, `fitZoom` y `planCanvas` lanzan `RangeError` ante valores no finitos (bug del llamante).
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- `pnpm lint` y `pnpm typecheck` de la raíz: código 0. `pnpm test`: 44 ficheros, 514 tests en verde.
+- `pnpm coverage` falla solo por bloqueo del directorio `coverage/` por otro proceso vitest; con directorio propio, los tres módulos: líneas 100 %, ramas 98,3 %.
+- Cumple cada criterio (T); cola correcta (concurrencia con abortados, reemplazo de pendientes, microtarea, logger); sin `skip`/`only`; nada fuera de alcance.
+- (opcional) El tester debe repetir `pnpm coverage` cuando no haya otro vitest en marcha.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios (T) de zoom, fitZoom/resolveZoom, formato/parse, rueda | OK | `vitest run`: zoom.test.ts en verde; recorrido completo de ZOOM_STEPS arriba y abajo en el test QA |
+| Cola: prioridades, concurrencia ≤ 2, abort, cancel, cancelAll, onIdle, logger | OK | render-queue.test.ts en verde; QA: 20 requests con claves repetidas + cancelAll, máx. 2 simultáneos |
+| planCanvas | OK | canvas-size.test.ts en verde; QA: 0×0 y 10×40000 a dpr 3 |
+| lint / typecheck / test | código 0 | `pnpm lint`, `pnpm typecheck`; `pnpm test`: 44 ficheros, 514 tests |
+| Cobertura ≥ 95 % | OK | directorio propio: líneas 100 %, ramas 98,3 % (los 3 ficheros) |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/pdf007-qa.test.ts` (8 tests: entradas raras de parseZoomInput, setPriority, run síncrono que lanza, concurrencia inválida, extremos).
+Rendimiento: no aplica (núcleo puro).
+Observación no bloqueante: `wheelZoom` lanza RangeError si `deltaY` finito es enorme (|deltaY| > ~3,5e5 px desborda `exp`); irreal con una rueda real, pero conviene acotar `deltaY` en PDF-011.
+`pnpm coverage` estándar no se ejecutó por el bloqueo de `coverage/`; se usó directorio propio.

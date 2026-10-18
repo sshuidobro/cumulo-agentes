@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-013
 titulo: Capa de texto - seleccionar y copiar texto; herramientas selección y mano
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-011, PDF-004]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, texto]
 ---
 
@@ -63,3 +63,39 @@ En cada página visible hay una capa de texto transparente alineada con el dibuj
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos: `apps/lector-pdf/src/ui/viewer/TextLayerView.tsx`, `text-layer.css`, `text-layer-registry.ts`, `text-selection.ts`; `tests/ui/text-layer.test.tsx`, `tests/ui/text-selection.test.tsx`, `tests/ui/hand-tool.test.tsx`, `tests/e2e/text.spec.ts`. Modificados: `src/engine/pdfjs.ts` (exporta `normalizeUnicode`), `src/engine/text.ts` (`TEXT_CONTENT_PARAMS`, `TextLayerHandle`, `createTextLayer`), `src/state/viewer-store.ts` (`tool`, tipo `ViewTool`), `src/state/view-actions.ts` (`setViewTool`), `src/ui/viewer/PageView.tsx`, `Viewer.tsx`, `Viewer.module.css`, `src/ui/toolbar/MainToolbar.tsx`, `src/ui/icons.tsx` (`IconSelect`, `IconHand`), `src/ui/shortcuts.ts` (`tool-select` V, `tool-hand` H, `select-all` Mod+A), `src/ui/messages.ts`, `src/ui/App.tsx` (atajos V/H/Mod+A), `tests/ui/page-view.test.tsx` y `tests/ui/tauri-integration.test.tsx` (mock de `createTextLayer`, jsdom no tiene canvas).
+- Qué he hecho: capa de texto por página (`TextLayerView` dentro de `PageView`, creada con pdf.js, registrada y con selección adaptada de pdf.js, copia NFKC sin NUL); registro de capas y «Seleccionar todo» (Mod+A sobre la página actual); herramientas selección (V) y mano (H) con `aria-pressed`, arrastre que pasa por `contentYRef` del visor y `pointer-events: none` en la capa con la mano.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK; `pnpm lint` OK (0 avisos); `pnpm test` OK (93 ficheros, 1235 tests); `pnpm coverage` OK (líneas 96,67 % global); `pnpm --filter lector-pdf e2e` OK (40 passed, de ellos 6 de `text.spec.ts`). Captura del criterio de zoom 200 % y giro 90°: el test adjunta la captura con la selección (`testInfo.attach`); la comprobación automática es que el rectángulo de la selección contiene el del texto dibujado (tolerancia 2 px). Revisé a ojo una captura previa a la selección a 200 % girada: el texto dibujado aparece girado y legible; la alineación de la selección la comprueba el test, no la captura.
+- Desviaciones de la ficha (decisiones tomadas en implementación, para revisión):
+  1. `normalizeUnicode` se reexporta desde `src/engine/pdfjs.ts` (único punto que importa `pdfjs-dist`), no directamente desde `pdfjs-dist` en `text.ts`.
+  2. Cambio de rotación: la capa se vuelve a montar (la `key`/dependencia de `rotation` en el efecto de montaje) en vez de `update(viewport)`. Motivo: en pdf.js 6.4 `TextLayer.update` solo recoloca los ítems si cambia la escala; con un giro sin cambio de zoom el texto quedaría mal alineado. El zoom sí usa `update` como pide la ficha.
+  3. Las variables CSS (`--scale-factor`, `--total-scale-factor`, `--scale-round-x/y`) van en el `div.textLayer` y no en el marco de la página; tienen el mismo efecto porque la capa las hereda.
+  4. `text-layer.css` es una copia reducida de las reglas de `.textLayer`, `.endOfContent` y `.selecting` de pdf_viewer.css (sin anidar), con la atribución Apache-2.0 en el comentario.
+  5. Añado el mensaje `msg.selectAll` («Seleccionar todo el texto de la página») para la descripción del atajo Mod+A, que la ficha no listaba.
+  6. Los botones de herramienta se desactivan sin documento abierto, igual que zoom y giro (sin esto, rompían el orden de Tab de `open.test.tsx`).
+  7. La prueba de H/V usa un componente con los mismos manejadores que `App` sobre el registro real de atajos, no `App` completo (App necesita un documento cargado).
+- Dudas o cosas que no he podido hacer: (a) No he hecho `git commit`: el usuario pidió no hacer commits mientras PDF-012 trabaja en paralelo. Los ficheros compartidos `App.tsx`, `shortcuts.ts`, `messages.ts`, `MainToolbar.tsx`, `icons.tsx`, `viewer-store.ts`, `viewer.test.tsx` y `zoom-controls.test.tsx` tienen también cambios de PDF-012 sin commitear; un commit de esta ficha debe separar esas partes. (b) Los criterios de aceptación siguen sin marcar: los verifica el tester. (c) No he ejecutado `pnpm perf`: la ficha no lo pide.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint` (0 avisos), `pnpm typecheck`, `pnpm test` (93 ficheros, 1235 tests) y `text.spec.ts` (6/6) en verde. No he repetido `pnpm coverage` ni el e2e completo (los reporta el programador; los repite el tester).
+- Desviaciones 1-7 aceptadas: la rotación con remontaje está bien justificada y cubierta por test; el resto no cambia el comportamiento exigido.
+- Sin problemas bloqueantes. Sugerencias (opcional):
+  1. `apps/lector-pdf/src/ui/App.tsx` (`select-all`) — el atajo hace `preventDefault` aunque `selectPageText` devuelva `false` (página sin capa o sin texto) y anula el Ctrl+A nativo — devolver `false` del manejador en ese caso (ya soportado por `useShortcuts`).
+  2. `apps/lector-pdf/src/ui/viewer/text-selection.ts` — el manejador `copy` está en cada capa; con una selección que abarca varias páginas el evento no pasa por ellas y se copia sin `normalizeUnicode` (como en pdf.js, pero con `disableNormalization: true` pueden quedar ligaduras). Valorar un único `copy` en el visor. No hay criterio que lo exija.
+- Nota para el commit: la ficha comparte ficheros sin commitear con PDF-012 (`App.tsx`, `shortcuts.ts`, `messages.ts`, `MainToolbar.tsx`, `Viewer.tsx`, `use-shortcuts.ts`); hay que separar las partes al comitear.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) montar/update/cancel/registro | OK | `tests/ui/text-layer.test.tsx` (5 tests) dentro de `pnpm test`: 93 ficheros, 1235 tests verdes |
+| (T) endOfContent y sin oyentes globales | OK | `tests/ui/text-selection.test.tsx` (7 tests) |
+| (T) mano 100 px, H/V, H en input | OK | `tests/ui/hand-tool.test.tsx` (7 tests) + e2e propio en Chromium real (`text-qa.spec.ts`, 2/2) |
+| E2E doble clic, copiar 2 textos, zoom 200 % girada, Ctrl+A p3, ruso, 12 capas | OK | `playwright test text.spec.ts`: 6 passed (puerto propio 4391) |
+| lint / typecheck / test / coverage / e2e | OK | lint 0 avisos; typecheck OK; coverage líneas 97,94 %; e2e completo 42 passed (incluye los 2 nuevos del tester en la segunda tanda: 8 passed) |
+
+Nota: un primer intento de e2e falló por build roto/reconstruido transitoriamente por ediciones paralelas de otras fichas; al repetir con el build estable pasó todo (no es fallo de PDF-013).
+Tests añadidos: `apps/lector-pdf/tests/e2e/text-qa.spec.ts` (mano arrastra 100 px sin seleccionar y V restaura; H y Ctrl+A en el campo Zoom no tocan herramienta ni selección del PDF).
+Rendimiento: 20 saltos en `pages-5000.pdf` en ~2,2 s con ≤ 12 `.textLayer`; sin tareas largas nuevas. No ejecuté `pnpm perf` (no lo pide la ficha).
+Pendiente (no bloqueante, sugerencias del revisor): `select-all` hace `preventDefault` aunque no haya capa; `copy` multipágina sin normalizar.

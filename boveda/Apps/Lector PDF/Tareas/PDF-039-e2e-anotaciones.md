@@ -4,7 +4,7 @@ id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
 estado: pendiente
-depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038]
+depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
 creado: 2026-10-17
@@ -45,3 +45,6 @@ Demostrar el flujo completo que pidió el usuario —subrayar y hacer notas, gua
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] replanificación — 2026-10-17
+- `depende_de` gana [[PDF-069-barra-comentar]] (la barra «Comentar» que se prueba con teclado y axe sale ahora de esa ficha, no de PDF-030).

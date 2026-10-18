@@ -110,8 +110,10 @@ describe('Controles de zoom', () => {
     const user = userEvent.setup();
     openView();
     render(<App />);
-    await user.tab(); // Abrir (Deshacer y Rehacer están deshabilitados y Tab los salta)
-    await user.tab(); // Reducir
+    // Tab hasta «Reducir»: antes puede haber otros controles de la barra (Abrir, campo de página, herramientas).
+    for (let i = 0; i < 10 && !screen.getByRole('button', { name: 'Reducir' }).matches(':focus'); i++) {
+      await user.tab();
+    }
     expect(screen.getByRole('button', { name: 'Reducir' })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole('button', { name: 'Ampliar' })).toHaveFocus();

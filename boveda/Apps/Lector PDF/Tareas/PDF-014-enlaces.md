@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-014
 titulo: Enlaces internos y externos, destinos e historial atrás/adelante
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-012, PDF-003]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, formatos-ofimatica, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, enlaces, seguridad]
 ---
 
@@ -74,3 +74,38 @@ Los enlaces del PDF funcionan: los internos llevan a la página y posición del 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados (apps/lector-pdf): nuevos `src/core/links.ts`, `src/core/dest.ts`, `src/engine/links.ts`, `src/engine/dest.ts`, `src/state/history.ts`, `src/state/notice.ts`, `src/ui/kit/Dialog.tsx`, `src/ui/kit/Notice.tsx` (+ `.module.css`), `src/ui/viewer/LinkLayer.tsx` (+ `.module.css`); editados `src/state/viewer-store.ts` (campos `historyState` y `notice`), `src/ui/viewer/PageView.tsx` (monta `LinkLayer`), `src/ui/App.tsx` (atajos atrás/adelante y `Notice`), `src/ui/toolbar/MainToolbar.tsx` (botones «Vista anterior»/«Vista siguiente»), `src/ui/messages.ts`, `src/ui/shortcuts.ts` (`back` Alt+← y `forward` Alt+→). Tests nuevos: `tests/unit/links.test.ts`, `tests/unit/dest.test.ts`, `tests/unit/engine-links.test.ts`, `tests/unit/history.test.ts`, `tests/ui/link-layer.test.tsx`, `tests/ui/dialog.test.tsx`, `tests/ui/notice.test.tsx`, `tests/e2e/links.spec.ts`.
+- Qué he hecho: clasificación de URLs y destinos (núcleo puro), resolución de destinos con pdf.js, historial atrás/adelante (máx. 50, se vacía al abrir otro documento), capa de enlaces sobre el texto con confirmación para URLs externas y bloqueo de lo no permitido, diálogo accesible (foco, Tab atrapado, Esc, retorno de foco) y aviso temporal de 4 s. Reutilizo `currentYFraction` y `setCurrentYFraction` que PDF-019 ha añadido al store; no he tocado sus ficheros.
+- Comandos ejecutados y resultado: `pnpm typecheck` OK (app). ESLint sobre todos mis ficheros: 0 avisos. `vitest --project lector-pdf --coverage --coverage.reportsDirectory=<scratchpad>` OK (cobertura de `core/` por encima del 80 %); tras añadir los últimos tests, `vitest --project lector-pdf`: 80 ficheros, 1036 tests en verde. `pnpm --filter lector-pdf e2e`: 52 pasan y 1 falla (`viewer.spec.ts:88`, ver abajo). `links.spec.ts`: 4/4 en verde.
+- Dudas o cosas que no he podido hacer:
+  1. pdf.js 6.4 no tiene `convertToViewportRectangle` (la ficha lo pedía): convierto las cuatro esquinas con `convertToViewportPoint` y tomo la envolvente.
+  2. `parseExplicitDest` acepta `null` en las coordenadas (la interfaz es `number | null`); cualquier otro valor no numérico da `null`.
+  3. Añadido un mensaje no listado en la ficha: `msg.openLinkFailed` («No se ha podido abrir el enlace en el navegador.») para el aviso si `openExternalUrl` falla.
+  4. Los enlaces externos también interceptan el clic de rueda (`onAuxClick`) para que no abran sin confirmación.
+  5. Los botones atrás/adelante reutilizan los iconos de página (`IconPrevPage`/`IconNextPage`); no hay iconos propios de historial.
+  6. No he usado `outline.pdf` en los tests del motor: la ficha lo menciona pero ningún criterio lo exige; queda para PDF-016.
+  7. Fallo ajeno: `tests/e2e/viewer.spec.ts:88` («el visor es enfocable con Tab») falla de forma determinista: la barra tiene una parada de tabulación más (el botón de la barra lateral de PDF-015, en curso) y el test solo admite 12 pulsaciones. Mis botones atrás/adelante están deshabilitados al inicio y no añaden paradas. No he tocado el test.
+  8. Fallo ajeno: `pnpm lint` global falla en `tests/e2e/text-qa.spec.ts` (PDF-013, en curso); mis ficheros pasan.
+  9. El puerto 4173 lo usaba otro agente durante mi primera ejecución de e2e; la repetí cuando quedó libre.
+  10. No he hecho commit (la orden era no tocar git mientras trabajan otros en el árbol). Pendiente de que el líder decida el commit de la ficha.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Typecheck OK; ESLint sin avisos en los ficheros de la ficha; 7 ficheros de test de la ficha (64 tests) en verde. El e2e no se pudo relanzar (puerto 4173 ocupado por otro agente); se da por buena la ejecución del programador (links.spec 4/4) tras revisar el spec. `window.open` solo existe en `platform-web.ts`, que revalida el protocolo, y la UI solo llega a él tras `classifyUrl` + Dialog; no hay `location`. El fallo de `viewer.spec.ts:88` (Tab) es por la parada extra de la barra lateral (PDF-015), no por esta ficha: los botones atrás/adelante nacen deshabilitados.
+1. (opcional) `LinkLayer.tsx` — el menú contextual «abrir en pestaña nueva» sobre un `<a href={url}>` externo salta el diálogo (solo http/https/mailto, ya clasificado). Se podría quitar el `href` real.
+2. (opcional) `MainToolbar.tsx` — iconos de página reutilizados para atrás/adelante; crear iconos propios.
+3. (opcional) Falta aplicar `ctrl+clic`/`shift+clic` explícitamente en test; hoy pasan por `onClick` y quedan cubiertos.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| Tests unitarios (classifyUrl, parseExplicitDest, motor links.pdf, historial, Dialog) | OK | `pnpm test`: 106 ficheros, 1348 tests en verde |
+| E2E links.pdf (a)(d)(f)(g)(h), Alt+←/→, Cancelar/Abrir con `noopener,noreferrer` | OK | `links.spec.ts` 4/4 con build propio en puerto 4392 |
+| Seguridad | OK | `window.open` solo en `platform-web.ts`; E2E extra: Esc, clic de rueda, Ctrl+clic y mailto no abren sin diálogo |
+| typecheck | OK | `pnpm typecheck` código 0 |
+| lint | Solo fallos ajenos | `text-qa.spec.ts` (PDF-013, ignorado por encargo); mis ficheros 0 avisos |
+| e2e completo | 54 pasan, 3 fallan por carga | `render.spec.ts:68`, `render.spec.ts:116`, `viewer.spec.ts:101` (tareas largas/tiempo); el Tab pasa. Al repetirlos en serie pasan los de render; `viewer.spec.ts:101` es intermitente con carga de máquina 16 (134 ms frente a 100 ms, pasa en otras ejecuciones). Recomendable repetirlo con la máquina libre en PDF-022. |
+Observación: el `<a href>` externo permite «abrir en pestaña nueva» desde el menú contextual saltando el diálogo (ya anotado por el revisor, opcional; sin ejecución de código, solo http/https/mailto).
+Tests añadidos: `apps/lector-pdf/tests/e2e/links-qa.spec.ts` (4 tests: Esc, rueda/Ctrl+clic, mailto, Enter con teclado, historial con botones deshabilitados). Lint OK.
+Rendimiento: sin presupuesto propio de la ficha; ver la intermitencia anterior.

@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-005
 titulo: Crear @suite/platform con tipos, ByteSource y preferencias
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-004]
 intentos: 1
 skills: [stack-typescript-react, stack-tauri, pruebas-calidad]
@@ -139,3 +139,17 @@ Lint, typecheck y `pnpm test` en verde (`|platform|` aparece, 33 tests); el cód
 
 ### [revisor] ronda 2 — 2026-10-17 — APROBADO
 `pnpm lint` (0 avisos), `pnpm typecheck` (incluye platform), `pnpm test` (153 en verde, `|platform|`) y `pnpm coverage` (exit 0) correctos. `coverage-summary.json` lista los 7 ficheros de `packages/platform/src` al 100 % de líneas; umbral sin tocar. Los dos puntos opcionales de la ronda 1 (`chunkSize` inválido y `getItem` que lanza) están resueltos y con tests. 0 problemas.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| memorySource (rangos, copia, out-of-range) | OK | `tests/byte-source.test.ts`; `pnpm vitest run --project platform` 43 en verde |
+| blobSource y readAll chunk 2 | OK | idem; readAll 10 MB exacto (test QA) |
+| Error de arrayBuffer -> io con cause | OK | `byte-source.test.ts:64` |
+| Prefs (clave con prefijo, JSON roto, guard, cuota, memoria) | OK | `prefs.test.ts` |
+| platformError / isTauri | OK | `errors.test.ts`, `detect.test.ts` |
+| lint, typecheck, test, coverage | OK | lint 0 avisos; typecheck OK; `pnpm test` 16 ficheros, 158 tests; `pnpm coverage` exit 0, platform/src 100 % de líneas (`coverage-summary.json`) |
+
+Sin skip/only ni expect(true). Nota menor no bloqueante: `set(key, undefined)` guarda la cadena "undefined" (get devuelve null y la borra).
+Tests añadidos: `packages/platform/tests/qa-edge.test.ts` (Unicode/RTL/emoji, valor circular, fuente vacía, NaN/Infinity, 10 MB).
+Rendimiento: readAll de 10 MB desde Blob dentro del test completo en < 1 s (suite platform entera ~3 s con jsdom).

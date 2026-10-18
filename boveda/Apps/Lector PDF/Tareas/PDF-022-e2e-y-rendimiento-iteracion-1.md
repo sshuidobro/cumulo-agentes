@@ -14,7 +14,7 @@ tags: [tarea, pdf, e2e, rendimiento]
 
 # PDF-022 · E2E y presupuestos de la iteración 1
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (sección "Presupuestos") · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0011-documentos-de-prueba-pdf]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] (sección "Presupuestos") · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 Una batería E2E que demuestra que la iteración 1 cumple lo prometido al usuario: abrir y leer **cualquier** PDF de cualquier tamaño con todas las funciones del visor, dentro de los presupuestos de tiempo y memoria del Plan, solo con teclado si hace falta, y sin errores con el corpus real.
@@ -22,9 +22,10 @@ Una batería E2E que demuestra que la iteración 1 cumple lo prometido al usuari
 ## Contexto
 - Leer: sección "Presupuestos" del [[Apps/Lector PDF/Plan|Plan]], todos los `tests/e2e/*.spec.ts` existentes (no dupliques: esta ficha añade los flujos completos y las mediciones), `fixtures/FUENTES.md`.
 - Medir en el navegador: `performance.now()`, `PerformanceObserver({ type: 'longtask', buffered: true })`, `performance.memory.usedJSHeapSize` (Chromium). Inyecta los observadores con `page.addInitScript`.
-- Esta ficha **no cambia código de la app** salvo para añadir `data-testid` que falten (anótalos). Si un presupuesto no se cumple, el test falla: no se relaja el umbral; se anota en el Registro y la ficha vuelve al líder.
+- Esta ficha **no cambia código de la app** (sí tests: paso 0) salvo para añadir `data-testid` que falten (anótalos). Si un presupuesto no se cumple, el test falla: no se relaja el umbral; se anota en el Registro y la ficha vuelve al líder.
 
 ## Qué hay que hacer
+0. Suite de rendimiento ([[ADR-0012-suite-de-rendimiento]]): mueve los dos asserts de tiempo de `tests/unit/fixtures.test.ts` (generación de `pages-5000.pdf` < 1 s y de `pages-100000.pdf` < 10 s, medida única con `performance.now()`) a `tests/perf/fixtures.perf.test.ts`. En `tests/unit/` se quedan los asserts de tamaño, número de páginas y «aguja». Mismos umbrales. Después, `grep -rn "performance.now" apps/lector-pdf/tests/unit apps/lector-pdf/tests/ui` no devuelve nada.
 1. `tests/e2e/helpers.ts`: `openFixture(page, name)` (vía `[data-testid=open-input]`), `waitPageRendered(page, n)`, `installPerfProbes(page)`, `longTasks(page)`, `heapMB(page)`, `canvasCount(page)`.
 2. `tests/e2e/performance.spec.ts` — una prueba por fila de la tabla de presupuestos del Plan (abrir pequeño < 1 s; 5 000 y 100 000 < 5 s; Fin < 1,5 s; ≤ 12 lienzos y ≤ 12 marcos; heap < 400 MB tras 30 saltos aleatorios por `pages-5000.pdf`; búsqueda en 5 000 páginas: 1.ª coincidencia < 1 s con la consulta `marcador-1` y recorrido completo < 15 s; ninguna *long task* > 100 ms durante scroll, zoom y búsqueda). Cada prueba imprime su medida con `test.info().annotations.push({ type: 'medida', description })`.
 3. `tests/e2e/corpus.spec.ts`: para cada PDF de `fixtures/pdf/corpus/` y de `generated/` no dañado: abrir, esperar la página 1 dibujada, ir a la última página, comprobar que no hay errores en consola (`page.on('console')` tipo `error` y `page.on('pageerror')`). Los dañados muestran su mensaje y la app sigue usable (se puede abrir otro después).
@@ -38,10 +39,14 @@ Una batería E2E que demuestra que la iteración 1 cumple lo prometido al usuari
 - [ ] Los 10 PDFs del corpus y todos los generados válidos se abren y recorren sin errores de consola.
 - [ ] El flujo de teclado completo pasa sin usar el ratón.
 - [ ] Ninguna prueba usa `waitForTimeout`, `test.skip` ni `.only` (`grep` en el Registro).
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` con código 0.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` y `pnpm perf` con código 0; `pnpm perf` también 3 veces seguidas.
+- [ ] `grep -rn "performance.now" apps/lector-pdf/tests/unit apps/lector-pdf/tests/ui` sin resultados.
 
 ## Fuera de alcance
 - Corregir problemas de rendimiento encontrados (el líder crea fichas nuevas). Pruebas en Tauri real (lista manual de PDF-021).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] nota — 2026-10-17
+Por [[ADR-0013-pdfjs-build-legacy]] la app usa la build `legacy` de pdf.js (~+120 KB de JS en total entre página y worker). Los presupuestos del Plan **no cambian**: esta batería mide ya con la build legacy. En la entrada del tester, anotar el tamaño de `dist/assets/pdf.worker*.mjs` y del chunk principal para tener referencia.

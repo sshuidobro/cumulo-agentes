@@ -4,7 +4,7 @@ id: PDF-033
 titulo: Notas emergentes y comentarios sobre resaltados
 app: pdf
 estado: pendiente
-depende_de: [PDF-031]
+depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
@@ -49,3 +49,6 @@ Con la herramienta «Nota», un clic en la página coloca un icono de nota y abr
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] replanificación — 2026-10-17
+- `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).

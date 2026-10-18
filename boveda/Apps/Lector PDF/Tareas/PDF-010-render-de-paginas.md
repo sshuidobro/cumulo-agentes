@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-010
 titulo: Dibujar las páginas en lienzo con la cola de render (cancelación y liberación de memoria)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-009]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, calidad-profesional, pruebas-calidad]
@@ -73,3 +73,24 @@ Cada marco de página montado se dibuja con pdf.js en un `<canvas>` nítido (seg
   2. El criterio «zoom 100 %» no se puede fijar desde la interfaz (no hay control de zoom hasta PDF-011). El test ajusta el ancho de la ventana y comprueba que el marco mide 816 px antes de capturar.
   3. `PageFrame` recibe `rendered` y `children` para alojar el lienzo; la ficha no lo especificaba, pero mantiene el marco como fondo.
   4. El árbol de trabajo era compartido: otros agentes commitearon PDF-026 y PDF-030 durante mi trabajo. Solo he commiteado mis ficheros.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- Comprobado: `pnpm lint` y `pnpm typecheck` OK; vitest lector-pdf 55 ficheros / 707 tests OK; e2e completo 34/35 (el bucle de zoom de PDF-009 corregido en 0971165 ya no falla; `viewer-stress` pasa). Los cuatro criterios (T) tienen test propio; `render.ts`, cola, cancelación, liberación de lienzos y `page.cleanup()` cumplen la ficha; sin permisos ni HTML del documento.
+1. (opcional) `tests/e2e/render.spec.ts:153` — el test de tareas largas de `images-200` dio 118 ms una vez con toda la suite en paralelo y pasa en solitario (52 ms, 3 de 3). Es sensible a la carga: valorar ejecutarlo con `--workers=1` o tolerancia en el tester.
+2. (opcional) `PageView.tsx` — al cambiar de documento `rendered` no se reinicia hasta que acaba el nuevo dibujo; el lienzo antiguo se ve brevemente.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) prioridades 0/1 y máx. 2 renders | OK | `pnpm test`: 81 ficheros / 1019 tests OK (`tests/ui/page-view.test.tsx`) |
+| (T) desmontar aborta y libera (`width===0`) | OK | idem |
+| (T) zoom mantiene lienzo anterior; después 1 solo `<canvas>` | OK | idem |
+| (T) error normal -> «No se ha podido dibujar esta página.» y otra página se dibuja | OK | idem |
+| E2E basic-5 < 1 s + captura de referencia | OK | `render.spec.ts` 5/5; 635 ms |
+| E2E pages-5000 < 5 s, <= 12 canvas, heap < 400 MB | OK | primera página y saltos en 4,0 s de test; lienzos <= 12 |
+| E2E images-200 sin long tasks > 100 ms | OK | pasa con `--workers=1` (presupuesto 100 ms) |
+| E2E annotated: resaltado amarillo | OK | 585 ms, pasa |
+| lint / typecheck / test / coverage / e2e | OK | lint 0 errores (tras ajuste ajeno en `viewer.spec.ts`), typecheck OK, cobertura líneas 98,71 %, e2e completo 26/26 |
+
+Nota: `pnpm --filter lector-pdf e2e` choca con el puerto 4173 si otro agente corre e2e a la vez (`reuseExistingServer: false`); lo ejecuté con una config temporal (puerto y `dist` propios, ya borrada) en serie.
+Tests añadidos: ninguno (la cobertura de los criterios es suficiente). Rendimiento: primera página basic-5 ~0,6 s; pages-5000 dentro de 5 s; sin tareas largas > 100 ms en serie (el revisor vio 118 ms una vez con carga paralela, test sensible a la carga).

@@ -4,7 +4,7 @@ id: PDF-035
 titulo: Dibujo a mano alzada con ratón, lápiz o dedo
 app: pdf
 estado: pendiente
-depende_de: [PDF-031]
+depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
@@ -14,7 +14,7 @@ tags: [tarea, pdf, ui, anotaciones]
 
 # PDF-035 · Dibujo a mano
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 Con la herramienta «Dibujar», el usuario traza a mano alzada sobre la página (ratón, lápiz o táctil) con el color y grosor elegidos; cada trazo es una anotación de tinta independiente que se puede deshacer, seleccionar, mover y borrar.
@@ -31,16 +31,24 @@ Con la herramienta «Dibujar», el usuario traza a mano alzada sobre la página 
 5. Tests `tests/unit/annotations/simplify.test.ts`, `tests/ui/ink.test.tsx`, `tests/e2e/ink.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] (T) `simplifyPath` de 1 000 puntos sobre una recta con ruido < 0,1 → 2 puntos; de un cuadrado muestreado → conserva las 4 esquinas (±0,5); 100 000 puntos en < 100 ms sin desbordar la pila.
+- [ ] (T) `simplifyPath` de 1 000 puntos sobre una recta con ruido < 0,1 → 2 puntos; de un cuadrado muestreado → conserva las 4 esquinas (±0,5); 100 000 puntos sin desbordar la pila (en `tests/unit/`).
+- [ ] (T, rendimiento, `tests/perf/simplify.perf.test.ts` con `measureBest`) `simplifyPath` de 100 000 puntos en < 100 ms.
 - [ ] (T) Un trazo simulado de 50 eventos → 1 anotación `ink` con `width` de la herramienta y `rect` que contiene todos los puntos; `pointercancel` → ninguna.
 - [ ] (T) Dos trazos → 2 anotaciones y 2 entradas de deshacer.
 - [ ] E2E: dibujar con `page.mouse` un zigzag de 5 segmentos en `basic-5.pdf` → píxeles rojos a lo largo del trazo; Ctrl+Z → desaparecen.
 - [ ] E2E: con zoom 50 % y 300 % el trazo dibujado aparece bajo el puntero (píxel del punto medio, tolerancia 3 px).
 - [ ] Rendimiento: un trazo de 2 000 eventos no produce *long tasks* > 50 ms.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Goma de borrar parcial, presión del lápiz, formas geométricas (PDF-057).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] suite de rendimiento — 2026-10-17
+Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
+Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.
+
+### [lider] replanificación — 2026-10-17
+- `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).

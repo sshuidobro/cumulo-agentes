@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-068
 titulo: Lector de objetos por rangos y localización de páginas por /Count
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-026]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -101,3 +101,24 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escrit
 - Qué he hecho: `BlockCache` (bloques alineados de 4 KB, LRU de 256, lecturas contiguas en una sola llamada, lecturas > 64 KB directas) y `ObjectReader` (`open`, `get`, `resolve`, `getDict`, `pageCount`, `pageRef` con el pseudocódigo de la ficha, `pageRefs` cacheado). Objetos en offset (ventana de 4 KB doblada hasta `endobj`, `/Length` indirecto resuelto antes de cortar el flujo, con corte de ciclos) y objetos comprimidos (ObjStm, caché LRU de 16). El helper LRU va en `lru.ts` por no duplicar código.
 - Comandos ejecutados y resultado: `pnpm lint` → 0 avisos. `pnpm test` → 81 ficheros, 1019 tests en verde. `pnpm typecheck` (lector-pdf) → 0 errores. `pnpm perf` → `object-reader.perf` en verde (abrir + `pageRef(99998)` ≈ 165 ms + 14 ms; `pageRefs()` de `pages-5000` ≈ 175 ms, mejor de 5). En la última pasada falló un perf de otro módulo (`annotations-import` y luego `search`, cambiando de test en cada ejecución): ruido de carga por el otro programador, no mi código. `pnpm coverage` con directorio propio (`--coverage.reportsDirectory`, porque el directorio por defecto lo tenía bloqueado otro vitest): `object-reader.ts` 100 % líneas / 93,75 % sentencias, `block-cache.ts` 100 % líneas / 98,18 % sentencias. Medidas de bytes (xref incluida, `countingSource`): `pages-100000.pdf` abrir + `pageRef(99998)` + `getDict` = 4 246 708 bytes de 31 101 661 (**13,65 %**, límite 15 %); 10 `pageRef` repartidos = 4 459 700 bytes (**14,34 %**, límite 16 %). Corpus: los 10 PDFs cuadran con `numPages` de pdf.js y `pageRef(i) = pageRefs()[i]`. `pages-20000-flat`: `pageRef(19999)` usa el atajo y lee menos del 50 % del fichero.
 - Dudas o cosas que no he podido hacer: (1) En árboles incoherentes con un mismo nodo hoja o intermedio referenciado dos veces, `pageRefs()` lo cuenta una vez (visitados, como pide la ficha) y `pageRef` lo cuenta en cada aparición: pueden diferir. No está en los criterios; lo dejo anotado por si el tester quiere un test. (2) `pageCount()` devuelve el `/Count` del raíz aunque esté mentido, como indica la ficha; solo `pageRef` tiene el respaldo. (3) `readXref` lee directamente de la fuente (no por la caché), como indica la ficha.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Lint (0 avisos), typecheck y tests de `object-reader` y `block-cache` (40) en verde. El código sigue el pseudocódigo de la ficha; hay corte de ciclos en `/Length` y en el árbol. No he relanzado `pnpm perf` ni `pnpm coverage`: me fío de las cifras del programador (13,65 % y 14,34 %, dentro de los límites).
+Decisión sobre la duda (nodo referenciado dos veces): **no bloquea y no se cambia el código.** Es un PDF inválido fuera de los criterios, y la ficha ordena "nodo ya visitado → se salta" en `pageRefs()` y el `visited` por camino en `pageRef`. Cambiarlo obligaría a leer todo el árbol y rompería el objetivo de leer por rangos.
+1. (opcional, para el tester) `tests/unit/pdf/object-reader.test.ts` — añadir un test que fije el comportamiento actual con una hoja duplicada: ambos métodos terminan sin colgarse y devuelven una ref válida o `page-not-found`, sin lanzar otro error. No afirmar `pageRef(i) === pageRefs()[i]` en ese caso, porque pueden diferir a partir del duplicado.
+2. (opcional, seguimiento) Para PDF-028 (escritor incremental): `pageRef` sigue la numeración de `/Count` y `pageRefs()` la deduplicada. Si el escritor llega a necesitar el mismo índice que el visor, crear una ficha aparte que decida una única semántica. Hoy no hay evidencia de que haga falta.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| BlockCache (1 llamada, 3 bloques, LRU, directa 100 KB, recorte) | OK | `block-cache.test.ts` en verde |
+| basic-5, compressed, incremental-updates, get libre/mismatch/Length indirecto | OK | `object-reader.test.ts`, 42 tests de ambos ficheros en verde |
+| Árbol incoherente (Count mentiroso, subárbol vacío, ciclo) | OK | tests en verde |
+| Por rangos < 15 % / < 16 % (pages-100000) | OK | ver tests; programador midió 13,65 % y 14,34 %, el test los exige |
+| pages-20000-flat atajo; corpus 10 PDFs vs pdf.js | OK | tests en verde |
+| Perf (abrir + pageRef < 1,5 s; pageRefs 5000 < 1 s) | OK | `pnpm perf` verde en la 3.ª pasada |
+| lint, typecheck, test, coverage, build | OK | 81 ficheros / 1019 tests; cobertura `object-reader.ts` 100 % líneas, `block-cache.ts` 100 % líneas |
+
+Observación: `pnpm lint` falló una vez por un `viewer` sin usar en `tests/ui/viewer.test.tsx` (edición en curso de otro agente, fuera de esta ficha); en la repetición dio 0. `search.perf` falló 2 veces con carga alta (load 9,9) y pasó al repetir; no usa `ObjectReader`. Conviene vigilar su flakiness.
+Tests añadidos: en `object-reader.test.ts`, hoja duplicada en /Kids (sin cuelgue, solo `page-not-found`) y PDF vacío/truncado (`open` rechaza).
+Rendimiento: abrir + `pageRef(99998)` ≈ 165 ms + 14 ms (medida del programador, dentro del presupuesto verificado por el perf test).

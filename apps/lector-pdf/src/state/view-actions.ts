@@ -1,6 +1,6 @@
 import { nextZoom, wheelZoom, type ZoomMode } from '../core/zoom';
 import { normalizeRotation } from '../core/rotation';
-import { useViewer } from './viewer-store';
+import { useViewer, type ViewTool } from './viewer-store';
 
 /** Pasos de rueda pendientes de aplicar en el próximo fotograma. */
 interface WheelStep {
@@ -55,4 +55,9 @@ function flushWheel(): void {
 export function rotateView(direction: 1 | -1): void {
   const rotation = normalizeRotation(useViewer.getState().rotation + 90 * direction);
   useViewer.setState({ rotation, zoomFocusY: 'center' });
+}
+
+/** Cambia la herramienta del puntero (seleccionar o mano). */
+export function setViewTool(tool: ViewTool): void {
+  useViewer.setState({ tool });
 }

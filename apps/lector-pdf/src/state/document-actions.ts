@@ -1,13 +1,19 @@
 import { createLogger, type AppError, type Result } from '@suite/shared';
 import { platformError, type FileFilter, type OpenedFile } from '@suite/platform';
+import { initialExpanded } from '../core/outline';
+import { getOutline } from '../engine/outline';
 import { loadPdf, readPageDims, scanPageDims, type LoadedPdf, type PageDimsEntry } from '../engine';
+import type { ReadingPosition } from '../core/reading-positions';
 import { pdfError } from '../core/errors';
 import { PageDimsTable } from '../core/page-dims';
 import { normalizeRotation } from '../core/rotation';
 import { windowTitle } from '../core/title';
 import { endAnnotationSession, startAnnotationSession } from './annotation-actions';
+import { expectRestore, flushPosition } from './position-sync';
+import { sidebarForOpenedDocument } from './sidebar-actions';
 import { services } from './services';
 import { initialViewerState, useViewer } from './viewer-store';
+import { confirmDiscardOrSave, hasUnsavedChanges } from './unsaved-guard';
 
 const log = createLogger('document-actions');
 
@@ -57,6 +63,7 @@ async function releaseSession(current: Session | null): Promise<void> {
 
 /** Invalida las aperturas en curso y devuelve la sesión que hay que liberar. */
 function beginReplacement(): Session | null {
+  flushPosition();
   openSeq += 1;
   opening?.abort();
   opening = null;
@@ -68,9 +75,13 @@ function showError(error: AppError, name: string | null): void {
   services().platform.setTitle(windowTitle(null, false));
 }
 
-/** Abre un documento. Si ya hay otro abierto, lo cierra; si llega otra apertura antes de terminar, esta se descarta. */
-export async function openDocument(file: OpenedFile): Promise<void> {
+/**
+ * Abre un documento. Si ya hay otro abierto, lo cierra; si llega otra apertura antes de terminar, esta se descarta.
+ * `restore`: posición a aplicar en lugar de la recordada (PDF-037, tras guardar).
+ */
+export async function openDocument(file: OpenedFile, opts?: { readonly restore?: ReadingPosition }): Promise<void> {
   const { assetBaseUrl, platform } = services();
+  flushPosition();
   const seq = ++openSeq;
   const controller = new AbortController();
   opening = controller;
@@ -118,6 +129,8 @@ export async function openDocument(file: OpenedFile): Promise<void> {
     firstError = cause;
   }
 
+  const pageMode = await readPageMode(loaded);
+
   if (seq !== openSeq) {
     await loaded.destroy();
     await closeOpened(file);
@@ -136,6 +149,7 @@ export async function openDocument(file: OpenedFile): Promise<void> {
   });
   session = { file, pdf: loaded, stopListening, scan };
 
+  expectRestore(opts?.restore ?? null);
   useViewer.setState({
     ...initialViewerState,
     status: 'ready',
@@ -143,9 +157,12 @@ export async function openDocument(file: OpenedFile): Promise<void> {
     pdf: loaded,
     dims,
     dimsVersion: useViewer.getState().dimsVersion + 1,
+    sidebar: sidebarForOpenedDocument(pageMode),
   });
   platform.setTitle(windowTitle(file.name, false));
   startAnnotationSession(loaded, scan.signal);
+  loadPageLabels(loaded);
+  loadOutline(loaded);
 
   if (loaded.numPages <= SCAN_PAGE_LIMIT) {
     scanPageDims(loaded.doc, {
@@ -174,6 +191,24 @@ export async function closeDocument(): Promise<void> {
   await releaseSession(current);
 }
 
+/**
+ * Abre un fichero que pide el usuario («Abrir», arrastrar, «Abrir con»). Antes ofrece guardar los cambios sin guardar;
+ * si el usuario cancela, el fichero no se abre (y se libera).
+ */
+export function openRequested(file: OpenedFile): Promise<void> {
+  // Sin cambios, la apertura empieza en el mismo turno (sin esperar un aviso que no va a salir).
+  if (!hasUnsavedChanges()) return openDocument(file);
+  return confirmThenOpen(file);
+}
+
+async function confirmThenOpen(file: OpenedFile): Promise<void> {
+  if ((await confirmDiscardOrSave()) === 'cancel') {
+    await closeOpened(file);
+    return;
+  }
+  await openDocument(file);
+}
+
 /** Muestra el selector de ficheros del SO y abre el elegido. */
 export async function pickAndOpen(): Promise<void> {
   const result = await services().platform.openFile(PDF_FILTERS);
@@ -182,7 +217,7 @@ export async function pickAndOpen(): Promise<void> {
     return;
   }
   if (result.value === null) return;
-  await openDocument(result.value);
+  await openRequested(result.value);
 }
 
 /** Abre el primer fichero soltado sobre la ventana (web). */
@@ -201,7 +236,7 @@ export async function openDropped(dt: DataTransfer): Promise<void> {
     return;
   }
   if (result.value === null) return;
-  await openDocument(result.value);
+  await openRequested(result.value);
 }
 
 /** Abre un `File` de un `<input type=file>` (web). */
@@ -211,7 +246,42 @@ export function openBrowserFile(file: File): void {
     void failReplacing(result.error);
     return;
   }
-  void openDocument(result.value);
+  void openRequested(result.value);
+}
+
+/** Lee las etiquetas de página en segundo plano: no bloquea la apertura. Si falla o no hay, quedan en null. */
+function loadPageLabels(loaded: LoadedPdf): void {
+  void readPageLabels(loaded).then((labels) => {
+    if (useViewer.getState().pdf === loaded) useViewer.setState({ pageLabels: labels });
+  });
+}
+
+/** Lee el índice (marcadores) en segundo plano (PDF-016): no bloquea la apertura. Nunca lanza. */
+function loadOutline(loaded: LoadedPdf): void {
+  void getOutline(loaded.doc).then((nodes) => {
+    if (useViewer.getState().pdf !== loaded) return;
+    useViewer.setState({ outline: nodes, outlineExpanded: initialExpanded(nodes) });
+  });
+}
+
+/** Modo de página del PDF (`/PageMode`, p. ej. «UseThumbs»), o null si no tiene o no se puede leer. Nunca lanza. */
+async function readPageMode(loaded: LoadedPdf): Promise<string | null> {
+  try {
+    const mode: unknown = await loaded.doc.getPageMode();
+    return typeof mode === 'string' ? mode : null;
+  } catch (cause) {
+    log.warn('getPageMode', cause);
+    return null;
+  }
+}
+
+async function readPageLabels(loaded: LoadedPdf): Promise<readonly string[] | null> {
+  try {
+    return (await loaded.doc.getPageLabels()) ?? null;
+  } catch (cause) {
+    log.warn('getPageLabels', cause);
+    return null;
+  }
 }
 
 /** Entrega dimensiones de una página al store: las guarda y, si cambian, sube `dimsVersion`. */

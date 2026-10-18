@@ -8,6 +8,16 @@
   outline: none;
 }
 
+/* Herramienta mano: el cursor indica que el arrastre desplaza el documento. */
+.viewer[data-tool='hand'] {
+  cursor: grab;
+  user-select: none;
+}
+
+.viewer[data-tool='hand'].panning {
+  cursor: grabbing;
+}
+
 .viewer:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: -2px;
@@ -17,18 +27,47 @@
   position: relative;
 }
 
+/* Capa de anotaciones (PDF-031): encima del texto. Solo capta el puntero con una herramienta de dibujo. */
+.annotationLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Cursor por herramienta de anotación (PDF-031). */
+.viewer[data-tool='highlight'] :global(.textLayer),
+.viewer[data-tool='underline'] :global(.textLayer),
+.viewer[data-tool='strikeout'] :global(.textLayer) {
+  cursor: text;
+}
+
+.viewer[data-tool='note'] .annotationLayer,
+.viewer[data-tool='freetext'] .annotationLayer,
+.viewer[data-tool='ink'] .annotationLayer {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
 .page {
   position: absolute;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
+  background: var(--color-paper);
   box-shadow: var(--shadow-page);
 }
 
+/* Mismo fondo que NIGHT_PAGE_COLORS (core/night.ts); el número de página se aclara para seguir legible. */
+.night {
+  --color-paper: #1f1f23;
+  --color-paper-text: #c7c7cc;
+}
+
 .marker {
-  color: #8e8e93;
+  color: var(--color-paper-text);
   font-size: 1.25rem;
   user-select: none;
 }
@@ -48,7 +87,7 @@
   position: relative;
   max-width: 90%;
   padding: 0 1rem;
-  color: #8e8e93;
+  color: var(--color-paper-text);
   font-size: 0.875rem;
   text-align: center;
 }

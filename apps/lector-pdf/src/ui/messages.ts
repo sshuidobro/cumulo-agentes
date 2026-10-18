@@ -1,3 +1,4 @@
+import { UNTITLED_OUTLINE_TITLE } from '../core/outline';
 import { APP_NAME } from '../core/title';
 
 export const msg = {
@@ -25,6 +26,17 @@ export const msg = {
   undoWith: (label: string): string => `Deshacer ${label}`,
   redoWith: (label: string): string => `Rehacer ${label}`,
   cancelTool: 'Dejar la herramienta de anotación',
+  /** Nombre de cada tipo de anotación (PDF-031: nombre accesible de la zona activa). */
+  annotationKinds: {
+    highlight: 'Resaltado',
+    underline: 'Subrayado',
+    strikeout: 'Tachado',
+    note: 'Nota',
+    freetext: 'Texto',
+    ink: 'Dibujo',
+  },
+  /** «Resaltado de Ana»; sin autor, solo el tipo. */
+  annotationName: (kind: string, author: string): string => (author.trim() === '' ? kind : `${kind} de ${author}`),
   zoomIn: 'Ampliar',
   zoomOut: 'Reducir',
   zoomInput: 'Zoom',
@@ -38,4 +50,68 @@ export const msg = {
   rotateLeft: 'Girar a la izquierda',
   rotateRight: 'Girar a la derecha',
   zoomInvalid: 'Escribe un porcentaje entre 10 y 800',
+  toolSelect: 'Herramienta de selección',
+  toolHand: 'Herramienta mano',
+  selectAll: 'Seleccionar todo el texto de la página',
+  pageNumber: 'Número de página',
+  prevPage: 'Página anterior',
+  nextPage: 'Página siguiente',
+  firstPage: 'Primera página',
+  lastPage: 'Última página',
+  goToPage: 'Ir a la página',
+  sidebar: 'Panel lateral',
+  toggleSidebar: 'Mostrar u ocultar el panel lateral',
+  sidebarTabs: 'Pestañas del panel lateral',
+  thumbnails: 'Miniaturas',
+  /** Pestaña y nombre del árbol de marcadores (PDF-016). */
+  bookmarks: 'Marcadores',
+  expandAll: 'Expandir todo',
+  collapseAll: 'Contraer todo',
+  noBookmarks: 'Este documento no tiene marcadores.',
+  loadingBookmarks: 'Cargando marcadores…',
+  untitled: UNTITLED_OUTLINE_TITLE,
+  pageInvalid: (numPages: number): string => `Escribe un número de página entre 1 y ${numPages.toLocaleString('es-ES')}`,
+  /** Nombre accesible de un enlace interno (PDF-014). */
+  internalLink: 'Ir al destino del enlace',
+  confirmExternalTitle: 'Abrir enlace externo',
+  confirmExternal: (url: string): string => `Se abrirá «${url}» en el navegador. ¿Quieres continuar?`,
+  openLink: 'Abrir',
+  linkBlocked: 'Este enlace ejecuta una acción no permitida y se ha bloqueado por seguridad.',
+  linkBroken: 'El destino de este enlace no existe en el documento.',
+  openLinkFailed: 'No se ha podido abrir el enlace en el navegador.',
+  back: 'Vista anterior',
+  forward: 'Vista siguiente',
+  save: 'Guardar',
+  saveAs: 'Guardar como…',
+  saved: 'Guardado.',
+  /** Aviso tras descargar una copia (web sin guardado en sitio). */
+  downloaded: (name: string): string => `Se ha descargado «${name}» con tus anotaciones.`,
+  /** Título del diálogo al cerrar o abrir con cambios sin guardar. */
+  unsavedQuestion: (name: string): string => `¿Guardar los cambios en «${name}»?`,
+  discard: 'No guardar',
+  changedOnDiskTitle: 'El fichero ha cambiado',
+  /** Búsqueda en el documento (PDF-018). */
+  search: 'Buscar',
+  searchInput: 'Buscar en el documento',
+  searchPlaceholder: 'Buscar…',
+  matchCase: 'Coincidir mayúsculas',
+  wholeWord: 'Palabras completas',
+  matchDiacritics: 'Distinguir tildes',
+  prevMatch: 'Resultado anterior',
+  nextMatch: 'Resultado siguiente',
+  /** Posición de la coincidencia actual, p. ej. «3 de 120». */
+  matchCounter: (i: number, n: number): string => `${i.toLocaleString('es-ES')} de ${n.toLocaleString('es-ES')}`,
+  noMatches: 'Sin resultados',
+  /** Progreso de la búsqueda, p. ej. «Buscando… 1.234 de 5.000 páginas». */
+  searching: (done: number, total: number): string =>
+    `Buscando… ${done.toLocaleString('es-ES')} de ${total.toLocaleString('es-ES')} páginas`,
+  stopSearch: 'Detener',
+  truncatedMatches: 'Más de 100.000 resultados; se muestran los primeros',
+  closeSearch: 'Cerrar búsqueda',
+  /** Menú «Apariencia» de la barra (PDF-020). */
+  appearance: 'Apariencia',
+  themeSystem: 'Tema: Sistema',
+  themeLight: 'Tema: Claro',
+  themeDark: 'Tema: Oscuro',
+  nightMode: 'Modo noche de las páginas',
 } as const;

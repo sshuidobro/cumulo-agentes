@@ -11,6 +11,8 @@ export interface PageFrameProps {
   readonly height: number;
   /** `true` cuando el lienzo de la página ya está dibujado. */
   readonly rendered?: boolean;
+  /** Modo noche: el marco usa el fondo oscuro mientras no hay lienzo (PDF-020). */
+  readonly night?: boolean;
   /** Contenido de la página (lienzo y mensajes); el marco pinta el blanco y el número debajo. */
   readonly children?: ReactNode;
 }
@@ -24,6 +26,7 @@ export const PageFrame = memo(function PageFrame({
   width,
   height,
   rendered,
+  night,
   children,
 }: PageFrameProps) {
   return (
@@ -32,7 +35,7 @@ export const PageFrame = memo(function PageFrame({
       aria-label={msg.pageOf(index + 1, numPages)}
       data-page-index={index}
       data-rendered={rendered === true ? 'true' : undefined}
-      className={styles.page}
+      className={night === true ? `${styles.page} ${styles.night}` : styles.page}
       style={{ top, left, width, height }}
     >
       <span className={styles.marker} aria-hidden="true">

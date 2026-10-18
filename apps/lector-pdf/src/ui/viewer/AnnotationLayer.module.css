@@ -1,0 +1,51 @@
+/* Capa de anotaciones (PDF-031). La posición de la capa (`.annotationLayer`) está en Viewer.module.css. */
+
+/* Resaltado: se funde con el texto de debajo, como en Acrobat. */
+.highlight {
+  mix-blend-mode: multiply;
+}
+
+/* Zona activa: invisible, pero recibe el puntero (visiblePainted cuenta el relleno transparente). */
+.zone {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: visiblePainted;
+}
+
+/* Líneas (tinta): zona de 6 px de ancho en pantalla, sin importar el zoom. */
+.zoneLine {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 6px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: visiblePainted;
+}
+
+.zoneGroup {
+  outline: none;
+}
+
+/* Rectángulo discontinuo de selección; también aparece con el foco del teclado. */
+.outline {
+  display: none;
+  fill: none;
+  stroke: var(--color-focus);
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.outlineOn {
+  display: inline;
+  fill: none;
+  stroke: var(--color-focus);
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.zoneGroup:focus-visible > .outline {
+  display: inline;
+}

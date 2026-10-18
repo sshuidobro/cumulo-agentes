@@ -1,0 +1,15 @@
+.notice {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  z-index: 90;
+  transform: translateX(-50%);
+  max-width: min(36rem, calc(100vw - 2rem));
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-page);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+}

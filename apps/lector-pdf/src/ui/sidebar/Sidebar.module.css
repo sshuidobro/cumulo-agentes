@@ -1,0 +1,127 @@
+/* Ancho fijo del panel (232 px) y borde derecho. */
+.sidebar {
+  flex: 0 0 232px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+.tabs {
+  flex: 0 0 auto;
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  flex: 1;
+  padding: 0.5rem 0.25rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.tabSelected {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Contenedor de scroll de las miniaturas. */
+.list {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+}
+
+.list:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.spacer {
+  position: relative;
+  width: 100%;
+}
+
+.item {
+  position: absolute;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.frame {
+  position: absolute;
+  box-sizing: border-box;
+  background: var(--color-paper);
+  box-shadow: var(--shadow-page);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+/* Modo noche (PDF-020): el mismo fondo oscuro que las páginas del visor. */
+.frameNight {
+  --color-paper: #1f1f23;
+  --color-paper-text: #c7c7cc;
+}
+
+/* La miniatura actual se marca con un contorno del color de acento. */
+.item[aria-selected='true'] .frame {
+  outline-color: var(--color-accent);
+}
+
+.canvasHost {
+  position: absolute;
+  inset: 0;
+}
+
+.canvasHost > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* La etiqueta cuelga debajo del marco, en el hueco entre miniaturas. */
+.label {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+.failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  text-align: center;
+}

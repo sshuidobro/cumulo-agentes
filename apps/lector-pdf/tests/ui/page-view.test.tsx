@@ -45,6 +45,18 @@ vi.mock('../../src/engine/render', () => ({
   ),
 }));
 
+// La capa de texto necesita el motor de pdf.js (sin canvas en jsdom): aquí solo interesa el lienzo.
+vi.mock('../../src/engine/text', () => ({
+  normalizeUnicode: (text: string) => text,
+  createTextLayer: vi.fn(() => ({
+    textDivs: [],
+    items: [],
+    render: () => Promise.resolve(),
+    update: () => undefined,
+    cancel: () => undefined,
+  })),
+}));
+
 // `reportPageDims` vive en el estado del documento; aquí solo interesa el dibujo.
 vi.mock('../../src/state/document-actions', () => ({ reportPageDims: vi.fn() }));
 

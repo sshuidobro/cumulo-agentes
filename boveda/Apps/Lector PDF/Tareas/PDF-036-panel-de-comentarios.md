@@ -14,7 +14,7 @@ tags: [tarea, pdf, ui, anotaciones, accesibilidad]
 
 # PDF-036 · Panel de comentarios
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0012-suite-de-rendimiento]]
 
 ## Objetivo
 La pestaña «Comentarios» del panel lateral lista todas las anotaciones del documento agrupadas por página (también las de tipos que no editamos, como solo lectura), con filtros por tipo, autor y texto; al elegir una se va a ella y se abre su comentario; se puede borrar; y se configura el nombre de autor. Funciona igual con miles de comentarios.
@@ -45,15 +45,20 @@ La pestaña «Comentarios» del panel lateral lista todas las anotaciones del do
 
 ## Criterios de aceptación
 - [ ] (T) `buildCommentRows` sobre las anotaciones de `annotated.pdf` → cabeceras de p1, p2, p3 y 5 + 1 filas; el `Square` como «Rectángulo», `readOnly`; filtro `text 'previo'` (sin acento ni mayúsculas) deja la nota, el texto libre y el resaltado.
-- [ ] (T) Con 10 000 anotaciones sintéticas `buildCommentRows` tarda < 100 ms y el panel monta < 40 filas en el DOM.
+- [ ] (T) Con 10 000 anotaciones sintéticas el panel monta < 40 filas en el DOM.
+- [ ] (T, rendimiento, `tests/perf/comment-list.perf.test.ts` con `measureBest`) `buildCommentRows` con 10 000 anotaciones sintéticas < 100 ms.
 - [ ] (T) Intro sobre una fila llama a `goToPage` con su página, `select` y `openPopup`; sobre una de solo lectura no abre ventana.
 - [ ] (T) Cambiar «Tu nombre» a «Ana» → `prefs.annotationAuthor === 'Ana'` y las anotaciones nuevas llevan ese autor.
 - [ ] E2E (`annotated.pdf`): abrir la pestaña → 6 comentarios; clic en «Nota previa» → la página 2 visible y su ventana abierta; borrar el resaltado desde el panel → desaparece de la lista y de la página.
 - [ ] E2E: con `pages-100000.pdf` la pestaña muestra el aviso de documento grande y el botón inicia el escaneo con progreso visible y se puede cancelar.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Respuestas, estados («Aceptado»…) y exportar/importar comentarios (PDF-058). Ordenar por autor o fecha (mejora futura).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [lider] suite de rendimiento — 2026-10-17
+Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
+Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.

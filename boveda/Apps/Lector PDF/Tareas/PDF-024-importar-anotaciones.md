@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-024
 titulo: Importar las anotaciones existentes del PDF al modelo (y las no soportadas como solo lectura)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-023, PDF-005, PDF-003]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -61,3 +61,20 @@ Leer con pdf.js las anotaciones que ya tiene el PDF (de Adobe, de otros programa
 - Criterios de decisión tomados (la ficha no los fijaba): `quadPoints` ausente o vacío usa el rectángulo, pero con longitud inválida la anotación pasa a ajena; un campo presente con tipo inesperado hace la anotación ajena, uno ausente toma su valor por defecto; `popupRef` no parseable hace la anotación ajena; un `id` ausente o no parseable produce una ajena con id provisional (`ref:?<página>.<índice>` o `ref:<id>`) y rectángulo `[0,0,0,0]` si falta; el icono no válido de una nota vale `Note`; `fontSize` no positivo vale 12.
 - Comandos ejecutados y resultado: `pnpm lint` (0, sin avisos), `pnpm typecheck` (0), `pnpm test` (0; 62 ficheros, 830 tests), `pnpm coverage` (0; `import.ts` 98,29 % líneas), `pnpm perf -- annotations-import` (0; `scanAnnotations` 5000 páginas: total 536,1 ms, máximo entre lotes 8,3 ms, 100 lotes).
 - Dudas o cosas que no he podido hacer: ninguna bloqueante. Los tests de rendimiento están en `tests/perf/` porque la regla del proyecto prohíbe `performance.now()` en `tests/unit/`. No he hecho commit de otros ficheros del árbol de trabajo: solo los míos.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- `pnpm test` 63 ficheros / 834 tests en verde; `pnpm coverage` en verde (`import.ts` 100 % líneas); `pnpm perf` 13/13 en verde (una ejecución previa de `search.perf.test.ts` falló por carga, ajena a esta ficha y no reproducible).
+- `pnpm lint` y `pnpm typecheck` fallan solo por `tests/unit/pdf/fuzz-roundtrip.test.ts` (fichero sin seguir de otra tarea del tester, líneas 76, 192, 206); no es de PDF-024. Aviso al líder: hay que arreglarlo antes de cerrar la iteración.
+- Código correcto, puro, nunca lanza; cada criterio (T) tiene su test. Sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| annotated.pdf p1/p2/p3 | OK | `engine-import.test.ts` en `pnpm test` (63 ficheros, 834 tests, 0 fallos) |
+| Highlight inválido / Hidden | OK | `import.test.ts` + mis casos hostiles (NaN, basura, banderas combinadas) |
+| scanAnnotations pages-5000 < 10 s, lotes ≤ 100 ms, abortar | OK | `pnpm perf` 13/13 (programador: total 536 ms, máx lote 8,3 ms) |
+| Corpus veraPDF 7.18.1-t02-pass-a | OK | engine-import.test.ts |
+| lint, typecheck, test, coverage, build web | OK, código 0 | `import.ts` 98,29 % líneas |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/annotations/qa-import-024.test.ts` (basura/NaN, Unicode+emoji+RTL, rect invertido, Hidden combinado, 20 000 anotaciones).
+Rendimiento: una pasada de `pnpm perf` fue roja por carga paralela (search/otra perf, ajena) y en la repetición 13/13 verde.

@@ -5,7 +5,7 @@ import { Viewer } from '../../src/ui/viewer/Viewer';
 import { computeLayout, DEFAULT_GAP, DEFAULT_PADDING, scrollMap } from '../../src/core/layout';
 import { PageDimsTable } from '../../src/core/page-dims';
 import { zoomToScale } from '../../src/core/zoom';
-import { goToPage } from '../../src/state/navigation';
+import { goToPage, lastPage } from '../../src/state/navigation';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
 import { memorySource } from '@suite/platform';
 import { openedFile } from '../helpers/fake-platform';
@@ -96,15 +96,28 @@ describe('Viewer · virtualización', () => {
     await waitFor(() => expect(region.scrollTop).toBeCloseTo(100 / map.factor, 6));
     expect(region.scrollTop).not.toBeCloseTo(100 * map.factor, 0);
 
-    fireEvent.keyDown(region, { key: 'End' });
+    // «Fin» es ahora un atajo global de navegación (PDF-012): el visor solo muestra la página pedida.
+    act(() => { lastPage(); });
     await waitFor(() => expect(screen.getByRole('group', { name: 'Página 100000 de 100000' })).toBeVisible());
   });
 
-  it('con 5 000 páginas (sin escalado), la navegación con teclado usa el scroll nativo y no monta de más', () => {
+  it('con 5 000 páginas (sin escalado), el visor no atiende «Fin» (es atajo global) y no monta de más', () => {
     const { region } = setup(5000);
     fireEvent.keyDown(region, { key: 'End' });
     expect(region.scrollTop).toBe(0);
     expect(mountedIndices().length).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('Viewer · desbordamiento horizontal', () => {
+  it('marca el desbordamiento cuando el contenido es más ancho que el visor, y lo quita al volver a un zoom que cabe', async () => {
+    setup(3, 3);
+    await waitFor(() => expect(useViewer.getState().hasHorizontalOverflow).toBe(true));
+
+    act(() => {
+      useViewer.setState({ zoomMode: { kind: 'custom', zoom: 0.5 }, zoom: 0.5 });
+    });
+    await waitFor(() => expect(useViewer.getState().hasHorizontalOverflow).toBe(false));
   });
 });
 

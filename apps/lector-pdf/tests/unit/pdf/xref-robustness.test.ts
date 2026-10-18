@@ -34,14 +34,18 @@ function bombPdf(compressed: Uint8Array): Uint8Array {
 }
 
 describe('PDF-026 robustez (QA)', () => {
-  it('una bomba de descompresion (1 GiB de ceros en ~1 MB) no agota la memoria: error controlado', async () => {
-    const pdf = bombPdf(zeroBomb(64 * 1024 * 1024, 16));
+  // 72 MiB de ceros (> tope absoluto de 64 MiB), generada una sola vez: rapida tambien con cobertura.
+  let cachedBomb: Uint8Array | undefined;
+  const bomb = (): Uint8Array => (cachedBomb ??= zeroBomb(8 * 1024 * 1024, 9));
+
+  it('una bomba de descompresion (72 MiB de ceros en <100 KB) no agota la memoria: error controlado', async () => {
+    const pdf = bombPdf(bomb());
     expect(pdf.length).toBeLessThan(4 * 1024 * 1024);
     await expect(readXref(memorySource(pdf))).rejects.toBeInstanceOf(PdfSyntaxError);
   }, 60_000);
 
   it('decodeStreamData acota la salida de un flujo Flate malicioso', () => {
-    const data = zeroBomb(64 * 1024 * 1024, 16);
+    const data = bomb();
     const s = { kind: 'stream', dict: { kind: 'dict', entries: new Map([['Filter', { kind: 'name', value: 'FlateDecode' }]]) }, data } as unknown as PdfStream;
     expect(() => decodeStreamData(s)).toThrow(PdfSyntaxError);
   }, 60_000);

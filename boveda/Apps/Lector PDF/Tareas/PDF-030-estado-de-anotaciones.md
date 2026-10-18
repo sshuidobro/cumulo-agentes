@@ -1,9 +1,9 @@
 ---
 tipo: tarea
 id: PDF-030
-titulo: Estado de anotaciones por documento, deshacer/rehacer y barra «Comentar»
+titulo: Estado de anotaciones por documento, deshacer/rehacer y atajos
 app: pdf
-estado: bloqueada
+estado: hecha
 depende_de: [PDF-023, PDF-024, PDF-009, COM-011]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -12,7 +12,10 @@ actualizado: 2026-10-17
 tags: [tarea, pdf, ui, anotaciones, undo]
 ---
 
-# PDF-030 · Estado de anotaciones y barra «Comentar»
+# PDF-030 · Estado de anotaciones, deshacer/rehacer y atajos
+
+> [!note] Alcance reducido por el líder (2026-10-17)
+> La parte de interfaz (barra «Comentar», botones en `MainToolbar`) pasa a [[PDF-069-barra-comentar]]; el cursor por herramienta y la llamada a `ensurePageAnnotations` desde `PageView` pasan a [[PDF-031-capa-de-anotaciones]]. Ver Registro.
 
 Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0005-modelo-deshacer-rehacer]]
 
@@ -70,7 +73,7 @@ Al abrir un PDF se importan sus anotaciones (todas si tiene ≤ 20 000 páginas,
    - Preferencias (`prefs`, con *guards*): `annotationAuthor` (por defecto `'Usuario'`), `annotationColors`, `inkWidth`, `fontSize`, `commentBarOpen`.
    - Título: suscríbete al estado `undo.isDirty` y llama a `platform.setTitle(windowTitle(file.name, isDirty))`.
 4. Atajos (`src/ui/shortcuts.ts`): `undo` `Mod+Z`; `redo` `Mod+Y` y `Mod+Shift+Z` (la barra «Comentar» no tiene atajo: `Mod+Shift+C` lo usa el navegador). `Escape` en el visor con herramienta activa → `setTool('none')`.
-5. UI:
+5. UI: **(movido: barra y botones a [[PDF-069-barra-comentar]]; cursor a [[PDF-031-capa-de-anotaciones]]. En esta ficha solo quedan los botones provisionales Deshacer/Rehacer en la cabecera de `App.tsx`.)**
    - `MainToolbar`: botones «Deshacer» / «Rehacer» (`IconUndo`, `IconRedo`; deshabilitados según `undo`; `title` con la etiqueta: «Deshacer añadir resaltado (Ctrl+Z)») y botón conmutador «Comentar» (`IconComment`, `aria-pressed`).
    - `src/ui/toolbar/CommentToolbar.tsx`: segunda fila `role="toolbar"` `aria-label="Comentar"`, visible si `commentBarOpen`: 6 `IconButton` con `aria-pressed` (Resaltar, Subrayar, Tachar, Nota, Texto, Dibujar; iconos nuevos), un `MenuButton` «Color» con la paleta (`menuitemradio`, muestra de color + nombre) que aplica a la herramienta activa, un `MenuButton` «Grosor» (1, 2, 4, 8 pt; solo con Dibujar) y uno «Tamaño de letra» (solo con Texto). Navegación con flechas dentro de la barra (patrón *toolbar*, `tabindex` itinerante).
    - Cursor del visor según herramienta (`crosshair` para nota/texto/dibujo, `text` para marcado).
@@ -83,12 +86,13 @@ Al abrir un PDF se importan sus anotaciones (todas si tiene ≤ 20 000 páginas,
 - [ ] (T) `addAnnotations('resaltar', [a, b])` → `undoDepth` 1 y un `undo` quita las dos.
 - [ ] (T) Ctrl+Z con el foco en el visor deshace; con el foco en un `textarea` **no** llama a `undo()`. Ctrl+Y y Ctrl+Mayús+Z rehacen.
 - [ ] (T) Cambiar el color de «Resaltar» se guarda en `prefs` y sobrevive a recrear el store; autor vacío → `'Usuario'`.
-- [ ] (T) `CommentToolbar`: flechas mueven el foco entre herramientas; el menú de grosor solo existe con Dibujar activo; `aria-pressed` refleja la herramienta.
+- [ ] ~~(T) `CommentToolbar`: flechas mueven el foco entre herramientas; el menú de grosor solo existe con Dibujar activo; `aria-pressed` refleja la herramienta.~~ Movido a [[PDF-069-barra-comentar]].
 - [ ] (T) Cerrar el documento durante el escaneo lo aborta (sin `set` posteriores: espía del store).
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
 - Dibujar las anotaciones (PDF-031) y el comportamiento de cada herramienta (PDF-032 a PDF-035). Guardar (PDF-037).
+- Barra «Comentar», botones en `MainToolbar` ([[PDF-069-barra-comentar]]); cursor por herramienta y `ensurePageAnnotations` al hacerse visible una página ([[PDF-031-capa-de-anotaciones]]).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
@@ -101,3 +105,30 @@ Al abrir un PDF se importan sus anotaciones (todas si tiene ≤ 20 000 páginas,
   1. **Bloqueo de dependencias.** La ficha usa `MainToolbar` (la crea PDF-011, pendiente), `MenuButton` (PDF-020, pendiente) y `PageView` (PDF-010, en curso), pero `depende_de` no los incluye. Sin ellos no puedo hacer `CommentToolbar` (criterio de la barra: aria-pressed, flechas, menú de grosor solo con Dibujar), ni el cursor por herramienta, ni llamar a `ensurePageAnnotations` al hacerse visible una página. Pregunta al líder: ¿añadir a `depende_de` PDF-010, PDF-011 y PDF-020, o autorizar un `MenuButton` provisional aquí?
   2. Decisiones menores tomadas por mí: grosor por defecto 2 pt (la ficha no lo fija); `setCommentBarOpen` añadido (el conmutador lo necesita); los botones Deshacer/Rehacer van en la cabecera de `App.tsx` porque `MainToolbar` no existe aún; los tests de acciones están en `tests/unit/annotations/` porque `vitest.config.ts` solo incluye `tests/ui/*.test.tsx`; si el escaneo falla, `scan` queda en `done` con un aviso en el log (revisar si debe ser un estado de error).
   3. Commit: solo los ficheros de esta ficha. `messages.ts` tiene también una línea `pageRenderFailed` de PDF-010 que no he commiteado.
+
+### [lider] desbloqueo — 2026-10-17
+- Decisión: se cierra PDF-030 con lo hecho en `2c71897` (estado, pila de deshacer, acciones, preferencias, título, atajos) → `en-revision`, `intentos` sigue en 0. La parte de UI que dependía de fichas no hechas sale de aquí:
+  - Barra «Comentar» (`CommentToolbar`), botón conmutador «Comentar» y traslado de Deshacer/Rehacer a `MainToolbar` → nueva [[PDF-069-barra-comentar]] (`depende_de: [PDF-030, PDF-011, PDF-020]`).
+  - Cursor del visor por herramienta y `ensurePageAnnotations` al hacerse visible una página → [[PDF-031-capa-de-anotaciones]] (ya toca `PageView`; gana `PDF-010` en `depende_de`). Así PDF-031 no espera a PDF-020.
+- Decisiones menores del programador aceptadas: grosor por defecto 2 pt; `setCommentBarOpen(open)` en las acciones; botones Deshacer/Rehacer provisionales en la cabecera de `App.tsx` (PDF-069 los mueve); tests de acciones en `tests/unit/annotations/` (`vitest.config.ts` incluye `tests/unit/**/*.test.ts`); si el escaneo falla, `scan 'done'` + aviso en el log (el panel de comentarios de PDF-036 mostrará lo importado; no bloquea guardar porque el escritor solo escribe los cambios).
+- Para el revisor: criterios a comprobar = todos menos el de `CommentToolbar` (tachado). El fallo de `pnpm coverage` en `tests/unit/pdf/xref-robustness.test.ts` es de [[PDF-026-lector-xref]], no de esta ficha: si sigue fallando, comprobar la cobertura con `pnpm exec vitest run --coverage --exclude '**/xref-robustness.test.ts'` en la raíz y anotarlo; no rechazar PDF-030 por ello. La línea `pageRenderFailed` de `messages.ts` es de PDF-010.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+Comprobado: `pnpm lint`, `pnpm typecheck` y `pnpm test` (74 ficheros, 923 tests) con código 0. `pnpm coverage` completo no se ha usado; con `--exclude xref-robustness` pasa (918 tests): `core/annotations` 96,2 % ramas / 97,5 % líneas, `palette.ts` 91,7 %. Todos los criterios vigentes (menos el tachado de `CommentToolbar`) tienen test que falla si se rompen: importación real de `annotated.pdf`, modo lazy con una sola llamada a `getAnnotations`, undo/redo/título, agrupación, atajos con `textarea`, preferencias y aborto sin `set`.
+1. (opcional) `annotation-actions.ts:141-143` — si el escaneo falla, `scan` queda en `done` sin aviso al usuario; aceptado por el líder, valorar un estado de error en PDF-036.
+2. (opcional) `tests/ui/annotation-shortcuts.test.tsx` — prueba `useShortcuts` con un arnés, no el cableado de `App.tsx`; PDF-069 debería cubrirlo al mover los botones.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `annotated.pdf` → 5 soportadas, 1 `Square`, `scan 'done'` | OK | `annotation-actions.test.ts` (motor real), pasa |
+| 25 000 págs → `lazy`; `ensurePageAnnotations(7)` una sola llamada, sin reimportar | OK | test + caso concurrente (3 llamadas → 1 `getPage`) |
+| add×2, delete, undo/redo, título `• ` y `markAnnotationsSaved` | OK | test con espía `setTitle` |
+| `addAnnotations` → `undoDepth` 1, un undo quita ambas | OK | test |
+| Ctrl+Z visor / no en `textarea`; Ctrl+Y y Ctrl+Mayús+Z rehacen | OK | `annotation-shortcuts.test.tsx` (arnés, no `App.tsx`; ya anotado por el revisor) |
+| Color en prefs sobrevive a recrear store; autor vacío → «Usuario» | OK | tests de preferencias + prefs corruptas (nuevo) |
+| Cerrar durante el escaneo aborta sin `set` posteriores | OK | espía de `setState` |
+| lint / typecheck / test / coverage | OK con matiz | `pnpm lint` 0; `pnpm test` 74 ficheros, 923 tests OK; coverage (dir. propio, sin `xref-robustness` de PDF-026) 76 ficheros, 938 tests OK, `core/annotations` 80,05 % líneas. `tsc` falla solo en `tests/unit/annotations/appearance.test.ts` (WIP de PDF-027, ajeno); mi test y el código de PDF-030 compilan limpio |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/annotations/annotation-qa.test.ts` (6): undo/redo con pila vacía, rehacer descartado tras edición nueva, borrar id inexistente sin entrada, límite de 100, sesión nueva reinicia ediciones, prefs corruptas → valores por defecto.
+Rendimiento: no aplica (sin presupuesto en esta ficha). Sin UI propia que probar con Playwright (movida a PDF-069/031).

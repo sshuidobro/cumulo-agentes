@@ -6,7 +6,7 @@ import {
   setEntryCommand,
   updateAnnotationCommand,
 } from '../core/annotations/commands';
-import { effectiveAnnotations } from '../core/annotations/effective';
+import { annotationsOfPage, effectiveAnnotations } from '../core/annotations/effective';
 import type { ForeignAnnotation, ImportedPage } from '../core/annotations/import';
 import {
   EMPTY_EDITS,
@@ -25,6 +25,7 @@ import {
 } from '../core/annotations/palette';
 import { windowTitle } from '../core/title';
 import { readPageAnnotations, scanAnnotations, type LoadedPdf } from '../engine';
+import { setFileAnnotationHidden } from '../engine/annotation-visibility';
 import {
   initialAnnotationState,
   useAnnotations,
@@ -65,6 +66,8 @@ interface Session {
 let session: Session | null = null;
 let stack = createStack();
 let memo: { readonly baseline: AnnotationState['baseline']; readonly edits: AnnotationEdits; readonly result: ReadonlyMap<string, Annotation> } | null = null;
+/** Anotaciones de cada página ya calculadas, con la versión de la página con que se calcularon. */
+const pageMemo = new Map<number, { readonly version: number; readonly items: readonly Annotation[] }>();
 
 function createStack(): UndoStack<AnnotationEdits> {
   return new UndoStack<AnnotationEdits>(EMPTY_EDITS, { maxDepth: MAX_UNDO_DEPTH });
@@ -115,6 +118,7 @@ export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal): voi
   session = current;
   stack = createStack();
   memo = null;
+  pageMemo.clear();
 
   const lazy = pdf.numPages > SCAN_PAGE_LIMIT;
   useAnnotations.setState({
@@ -151,6 +155,7 @@ export function endAnnotationSession(): void {
   current?.stop.abort();
   stack = createStack();
   memo = null;
+  pageMemo.clear();
   const prev = useAnnotations.getState();
   useAnnotations.setState({
     ...initialAnnotationState(),
@@ -231,7 +236,9 @@ function apply(change: () => void): void {
 function publish(before: AnnotationEdits): void {
   const after = stack.doc;
   const { baseline } = useAnnotations.getState();
-  const pages = changedPages(baseline, before, after);
+  const ids = changedIds(before, after);
+  const pages = changedPages(baseline, before, after, ids);
+  syncFileVisibility(baseline, after, ids);
   useAnnotations.setState((s) => {
     const pageVersion = new Map(s.pageVersion);
     for (const index of pages) pageVersion.set(index, (pageVersion.get(index) ?? 0) + 1);
@@ -239,17 +246,45 @@ function publish(before: AnnotationEdits): void {
   });
 }
 
-/** Páginas donde cambia alguna anotación entre dos estados (antes y después, por si se mueve de página). */
-function changedPages(baseline: AnnotationState['baseline'], before: AnnotationEdits, after: AnnotationEdits): number[] {
+/** Ids cuya entrada en `edits` (cambio o borrado) es distinta entre dos estados. */
+function changedIds(before: AnnotationEdits, after: AnnotationEdits): Set<string> {
   const ids = new Set<string>([...before.upserts.keys(), ...after.upserts.keys(), ...before.removed, ...after.removed]);
+  for (const id of [...ids]) {
+    const unchanged = before.upserts.get(id) === after.upserts.get(id) && before.removed.has(id) === after.removed.has(id);
+    if (unchanged) ids.delete(id);
+  }
+  return ids;
+}
+
+/** Páginas donde cambia alguna anotación entre dos estados (antes y después, por si se mueve de página). */
+function changedPages(
+  baseline: AnnotationState['baseline'],
+  before: AnnotationEdits,
+  after: AnnotationEdits,
+  ids: ReadonlySet<string>,
+): number[] {
   const pages = new Set<number>();
   for (const id of ids) {
-    const unchanged = before.upserts.get(id) === after.upserts.get(id) && before.removed.has(id) === after.removed.has(id);
-    if (unchanged) continue;
     addPage(pages, pageOfEntry(baseline, before, id));
     addPage(pages, pageOfEntry(baseline, after, id));
   }
   return [...pages];
+}
+
+/**
+ * Una anotación del fichero editada o borrada se oculta en el lienzo (la dibuja la capa de anotaciones);
+ * al deshacer el cambio vuelve a mostrarse. Sus popups siguen el mismo estado.
+ */
+function syncFileVisibility(baseline: AnnotationState['baseline'], after: AnnotationEdits, ids: ReadonlySet<string>): void {
+  const current = session;
+  if (current === null) return;
+  for (const id of ids) {
+    const origin = baseline.get(id)?.origin;
+    if (origin === undefined || origin.kind !== 'file') continue;
+    const hidden = after.upserts.has(id) || after.removed.has(id);
+    setFileAnnotationHidden(current.pdf.doc, origin.ref, hidden);
+    if (origin.popupRef !== null) setFileAnnotationHidden(current.pdf.doc, origin.popupRef, hidden);
+  }
 }
 
 function pageOfEntry(baseline: AnnotationState['baseline'], edits: AnnotationEdits, id: string): number | undefined {
@@ -351,6 +386,18 @@ export function setCommentBarOpen(open: boolean): void {
 export function markAnnotationsSaved(): void {
   stack.markSaved();
   publish(stack.doc);
+}
+
+/**
+ * Anotaciones de una página (línea base ⊕ cambios), cacheadas hasta que cambie su versión (`pageVersion`).
+ * `version` es la versión de la página en la misma lectura del store que llama a esta función.
+ */
+export function pageAnnotations(pageIndex: number, version: number): readonly Annotation[] {
+  const hit = pageMemo.get(pageIndex);
+  if (hit !== undefined && hit.version === version) return hit.items;
+  const items = annotationsOfPage(getEffective(), pageIndex);
+  pageMemo.set(pageIndex, { version, items });
+  return items;
 }
 
 /** Lo que se ve: línea base ⊕ cambios. Memoizado por las referencias de línea base y cambios. */

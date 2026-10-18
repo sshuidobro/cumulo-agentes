@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-028
 titulo: Escritor incremental - anexar las anotaciones al PDF sin reescribirlo
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-068, PDF-027, PDF-024]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -116,3 +116,27 @@ Convertir la diferencia de anotaciones (`AnnotationDiff`, PDF-023) en un **incre
 - Dudas o cosas que no he podido hacer:
   1. **Fallos ajenos a esta ficha:** `pnpm typecheck` falla en `apps/lector-pdf/tests/e2e/zoom.spec.ts` (líneas 63-64, `Property 'top' does not exist`), fichero sin commitear de otro agente. `pnpm test` y `pnpm coverage` tienen un test rojo: `tests/ui/open.test.tsx` › «con la carga pendiente muestra el estado de carga con el nombre y Cancelar», que importa `src/ui/App`, en edición por el agente del visor. No lo he tocado (no toco `src/ui`). Mis ficheros no provocan ninguno de los dos fallos.
   2. Las medidas numéricas de lectura y tiempo no se han vuelto a extraer en esta ronda: el código de escritura no ha cambiado y los umbrales de `incremental.perf.test.ts` y del test de lectura pasan.
+
+### [revisor] ronda 1 — 2026-10-17 — APROBADO
+- Comprobado: `pnpm lint` OK; `pnpm typecheck` sin errores en este momento; `incremental.test.ts` + `to-pdf.test.ts` 40/40 OK; `pnpm perf`: `incremental.perf.test.ts` OK. Falla `search.perf.test.ts` (ajeno a esta ficha, posible ruido de carga por ejecución concurrente; el tester debe repetirlo en serie).
+- Revisado: cumple los criterios y el paso 3.9 (`openForSave`), el incremento no toca bytes previos, xref de tabla/stream según `lastKind`, `/Annots` ausente/directo/indirecto, `/RC` borrado al cambiar el texto, `/ID` determinista, sin excepciones (todo vía `Result`), sin `skip`/`only`/`console.log`.
+- (opcional) `incremental.ts`: una nota modificada no actualiza el `/Open` de su popup existente; revisarlo si PDF-037 expone ese cambio.
+- (opcional) Los tests ven bien `annotated.pdf` y `basic-5`, pero no hay caso explícito con `incremental-updates.pdf`; el doble guardado ya cubre el encadenado.
+- Problemas bloqueantes: 0.
+
+### [tester] ronda 1 — 2026-10-17 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 6 anotaciones en basic-5, subtipos/AP/quads/ink/autor | OK | `incremental.test.ts` (pdf.js legacy) en `pnpm test`: 86 ficheros, 1087 tests verdes |
+| Prefijo idéntico byte a byte | OK | test «primeros size bytes» y mi test QA (`toEqual` sobre incremental-updates.pdf) |
+| xref table vs stream | OK | tests basic-5 (`trailer`+`/Prev`) y compressed (`/Type /XRef`, sin `trailer`) |
+| annotated: borrar, modificar, añadir (/Annots indirecto), doble guardado | OK | tests de `annotated.pdf`; 2 `%%EOF` más |
+| `openForSave` (4 casos) y errores sin excepción | OK | `describe('openForSave')`; QA añade truncado y no-PDF |
+| Presupuestos de lectura (pages-5000 / pages-100000) | OK | tests de lectura verdes; medidas del programador: 31,9 % y 14,3 % (límites 35 % y 16 %) |
+| Perf (<1 s y <3 s) | OK | `pnpm perf` en serie: 11 ficheros, 18 tests verdes, código 0 (sin el ruido de `search.perf` visto por el revisor) |
+| Determinismo | OK | test existente |
+| lint / typecheck / test / coverage / perf | OK | todos código 0 (typecheck sin el error de `zoom.spec.ts` de la ronda 2; coverage: `to-pdf.ts` 100 %, `incremental.ts` 97,12 % líneas); build web OK |
+- Fallos de UI (`open.test.tsx`, `zoom.spec.ts`) no reproducidos hoy y, en cualquier caso, ajenos a esta ficha.
+- Tests añadidos: `apps/lector-pdf/tests/unit/pdf/incremental-qa.test.ts` (incremental-updates.pdf con texto Unicode/RTL/emoji, y ficheros corruptos/truncados/no-PDF sin excepciones). Cubre el hueco opcional señalado por el revisor.
+- Rendimiento: perf en serie dentro de presupuesto (`scanAnnotations` 5000 págs 488 ms, búsqueda 5000 págs 1867 ms; sin regresiones).
+- Nota opcional heredada: una nota modificada no actualiza `/Open` de su popup (para PDF-037).

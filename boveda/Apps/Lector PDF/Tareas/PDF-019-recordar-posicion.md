@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-019
 titulo: Recordar la última página, el zoom y la rotación de cada documento
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-012]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, preferencias]
 ---
 
@@ -56,3 +56,28 @@ Al reabrir un PDF, el lector vuelve a la misma página (y posición dentro de el
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/reading-positions.ts` (nuevo), `apps/lector-pdf/src/state/position-sync.ts` (nuevo), `apps/lector-pdf/src/state/viewer-store.ts` (campo `currentYFraction`), `apps/lector-pdf/src/state/navigation.ts` (`setCurrentYFraction`), `apps/lector-pdf/src/state/document-actions.ts` (`flushPosition` en `openDocument` y `beginReplacement`), `apps/lector-pdf/src/ui/viewer/Viewer.tsx` (reporta la fracción vertical), `apps/lector-pdf/src/main.tsx` (`startPositionSync()`), tests `apps/lector-pdf/tests/unit/reading-positions.test.ts`, `apps/lector-pdf/tests/unit/position-sync.test.ts`, `apps/lector-pdf/tests/e2e/remember.spec.ts`.
+- Qué he hecho: estado de posiciones validado y acotado a 500 documentos por huella (solo página, fracción, zoom, rotación y fecha). Guardado con retraso de 1 s, escritura inmediata en `pagehide` y en cada cambio de documento; al pasar a «listo» restaura zoom, rotación y página si existe y la página cabe. Página indexada desde 0, como `currentPage`.
+- Comandos ejecutados y resultado: `pnpm exec eslint --max-warnings 0` sobre los ficheros tocados: sin avisos. `pnpm exec vitest run` sobre reading-positions, position-sync y navigation: 19 tests en verde. `pnpm exec playwright test tests/e2e/remember.spec.ts`: 2 tests en verde. `pnpm test` en raíz: 1214 tests en verde, 5 ficheros de UI no cargan (`tests/ui/app`, `open`, `page-navigator`, `tauri-integration`, `zoom-controls`) por `./Thumbnails` inexistente en `src/ui/sidebar/Sidebar.tsx`. `pnpm typecheck` falla en `src/state/viewer-store.ts` (`SidebarState`) y `src/ui/toolbar/MainToolbar.tsx` (`sidebar`): trabajo en curso de PDF-015, no de esta ficha. `tests/unit/document-actions.test.ts` falla por `sidebarForOpenedDocument` no definido, mismo origen.
+- Dudas o cosas que no he podido hacer: no he hecho commit porque el árbol lo comparten PDF-014 y PDF-015 (instrucción explícita). No he podido ejecutar `pnpm lint` ni `pnpm coverage` completos ni la batería de UI hasta que PDF-015 cierre su parte. Decisión tomada sin ficha: `custom` se valida dentro de [MIN_ZOOM, MAX_ZOOM] y la restauración de rotación usa `setState` directo desde `position-sync.ts`.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: vitest del lector (80 ficheros, 1036 tests), typecheck, eslint de los ficheros de la ficha y `remember.spec.ts` (2 tests) en verde. Criterios cubiertos; `rememberPosition` copia solo los 5 campos (privacidad); el guard rechaza lo corrupto.
+1. `apps/lector-pdf/src/state/position-sync.ts:65` (opcional) — tras restaurar, `setZoomMode` programa un guardado a 1 s; si en un documento enorme el visor aún no ha aplicado `navRequest`, `currentPage` seguiría en 0 y se sobrescribiría la posición. Valorar fijar `currentPage`/`currentYFraction` al restaurar.
+2. (opcional) Sin test unitario del recorte de `yFraction` en `Viewer.tsx`; lo cubre solo el E2E.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Límite 500 y mover al final | OK | `reading-positions.test.ts` en verde (pnpm test: 106 ficheros, 1348 tests) |
+| Guard (null, v2, rot 45, page -1, zoom 'x'); corrupto = vacío | OK | `reading-positions.test.ts:82,92`, `position-sync.test.ts:113` |
+| Debounce 1 escritura, flush inmediato, restaurar página 42/fit-page/90 | OK | `position-sync.test.ts:65,78,126` |
+| Página 900 en doc de 10 se ignora | OK | `position-sync.test.ts:145` |
+| E2E pages-5000 (2345, 150 %, <5 s) y basic-5 en página 1 | OK | Playwright en puerto 4393 con build aparte: 2 passed (7,5 s en total) |
+| Privacidad | OK | `rememberPosition` copia 5 campos; test en `reading-positions.test.ts:57` |
+| lint, typecheck, test, coverage | OK | todos exit 0; cobertura global 96,72 % líneas |
+
+Observación: una pasada de `pnpm coverage` falló 1 test no identificado (1347/1348) bajo carga con otros agentes; la repetición dio 1348/1348 y exit 0 (posible test flaky ajeno, no reproducido). La observación 1 del revisor (carrera al restaurar en documentos enormes) sigue siendo opcional.
+Tests añadidos: ninguno. Rendimiento: restauración en pages-5000 dentro del presupuesto de 5 s (el test completo, con recarga, 1,6 s).
