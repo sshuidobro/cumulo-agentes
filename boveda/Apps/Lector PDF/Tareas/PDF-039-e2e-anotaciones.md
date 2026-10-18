@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: en-curso
+estado: bloqueada
 depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
@@ -79,3 +79,20 @@ Decisiones técnicas y de accesibilidad (no de producto) sobre los puntos de la 
   - Volver a ejecutar toda la batería: `pnpm --filter lector-pdf e2e` y con `--repeat-each=3` (código 0, incluido axe), `qpdf --check` y medidas del punto 3 en el Registro.
   - Los cambios ajenos sin commitear (`tests/ui/ink.test.tsx`, ficha PDF-035) no son de esta ficha.
 
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/annotations-keyboard.spec.ts` (paso nuevo: con la nota creada solo con teclado, ←/→ la mueven y su caja crece en x), esta ficha. El resto de la batería ya estaba commiteado (PDF-070, PDF-071 y PDF-072). No hay otros cambios de código.
+- Qué he hecho: he revisado «Qué queda en esta ficha»: el recorrido de la barra con ←/→ (página sin cambios), la nota solo con teclado (Intro en «Nota», escribir, Esc) y el panel con flechas, Intro y Supr ya estaban cubiertos. Faltaba mover la nota con flechas, que he añadido. He repetido la batería completa.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf e2e` (una vez): 155 pasan, 1 falla. La falla es `search.spec.ts` «durante la búsqueda…» (long task de 101 ms frente a 100). En tres ejecuciones aisladas de esa prueba: 2 pasan y 1 falla (117 ms). Es una prueba preexistente.
+  - `pnpm --filter lector-pdf e2e --repeat-each=3`: 467 pasan, 1 falla. La falla es `viewer.spec.ts` «durante un scroll continuo no hay tareas largas de más de 100 ms» (102 ms). Aislada: 4 de 4 pasan. Es otra prueba preexistente con el mismo tipo de umbral.
+  - Todos los tests de anotaciones pasan en todas las repeticiones, incluido axe (`annotations-a11y`, 0 violaciones serious/critical). `annotations-keyboard` pasa 3 de 3 tras el paso nuevo.
+  - Medidas (Chromium, qpdf 11.9.0), en presupuesto:
+    - pages-5000: escaneo completo hasta el panel «sin comentarios»: 2 819 ms (< 10 000). Long tasks desde el inicio: 1, máxima 79 ms (< 100).
+    - pages-5000: 10 resaltados y Ctrl+S → descarga: 158 ms (< 1 000). Crecimiento: 9 077 bytes (< 51 200).
+    - pages-100000: resaltado en la página 99 999 y Ctrl+S → descarga: 352 ms (< 3 000).
+  - `qpdf --check`: cada guardado de `annotations-flow`, `annotations-foreign`, `annotations-performance` comprueba código 0 con `qpdfCheck` y pasa en las 3 repeticiones.
+  - `pnpm lint` sin avisos. `pnpm typecheck` sin errores. `pnpm test`: 143 ficheros, 1 709 tests en verde.
+- Dudas o cosas que no he podido hacer:
+  1. **Criterio de la ficha no cumplido: `e2e` con código 0.** Las dos fallas son long tasks de 101-117 ms en pruebas preexistentes de `search.spec.ts` y `viewer.spec.ts`, no de anotaciones. Bajo carga (2 workers, la batería completa) superan 100 ms; aisladas pasan casi siempre. No relajo el umbral ni salto la prueba. Decisión para el líder: estabilizar esas medidas (p. ej. medirlas sin carga concurrente o con `workers: 1` para esa categoría) o asumir el riesgo. Es una decisión de infraestructura de pruebas, no de producto.
+  2. **Cambio ajeno sin commitear**: `apps/lector-pdf/tests/ui/comments-panel.test.tsx` añade el test «al borrar con Supr la última fila, la activa pasa a la anterior». No es de esta ficha; no lo incluyo en el commit y lo dejo sin tocar. Pasa en la batería unitaria.
+  3. Por lo anterior, la ficha queda `bloqueada`, no `en-revision`.
