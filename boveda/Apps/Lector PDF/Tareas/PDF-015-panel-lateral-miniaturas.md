@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-015
 titulo: Panel lateral con pestañas y miniaturas virtualizadas
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-012]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -50,3 +50,13 @@ Un panel lateral izquierdo que se abre/cierra (F4) con pestañas («Miniaturas»
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos: `apps/lector-pdf/src/core/sidebar.ts`, `src/state/sidebar-actions.ts`, `src/ui/sidebar/Sidebar.tsx`, `src/ui/sidebar/Thumbnails.tsx`, `src/ui/sidebar/ThumbnailItem.tsx`, `src/ui/sidebar/Sidebar.module.css`; tests `tests/unit/sidebar.test.ts`, `tests/unit/sidebar-actions.test.ts`, `tests/ui/sidebar.test.tsx`, `tests/ui/thumbnails.test.tsx`, `tests/e2e/thumbnails.spec.ts`. Cambios añadidos a ficheros compartidos: `src/state/viewer-store.ts` (campo `sidebar`), `src/state/document-actions.ts` (lee el PageMode y fija el panel al abrir), `src/ui/App.tsx` y `App.module.css` (F4, cuerpo con panel y visor), `src/ui/toolbar/MainToolbar.tsx` (botón «Panel lateral»), `src/ui/shortcuts.ts` (`toggle-sidebar` = F4), `src/ui/messages.ts`, `src/ui/icons.tsx` (`IconSidebar`).
+- Qué he hecho: panel con pestaña «Miniaturas» (`role=tablist`/`tab`/`tabpanel`, flechas izquierda y derecha entre pestañas), lista `role=listbox` virtualizada con `computeLayout` + `scrollMap` (overscan 2), miniaturas en `renderQueue` con prioridad 2, marcado de la página actual, clic y teclado (↑/↓, Inicio/Fin, Re/Av Pág) que llevan al visor con `goToPage`. Store `sidebar` con `toggleSidebar`/`showSidebarTab` y prefs `sidebar` con guarda de 4 valores; al abrir, `PageMode` (`UseThumbs`/`UseOutlines`) manda sobre lo guardado.
+- Comandos ejecutados y resultado: `pnpm typecheck` sin errores; `pnpm test` 105 ficheros, 1344 tests en verde; `pnpm coverage` código 0; `pnpm exec eslint` sobre todos mis ficheros sin avisos; `pnpm --filter lector-pdf e2e`: 52 pasan y 1 falla (ver dudas); `tests/e2e/thumbnails.spec.ts` 3/3 en verde (miniatura 1 dibujada en < 3 s, ≤ 20 lienzos tras recorrer la lista, clic en la 5000, miniatura 40 marcada). `pnpm lint` falla solo en `tests/e2e/text-qa.spec.ts` (no es mío).
+- Dudas o cosas que no he podido hacer:
+  1. **e2e `viewer.spec.ts:88` (Tab hasta el visor) falla, y no es por este cambio en exclusiva.** El bucle da 12 pulsaciones y antes del visor hay ya 16 controles tabulables (Abrir, Deshacer, Rehacer, Atrás, Adelante, navegador de página ×3, Seleccionar, Mano, zoom ×4, girar ×2); mi botón «Panel lateral» añade el 17.º. No lo he tocado porque no es mío (viene de PDF-012 y PDF-014); quien lo posea debe ampliar el bucle o ajustar el test.
+  2. Persistencia de la última pestaña: `prefs.sidebar` guarda también `none`, así que tras cerrar el panel la pestaña recordada vive solo en memoria de sesión; al reabrir la app, «Panel lateral» abre miniaturas. Lo he interpretado como la ficha pide (guarda los 4 valores). Es decisión del líder si debe persistir la última pestaña aparte.
+  3. Un PDF con `PageMode /UseOutlines` deja el store en `outline`: el panel se abre con la barra de pestañas sin ninguna seleccionada y sin contenido hasta que PDF-016 añada la pestaña «Marcadores».
+  4. No he hecho `git commit`: el árbol tiene cambios de PDF-012/014/019 sin confirmar y no quería mezclarlos con este trabajo.
