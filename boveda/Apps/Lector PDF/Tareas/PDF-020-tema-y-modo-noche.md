@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-020
 titulo: Tema claro/oscuro/sistema y modo noche de las páginas
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-015]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -183,3 +183,17 @@ Si el dibujo se cancela, `opsPromise` no debe dejar un rechazo sin capturar: cr�
 - (opcional) `render.ts:61` el aviso de log no incluye la causa real porque `.catch(() => null)` la descarta; aceptable por lo que pide N3.
 - (opcional) El aviso de jsdom «Not implemented: getContext» en `pnpm test` conviene investigarlo aparte; no bloquea.
 - Contrastes anotados en la ronda 1 revisados: todos ≥ 4,5 (texto) y ≥ 3 (controles). 0 problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` código 0 |
+| `pnpm test` | OK | 128 ficheros, 1528/1528 (incluye menu-button, appearance, night, engine-night-ops, engine-render) |
+| `pnpm coverage` | OK | All files 96,86 % líneas |
+| `pnpm perf` | OK | 14 ficheros, 21/21 (`night.perf`: 2 M px con keep 400×267 < 100 ms) |
+| E2E `pnpm --filter lector-pdf e2e` | OK | 82/82 (tema sistema/claro, imagen conservada en modo noche, miniatura, recarga, 1,5 ×) |
+| `grep -rn pageColors src` | OK | sin resultados |
+| Criterios (T) de matrices, `imageRects`, `applyNightMode`, `toPaintSteps`, `renderPageToCanvas` | OK | cubiertos por tests unitarios en verde |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/night-qa.test.ts` (lienzo 0×0, `keep` solapados, imagen fuera del lienzo).
+Rendimiento: `applyNightMode` dentro de presupuesto según `night.perf`. Sin fallos.
