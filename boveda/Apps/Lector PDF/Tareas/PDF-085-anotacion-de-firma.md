@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-085
 titulo: Anotación de firma - modelo, apariencia, escritura y dibujo en la capa
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-084, PDF-080]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
@@ -70,3 +70,17 @@ export interface SignatureAnnotation extends Base { readonly type: 'signature'; 
 Cumple los criterios: modelo/validación, apariencia, reserva de `extra` con SMask `null`, etiquetas, capa SVG y tests (30/30 propios). `pnpm lint` y `pnpm typecheck` OK. `pnpm test` da 1 fallo en `tests/unit/save-actions.test.ts` («sin cambios → nothing») causado por una edición ajena sin confirmar en `src/state/save-actions.ts` (`if (false)`, no es de PDF-085); con el árbol limpio no aplica. El tester debe volver a ejecutar la suite con ese fichero restaurado.
 1. (opcional) `src/ui/viewer/signature-image.ts` — el orden de imports pone `fflate` tras los locales; solo estilo.
 Duda 1 del programador: es coherente con ADR-0020 (siguen siendo ajenas y de solo lectura) y no es parte de esta ficha; abierta como [[PDF-103-etiqueta-firma-al-reabrir]] (pendiente, depende de PDF-085). El líder debe añadirla al Plan.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 3 firmas en basic-5: pdf.js 3 Stamp con apariencia, qpdf 0, incremento < 30 KB | OK | `signature-annotation.test.ts` (verde en `pnpm test`) |
+| Imagen opaca sin SMask, número reservado como null en xref | OK | mismo fichero |
+| `isAnnotation` acepta/rechaza (svg, pixelWidth 0, box [0,10]); ida y vuelta de borrador | OK | mismo fichero + 12 casos hostiles nuevos |
+| translate/resizeSignature solo cambian rect | OK | mismo fichero |
+| Deshacer/rehacer «añadir firma» | OK | mismo fichero |
+| UI: `<image>` con `data:image/png;base64,` y polylines por trazo | OK | `tests/ui/signature-shapes.test.tsx` |
+| lint, typecheck, test, coverage | OK | lint 0; typecheck 0; 170 ficheros / 1972 tests OK; coverage exit 0 (líneas 99,01 %) |
+
+El fallo de `save-actions` citado por el revisor ya no se da (`src/state/save-actions.ts` limpio). Observación no bloqueante: reabrir una firma guardada muestra «Sello» (abierta en PDF-103).
+Tests añadidos: `apps/lector-pdf/tests/unit/signature-qa.test.ts` (12 entradas hostiles rechazadas; 30 firmas mixtas en dos guardados sucesivos, pdf.js las lee todas). Rendimiento: sin presupuesto específico; los 13 tests QA tardan 0,8 s. No se ejecutó e2e (indicado) ni mutaciones; `src/` sin cambios míos.

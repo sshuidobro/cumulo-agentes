@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-082
 titulo: Apariencias /AP de campos de texto, combo y lista
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-079]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -78,3 +78,13 @@ EMC
 2. `apps/lector-pdf/tests/unit/forms-history-qa.test.ts:29` — lint `no-non-null-assertion` (fichero de PDF-080): sustituido `back!.fields` por `back?.fields ?? []`; la comprobación previa `not.toBeNull()` se mantiene.
 3. Verificado: `pnpm lint` y `pnpm typecheck` OK; `pnpm test` 170 ficheros / 1972 tests OK. `pnpm coverage` falla en `tests/unit/save-actions.test.ts` («sin cambios → nothing»), ajeno a esta ficha (`src/state/save-actions.ts` modificado sin commit por otra ficha en curso; ese test pasó en `pnpm test`, parece intermitente). Cobertura de `forms/appearance.ts` 98 % según el programador.
 4. Código revisado: cumple puntos 1-9 (geometría, Matrix, peine, combo, lista, null en otros tipos, WinAnsi, determinista). (opcional) El tamaño automático del peine se ajusta al ancho total, no a la celda.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| nombre, importe (80 y 96 pt), codigo, rotado, pais/idiomas, null, WinAnsi, determinismo | OK | `vitest run tests/unit/forms-appearance.test.ts` 34/34 |
+| lint, typecheck, test | OK | 0 errores; 171 ficheros / 1997 tests |
+| coverage | OK (exit 0) | `vitest run --coverage --coverage.reportsDirectory=...` (el directorio `coverage/` lo usaba otro proceso); `forms/appearance.ts` 98 % |
+
+Casos límite probados (emoji, RTL, `(`/`\`, 200 000 caracteres, saltos CR/LF, cajas de 0-3 pt, rect invertido, valor de tipo equivocado, contraseña con emoji): sin NaN/Infinity ni excepciones.
+Tests añadidos: `apps/lector-pdf/tests/unit/forms-appearance-qa.test.ts` (25). Rendimiento: 200 000 caracteres en 4 variantes dentro de 1 s de suite. Sin mutaciones en `src/`.
