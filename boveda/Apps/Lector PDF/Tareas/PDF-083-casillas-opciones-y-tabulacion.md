@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-083
 titulo: Casillas, botones de opción, tabulación entre páginas y E2E de formularios
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-041, PDF-042]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
 actualizado: 2026-10-18
@@ -64,3 +64,9 @@ export function takePendingFocus(pageIndex: number): string | null; // id de wid
   - `yFraction` de `focusAdjacentPage` usa la altura base de la página (`dims.height`) y no tiene en cuenta el giro de la vista.
   - La recuperación de borrador de solo formularios no tiene test unitario propio; lo cubre el E2E «tras cerrar sin guardar».
   - Lint y cobertura no pasan por lo indicado arriba: hace falta decisión del líder sobre `dist-firma` y sobre el test de zoom.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Typecheck OK; tests de la ficha (41) OK; e2e no ejecutado por indicación. Lint y coverage: fallos ajenos conocidos.
+1. `apps/lector-pdf/src/ui/viewer/FormLayer.tsx` (`onKeyDown`, `firstId`/`lastId`) — con un grupo de botones de opción como último (o primer) campo de la página, Tab (o Mayús+Tab) no salta de página: el navegador trata el grupo como una sola parada y el foco suele estar en la opción marcada, que no es el último (ni el primero) widget del grupo, así que `id !== lastId` corta el salto. Hay que decidir «extremo» por grupo de campo (mismo `name`), no por id de widget, y añadir test UI (radio como último campo con otra opción enfocada).
+2. `FormLayer.tsx` radio — cada botón se nombra solo «Azul», sin el nombre del campo (`color`), que pide el criterio; sin `role="radiogroup"` ni etiqueta de grupo un lector de pantalla no sabe a qué pregunta responde. Envolver los widgets del grupo o poner un nombre accesible que incluya el campo (p. ej. `color: Azul`) y ajustar el test.
+3. (opcional) `aria-label` de la firma sin el nombre del campo; y `yFraction` ignora el giro de la vista.

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-091
 titulo: Documentos de prueba cifrados y con permisos (qpdf)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-040]
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
@@ -65,3 +65,15 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0022-pdf
   - `pnpm coverage`: 2319 tests OK y 1 fallo en `tests/ui/zoom-controls.test.tsx` (foco en «Reducir»/«Ampliar»). No importa fixtures; depende de `Viewer.tsx` y `use-shortcuts.ts`, con cambios sin commitear de otra ficha. Falla también al ejecutarlo solo.
 - Dudas o cosas que no he podido hacer: el criterio «pnpm lint/typecheck/coverage con código 0» no se cumple por los dos fallos ajenos descritos; hace falta que el dueño de PDF-042/043 los resuelva o que se commitee aparte. No he ejecutado `pnpm --filter lector-pdf fixtures` completo (lo hace globalSetup al correr los tests).
 
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Los 7 cifrados coinciden con la tabla de la ficha; `GENERATOR_VERSION` 4; `qpdfEncrypt` limpia el temporal siempre; FUENTES.md documentado. Tests (46/46) y eslint de los ficheros de la ficha limpios. Los fallos de lint, typecheck y coverage son de otras fichas.
+- (opcional) `fixtures-encrypted.test.ts` termina con una línea en blanco antes de `});`.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 7 ficheros y qpdf --check | OK | `pnpm --filter lector-pdf fixtures` (25 generados); `qpdf --check` código 0 en los 7 |
+| pdf.js NEED/INCORRECT_PASSWORD, texto, permisos, anotaciones, PATH vacío | OK | `fixtures-encrypted.test.ts` + `fixtures.test.ts`: 46/46 |
+| Batería completa | OK salvo ajeno | coverage: 2319 OK, 1 fallo ajeno (zoom-controls) |
+Tests añadidos: ninguno (los del programador cubren cada criterio). Rendimiento: no aplica.

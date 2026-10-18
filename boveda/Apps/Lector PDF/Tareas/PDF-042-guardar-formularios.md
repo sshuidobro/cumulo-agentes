@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-042
 titulo: Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-081, PDF-082, PDF-087]
 intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -42,15 +42,15 @@ export async function planFieldWrites(reader: ObjectReader, changes: readonly Fi
 5. Tests: `tests/unit/forms-write.test.ts` (núcleo + pdf.js + qpdf) y ampliar `tests/ui/save-actions*.test.ts` (o el fichero de guardar que exista) con un guardado solo de campos.
 
 ## Criterios de aceptación
-- [ ] Núcleo con `form-full.pdf` y cambios `nombre`=«María José», `acepto`=marcada, `color`=`Azul`, `pais`=`pt`, `idiomas`=[`Francés`,`Alemán`], `persona.apellido`=«Núñez», `rotado`=«Hola»: el fichero `original + delta` leído con pdf.js da esos `fieldValue` (`acepto` → `'Si'`, `color` → `'Azul'` en los 3 widgets, `idiomas` → `['Francés','Alemán']`) y `hasAppearance: true` en todos los widgets; `qpdf --check` código 0.
-- [ ] `qpdf --json` del resultado: el widget `Rojo` tiene `/AS /Off`, el `Azul` `/AS /Azul`; `idiomas` tiene `/I [2 3]`; el objeto de `persona.apellido` (campo y widget fusionados) aparece una sola vez en el incremento.
-- [ ] Reimportar el resultado con `importWidget`/`mergeFields` da `initial` igual a los valores guardados (ida y vuelta).
-- [ ] El widget `nombre` de la p2 también tiene apariencia nueva con «María José» (los dos widgets del campo).
-- [ ] `/NeedAppearances` del `/AcroForm` no cambia (el catálogo no se reescribe) y los campos no tocados conservan su objeto original (no están en el incremento).
-- [ ] Guardar anotaciones y campos a la vez en `form-full.pdf` produce un único incremento válido (`qpdf --check` 0; pdf.js ve la anotación y los valores).
-- [ ] Sin cambios de campos ni de anotaciones, Ctrl+S no escribe (`'nothing'`), como hoy.
-- [ ] Delta de los 7 campos < 20 KB; `pnpm perf` sin regresiones.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
+- [x] Núcleo con `form-full.pdf` y cambios `nombre`=«María José», `acepto`=marcada, `color`=`Azul`, `pais`=`pt`, `idiomas`=[`Francés`,`Alemán`], `persona.apellido`=«Núñez», `rotado`=«Hola»: el fichero `original + delta` leído con pdf.js da esos `fieldValue` (`acepto` → `'Si'`, `color` → `'Azul'` en los 3 widgets, `idiomas` → `['Francés','Alemán']`) y `hasAppearance: true` en todos los widgets; `qpdf --check` código 0.
+- [x] `qpdf --json` del resultado: el widget `Rojo` tiene `/AS /Off`, el `Azul` `/AS /Azul`; `idiomas` tiene `/I [2 3]`; el objeto de `persona.apellido` (campo y widget fusionados) aparece una sola vez en el incremento.
+- [x] Reimportar el resultado con `importWidget`/`mergeFields` da `initial` igual a los valores guardados (ida y vuelta).
+- [x] El widget `nombre` de la p2 también tiene apariencia nueva con «María José» (los dos widgets del campo).
+- [x] `/NeedAppearances` del `/AcroForm` no cambia (el catálogo no se reescribe) y los campos no tocados conservan su objeto original (no están en el incremento).
+- [x] Guardar anotaciones y campos a la vez en `form-full.pdf` produce un único incremento válido (`qpdf --check` 0; pdf.js ve la anotación y los valores).
+- [x] Sin cambios de campos ni de anotaciones, Ctrl+S no escribe (`'nothing'`), como hoy.
+- [x] Delta de los 7 campos < 20 KB; `pnpm perf` sin regresiones.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
 - PDF cifrados (PDF-047; hoy siguen dando `save-encrypted`). Cambiar `/NeedAppearances`. Fuentes de `/DR`. E2E con la interfaz (PDF-083).
@@ -82,3 +82,14 @@ Código y diseño correctos (fusión campo+widget en una sola escritura, `/I` or
 Comprobado: `pnpm lint` OK (0 avisos); `forms-write.test.ts` + `save-actions.test.ts` 31/31. Typecheck: solo el error ajeno de `CommentToolbar.tsx` (PDF-043), ignorado por indicación. No lancé e2e/perf.
 Los puntos 1, 2 y 3 de la ronda 1 están cubiertos con tests que comprueban de verdad (casilla sin `exportValue` marcada/desmarcada, lista múltiple vacía con qpdf y ida y vuelta con pdf.js, `pais`). El punto 4 (mensaje `save-unreadable`) está aplicado.
 Duda sobre `pais`: es aceptable que pdf.js devuelva `['pt']` (lista de selección simple, pdf.js entrega las listas como array); el criterio no exige string de forma inequívoca. Sin problemas pendientes.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios 1-6 (núcleo, qpdf, ida y vuelta, p2, catálogo intacto, anotaciones+campos) | OK | `vitest run forms-write.test.ts save-actions.test.ts`: 31/31 (qpdf --check 0 en los tests que escriben) |
+| «nothing» sin cambios | OK | bloque «solo valores de formulario» de `save-actions.test.ts` |
+| Delta < 20 KB, `pnpm perf` | OK | `pnpm perf`: 17 ficheros, 28/28 |
+| typecheck | OK | `pnpm typecheck` código 0 |
+| coverage/lint globales | AJENOS A 042 | `pnpm coverage`: 2274/2275; falla `tests/ui/zoom-controls.test.tsx:117` (Tab hasta «Reducir» con tope de 10; la barra tiene más controles tras el commit c047858 de otras fichas). `pnpm lint`: errores solo en `apps/lector-pdf/dist-firma/` (artefacto de build) y `tests/e2e/signature.spec.ts`. Ningún fichero de 042 con avisos (eslint limpio). |
+Tests añadidos: ninguno (cobertura suficiente). Rendimiento: sin regresión.
+**Aviso al líder**: crear ficha para (a) `zoom-controls.test.tsx` (subir el tope de Tab o fijar el orden), (b) excluir `dist-firma` de ESLint y limpiar `signature.spec.ts`. Hasta entonces `pnpm lint`/`coverage` no salen con 0.
