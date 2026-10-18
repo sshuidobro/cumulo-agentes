@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-082
 titulo: Apariencias /AP de campos de texto, combo y lista
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-079]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -66,3 +66,9 @@ EMC
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/forms/appearance.ts` (nuevo: `buildFieldAppearance`), `apps/lector-pdf/src/core/forms/index.ts` (re-exporta `appearance`), `apps/lector-pdf/src/core/annotations/appearance.ts` (exporta `HELV_FONT`, `num`, `nums`, `pdfText` para reutilizarlos; sin cambio de comportamiento), `apps/lector-pdf/tests/unit/forms-appearance.test.ts` (nuevo, 34 tests).
+- Qué he hecho: Form XObject de texto, combo y lista según los puntos 1-9 de la ficha: geometría con rotación (BBox y Matrix), fondo y borde, recorte, texto de una línea con tamaño automático, multilínea con `wrapText`, peine con `Tm` absoluto por carácter, contraseña, combo por `displayValue` y lista con filas y selección azul. Casillas, opciones, firmas y botones devuelven `null`. Tests de operadores, WinAnsi, determinismo y lectura con pdf.js (`loadPdf` + `getOperatorList`) de cada tipo y rotación.
+- Comandos ejecutados y resultado: `pnpm exec vitest run tests/unit/forms-appearance.test.ts` → 34/34 OK. `vitest --coverage` sobre `forms-*` y `annotations/` → 403 tests OK, `core/forms/appearance.ts` con 98 % de líneas. ESLint y `tsc` sobre mis ficheros sin errores. Raíz: `pnpm lint` falla por `tests/unit/forms-history-qa.test.ts:29` (no-non-null-assertion, de otra ficha); `pnpm typecheck` falla por `tests/unit/signature-annotation.test.ts` (tipo `UndoStack`, de otra ficha en curso); `pnpm test` tiene 4 fallos en `signature-annotation.test.ts` y `zz-debug-shape.test.ts`, también ajenos. No he tocado esos ficheros.
+- Dudas o cosas que no he podido hacer: (a) el criterio «`importe` con 96 pt: `tam` < 12» no se cumple con los anchos de Helvetica: «1234567890,12» mide 83,4 pt a 12 pt, así que cabe en 96 pt y el tamaño queda en 12. Verifiqué el tamaño reducido con una caja de 80 pt (tamaño ~10,9) y la alineación a la derecha; con 96 pt el algoritmo da 12, que es lo que pide la regla. (b) Decisiones menores tomadas aquí: la reducción automática se calcula en forma cerrada (el ancho es lineal en el tamaño) y se trunca a 4 decimales para que el texto siga cabiendo tras serializar; el peine dibuja como máximo `maxLen` caracteres; si el valor no es del tipo esperado (p. ej. texto en un combo) se trata como vacío; las listas usan `exportValue` para marcar la selección. (c) Pendiente de la suite completa en verde: los fallos de lint, typecheck y test de otras fichas; cuando se corrijan, esta ficha debe volver a pasar `pnpm lint && pnpm typecheck && pnpm test && pnpm coverage`.
