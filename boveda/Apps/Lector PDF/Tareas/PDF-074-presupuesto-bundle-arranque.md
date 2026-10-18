@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-074
 titulo: Comprobar tras el build el presupuesto del JavaScript de arranque (test rojo previo)
 app: pdf
-estado: bloqueada
+estado: cambios-pedidos
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -58,13 +58,15 @@ Un comando `pnpm --filter lector-pdf bundle:check` que, tras el build, falle si 
    - `ok = errors.length === 0`.
 3. Nuevo `apps/lector-pdf/tests/bundle/check-bundle.ts` (CLI): directorio = `process.argv[2] ?? 'dist'` (relativo al cwd); lee `<dir>/.vite/manifest.json` con `readFileSync` + `JSON.parse` (si no existe: imprime `Falta <ruta>: ejecuta antes el build.` por `console.error` y `process.exitCode = 1`); `sizeOf = (f) => statSync(join(dir, f)).size`; imprime `` `Arranque: ${entryBytes} bytes en ${staticFiles.length} ficheros JS (máximo ${ENTRY_JS_BUDGET_BYTES}).` `` y cada error con `console.error`; `process.exitCode = report.ok ? 0 : 1`. Es un script de herramienta: `console` está permitido aquí (si ESLint lo marca, añade `/* eslint-disable no-console -- salida de un script de línea de comandos */` al principio del fichero, solo en este).
 4. `apps/lector-pdf/package.json`, en `scripts`: `"bundle:check": "node tests/bundle/check-bundle.ts dist"`. **No** lo encadenes a `build` (lo hará PDF-075 cuando pase a verde).
-5. Nuevo `apps/lector-pdf/tests/unit/bundle-budget.test.ts` con manifiestos sintéticos (sin build):
-   - entrada con `imports: ['_vendor.js']` y chunk dinámico `node_modules/pdfjs-dist/legacy/build/pdf.mjs` (`isDynamicEntry: true`), tamaños 300 000 + 100 000 → `ok: true`, `entryBytes: 400000`, `staticFiles` = los dos `.js`.
-   - igual pero tamaños 450 000 + 100 000 → `ok: false`, un error que empieza por `El JavaScript de arranque pesa 550000 bytes`.
-   - sin clave de pdf.js (pdf.js metido en la entrada) → error `pdf.js no está en un chunk diferido (import()).`
-   - pdf.js con `isDynamicEntry: true` pero también en `imports` de la entrada → error `pdf.js se carga de forma estática al arrancar.`
-   - ciclo `a.js` ↔ `b.js` en `imports`: termina y cuenta cada fichero una vez.
-   - sin `index.html` → `ok: false` con el error de entrada.
+5. Nuevo `apps/lector-pdf/tests/unit/bundle-budget.test.ts` con manifiestos sintéticos (sin build). **Corregido en la replanificación del 2026-10-18** (ver Registro): los manifiestos y tamaños son exactamente estos. Como en un manifiesto real de Vite, la entrada `index.html` tiene su propio `.js` en `file` (`assets/index.js`), que **sí** cuenta; el chunk de pdf.js es dinámico y **no** cuenta. `PDF_KEY = \`node_modules/${PDFJS_SRC_SUFFIX}\``; `sizeOf` lee de una tabla y lanza si el fichero no está.
+   1. **Dentro del presupuesto.** `index.html: { file: 'assets/index.js', src: 'index.html', isEntry: true, imports: ['_vendor.js'], dynamicImports: [PDF_KEY] }`, `_vendor.js: { file: 'assets/vendor.js' }`, `[PDF_KEY]: { file: 'assets/pdf.js', src: PDF_KEY, isDynamicEntry: true }`. Tamaños: index 300 000, vendor 100 000, pdf 400 000. → `ok: true`, `errors: []`, `entryBytes: 400000`, `staticFiles: ['assets/index.js', 'assets/vendor.js']`.
+   2. **Fuera del presupuesto.** Mismo manifiesto; tamaños: index 450 000, vendor 100 000, pdf 400 000. → `ok: false`, `entryBytes: 550000`, `errors` = exactamente `['El JavaScript de arranque pesa 550000 bytes (máximo 500000).']`.
+   3. **pdf.js metido en la entrada.** Solo `index.html: { file: 'assets/index.js', src: 'index.html', isEntry: true }`, tamaño 100 000. → `ok: false`, `errors` = exactamente `['pdf.js no está en un chunk diferido (import()).']`.
+   4. **pdf.js diferido pero también estático.** `index.html: { file: 'assets/index.js', src: 'index.html', isEntry: true, imports: [PDF_KEY] }`, `[PDF_KEY]: { file: 'assets/pdf.js', src: PDF_KEY, isDynamicEntry: true }`; tamaños 10 000 y 100 000. → `ok: false`, `entryBytes: 110000`, `errors` = exactamente `['pdf.js se carga de forma estática al arrancar.']`.
+   5. **Ciclo.** `index.html: { file: 'assets/index.js', isEntry: true, imports: ['a.js'] }`, `a.js: { file: 'assets/a.js', imports: ['b.js'] }`, `b.js: { file: 'assets/b.js', imports: ['a.js'] }`, `[PDF_KEY]` dinámico con `file: 'assets/pdf.js'`; tamaños 1, 10, 20, 30. → `ok: true`, `staticFiles: ['assets/index.js', 'assets/a.js', 'assets/b.js']`, `entryBytes: 31`.
+   6. **Sin entrada.** Solo `[PDF_KEY]` dinámico. → `toEqual({ ok: false, entryBytes: 0, staticFiles: [], errors: ['No hay entrada index.html en el manifiesto.'] })`.
+
+   El código de `bundle-budget.ts` y de `check-bundle.ts` de la ronda 1 ya cumple el algoritmo: **no lo cambies**; solo reescribe los casos del test para que coincidan con esta lista.
 
 ## Criterios de aceptación
 - [ ] `pnpm --filter lector-pdf exec vitest run tests/unit/bundle-budget.test.ts` → 6 tests en verde.
@@ -99,3 +101,10 @@ Un comando `pnpm --filter lector-pdf bundle:check` que, tras el build, falle si 
   - **Contradicción en la ficha.** El algoritmo dice que `entryBytes` suma solo los `.js` del cierre estático desde `index.html` por `imports`, sin `dynamicImports`. Pero el caso 1 espera `entryBytes: 400000` y `staticFiles` con los dos `.js` (incluido el chunk de pdf.js, que es diferido e `isDynamicEntry`), y el caso 2 espera error `pesa 550000 bytes` con 450 000 + 100 000. Con el algoritmo, el caso 1 da 300 000 y el caso 2 da 450 000 (sin error). Para que el caso 1 y el caso 2 se cumplan, el chunk diferido de pdf.js tendría que contar en el presupuesto de arranque, y entonces el total (≈ 918 000 bytes, con pdf.js dentro) nunca bajaría de 500 000, así que PDF-075 no podría pasar a verde. Implementé el algoritmo, que es el que tiene sentido para el objetivo. Hace falta que el líder o el usuario decidan cuál de las dos cosas es la correcta.
   - Por eso no he cambiado los casos 1 y 2 para que pasen, y no he hecho commit: la rama tiene 2 tests en rojo y no quiero dejarlos en un commit como si estuvieran terminados.
   - El criterio «`pnpm lint`, `pnpm typecheck` y `pnpm test` con código 0» no se puede cumplir mientras los 2 tests de `bundle-budget.test.ts` estén en rojo.
+
+### [lider] replanificación — 2026-10-18
+- **Tiene razón el programador: la ficha se contradecía.** Lo correcto es el algoritmo (el arranque cuenta la entrada y sus `imports` estáticos, y el chunk diferido de pdf.js no cuenta). Si pdf.js contara, PDF-075 no podría ponerse nunca en verde.
+- El error estaba en los casos 1 y 2: «300 000 + 100 000» se refería a la **entrada + `_vendor.js`**, pero no se decía que el `file` de `index.html` es un `.js` (como en un manifiesto real de Vite: `assets/index-*.js`). En la ronda 1 se usó `file: 'index.html'` y el segundo tamaño se le dio a pdf.js.
+- Decisión: el algoritmo y el código de `bundle-budget.ts` y `check-bundle.ts` no cambian. Reescrito el paso 5 con los seis manifiestos exactos, sus tamaños y lo que debe salir (casos 1 y 2: `entryBytes` 400 000 y 550 000; pdf.js pesa 400 000 y no suma).
+- El código de la ronda 1 que está en el árbol sin commitear (`vite.config.ts`, `package.json`, `tests/bundle/*`, `tests/unit/bundle-budget.test.ts`) **se conserva**. Ronda 2: solo hay que reescribir `tests/unit/bundle-budget.test.ts` según el paso 5, repetir los criterios (el rojo de `bundle:check` ya está pegado arriba y vale) y pasar `pnpm lint`, `pnpm typecheck` y `pnpm test` de la raíz.
+- Estado → `cambios-pedidos`, `intentos: 0`. [[PDF-075-pdfjs-diferido]] no cambia: su criterio «n ≤ 500 000» usa este mismo algoritmo (pdf.js no cuenta).
