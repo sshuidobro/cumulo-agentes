@@ -5,7 +5,7 @@ titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
 estado: en-revision
 depende_de: [PDF-081]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -66,3 +66,27 @@ Sobre cada página visible hay una capa con un control HTML por widget de texto,
   - El aviso «hay campos» no estaba en la lista de ficheros de la ficha: se dispara en `importPages` de `form-actions.ts`, el único sitio donde llegan los campos.
   - E2E de «pais»: la tecla «p» (búsqueda por inicial) elige Portugal en un solo cambio; dos flechas darían dos entradas de deshacer.
   - Para revisar: tras Ctrl+Z el «Ana» lo pinta pdf.js desde el valor, no la apariencia original del fichero (en `form-full.pdf` difieren unos 12 500 píxeles de la p2). Es coherente con ADR-0019, pero la comparación de píxeles en el E2E se ha escrito contando ese caso.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` (raíz) 0 avisos, `pnpm --filter lector-pdf typecheck` OK, tests de la ficha (19) en verde. Criterios cubiertos por tests UI y E2E; sin ficheros fuera de la ficha salvo `form-actions.ts` (aviso), justificado en el Registro. Las desviaciones del programador (esquinas con `convertToViewportPoint`, combo editable confirma al salir/Intro, `disabled` en select de solo lectura) son razonables.
+1. (opcional) `apps/lector-pdf/src/ui/theme.css:39-40` — la línea `--shadow-page` del bloque oscuro de `prefers-color-scheme` perdió la sangría tras insertar `--form-highlight` — reindentar.
+2. (opcional) `theme.css` — `--form-highlight` idéntico en claro y oscuro; vale, pero conviene que el tester compruebe el contraste en tema oscuro.
+
+### [tester] ronda 1 — 2026-10-18 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| UI / E2E de la ficha (controles, Tab/Esc/Intro, pointer-events, Luis, Portugal, zoom+rotación) | PASA | `pnpm --filter lector-pdf e2e`: 184 passed (4,3 min, incluye axe y `chromium-perf`), código 0 |
+| Axe serious/critical p1 | PASA | dentro del e2e anterior |
+| Presupuestos | PASA | `pnpm perf`: 17 ficheros, 28 tests, código 0 |
+| lint, typecheck, test, coverage | PASA | código 0; líneas 98,98 % |
+| Contraste en oscuro (sugerencia del revisor) | FALLA | `--form-highlight` es igual en claro y oscuro. En modo noche (fondo `#1f1f23`, texto `#e6e6e6`) el resaltado compuesto es ~`rgb(126 132 156)` y el texto de la página queda a 2,96:1 (< 4,5:1 AA). En claro es 17,4:1. Con el tema oscuro del sistema pero sin modo noche, la página sigue blanca (17,4:1), sin problema. |
+
+Reproducir: abrir `form-full.pdf`, activar modo noche, pulsar «Resaltar campos»: el texto de los campos rellenos (p. ej. «Ana») se lee mal sobre el azul claro.
+Arreglo pedido: en `FormLayer.module.css` añadir `.night.highlight { background: rgb(r g b / a%); }` con un azul oscuro (p. ej. `rgb(60 80 160 / 55%)`) que dé >= 4,5:1 con `#e6e6e6`. Opcional: reindentar `--shadow-page` en `theme.css` (nota 1 del revisor).
+Tests añadidos: `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (ROJO hasta que exista la regla `.night.highlight`). Rendimiento: sin regresión (`pnpm perf` y `chromium-perf` OK).
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/FormLayer.module.css` (regla `.night.highlight`); `apps/lector-pdf/src/ui/theme.css` (sangría de `--shadow-page` en el bloque oscuro); `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (sin cambiar qué comprueba: quito los `!` que prohíbe ESLint, usando desestructuración y un `?? []`).
+- Qué he hecho: añado `.night.highlight { background: rgb(60 80 160 / 55%); }` (azul oscuro, sobre él #e6e6e6 queda a 8,75:1 frente al fondo #1f1f23 del modo noche) y reindento `--shadow-page` según la nota del revisor. El resto del resaltado (modo claro) no cambia.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 errores, 0 avisos; antes fallaban 6 `no-non-null-assertion` en el test del tester); `pnpm --filter lector-pdf typecheck` OK; `pnpm --filter lector-pdf exec vitest run tests/unit/form-highlight-contrast.test.ts tests/ui/form-layer.test.tsx` OK (16/16). No ejecutado e2e ni perf (indicado por el líder: el tester está con PDF-044).
+- Dudas o cosas que no he podido hacer: el contraste en modo noche se comprueba con el test unitario (fórmula WCAG sobre el color pintado), no con captura de pantalla. Queda pendiente que el tester repita `pnpm --filter lector-pdf e2e` completo.
