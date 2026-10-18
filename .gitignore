@@ -9,3 +9,4 @@ apps/*/public/pdfjs/
 playwright-report/
 test-results/
 apps/*/src-tauri/gen/
+apps/lector-pdf/interop-samples/
