@@ -7,7 +7,9 @@ import {
   type RectPt,
 } from '../../core/annotations/model';
 import { freeTextClickRect, freeTextDragRect, resizeFreeTextRect } from '../../core/annotations/freetext';
+import { newInkAnnotation } from '../../core/annotations/ink';
 import { newNoteAnnotation, noteRectAt } from '../../core/annotations/note';
+import { simplifyPath } from '../../core/annotations/simplify';
 import type { PageViewport } from '../../engine/pdfjs';
 import {
   addAnnotation,
@@ -26,7 +28,7 @@ import {
 } from '../../state/annotation-actions';
 import { useAnnotations } from '../../state/annotation-store';
 import { msg } from '../messages';
-import { annotationOutline } from './annotation-geometry';
+import { annotationOutline, cssColor, svgPointsForPath } from './annotation-geometry';
 import { AnnotationShape, ZoneShape } from './annotation-shapes';
 import { FreeTextEditor } from './FreeTextEditor';
 import { toPx } from './freetext-box';
@@ -50,6 +52,22 @@ const TOOLTIP_CHARS = 200;
 const MOVABLE: ReadonlySet<AnnotationType> = new Set<AnnotationType>(['note', 'freetext', 'ink']);
 /** Marcador del foco tras borrar: se lleva el foco al visor (la región del documento). */
 const FOCUS_VIEWER = 'viewer';
+/** Tolerancia de la simplificación de un trazo a mano alzada al soltar, en puntos PDF (PDF-035). */
+const INK_TOLERANCE_PT = 0.5;
+/** Un trazo necesita al menos dos puntos (cuatro coordenadas); un clic sin arrastre no crea dibujo. */
+const INK_MIN_COORDS = 4;
+
+/** Trazo a mano alzada en curso (PDF-035). Los puntos van en puntos PDF, ya recortados a la página. */
+interface InkStroke {
+  readonly pointerId: number;
+  readonly touch: boolean;
+  /** Caja del lienzo en píxeles, para convertir las coordenadas del puntero. */
+  readonly box: DOMRect;
+  /** `[x0, y0, x1, y1, ...]` en puntos PDF. */
+  readonly points: number[];
+  /** Petición de animación pendiente para la vista previa, o `null`. */
+  frame: number | null;
+}
 
 export interface AnnotationLayerProps {
   /** Índice de la página (0-based). */
@@ -93,6 +111,9 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   // Cuadro de texto libre en edición, si es de esta página (PDF-034).
   const editing = useAnnotations((s) => s.editing);
   const editingHere = editing !== null && editing.base.pageIndex === pageIndex ? editing : null;
+  // Color y grosor del dibujo nuevo (PDF-035); la vista previa del trazo los usa.
+  const inkColor = useAnnotations((s) => s.colors.ink);
+  const inkWidth = useAnnotations((s) => s.inkWidth);
 
   const [stopId, setStopId] = useState<string | null>(null);
   const [offset, setOffset] = useState<Offset | null>(null);
@@ -100,16 +121,24 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   const [sketch, setSketch] = useState<RectPt | null>(null);
   /** Tirador de tamaño en curso: id del texto libre y rectángulo de vista previa (PDF-034). */
   const [resizing, setResizing] = useState<Resizing | null>(null);
+  /** Vista previa del trazo a mano alzada en curso, en puntos PDF; se actualiza como mucho una vez por frame (PDF-035). */
+  const [inkPreview, setInkPreview] = useState<readonly number[] | null>(null);
   const zones = useRef(new Map<string, SVGGElement>());
   const layerRef = useRef<SVGSVGElement>(null);
   /** Dónde poner el foco tras un render (p. ej. tras borrar): id de zona, `FOCUS_VIEWER` o nada. */
   const pendingFocus = useRef<string | null>(null);
   /** Quita los escuchadores del arrastre en curso (si lo hay). */
   const endDrag = useRef<(() => void) | null>(null);
+  /** Trazo a mano alzada en curso, si lo hay (PDF-035). */
+  const inkStroke = useRef<InkStroke | null>(null);
 
   useEffect(
     () => () => {
       endDrag.current?.();
+      // Desmontar la página a mitad de un trazo lo descarta.
+      const stroke = inkStroke.current;
+      if (stroke?.frame != null) cancelAnimationFrame(stroke.frame);
+      inkStroke.current = null;
     },
     [],
   );
@@ -165,9 +194,13 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     updateAnnotation(translateAnnotation(current, dx, dy), 'mover', mergeKey);
   }
 
-  /** Con la herramienta «Nota», un clic en la página crea una nota (ver `createNoteAt`); la zona no selecciona. */
+  /**
+   * Con la herramienta «Nota», un clic en la página crea una nota (ver `createNoteAt`); con «Dibujar», el trazo empieza
+   * aunque el puntero caiga sobre una anotación (ver `beginInk`). En ambos casos la zona no selecciona ni arrastra.
+   */
   function beginPointer(event: PointerEvent<SVGGElement>, a: Annotation): void {
-    if (event.button !== 0 || useAnnotations.getState().tool === 'note') return;
+    const tool = useAnnotations.getState().tool;
+    if (event.button !== 0 || tool === 'note' || tool === 'ink') return;
     select(a.id);
     if (!MOVABLE.has(a.type)) return;
     event.preventDefault();
@@ -266,10 +299,108 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     );
   }
 
-  /** Clic o arrastre sobre la capa: primero la herramienta «Nota», luego «Texto» (cada una comprueba la suya). */
+  /** Clic o arrastre sobre la capa: primero la herramienta «Nota», luego «Texto» y «Dibujar» (cada una comprueba la suya). */
   function onLayerPointerDown(event: PointerEvent<SVGSVGElement>): void {
     createNoteAt(event);
     beginFreeTextCreate(event);
+    beginInk(event);
+  }
+
+  /** Guarda un punto del puntero en el trazo, en puntos PDF y recortado a la página. Un punto repetido no se guarda. */
+  function addInkSample(stroke: InkStroke, clientX: number, clientY: number): void {
+    const [x1, y1, x2, y2] = pageBoundsPt();
+    const [x = 0, y = 0] = viewport.convertToPdfPoint(clientX - stroke.box.left, clientY - stroke.box.top);
+    const px = Math.min(Math.max(x, x1), x2);
+    const py = Math.min(Math.max(y, y1), y2);
+    const n = stroke.points.length;
+    if (n >= 2 && stroke.points[n - 2] === px && stroke.points[n - 1] === py) return;
+    stroke.points.push(px, py);
+  }
+
+  /** Pide la vista previa del trazo para el siguiente frame; varios eventos en el mismo frame cuestan una sola actualización. */
+  function requestInkPreview(stroke: InkStroke): void {
+    if (stroke.frame !== null) return;
+    stroke.frame = requestAnimationFrame(() => {
+      stroke.frame = null;
+      if (inkStroke.current === stroke) setInkPreview(stroke.points.slice());
+    });
+  }
+
+  /** Quita el trazo en curso y su vista previa, sin crear nada. */
+  function clearInk(): void {
+    const stroke = inkStroke.current;
+    if (stroke === null) return;
+    if (stroke.frame !== null) cancelAnimationFrame(stroke.frame);
+    inkStroke.current = null;
+    setInkPreview(null);
+  }
+
+  /**
+   * Herramienta «Dibujar» (PDF-035): al bajar el puntero empieza un trazo a mano alzada, con ratón, lápiz o dedo. La
+   * herramienta sigue activa tras cada trazo. Un segundo puntero durante un trazo se ignora; con dos dedos el gesto es
+   * del navegador, así que el trazo en curso se descarta.
+   */
+  function beginInk(event: PointerEvent<SVGSVGElement>): void {
+    if (useAnnotations.getState().tool !== 'ink') return;
+    const touch = event.pointerType === 'touch';
+    if (inkStroke.current !== null) {
+      if (touch) clearInk();
+      return;
+    }
+    if (event.button !== 0 && !touch) return;
+    event.preventDefault();
+    const svg = event.currentTarget;
+    // Con el puntero capturado, los movimientos llegan a la capa aunque salgan de ella.
+    svg.setPointerCapture?.(event.pointerId);
+    const stroke: InkStroke = {
+      pointerId: event.pointerId,
+      touch,
+      box: svg.getBoundingClientRect(),
+      points: [],
+      frame: null,
+    };
+    inkStroke.current = stroke;
+    addInkSample(stroke, event.clientX, event.clientY);
+  }
+
+  /** Movimiento del trazo: toma todos los puntos intermedios que el navegador haya agrupado (lápiz de alta frecuencia). */
+  function moveInk(event: PointerEvent<SVGSVGElement>): void {
+    const stroke = inkStroke.current;
+    if (stroke === null || event.pointerId !== stroke.pointerId) return;
+    const coalesced = event.nativeEvent.getCoalescedEvents?.() ?? [];
+    if (coalesced.length === 0) {
+      addInkSample(stroke, event.clientX, event.clientY);
+    } else {
+      for (const sample of coalesced) addInkSample(stroke, sample.clientX, sample.clientY);
+    }
+    requestInkPreview(stroke);
+  }
+
+  /** Suelta el puntero: el trazo se simplifica y se añade como un dibujo (una única entrada de deshacer). */
+  function endInk(event: PointerEvent<SVGSVGElement>): void {
+    const stroke = inkStroke.current;
+    if (stroke === null || event.pointerId !== stroke.pointerId) return;
+    addInkSample(stroke, event.clientX, event.clientY);
+    clearInk();
+    const path = simplifyPath(stroke.points, INK_TOLERANCE_PT);
+    if (path.length < INK_MIN_COORDS) return;
+    const { colors, inkWidth: width, author } = useAnnotations.getState();
+    addAnnotation(
+      newInkAnnotation({
+        id: newAnnotationId(),
+        pageIndex,
+        paths: [path],
+        width,
+        color: colors.ink,
+        author,
+        now: nowIso(),
+      }),
+    );
+  }
+
+  /** El navegador ha cancelado el puntero (p. ej. se ha cedido a un gesto): el trazo se descarta sin dibujar. */
+  function cancelInkPointer(event: PointerEvent<SVGSVGElement>): void {
+    if (inkStroke.current?.pointerId === event.pointerId) clearInk();
   }
 
   /**
@@ -383,10 +514,25 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
         width={viewport.width}
         height={viewport.height}
         onPointerDown={onLayerPointerDown}
+        onPointerMove={moveInk}
+        onPointerUp={endInk}
+        onPointerCancel={cancelInkPointer}
       >
         {sketch !== null && (
           <g transform={`matrix(${viewport.transform.join(' ')})`}>
             <rect x={sketch[0]} y={sketch[1]} width={sketch[2] - sketch[0]} height={sketch[3] - sketch[1]} className={styles.sketch} />
+          </g>
+        )}
+        {inkPreview !== null && (
+          <g transform={`matrix(${viewport.transform.join(' ')})`} pointerEvents="none">
+            <polyline
+              points={svgPointsForPath(inkPreview)}
+              fill="none"
+              stroke={cssColor(inkColor)}
+              strokeWidth={inkWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </g>
         )}
         {items.length > 0 && (

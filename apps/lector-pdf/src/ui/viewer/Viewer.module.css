@@ -50,6 +50,11 @@
   cursor: crosshair;
 }
 
+/* Con «Dibujar», el dedo traza en vez de desplazar la página (PDF-035). */
+.viewer[data-tool='ink'] .annotationLayer {
+  touch-action: none;
+}
+
 .page {
   position: absolute;
   box-sizing: border-box;
