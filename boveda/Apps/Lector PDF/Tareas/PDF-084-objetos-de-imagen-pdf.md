@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-084
 titulo: Objetos de imagen PDF desde RGBA y JPEG
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
