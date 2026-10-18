@@ -4,7 +4,7 @@ id: PDF-042
 titulo: Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental
 app: pdf
 estado: pendiente
-depende_de: [PDF-081, PDF-082]
+depende_de: [PDF-081, PDF-082, PDF-087]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
@@ -20,6 +20,7 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 3) · Decisiones: [[ADR-0019-for
 Ctrl+S y Guardar como escriben los valores de los campos cambiados en el mismo incremento que las anotaciones, con apariencias nuevas, de forma que pdf.js, qpdf y Adobe muestran los valores y la app los vuelve a leer al reabrir.
 
 ## Contexto
+- PDF-087 ya extrajo `buildCurrentDelta` en `save-actions.ts`: amplíala, no la dupliques.
 - Leer: `src/core/pdf/incremental.ts` (`writeUpdate`, `DeltaWriter`, asignación de números con `next`), `src/core/pdf/object-reader.ts` (`getDict`, `resolve`), `src/core/annotations/to-pdf.ts` (estilo de `withEntries`), `src/core/forms/appearance.ts` (PDF-082), `src/core/forms/diff.ts` (PDF-080), `src/state/save-actions.ts`, `tests/support/qpdf.ts`, `tests/support/save-annotations.ts`, `tests/support/interop-samples.ts`.
 
 ## Qué hay que hacer
@@ -36,7 +37,7 @@ export async function planFieldWrites(reader: ObjectReader, changes: readonly Fi
    d. Widgets: casilla → `/AS name(checked ? w.onState : 'Off')`; opción → `/AS name(selected === w.onState ? w.onState : 'Off')`; texto/combo/lista → `apRef = allocate()`, escribe `buildFieldAppearance(...)` en `apRef` y pone `/AP dict({ N: apRef })` (sustituye `/AP` entero).
    e. Tipos no rellenables (`signature`, `button`) o `readOnly`: se ignoran.
 2. `incremental.ts`: `IncrementalInput` gana `readonly fields?: readonly FieldChange[]` (por defecto `[]`). Vacío = `isEmptyDiff(diff) && fields.length === 0`. Tras planificar las anotaciones modificadas y **antes** de reservar `xrefNum`: `const fieldWrites = await planFieldWrites(reader, fields, () => ref(next++))`. Escríbelos con `writer.object` justo después de las anotaciones modificadas. `objectCount` y `size` deben contar los nuevos.
-3. `save-actions.ts`: `currentDiff()` pasa a devolver `{ diff, fields }` con `fields = diffFields(useForms.getState().fields, edits)`; `buildDelta` y la comprobación de «nada que guardar» usan ambos. Tras guardar se reabre como hoy (los valores pasan a ser los del fichero).
+3. `save-actions.ts`: `currentDiff()` pasa a devolver `{ diff, fields }` con `fields = diffFields(useForms.getState().fields, edits)`; `buildCurrentDelta` (extraída en PDF-087, la usa también imprimir) y la comprobación de «nada que guardar» usan ambos. Tras guardar se reabre como hoy (los valores pasan a ser los del fichero).
 4. Muestra para Adobe: añade a `tests/support/interop-samples.ts` la muestra `formulario-relleno.pdf` (`form-full.pdf` con los valores del criterio 1) para la lista manual del Manual.
 5. Tests: `tests/unit/forms-write.test.ts` (núcleo + pdf.js + qpdf) y ampliar `tests/ui/save-actions*.test.ts` (o el fichero de guardar que exista) con un guardado solo de campos.
 
