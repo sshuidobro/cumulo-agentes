@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-074
 titulo: Comprobar tras el build el presupuesto del JavaScript de arranque (test rojo previo)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -124,3 +124,21 @@ Un comando `pnpm --filter lector-pdf bundle:check` que, tras el build, falle si 
   - `pnpm lint` → 0. `pnpm typecheck` → 0. `pnpm test` (raíz) → 0: 144 ficheros, 1716 tests en verde.
   - No ejecutada la e2e completa (indicación del líder, por la carga de PDF-076).
 - Dudas o cosas que no he podido hacer: ninguna. El criterio de `bundle:check` en rojo queda cumplido y pegado arriba.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: commit `251aa58` solo toca `vite.config.ts` (`manifest: true`), `package.json` (`bundle:check`, no encadenado a build), `tests/bundle/*` y el test nuevo; ni `src/` ni pruebas existentes. Los cambios sin commitear del árbol son de PDF-076.
+- `checkBundle` cumple el algoritmo y los mensajes exactos; ciclos con `Set`, sin `fs` en la lógica pura. CLI correcta y con `eslint-disable no-console` solo en ese fichero.
+- Ejecutado: vitest `bundle-budget.test.ts` 6/6; typecheck OK; eslint de los ficheros tocados limpio; `check-bundle.ts /tmp/no-existe` → código 1 con `Falta …`; `check-bundle.ts dist` (build existente) → código 1 con 918971 bytes y `pdf.js no está en un chunk diferido (import()).` (rojo esperado de PDF-075). No relanzado `pnpm test` completo ni e2e (el programador reportó 1716 verdes; árbol con trabajo ajeno en curso).
+- Sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 6 tests de `bundle-budget.test.ts` | OK | `vitest run tests/unit/bundle-budget.test.ts` → 6 passed; sin `skip`/`only` |
+| build + `bundle:check` en rojo | OK (rojo esperado) | build 0; `bundle:check` → código 1: `Arranque: 919635 bytes en 2 ficheros JS (máximo 500000).` + `pdf.js no está en un chunk diferido (import()).` |
+| Sin build previo | OK | `check-bundle.ts /tmp/no-existe` → código 1, `Falta /tmp/no-existe/.vite/manifest.json: ejecuta antes el build.` |
+| Sin tocar `src/` ni tests existentes | OK | `git show --stat 251aa58`: solo vite.config, package.json, tests/bundle/*, test nuevo, ficha |
+| lint / typecheck / test | OK | lint 0, typecheck 0, test 0 (1720 tests en verde, árbol con trabajo de PDF-076) |
+
+Casos límite: manifiesto `{}` → código 1 con «No hay entrada index.html…»; manifiesto JSON corrupto → excepción no capturada con traza (sale con error distinto de 0, mensaje poco amable; mejora menor, fuera de criterios).
+Tests añadidos: ninguno (los 6 cubren los criterios). Rendimiento: n/a. E2E: no ejecutada por indicación.
