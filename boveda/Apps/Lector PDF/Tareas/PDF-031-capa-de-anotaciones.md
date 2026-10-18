@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-031
 titulo: Capa de anotaciones - dibujar, seleccionar, mover y borrar
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-030, PDF-010, PDF-011, PDF-013]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -76,3 +76,9 @@ Encima de cada página visible, una capa SVG muestra las anotaciones nuevas y ed
   4. `data-tool` muestra la herramienta de anotación si no es `none`, y si no la de vista (selección o mano), para no romper la herramienta mano.
   5. Sin comentario, el nombre accesible no lleva dos puntos. Pulsar sobre una anotación la selecciona, y el arrastre empieza desde ese mismo gesto.
   6. No he hecho commit: la instrucción era no usar git commit/stash/checkout con otras fichas en el árbol. No he tocado ficheros de PDF-015, PDF-018 ni PDF-037.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Comprobado: lint 0 avisos; tests de la ficha (18 ficheros, 225 tests) OK; E2E `annotations-layer` 3/3 en puerto 4401 (y 12/12 con `--repeat-each=4`; un primer intento falló una vez en el test de Supr/Ctrl+Z, no reproducible, probable carga por revisiones en paralelo). El typecheck solo falla en `tests/e2e/outline.spec.ts` (PDF-016, ajeno). Código, accesibilidad, ocultación en el lienzo y deshacer correctos.
+1. `tests/perf/annotation-layer.perf.test.tsx` / `tests/e2e/annotations-layer.spec.ts` — el criterio «una página con 500 anotaciones se desplaza sin long tasks > 100 ms» no tiene ningún test que lo compruebe (el de jsdom solo mide montaje y selección, y el programador lo declara cubierto «en parte») — añadir un E2E que genere un PDF con 500 anotaciones en una página (fixture generado en el test), desplace el visor y verifique con `PerformanceObserver({ type: 'longtask' })` que ninguna pasa de 100 ms (patrón ya usado en `tests/e2e/viewer.spec.ts:105`). Anotar el resultado en la ficha.
+2. (opcional) `AnnotationLayer.tsx:152` — con el foco en una zona no seleccionada (Tab) Supr no hace nada; valorar seleccionar al enfocar por teclado o que Supr actúe sobre la zona enfocada.
+3. (opcional) `tests/e2e/annotations-layer.spec.ts:36` — `pixelAt` usa `locator('canvas')` sin acotar; durante el cambio de lienzo puede haber dos y fallar por modo estricto. Usar `.last()`.
