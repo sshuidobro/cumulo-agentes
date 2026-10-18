@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-029
 titulo: Interoperabilidad - validar los PDFs guardados con qpdf, pdf.js y el corpus
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-028, PDF-004]
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
@@ -67,3 +67,8 @@ Demostrar con una herramienta independiente (qpdf) que lo que escribimos son **a
     4. Responder a una nota y guardar (Ctrl+S) sin mensajes de error.
     5. Reabrir el fichero en la app y comprobar que las anotaciones siguen ahí (la UI de anotaciones llega con PDF-031 y PDF-037). En `estandar-annotated.pdf` deben seguir también las anotaciones previas del fichero; en `estandar-form.pdf`, el formulario.
   - Comprobación real en Adobe: la hace el usuario con esta lista. Pendiente.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Verificado: `pnpm lint` (0), `pnpm typecheck` (0), `pnpm test` (88 ficheros, 1180 pruebas OK), `interop.test.ts` 88 pruebas en ~5 s, `interop:samples` genera los 3 ficheros y están ignorados por git. El fallo de lint por `zoom-qa.spec.ts` ya no se reproduce.
+- Cubre los criterios: 21 ficheros, `qpdf --check` sin empeorar, 6 subtipos con claves, reimportación con pdf.js, 3 guardados seguidos, conservación de Square/Link y `/AcroForm`. La desviación `--json=2` está justificada.
+1. (opcional) `apps/lector-pdf/tests/unit/pdf/interop.test.ts:221` — `importPage1` está declarada después de su uso y duplica la lógica de `importAll`; podría unificarse.

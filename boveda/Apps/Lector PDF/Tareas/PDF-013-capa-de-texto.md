@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-013
 titulo: Capa de texto - seleccionar y copiar texto; herramientas selección y mano
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-011, PDF-004]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, texto]
 ---
 
