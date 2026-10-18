@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-031
 titulo: Capa de anotaciones - dibujar, seleccionar, mover y borrar
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-030, PDF-010, PDF-011, PDF-013]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones, accesibilidad]
 ---
 
@@ -64,3 +64,15 @@ Encima de cada página visible, una capa SVG muestra las anotaciones nuevas y ed
 ### [lider] replanificación — 2026-10-17
 - Recibe de [[PDF-030-estado-de-anotaciones]] el cursor por herramienta y la llamada a `ensurePageAnnotations` al hacerse visible una página (pasos 6 y 7, dos criterios nuevos). La barra «Comentar» va a [[PDF-069-barra-comentar]]; esta ficha no la necesita (usa `tool` del store).
 - `depende_de` corregido: faltaban PDF-010 (`PageView`), PDF-011 (zoom y rotación, criterio e2e) y PDF-013 (`TextLayerView`).
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/engine/annotation-visibility.ts` (nuevo), `src/ui/viewer/AnnotationLayer.tsx`, `AnnotationLayer.module.css`, `annotation-geometry.ts`, `annotation-shapes.tsx` (nuevos), `src/ui/viewer/PageView.tsx`, `Viewer.tsx`, `Viewer.module.css`, `src/state/annotation-actions.ts`, `src/ui/messages.ts` (nombres de tipo y de zona); tests `tests/ui/annotation-layer.test.tsx`, `tests/ui/annotation-tool-cursor.test.tsx`, `tests/ui/page-view-annotations.test.tsx`, `tests/unit/annotations/annotation-geometry.test.ts`, `tests/perf/annotation-layer.perf.test.tsx`, `tests/e2e/annotations-layer.spec.ts`; esta ficha.
+- Qué he hecho: capa SVG por página con las nuevas y modificadas (formas como PDF-027) y una zona activa por anotación soportada (roving tabindex, nombre accesible). Seleccionar, mover con ratón (umbral 3 px) o flechas (1 pt, 10 con Mayús; una sola entrada de deshacer), Supr/Retroceso con el foco a la siguiente. Las del fichero editadas o borradas se ocultan en el lienzo al cambiar y se vuelven a mostrar al deshacer. Importación perezosa al hacerse visible una página y cursor por `data-tool`.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos), `pnpm typecheck` OK, `pnpm coverage` OK (120 ficheros, 1441 tests, código 0). `pnpm test` 1423 tests OK pero código 1 por 3 errores no capturados en `tests/ui/open.test.tsx` (falta `getOutline` en el mock; es de PDF-016, en el árbol). `pnpm perf`: mi test OK; `search.perf` (PDF-017) falla en aislado (66 ms frente a 50 ms), no es de esta ficha. E2E con config temporal en el puerto 4396: `annotations-layer.spec.ts` 3/3 OK; suite completa 67/69, los 2 fallos (`remember` y `render` de basic-5) son timeouts de carga con dos workers y pasan en aislado (3/3).
+- Dudas o cosas que no he podido hacer:
+  1. Decisión a revisar: con una anotación movible seleccionada (nota, texto, dibujo), ↑/↓ la mueven; si no, ↑/↓ recorren las zonas de la página. Así no chocan el movimiento y el roving tabindex.
+  2. Criterio de rendimiento (500 anotaciones sin long tasks al desplazar): solo cubierto en parte. El test de `pnpm perf` mide en jsdom el montaje y el cambio de selección (< 100 ms); no mide long tasks en el navegador durante el desplazamiento.
+  3. El cursor (`crosshair`, `text`) se revisa en el CSS; jsdom no aplica CSS, así que no hay test automático. `data-tool` sí tiene test.
+  4. `data-tool` muestra la herramienta de anotación si no es `none`, y si no la de vista (selección o mano), para no romper la herramienta mano.
+  5. Sin comentario, el nombre accesible no lleva dos puntos. Pulsar sobre una anotación la selecciona, y el arrastre empieza desde ese mismo gesto.
+  6. No he hecho commit: la instrucción era no usar git commit/stash/checkout con otras fichas en el árbol. No he tocado ficheros de PDF-015, PDF-018 ni PDF-037.
