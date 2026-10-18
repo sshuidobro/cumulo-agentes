@@ -6,6 +6,7 @@ import { mergeFonts, scanFonts, type FontInfo } from '../../src/core/pdf/fonts';
 import { ObjectReader } from '../../src/core/pdf/object-reader';
 import { PdfBuilder } from '../fixtures/pdf-builder';
 import { CORPUS_DIR, FIXTURES_DIR } from '../fixtures/paths';
+import { qpdfPageFontNames } from '../support/qpdf';
 
 /** Lector de un fichero completo (todas sus páginas). */
 async function readerOf(path: string): Promise<ObjectReader> {
@@ -18,6 +19,11 @@ async function fontsOf(path: string): Promise<readonly FontInfo[]> {
   const result = await scanFonts(reader, 0, total, new AbortController().signal);
   if (result === 'cancelled') throw new Error('escaneo cancelado sin petición de cancelar');
   return result;
+}
+
+/** Nombres únicos de las fuentes del fichero según `scanFonts`, en el mismo orden que el oráculo de qpdf. */
+function scannedNames(fonts: readonly FontInfo[]): string[] {
+  return [...new Set(fonts.map((f) => f.name))].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 /**
@@ -47,7 +53,8 @@ describe('fixtures reales', () => {
   });
 
   it('libreoffice/multilingue.pdf: fuentes TrueType incrustadas en subconjunto y sin prefijo en el nombre', async () => {
-    const fonts = await fontsOf(join(CORPUS_DIR, 'libreoffice', 'multilingue.pdf'));
+    const path = join(CORPUS_DIR, 'libreoffice', 'multilingue.pdf');
+    const fonts = await fontsOf(path);
     expect(fonts.length).toBeGreaterThan(0);
     for (const font of fonts) {
       expect(font.subtype).toBe('TrueType');
@@ -57,15 +64,25 @@ describe('fixtures reales', () => {
       expect(font.name).not.toBe('');
     }
     expect(fonts.map((f) => f.name)).toEqual(expect.arrayContaining(['DejaVuSans', 'LiberationSerif', 'WenQuanYiZenHei']));
+    expect(scannedNames(fonts)).toEqual(qpdfPageFontNames(path));
   });
 
-  it('verapdf/7.21.4.1-t01-pass-a.pdf: fuentes de las páginas; /BaseFont de qpdf sin prefijo y sin repetir', async () => {
-    // qpdf --json=2 da /Helvetica, /ZapfDingbats y /BRYEGL+Arial (Type0 y CIDFontType2). Helvetica y ZapfDingbats
-    // solo están en /AcroForm /DR (no en /Resources de las páginas), así que el escaneo de páginas no las lista.
-    const fonts = await fontsOf(join(CORPUS_DIR, 'verapdf', '7.21.4.1-t01-pass-a.pdf'));
-    expect([...new Set(fonts.map((f) => f.name))].sort()).toEqual(['Arial']);
+  it('verapdf/7.21.4.1-t01-pass-a.pdf: fuentes usadas por las páginas, igual que qpdf (sin /AcroForm /DR)', async () => {
+    // qpdf da /Helvetica, /ZapfDingbats y /BRYEGL+Arial, pero Helvetica y ZapfDingbats solo cuelgan de
+    // /AcroForm /DR (recursos por defecto de formularios, no usados por las páginas). La pestaña lista solo Arial.
+    const path = join(CORPUS_DIR, 'verapdf', '7.21.4.1-t01-pass-a.pdf');
+    const fonts = await fontsOf(path);
+    expect(scannedNames(fonts)).toEqual(qpdfPageFontNames(path));
+    expect(qpdfPageFontNames(path)).toEqual(['Arial']);
+    expect(fonts.map((f) => f.name)).not.toContain('Helvetica');
+    expect(fonts.map((f) => f.name)).not.toContain('ZapfDingbats');
     const arial = fonts.find((f) => f.name === 'Arial');
     expect(arial).toEqual({ name: 'Arial', subtype: 'CIDFontType2', encoding: 'Identity-H', embedded: true, subset: true });
+  });
+
+  it('basic-5.pdf: la lista coincide con el oráculo de qpdf', async () => {
+    const path = join(FIXTURES_DIR, 'basic-5.pdf');
+    expect(scannedNames(await fontsOf(path))).toEqual(qpdfPageFontNames(path));
   });
 
   it('pages-5000.pdf: escaneo de rango parcial coincide con el de páginas [0, 10)', async () => {

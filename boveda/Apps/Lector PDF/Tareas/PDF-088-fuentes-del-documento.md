@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-088
 titulo: Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-045]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -102,3 +102,9 @@ Verificación: `pnpm lint`, `pnpm --filter lector-pdf typecheck`, `pnpm test`, `
 
 ### [lider] replanificación — 2026-10-18
 - Desbloqueada: criterio de verapdf corregido (fuentes de páginas, `/AcroForm /DR` fuera de alcance) con oráculo `qpdfPageFontNames`; mensaje de «Detener» con páginas revisadas. Código de la app sin cambios salvo el mensaje. Estado → `cambios-pedidos`, `intentos: 0`.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/support/qpdf.ts` (añadido `qpdfPageFontNames`, tipo `QpdfObjects` con `stream?.dict`), `apps/lector-pdf/tests/unit/pdf-fonts.test.ts`, `apps/lector-pdf/src/ui/messages-properties.ts`, `apps/lector-pdf/src/ui/properties/PropertiesDialog.tsx`, `apps/lector-pdf/tests/ui/properties-fonts.test.tsx`; esta ficha. `fonts.ts` no cambia.
+- Qué he hecho: he implementado el oráculo `qpdfPageFontNames` (páginas con herencia desde `/Pages`, Form XObject de primer nivel, sin `/AcroForm /DR`). El test de `verapdf/7.21.4.1-t01-pass-a.pdf` compara con él, verifica que vale `['Arial']` y que no aparecen `Helvetica` ni `ZapfDingbats`; conserva la aserción de `Arial`. Añadida la misma comparación para `basic-5.pdf` y `libreoffice/multilingue.pdf`. El mensaje de «Detener» pasa a `Búsqueda detenida tras revisar ${done} de ${total} páginas.` con `toLocaleString('es-ES')`, y tiene un caso de UI que para tras el primer lote de 200 de 450 páginas (`pageRef` espiado para bloquear la página 201 en adelante, sin depender del tiempo).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm --filter lector-pdf typecheck` OK; `pnpm test` 181 ficheros / 2144 tests OK; `pnpm coverage` OK (`fonts.ts` 96,7 % líneas); `LECTOR_E2E_PORT=4291 LECTOR_E2E_OUTDIR=<scratchpad>/dist-prog playwright test properties.spec.ts --project=chromium` 14/14 OK. Con el puerto 4173 por defecto el E2E no arrancó porque lo ocupaba otro proceso (ajeno); por eso usé puerto y directorio de build propios.
+- Dudas o cosas que no he podido hacer: ninguna. No he tocado `open-qa.spec.ts` ni `render.spec.ts`. `pnpm perf` no lo he ejecutado: esta ronda no cambia `scanFonts` ni los benchmarks.

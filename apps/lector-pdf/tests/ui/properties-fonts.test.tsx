@@ -2,8 +2,9 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { memorySource, type ByteSource, type OpenedFile } from '@suite/platform';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LoadedPdf } from '../../src/engine';
+import { ObjectReader } from '../../src/core/pdf/object-reader';
 import { PropertiesDialog } from '../../src/ui/properties/PropertiesDialog';
 import { resetFontScan } from '../../src/state/fonts-actions';
 import { initialFontScan, useFontScan } from '../../src/state/fonts-store';
@@ -50,6 +51,21 @@ function basicSource(): ByteSource {
   const font = b.addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
   const page = b.addObject(`<< /Type /Page /Parent ${String(pages)} 0 R /Resources << /Font << /F1 ${String(font)} 0 R >> >> >>`);
   b.setObject(pages, `<< /Type /Pages /Kids [${String(page)} 0 R] /Count 1 >>`);
+  b.setObject(catalog, `<< /Type /Catalog /Pages ${String(pages)} 0 R >>`);
+  return memorySource(b.build({ root: catalog }));
+}
+
+/** Documento de `count` páginas con Helvetica en todas (la fuente es la misma: el escaneo la lee una vez). */
+function manyPagesSource(count: number): ByteSource {
+  const b = new PdfBuilder();
+  const catalog = b.alloc();
+  const pages = b.alloc();
+  const font = b.addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  const kids: string[] = [];
+  for (let i = 0; i < count; i++) {
+    kids.push(`${String(b.addObject(`<< /Type /Page /Parent ${String(pages)} 0 R /Resources << /Font << /F1 ${String(font)} 0 R >> >> >>`))} 0 R`);
+  }
+  b.setObject(pages, `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${String(count)} >>`);
   b.setObject(catalog, `<< /Type /Catalog /Pages ${String(pages)} 0 R >>`);
   return memorySource(b.build({ root: catalog }));
 }
@@ -106,6 +122,32 @@ describe('pestaña «Fuentes» del diálogo de propiedades', () => {
     expect(useFontScan.getState().status).toBe('cancelled');
     expect(useFontScan.getState().fonts).toEqual([]);
     expect(within(dialog).queryByRole('table')).toBeNull();
+  });
+
+  it('«Detener» tras el primer lote de 200 páginas dice cuántas se han revisado de cuántas', async () => {
+    // Las páginas 201 en adelante se quedan esperando: el escaneo para en el lote 2 sin que el test dependa del tiempo.
+    const pageRef = ObjectReader.prototype.pageRef;
+    let calls = 0;
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const spy = vi.spyOn(ObjectReader.prototype, 'pageRef').mockImplementation(async function (this: ObjectReader, index: number) {
+      calls += 1;
+      if (calls > 200) await gate;
+      return pageRef.call(this, index);
+    });
+    try {
+      useViewer.setState({ ...initialViewerState, status: 'ready', pdf: fakePdf, file: openFile(manyPagesSource(450)), currentPage: 0 });
+      const user = userEvent.setup();
+      const dialog = await openFontsTab(user);
+
+      expect(await within(dialog).findByText('Buscando fuentes… 200 de 450 páginas')).toBeInTheDocument();
+      await user.click(within(dialog).getByRole('button', { name: 'Detener' }));
+      expect(within(dialog).getByText('Búsqueda detenida tras revisar 200 de 450 páginas.')).toBeInTheDocument();
+      expect(within(dialog).getByRole('table')).toHaveTextContent('Helvetica');
+    } finally {
+      release();
+      spy.mockRestore();
+    }
   });
 
   it('error de lectura: muestra el mensaje en español', async () => {

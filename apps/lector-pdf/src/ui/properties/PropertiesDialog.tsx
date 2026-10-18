@@ -199,7 +199,9 @@ function FontsPanel() {
       {status === 'done' && fonts.length === 0 && <p className={styles.reading}>{msg.none}</p>}
       {status === 'cancelled' && (
         <p className={styles.reading}>
-          {pagesDone === 0 ? msg.stoppedEarly : msg.stopped(pagesDone.toLocaleString('es-ES'))}
+          {pagesDone === 0
+            ? msg.stoppedEarly
+            : msg.stopped(pagesDone.toLocaleString('es-ES'), total.toLocaleString('es-ES'))}
         </p>
       )}
       {status === 'error' && <p className={styles.error}>{msg.error}</p>}
