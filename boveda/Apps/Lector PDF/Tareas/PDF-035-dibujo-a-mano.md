@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-035
 titulo: Dibujo a mano alzada con ratón, lápiz o dedo
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -58,3 +58,7 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 - Qué he hecho: `simplifyPath` (RDP iterativo con pila explícita) y la herramienta «Dibujar» con Pointer Events: trazo con `setPointerCapture`, puntos coalescidos, recorte a la página, vista previa en `polyline` por frame, al soltar simplificación 0,5 pt y `addAnnotation` («añadir dibujo»); `pointercancel` descarta; segundo puntero ignorado y con dos dedos se descarta el trazo. «Grosor» y «Color» aparecen también con un dibujo seleccionado y cambian ese dibujo («cambiar grosor» / «cambiar color»).
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (143 ficheros, 1684 tests); `pnpm coverage` OK (líneas 98,97 %); `pnpm perf` OK (16 ficheros, 25 tests, incluido `simplify` de 100 000 puntos); `pnpm --filter lector-pdf e2e` OK (145 tests, incluidos los 4 de `ink.spec.ts`).
 - Dudas o cosas que no he podido hacer: (1) Decisiones menores tomadas al implementar, para revisar: un clic sin arrastre no crea dibujo (una muestra repetida no se guarda y el trazo queda en un punto); con «Dibujar» activa, el trazo empieza aunque el puntero caiga sobre otra anotación (la zona no selecciona ni arrastra, igual que con «Nota»). (2) La tabla de iteración 2 del Plan sigue mostrando PDF-031 y PDF-069 como `pendiente`; sus fichas están `hecha`. (3) No he marcado las casillas de criterios: quedan para el tester.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Ejecutados: `pnpm lint`, `pnpm typecheck`, `pnpm test` (1684 OK), `pnpm perf` OK y `ink.spec.ts` (4 OK). Cumple los criterios; RDP iterativo correcto, Pointer Events con captura, segundo puntero ignorado, `pointercancel` descarta, limpieza al desmontar. Las dos decisiones menores del programador (clic sin arrastre no crea dibujo; el trazo empieza sobre otra anotación) son razonables.
+1. (opcional) `AnnotationLayer.tsx:343` — si el dedo suelta con `lostpointercapture` sin `pointerup`, el trazo quedaría abierto; considerar tratarlo como cancelación.
