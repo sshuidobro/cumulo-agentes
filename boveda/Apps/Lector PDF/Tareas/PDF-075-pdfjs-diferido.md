@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-075
 titulo: Cargar pdf.js con import() diferido para partir la tarea de arranque
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-074]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
@@ -146,3 +146,7 @@ Que el arranque no evalúe pdf.js: hoy todo el JavaScript (917 KB) se evalúa en
   - La ficha solo nombraba `engine-render.test.ts`, pero el paso 10 exige que ningún test importe valores de pdf.js. Adapté también `engine-night-ops.test.ts` y `annotations/appearance.test.ts` (leen `OPS`/`AnnotationMode` de `pdfjs()` a nivel de módulo; el setup ya lo carga) y `engine-load.test.ts`, cuyo espía `getDocument` ahora va dentro del objeto que devuelve `loadPdfjs()`. No cambié ninguna expectativa.
   - Riesgo a vigilar: si el usuario abre un PDF antes de que termine la precarga en reposo (timeout 2000 ms), `loadPdf` espera a la carga del chunk de pdf.js. No medido en frío; el presupuesto de «abrir < 1 s» se verifica en el E2E `performance.spec.ts` bajo carga normal.
   - No he tocado la ficha ni los cambios sin commitear de PDF-076 (son del tester). Commit solo de mis ficheros.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 147 ficheros / 1724 tests en verde, `build` 0 con `Arranque: 433662 bytes` (máx. 500 000). Diff coherente con la ficha: ningún valor de pdf.js se importa fuera de `pdfjs.ts` (salvo `worker.ts` con `?url` y tests de integración previos); sin cambios de umbrales ni de e2e; test de `io` con mock y tests de carga presentes. Los dos desvíos (type import, `typeof requestIdleCallback`) son equivalentes y están justificados.
+1. (opcional) `src/main.tsx` — la precarga puede competir con una apertura inmediata; el tester debe verificar «abrir < 1 s» en frío con e2e y `images-200` con la máquina en reposo (el revisor no re-ejecutó e2e ni perf).
