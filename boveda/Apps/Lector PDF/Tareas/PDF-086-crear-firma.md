@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-086
 titulo: Crear firma (dibujar, escribir o imagen) y firmas guardadas
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-085]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -63,3 +63,10 @@ export function inkArtFromStrokes(strokes: readonly (readonly number[])[], width
 - Qué he hecho: núcleo puro de firmas guardadas (máx. 5, validación, `inkArtFromStrokes`), almacén `useSignatures` con lectura de vuelta para detectar la cuota (el almacén traga los errores de escritura), diálogo «Crear firma» con pestañas Dibujar/Escribir/Imagen accesibles por teclado y casilla de guardado, y menú de firmas con miniaturas y borrado. Textos en `messages-signature.ts`.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (177 ficheros, 2065 tests); `pnpm coverage` OK (`core/signature` 98 % líneas); `pnpm --filter lector-pdf build` OK (arranque 459 861 bytes ≤ 500 000; sin `fonts.googleapis` en dist).
 - Dudas o cosas que no he podido hacer: (1) el requisito de cuota se verifica releyendo la preferencia, porque `KeyValueStore.set` no devuelve error; (2) «Crear firma…» en el menú entrega la firma recién creada a `onPick` directamente (la ficha no decía qué pasa después; PDF-043 puede cambiarlo); (3) la fuente Dancing Script no aparece en `dist` hasta que algo del grafo importe `SignatureDialog` (lo hará PDF-043); (4) los cambios de `annotation-actions.ts`, `core/pdf/index.ts` y de las fichas PDF-081/088/089 que había en el árbol son de otros agentes y no van en mi commit.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Tests de la ficha (27) en verde; `tsc` y ESLint sin avisos sobre los ficheros de la ficha. Criterios cubiertos con tests; sin red (fuente por `@fontsource`); núcleo sin React.
+1. (opcional) `apps/lector-pdf/src/ui/signature/SignatureDialog.tsx:accept` — un doble clic rápido en Aceptar con la pestaña Escribir (espera `fonts.load`) puede guardar la firma dos veces y llamar a `onDone` dos veces; añadir un guarda `busy`.
+2. (opcional) `SignatureDialog.tsx:accept` — si `rasterizeSignatureText` devuelve `null` (sin canvas) el botón no hace nada y no avisa; mostrar un mensaje.
+3. (opcional) `src/ui/signature/image-art.ts` — un JPEG con orientación EXIF: `createImageBitmap` aplica la rotación pero los bytes se guardan tal cual con ancho/alto del bitmap; comprobar en PDF-043.
+No he ejecutado build/coverage/suite global (otros agentes trabajan en el árbol); el programador reporta build 459 861 bytes.
