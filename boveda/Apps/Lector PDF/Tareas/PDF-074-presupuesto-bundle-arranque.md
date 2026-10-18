@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-074
 titulo: Comprobar tras el build el presupuesto del JavaScript de arranque (test rojo previo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -124,3 +124,9 @@ Un comando `pnpm --filter lector-pdf bundle:check` que, tras el build, falle si 
   - `pnpm lint` → 0. `pnpm typecheck` → 0. `pnpm test` (raíz) → 0: 144 ficheros, 1716 tests en verde.
   - No ejecutada la e2e completa (indicación del líder, por la carga de PDF-076).
 - Dudas o cosas que no he podido hacer: ninguna. El criterio de `bundle:check` en rojo queda cumplido y pegado arriba.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: commit `251aa58` solo toca `vite.config.ts` (`manifest: true`), `package.json` (`bundle:check`, no encadenado a build), `tests/bundle/*` y el test nuevo; ni `src/` ni pruebas existentes. Los cambios sin commitear del árbol son de PDF-076.
+- `checkBundle` cumple el algoritmo y los mensajes exactos; ciclos con `Set`, sin `fs` en la lógica pura. CLI correcta y con `eslint-disable no-console` solo en ese fichero.
+- Ejecutado: vitest `bundle-budget.test.ts` 6/6; typecheck OK; eslint de los ficheros tocados limpio; `check-bundle.ts /tmp/no-existe` → código 1 con `Falta …`; `check-bundle.ts dist` (build existente) → código 1 con 918971 bytes y `pdf.js no está en un chunk diferido (import()).` (rojo esperado de PDF-075). No relanzado `pnpm test` completo ni e2e (el programador reportó 1716 verdes; árbol con trabajo ajeno en curso).
+- Sin problemas bloqueantes.
