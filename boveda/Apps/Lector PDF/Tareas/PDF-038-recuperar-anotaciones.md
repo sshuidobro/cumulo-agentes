@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-038
 titulo: Recuperar anotaciones no guardadas tras un cierre inesperado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-037, COM-012]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
