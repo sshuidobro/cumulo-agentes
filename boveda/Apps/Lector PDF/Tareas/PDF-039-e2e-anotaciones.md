@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072, PDF-073]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
@@ -103,3 +103,21 @@ Decisión técnica (infraestructura de pruebas, no de producto) → [[ADR-0016-e
 - `depende_de` gana PDF-073. Estado → `pendiente`, `intentos: 0`. Lo de la ronda 2 ya está commiteado (`ff96d56`).
 - El cambio sin commitear `tests/ui/comments-panel.test.tsx` es el test que añadió el tester de [[PDF-070-panel-comentarios-accesible]] (su Registro lo cita); se commitea aparte como PDF-070.
 - **Qué queda en esta ficha al reanudarla (sin cambios de código previstos):** con PDF-073 hecha, ejecutar `pnpm --filter lector-pdf e2e` y `pnpm --filter lector-pdf e2e --repeat-each=3` (código 0), anotar en el Registro las medidas del punto 3 (ahora salen del proyecto `chromium-perf`) y la salida de `qpdf --check`, y pasar a `en-revision`. `annotations-performance.spec.ts` recibe la etiqueta `@perf` en PDF-073: no la toques aquí. Si una prueba de anotaciones falla también en serie, se anota con su valor y vuelve al líder.
+
+### [programador] ronda 3 — 2026-10-18
+- Ficheros cambiados: esta ficha (estado y Registro). No hay cambios de código: las pruebas de anotaciones ya estaban commiteadas y PDF-070, PDF-071, PDF-072 y PDF-073 están en `hecha`.
+- Qué he hecho: he repetido la batería completa en serie y sin otras ejecuciones en paralelo. La primera pasada y las repeticiones van en dos comandos, como indica el Plan: el proyecto `chromium` con `--repeat-each=3` y `chromium-perf` con `--no-deps --repeat-each=3`. Las pruebas de anotaciones pasan en todas las repeticiones, incluido axe.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf e2e`: **160 passed, 0 failed**, código 0 (3,6 min).
+  - `pnpm --filter lector-pdf e2e --project=chromium --repeat-each=3`: **459 passed, 0 failed**, código 0 (6,5 min).
+  - `pnpm --filter lector-pdf e2e --project=chromium-perf --no-deps --repeat-each=3`: **21 passed, 0 failed**, código 0 (4,1 min).
+  - Medidas de `annotations-performance.spec.ts` (Chromium, sin otra carga, repetición aislada con reporter JSON; presupuesto entre paréntesis):
+    - pages-5000, escaneo completo hasta el panel «sin comentarios»: 2 738 ms (< 10 000). Long tasks desde el inicio del documento: 0, máxima 0 ms (< 100).
+    - pages-5000, 10 resaltados en páginas aleatorias y Ctrl+S → descarga: 131 ms (< 1 000). Crecimiento del fichero: 9 077 bytes (< 51 200).
+    - pages-100000, resaltado en la página 99 999 y Ctrl+S → descarga: 242 ms (< 3 000).
+  - `qpdf --check`: cada guardado de `annotations-flow`, `annotations-foreign` y `annotations-performance` ejecuta `qpdfCheck` y exige código 0. Todas las pasadas lo cumplen. Comprobado a mano sobre `pages-5000-anotado.pdf` de las tres repeticiones: «No syntax or stream encoding errors found» (exit 0).
+  - `pnpm lint`: 0. `pnpm typecheck`: 0. `pnpm test`: 148 ficheros, 1 732 tests en verde, código 0.
+- Dudas o cosas que no he podido hacer:
+  1. `annotations-performance.spec.ts`, la prueba de 100 000 páginas no lleva `@perf` (solo mide el guardado, no long tasks). Por eso corre en el proyecto `chromium`, en paralelo con el resto, y su 19,5 s de duración incluye la carga. Su medida de guardado (242 ms) la he tomado en serie, aislada; en la batería en paralelo también cumplió su presupuesto. Si el líder quiere que la medida sea siempre en serie, hay que añadir `@perf` a esa prueba. No lo he tocado, porque la ficha dice que no toque este fichero.
+  2. Hay `waitForTimeout` en `save-qa.spec.ts`, `search.spec.ts`, `links-qa.spec.ts` y `recover-qa.spec.ts`. Son pruebas de otras fichas, no de las de anotaciones de esta ficha, que no usan `waitForTimeout`. No las cambio: quitarlos es trabajo para otra ficha.
+  3. Comandos de las pruebas guardados en `/tmp/claude-0/` (logs), no en el repositorio.
