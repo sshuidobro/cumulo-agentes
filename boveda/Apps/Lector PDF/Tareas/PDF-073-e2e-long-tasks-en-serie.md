@@ -3,8 +3,8 @@ tipo: tarea
 id: PDF-073
 titulo: Ejecutar las pruebas e2e de long tasks en un proyecto Playwright en serie
 app: pdf
-estado: bloqueada
-depende_de: [PDF-075, PDF-076, PDF-077]
+estado: pendiente
+depende_de: [PDF-075, PDF-076, PDF-077, PDF-078]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
 creado: 2026-10-18
@@ -14,7 +14,7 @@ tags: [tarea, pdf, e2e, rendimiento]
 
 # PDF-073 · Pruebas e2e de long tasks en serie
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (secciones "Presupuestos" y "Comandos") · Decisiones: [[ADR-0016-e2e-long-tasks-en-serie]], [[ADR-0012-suite-de-rendimiento]], [[ADR-0017-carga-diferida-de-pdfjs]], [[ADR-0018-vista-previa-del-trazo-en-canvas]] · Origen: [[PDF-039-e2e-anotaciones]] (ronda 2)
+Plan: [[Apps/Lector PDF/Plan|Plan]] (secciones "Presupuestos" y "Comandos") · Decisiones: [[ADR-0016-e2e-long-tasks-en-serie]] (revisiones 1 y 2), [[PDF-078-reposo-cpu-antes-de-perf]], [[ADR-0012-suite-de-rendimiento]], [[ADR-0017-carga-diferida-de-pdfjs]], [[ADR-0018-vista-previa-del-trazo-en-canvas]] · Origen: [[PDF-039-e2e-anotaciones]] (ronda 2)
 
 ## Objetivo
 Que `pnpm --filter lector-pdf e2e` mida las *long tasks* sin otra ventana de Chromium compitiendo por la CPU, sin cambiar ningún umbral, y termine con código 0 de forma estable.
@@ -81,6 +81,16 @@ Condición de medida (ADR-0016, revisión punto 2): antes de cada ejecución, `u
 - [ ] Plan, línea «E2E» de «Comandos»: quitar «— vigente cuando PDF-073 esté hecha» (único cambio de la bóveda además de este Registro).
 - [ ] El resto de criterios originales (listas, totales, `git diff`, lint/typecheck/test) se vuelven a comprobar con el estado final.
 
+## Replanificación 2 (líder, 2026-10-18)
+Tras la ronda 2 (`ink` 52 ms al soltar el ratón). Sustituye la «Condición de medida» y el 3.er criterio de la replanificación anterior; el resto sigue vigente.
+
+**Condición de medida.** La garantiza la puerta de reposo de [[PDF-078-reposo-cpu-antes-de-perf]] antes de **cada** prueba `@perf` (ya no hace falta esperar a `uptime` < 1,0). Sí se mantiene: antes de cada ejecución, `pgrep -fa "playwright|vitest|vite build"` vacío (pegarlo), y no lanzar nada más en la máquina mientras dura la verificación.
+
+**Criterios de aceptación (cambian estos dos; los demás de la sección anterior siguen)**
+- [ ] Por ejecución, en el Registro, además de lo ya pedido (totales, `carga-cpu-1min`, `long-tasks`, máximos de `search`, `viewer`, `images-200`): las anotaciones `reposo-cpu` y `cpu-durante` de las 7 pruebas `@perf`.
+- [ ] Si una `@perf` falla **por la puerta** («La máquina no está en reposo…»), no es una medida: anota el mensaje y las 5 filas de `top -b -n 1 -o %CPU | head -12`, espera a que termine el proceso ajeno y **empieza de cero** la serie de tres ejecuciones (eso no cuenta como repetir hasta que salga verde: no se midió nada).
+- [ ] Si una `@perf` falla **por long tasks** (puerta pasada): no repetir ni tocar nada; pegar su `perf-diagnostico.json` completo (incluye `restBusy`, `cpuDuring`, `topProcesses`) y el `cpu-durante` de referencia de PDF-078, y devolver la ficha al líder (`bloqueada`).
+
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
 
@@ -138,3 +148,9 @@ Ronda 1 aceptada en lo hecho (configuración `chromium-perf` y 7 etiquetas `@per
   - **Bloqueada por fallo de un `@perf`** (criterio «si alguna @perf falla: no repetir ni tocar nada»). Pendiente del líder: decidir si `ink` debe optimizarse o si el presupuesto es intermitente (no está previsto en ADR-0016).
   - Observación para el líder, sin investigar a fondo: la carga de 1 min al empezar `ink` era **4,69**, aunque la comprobación previa daba 0,12. La carga la heredó del proyecto `chromium` (2 workers) que acababa de terminar, y el `webServer` hace `vite build` al arrancar. Así, la condición «carga < 1,0 antes de la ejecución» no garantiza un arranque tranquilo del proyecto `chromium-perf`. Esto puede explicar también el 101 ms de `images-200` de la ronda 1 (carga 3,13 aquí). Conviene decidirlo en ADR-0016.
   - La ejecución 3 y la repetición ×3 de `chromium` y de `chromium-perf` no se han hecho, por la condición de la ficha.
+
+### [lider] replanificación 2 — 2026-10-18
+Ronda 2 aceptada en lo verificado (listas 160 = 153 + 7, `@perf` solo en `chromium-perf`, lint/typecheck/test verdes). La ficha vuelve a `pendiente`, `intentos: 0`, tras [[PDF-078-reposo-cpu-antes-de-perf]]. Diagnóstico del rojo de `ink` (52 ms @ 33 957 ms, es decir, al soltar):
+- **No es una regresión de la app.** Trazas de Chromium de la misma prueba con la máquina en reposo: sin limitar CPU, ninguna tarea del hilo principal pasa de 18,5 ms en los 35 s del trazo y el `pointerup` procesa en 9-11 ms (Event Timing). Con la CPU limitada ×2 sigue sin *long tasks* (tarea del `pointerup`: 22,6 ms). Solo con ×3 aparece una (197 ms, a mitad del trazo). El coste real está a más de ×2 del umbral de 50 ms de esta prueba: para llegar a 52 ms algo tuvo que quitarle CPU al navegador. No se crea ficha de optimización; los umbrales no cambian.
+- **Por qué la condición de medida no lo evitó**: `loadavg` va con ~1 min de retraso (0,12 antes de lanzar, 4,69 al empezar `ink`, heredado del proyecto `chromium` y de las `@perf` anteriores) y no mide si la CPU está libre en ese instante; y `ps -o pcpu` de PDF-077 es la media de toda la vida de cada proceso, no su uso actual, así que el «top 5» de la ronda 2 no dice quién usaba la CPU. No sabemos si hubo intruso; sí sabemos que no lo podíamos saber.
+- **Decisión** ([[ADR-0016-e2e-long-tasks-en-serie]], «Revisión 2»): puerta de reposo antes de cada prueba `@perf` midiendo la CPU real con `os.cpus()` (< 15 % en 3 ventanas seguidas de 1 s, máximo 150 s; si no, la prueba **falla** con mensaje claro, no se salta), y diagnóstico con `cpu-durante` y `top` actual → [[PDF-078-reposo-cpu-antes-de-perf]]. La verificación de esta ficha se repite entera tras PDF-078.
