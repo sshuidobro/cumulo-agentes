@@ -204,6 +204,25 @@ describe('AnnotationLayer · dibujo a mano alzada (PDF-035)', () => {
     expect(inks()).toHaveLength(0);
   });
 
+  it('un trazo que sale de la página se recorta a sus bordes (0..612 x 0..792 pt)', () => {
+    const { container } = renderLayer();
+    draw(layerSvg(container), [
+      [100, 100],
+      [-500, 300],
+      [5000, 3000],
+      [200, -900],
+      [300, 400],
+    ]);
+    const [a] = inks();
+    if (a === undefined) throw new Error('sin anotación');
+    const all = a.paths.flat();
+    expect(all.length).toBeGreaterThan(0);
+    all.forEach((v, i) => {
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(i % 2 === 0 ? 612 : 792);
+    });
+  });
+
   it('un dedo dibuja como el ratón', () => {
     const { container } = renderLayer();
     draw(layerSvg(container), zigzag(8), 3, 'touch');
