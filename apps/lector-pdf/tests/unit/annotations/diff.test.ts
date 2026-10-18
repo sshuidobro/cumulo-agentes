@@ -11,7 +11,7 @@ import type { Annotation, AnnotationEdits } from '../../../src/core/annotations'
 import { fileAnnotation, newAnnotation } from './factories';
 
 function edits(upserts: Annotation[] = [], removed: string[] = []): AnnotationEdits {
-  return { upserts: new Map(upserts.map((a) => [a.id, a])), removed: new Set(removed) };
+  return { upserts: new Map(upserts.map((a) => [a.id, a])), removed: new Set(removed), fields: new Map() };
 }
 
 function mapOf(...list: Annotation[]): ReadonlyMap<string, Annotation> {

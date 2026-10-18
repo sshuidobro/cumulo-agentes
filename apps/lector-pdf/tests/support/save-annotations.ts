@@ -18,7 +18,7 @@ export function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
 
 /** Diferencia que añade `additions` (origen nuevo) a un fichero sin línea base. */
 export function additionsDiff(additions: readonly Annotation[]): AnnotationDiff {
-  return diffAnnotations(new Map(), { upserts: new Map(additions.map((a) => [a.id, a] as const)), removed: new Set() });
+  return diffAnnotations(new Map(), { upserts: new Map(additions.map((a) => [a.id, a] as const)), removed: new Set(), fields: new Map() });
 }
 
 /** Guarda `diff` sobre `data`; devuelve el fichero completo (original + incremento) y el resultado. */

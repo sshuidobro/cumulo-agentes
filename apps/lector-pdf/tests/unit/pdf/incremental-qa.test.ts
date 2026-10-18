@@ -20,7 +20,7 @@ describe('QA PDF-028 · incremental-updates.pdf y ficheros dañados', () => {
     expect(opened.ok).toBe(true);
     if (!opened.ok) return;
     const add = { ...newAnnotation('qa-1', 'note', 0), contents: 'ñandú 😀 שלום', author: 'Zoë' };
-    const diff = diffAnnotations(new Map(), { upserts: new Map([[add.id, add]]), removed: new Set() });
+    const diff = diffAnnotations(new Map(), { upserts: new Map([[add.id, add]]), removed: new Set(), fields: new Map() });
     const res = await buildIncrementalUpdate({ source, reader: opened.value, diff, now: NOW });
     expect(res.ok).toBe(true);
     if (!res.ok) return;

@@ -95,7 +95,7 @@ describe('guardado del borrador', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(await store.keys()).toEqual([KEY]);
     const saved = await store.get(KEY);
-    expect(saved).toMatchObject({ version: 1, fileName: FILE_NAME, removed: [] });
+    expect(saved).toMatchObject({ version: 2, fileName: FILE_NAME, removed: [] });
     expect(draftSavedAt(saved)).not.toBeNull();
 
     markAnnotationsSaved();

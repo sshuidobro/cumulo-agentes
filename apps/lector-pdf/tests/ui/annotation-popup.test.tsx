@@ -324,7 +324,7 @@ describe('Ventana de comentario · anotaciones nuevas (PDF-033)', () => {
   it('una anotación resaltada nueva con texto se abre con doble clic', () => {
     startAnnotationSession(lazyLoaded(), new AbortController().signal);
     const h = { ...newAnnotation('suite-h1', 'highlight'), contents: 'Cifra' };
-    useAnnotations.setState({ edits: { upserts: new Map([[h.id, h]]), removed: new Set() } });
+    useAnnotations.setState({ edits: { upserts: new Map([[h.id, h]]), removed: new Set(), fields: new Map() } });
     renderPage();
 
     fireEvent.doubleClick(zone('suite-h1'));

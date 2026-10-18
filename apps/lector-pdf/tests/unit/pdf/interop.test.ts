@@ -258,6 +258,7 @@ describe('ida y vuelta · annotated.pdf con tres guardados seguidos', () => {
       const diff = diffAnnotations(new Map(baseline.map((a) => [a.id, a] as const)), {
         upserts: new Map([modified, ...added].map((a) => [a.id, a] as const)),
         removed: new Set([removed.id]),
+        fields: new Map(),
       });
 
       const saved = await save(current, diff);
@@ -281,6 +282,7 @@ describe('ida y vuelta · annotated.pdf con tres guardados seguidos', () => {
       const check = diffAnnotations(new Map(after.map((a) => [a.id, a] as const)), {
         upserts: expected,
         removed: new Set(),
+        fields: new Map(),
       });
       expect(check.modified.map((a) => a.id)).toEqual([]);
       expect(check.added).toEqual([]);

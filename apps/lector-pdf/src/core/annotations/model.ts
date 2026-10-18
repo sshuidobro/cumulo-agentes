@@ -3,6 +3,8 @@
  * (origen abajo-izquierda, sin rotar). Colores RGB en [0, 1]. Todo inmutable.
  */
 
+import type { FieldValue } from '../forms/model';
+
 export type Rgb = readonly [number, number, number];
 /** x1, y1, x2, y2 con x1 <= x2 e y1 <= y2. */
 export type RectPt = readonly [number, number, number, number];
@@ -66,13 +68,18 @@ export interface InkAnnotation extends Base {
 export type Annotation = TextMarkupAnnotation | NoteAnnotation | FreeTextAnnotation | InkAnnotation;
 export type AnnotationType = Annotation['type'];
 
-/** Lo que el usuario ha cambiado sobre la línea base del fichero. */
+/**
+ * Lo que el usuario ha cambiado sobre la línea base del fichero. Su nombre no cambia por llevar también
+ * los valores de formulario (`fields`, ADR-0019): es el documento de deshacer común.
+ */
 export interface AnnotationEdits {
   readonly upserts: ReadonlyMap<string, Annotation>;
   readonly removed: ReadonlySet<string>;
+  /** Nombre completo del campo → valor, solo los que difieren del fichero. */
+  readonly fields: ReadonlyMap<string, FieldValue>;
 }
 
-export const EMPTY_EDITS: AnnotationEdits = { upserts: new Map(), removed: new Set() };
+export const EMPTY_EDITS: AnnotationEdits = { upserts: new Map(), removed: new Set(), fields: new Map() };
 
 export function fileAnnotationId(ref: PdfObjRef): string {
   return ref.gen === 0 ? `ref:${ref.num}R` : `ref:${ref.num}R${ref.gen}`;

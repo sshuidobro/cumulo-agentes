@@ -31,7 +31,7 @@ function tenAdditions(pages: readonly number[]): readonly Annotation[] {
 }
 
 function diffOfAdditions(additions: readonly Annotation[]) {
-  return diffAnnotations(new Map(), { upserts: new Map(additions.map((a) => [a.id, a] as const)), removed: new Set() });
+  return diffAnnotations(new Map(), { upserts: new Map(additions.map((a) => [a.id, a] as const)), removed: new Set(), fields: new Map() });
 }
 
 describe('rendimiento del escritor incremental', () => {
