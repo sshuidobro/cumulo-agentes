@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-016
 titulo: Documentos recientes en Tauri (lista guardada por Rust)
 app: comun
-estado: en-revision
+estado: en-test
 depende_de: [COM-015]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -54,3 +54,10 @@ En escritorio, Rust guarda la lista de recientes (rutas que el usuario abrió po
   - Los errores de guardar `recent.json` en `touch` y en `suite_recent_open` se ignoran (la apertura no falla por eso). En `suite_recent_remove` y `suite_recent_clear` sí se devuelve error, y TS lo registra con el logger.
   - Una ruta que no sea UTF-8 no se puede serializar en JSON: la entrada no se guarda y no hay error visible. Caso raro; lo anoto.
   - Los criterios de la ficha no están marcados: los verifica el tester.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Verificado: `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings` y `cargo test --all-features` en `packages/platform/rust` en verde (14 tests de `recent.rs`); `cargo check` en `apps/lector-pdf/src-tauri` OK. No he lanzado e2e/perf.
+- Interpretación 1 (`suite_recent_open` sube la entrada): confirmada. Es coherente con tratarla como elección del diálogo y mantiene el orden por último uso.
+- Interpretación 2 (Guardar como anota al elegir destino, sin tamaño si es nuevo): confirmada. Si el usuario cancela la escritura, la entrada queda con `available: false`, que la UI (PDF-049) ya sabe mostrar. (opcional) Valorar anotar tras la escritura.
+- Interpretación 3 (errores de guardado ignorados en `touch`/`recent_open`, devueltos en remove/clear; ruta no UTF-8 no se guarda): confirmada. La apertura no debe fallar por un efecto secundario; caso no UTF-8 aceptable y documentado.
+- Seguridad: ningún comando acepta una ruta de la web; `suite_recent_open` solo recibe id y la ruta sale de la lista de Rust. Candado `recents_gate` serializa lectura-modificación-escritura. Sin cambios pedidos.
