@@ -55,7 +55,7 @@ Dependencias permitidas (únicas): `typescript@7.0.2`, `vitest@5.0.5`, `@vitest/
 - Typecheck: `pnpm typecheck` (= `tsc -p tsconfig.json`)
 - Test: `pnpm test` (= `vitest run`)
 - Cobertura: `pnpm coverage` (= `vitest run --coverage`, falla por debajo del 80 % de líneas)
-- Comprobación completa: `pnpm install && pnpm lint && pnpm typecheck && pnpm test && pnpm coverage`
+- Comprobación completa: `pnpm install && pnpm lint && pnpm typecheck && pnpm coverage` (`pnpm coverage` ya ejecuta todos los tests: no hace falta `pnpm test` antes; [[ADR-0026-ahorro-de-tokens]])
 
 ## Tareas
 | Id | Título | Depende de | Estado |

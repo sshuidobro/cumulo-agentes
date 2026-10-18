@@ -73,7 +73,7 @@ function beginReplacement(): Session | null {
 }
 
 function showError(error: AppError, name: string | null): void {
-  useViewer.setState({ ...initialViewerState, status: 'error', error, loadingName: name });
+  useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, status: 'error', error, loadingName: name });
   services().platform.setTitle(windowTitle(null, false));
 }
 
@@ -89,7 +89,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
   opening = controller;
   void releaseSession(takeSession());
 
-  useViewer.setState({ ...initialViewerState, status: 'loading', loadingName: file.name, dimsVersion: useViewer.getState().dimsVersion });
+  useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, status: 'loading', loadingName: file.name, dimsVersion: useViewer.getState().dimsVersion });
 
   const result = await loadPdf(file.source, {
     assetBaseUrl,
@@ -110,7 +110,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
 
   if (!result.ok) {
     if (result.error.code === 'cancelled') {
-      useViewer.setState({ ...initialViewerState, dimsVersion: useViewer.getState().dimsVersion });
+      useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, dimsVersion: useViewer.getState().dimsVersion });
     } else {
       showError(result.error, file.name);
     }
@@ -153,7 +153,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
 
   expectRestore(opts?.restore ?? null);
   useViewer.setState({
-    ...initialViewerState,
+    ...initialViewerState, viewMode: useViewer.getState().viewMode,
     status: 'ready',
     file,
     pdf: loaded,
@@ -189,7 +189,7 @@ export function cancelOpening(): void {
 /** Cierra el documento abierto (y cancela una apertura en curso). */
 export async function closeDocument(): Promise<void> {
   const current = beginReplacement();
-  useViewer.setState({ ...initialViewerState, dimsVersion: useViewer.getState().dimsVersion });
+  useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, dimsVersion: useViewer.getState().dimsVersion });
   services().platform.setTitle(windowTitle(null, false));
   await releaseSession(current);
 }

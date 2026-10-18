@@ -48,6 +48,8 @@ function SignatureSession({ onDone, onCancel }: Omit<SignatureDialogProps, 'open
   const [imageMessage, setImageMessage] = useState<{ readonly text: string; readonly error: boolean } | null>(null);
   const [reading, setReading] = useState(false);
   const [keep, setKeep] = useState(true);
+  /** Aceptar no ha podido crear la firma (p. ej. sin canvas en el entorno). */
+  const [failed, setFailed] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** Trazos terminados, en píxeles del lienzo. */
@@ -57,6 +59,8 @@ function SignatureSession({ onDone, onCancel }: Omit<SignatureDialogProps, 'open
   const drawn = useRef(0);
   const tabButtons = useRef<(HTMLButtonElement | null)[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+  /** Hay una aceptación en curso: un segundo clic (o Intro) mientras tanto se ignora. */
+  const accepting = useRef(false);
 
   const canAccept =
     !reading &&
@@ -143,10 +147,20 @@ function SignatureSession({ onDone, onCancel }: Omit<SignatureDialogProps, 'open
   };
 
   const accept = async (): Promise<void> => {
-    const art = await currentArt();
-    if (art === null) return;
-    if (keep) saveSignature(art);
-    onDone(art);
+    if (accepting.current) return;
+    accepting.current = true;
+    try {
+      const art = await currentArt();
+      if (art === null) {
+        setFailed(true);
+        return;
+      }
+      setFailed(false);
+      if (keep) saveSignature(art);
+      onDone(art);
+    } finally {
+      accepting.current = false;
+    }
   };
 
   return (
@@ -217,6 +231,12 @@ function SignatureSession({ onDone, onCancel }: Omit<SignatureDialogProps, 'open
               {text}
             </div>
           </div>
+        )}
+
+        {failed && (
+          <p role="alert" className={styles.error}>
+            {signatureMsg.noArt}
+          </p>
         )}
 
         {tab === 'image' && (

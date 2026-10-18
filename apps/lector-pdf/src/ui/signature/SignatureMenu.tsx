@@ -11,10 +11,12 @@ import { signatureThumbnailUrl } from './thumbnail';
 export interface SignatureMenuProps {
   /** Firma elegida: una guardada, o la recién creada en «Crear firma…». */
   readonly onPick: (art: SignatureArt) => void;
+  /** Sin documento abierto no se puede firmar. */
+  readonly disabled?: boolean;
 }
 
 /** Menú de firmas (PDF-086): firmas guardadas como miniaturas, «Crear firma…» y el borrado de cada una. */
-export function SignatureMenu({ onPick }: SignatureMenuProps) {
+export function SignatureMenu({ onPick, disabled = false }: SignatureMenuProps) {
   const list = useSignatures((s) => s.list);
   const [creating, setCreating] = useState(false);
 
@@ -26,7 +28,7 @@ export function SignatureMenu({ onPick }: SignatureMenuProps) {
 
   return (
     <>
-      <MenuButton label={signatureMsg.menuLabel} entries={entries}>
+      <MenuButton label={signatureMsg.menuLabel} entries={entries} disabled={disabled}>
         <IconSignature />
       </MenuButton>
       <SignatureDialog

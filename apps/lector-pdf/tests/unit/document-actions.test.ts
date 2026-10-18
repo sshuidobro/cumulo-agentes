@@ -276,3 +276,12 @@ describe('reportPageDims', () => {
     expect(dims?.width(2)).toBe(width + 100);
   });
 });
+
+describe('modo de vista entre documentos', () => {
+  it('abrir otro documento conserva el modo de vista (es una preferencia global)', async () => {
+    useViewer.setState({ viewMode: { scroll: 'paged', spread: 'cover' } });
+    await openDocument(openedFile('basic-5.pdf', fixtureSource('basic-5.pdf')));
+    expect(useViewer.getState().status).toBe('ready');
+    expect(useViewer.getState().viewMode).toEqual({ scroll: 'paged', spread: 'cover' });
+  });
+});

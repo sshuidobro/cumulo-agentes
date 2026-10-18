@@ -18,9 +18,15 @@ import {
   type InkAnnotation,
   type RectPt,
   type Rgb,
+  type SignatureArt,
 } from '../core/annotations/model';
 import { fitFreeTextRect, isBlankText, newFreeTextAnnotation } from '../core/annotations/freetext';
 import { keyboardNoteRect, newNoteAnnotation } from '../core/annotations/note';
+import {
+  keyboardSignatureCenter,
+  newSignatureAnnotation,
+  signatureRectAt,
+} from '../core/signature/signature';
 import {
   DEFAULT_AUTHOR,
   DEFAULT_FONT_SIZE,
@@ -672,8 +678,49 @@ export function closePopup(): void {
   useAnnotations.setState({ openPopupId: null });
 }
 
+/** Cambiar a «ninguna» descarta la firma pendiente de colocar. */
 export function setTool(tool: AnnotationTool): void {
-  useAnnotations.setState({ tool });
+  useAnnotations.setState(tool === 'none' ? { tool, pendingSignature: null } : { tool });
+}
+
+/** Firma elegida en «Firmar» (PDF-043): la herramienta pasa a `signature` y la siguiente colocación la usa. */
+export function chooseSignature(art: SignatureArt): void {
+  useAnnotations.setState({ pendingSignature: art, tool: 'signature' });
+}
+
+/**
+ * Coloca la firma pendiente centrada en `center` (puntos PDF) de la página `pageIndex`, dentro de `pageBox`. La
+ * selecciona y devuelve la herramienta a «ninguna», como con una nota. Devuelve su id, o `null` si no hay firma pendiente.
+ */
+export function placeSignature(pageIndex: number, center: readonly [number, number], pageBox: RectPt): string | null {
+  const { pendingSignature, author } = useAnnotations.getState();
+  if (pendingSignature === null) return null;
+  const signature = newSignatureAnnotation({
+    id: newAnnotationId(),
+    pageIndex,
+    rect: signatureRectAt(pendingSignature, center, pageBox),
+    art: pendingSignature,
+    author,
+    now: nowIso(),
+  });
+  addAnnotation(signature);
+  setTool('none');
+  select(signature.id);
+  return signature.id;
+}
+
+/**
+ * Coloca la firma pendiente con teclado (PDF-043): en la página actual, centrada horizontalmente y a un tercio de lo
+ * visible desde arriba. `visibleFraction` es la parte de la página que cabe en pantalla (0..1). Devuelve su id, o `null`.
+ */
+export function placeSignatureFromKeyboard(visibleFraction: number): string | null {
+  const { dims, currentPage, currentYFraction, rotation } = useViewer.getState();
+  if (dims === null || currentPage >= dims.count) return null;
+  const i = currentPage;
+  const width = dims.width(i);
+  const height = dims.height(i);
+  const center = keyboardSignatureCenter(width, height, (dims.rotation(i) + rotation) % 360, currentYFraction, visibleFraction);
+  return placeSignature(i, center, [0, 0, width, height]);
 }
 
 /**

@@ -1,7 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PageDimsTable } from '../../src/core/page-dims';
 import { MAX_ZOOM, wheelZoom } from '../../src/core/zoom';
-import { rotateView, setZoomMode, zoomIn, zoomOut, zoomWithWheel } from '../../src/state/view-actions';
+import { isViewMode } from '../../src/core/view-mode';
+import { initServices } from '../../src/state/services';
+import {
+  loadViewMode,
+  rotateView,
+  setViewMode,
+  setZoomMode,
+  VIEW_MODE_PREF,
+  zoomIn,
+  zoomOut,
+  zoomWithWheel,
+} from '../../src/state/view-actions';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
+import { createFakePlatform } from '../helpers/fake-platform';
 
 /** Fotogramas simulados: `requestAnimationFrame` guarda los callbacks hasta que el test los ejecuta. */
 let frames: Array<() => void> = [];
@@ -110,5 +123,77 @@ describe('zoomWithWheel', () => {
     runFrame();
     zoomWithWheel(-10, 0, 0);
     expect(frames).toHaveLength(1);
+  });
+});
+
+describe('preferencia del modo de vista', () => {
+  /** Almacén en memoria con la misma semántica que las preferencias reales: valores JSON y guardia al leer. */
+  function useStore(raw: Map<string, string>): void {
+    initServices({
+      platform: createFakePlatform({
+        prefs: {
+          get: <T>(key: string, guard: (v: unknown) => v is T): T | null => {
+            const text = raw.get(key);
+            if (text === undefined) return null;
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(text);
+            } catch {
+              return null;
+            }
+            return guard(parsed) ? parsed : null;
+          },
+          set: (key: string, value: unknown) => {
+            raw.set(key, JSON.stringify(value));
+          },
+          remove: (key: string) => {
+            raw.delete(key);
+          },
+        },
+      }),
+      assetBaseUrl: '/',
+    });
+  }
+
+  it('setViewMode escribe el modo en las preferencias y lo deja en el store', () => {
+    const raw = new Map<string, string>();
+    useStore(raw);
+    setViewMode({ scroll: 'paged', spread: 'cover' });
+    expect(JSON.parse(raw.get(VIEW_MODE_PREF) ?? 'null')).toEqual({ scroll: 'paged', spread: 'cover' });
+    expect(useViewer.getState().viewMode).toEqual({ scroll: 'paged', spread: 'cover' });
+  });
+
+  it('loadViewMode recupera el modo guardado', () => {
+    const raw = new Map<string, string>([[VIEW_MODE_PREF, JSON.stringify({ scroll: 'paged', spread: 'pairs' })]]);
+    useStore(raw);
+    loadViewMode();
+    expect(useViewer.getState().viewMode).toEqual({ scroll: 'paged', spread: 'pairs' });
+  });
+
+  it('loadViewMode con un valor corrupto deja el modo por defecto sin lanzar', () => {
+    const raw = new Map<string, string>([[VIEW_MODE_PREF, JSON.stringify({ scroll: 'x', spread: 'none' })]]);
+    useStore(raw);
+    useViewer.setState({ viewMode: { scroll: 'paged', spread: 'cover' } });
+    expect(() => {
+      loadViewMode();
+    }).not.toThrow();
+    expect(useViewer.getState().viewMode).toEqual({ scroll: 'continuous', spread: 'none' });
+    expect(isViewMode(useViewer.getState().viewMode)).toBe(true);
+  });
+
+  it('al cambiar las páginas por fila, el visor va a la primera página de la fila actual', () => {
+    useStore(new Map());
+    useViewer.setState({ dims: PageDimsTable.uniform(10, 612, 792, 0), dimsVersion: 1, currentPage: 3 });
+    setViewMode({ scroll: 'continuous', spread: 'pairs' });
+    expect(useViewer.getState().currentPage).toBe(2);
+    expect(useViewer.getState().navRequest?.page).toBe(2);
+  });
+
+  it('cambiar solo el desplazamiento no mueve la página', () => {
+    useStore(new Map());
+    useViewer.setState({ dims: PageDimsTable.uniform(10, 612, 792, 0), dimsVersion: 1, currentPage: 3 });
+    setViewMode({ scroll: 'paged', spread: 'none' });
+    expect(useViewer.getState().currentPage).toBe(3);
+    expect(useViewer.getState().navRequest).toBeNull();
   });
 });
