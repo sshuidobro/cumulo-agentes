@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-016
 titulo: Documentos recientes en Tauri (lista guardada por Rust)
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-015]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
