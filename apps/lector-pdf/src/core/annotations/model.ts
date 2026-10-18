@@ -196,7 +196,7 @@ export function isAnnotation(v: unknown): v is Annotation {
 const SIGNATURE_FORMATS: readonly unknown[] = ['rgba-deflate', 'jpeg'];
 
 /** Validación de la forma de la firma: `ink` como una tinta más caja positiva; `image` con formato y dimensiones. */
-function isSignatureArt(v: unknown): boolean {
+export function isSignatureArt(v: unknown): boolean {
   if (!isRecord(v)) return false;
   if (v.kind === 'ink') {
     const box = numbers(v.box, 2);

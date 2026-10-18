@@ -17,6 +17,8 @@ export interface MenuActionSpec {
   readonly kind: 'action';
   readonly label: string;
   readonly shortcut?: string;
+  /** Miniatura (URL de imagen) que sustituye al texto: el nombre accesible sigue siendo `label`. */
+  readonly thumbnail?: string;
   readonly onSelect: () => void;
 }
 
@@ -179,10 +181,14 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, ref }
                     {entry.checked ? '✓' : ''}
                   </span>
                 )}
+                {entry.kind === 'action' && entry.thumbnail !== undefined ? (
+                  <img src={entry.thumbnail} alt={entry.label} title={entry.label} className={styles.thumb} />
+                ) : (
+                  entry.label
+                )}
                 {entry.kind !== 'action' && entry.swatch !== undefined && (
                   <span className={styles.swatch} style={{ background: entry.swatch }} aria-hidden="true" />
                 )}
-                {entry.label}
                 {entry.kind === 'action' && entry.shortcut !== undefined && (
                   <span className={styles.shortcut} aria-hidden="true">
                     {entry.shortcut}

@@ -69,3 +69,12 @@
   font-size: 0.8125rem;
   white-space: nowrap;
 }
+
+.thumb {
+  flex: none;
+  max-width: 7.5rem;
+  height: 2rem;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 2px;
+}

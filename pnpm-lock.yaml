@@ -37,6 +37,9 @@ importers:
 
   apps/lector-pdf:
     dependencies:
+      '@fontsource/dancing-script':
+        specifier: 5.3.0
+        version: 5.3.0
       '@suite/platform':
         specifier: workspace:*
         version: link:../../packages/platform
@@ -310,6 +313,9 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fontsource/dancing-script@5.3.0':
+    resolution: {integrity: sha512-/FFbz4ZCNN+eG2a6phkZB41iKmyCC6rq2blA/kG9OFeI3/tpzLNazND1bBdEnogLhpfg7o4NfauTbEEYSpSUGg==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1903,6 +1909,8 @@ snapshots:
       levn: 0.4.1
 
   '@exodus/bytes@1.16.0': {}
+
+  '@fontsource/dancing-script@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
