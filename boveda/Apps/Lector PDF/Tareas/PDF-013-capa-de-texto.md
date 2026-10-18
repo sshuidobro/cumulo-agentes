@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-013
 titulo: Capa de texto - seleccionar y copiar texto; herramientas selección y mano
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-011, PDF-004]
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica, calidad-profesional, pruebas-calidad]
@@ -85,3 +85,17 @@ En cada página visible hay una capa de texto transparente alineada con el dibuj
   1. `apps/lector-pdf/src/ui/App.tsx` (`select-all`) — el atajo hace `preventDefault` aunque `selectPageText` devuelva `false` (página sin capa o sin texto) y anula el Ctrl+A nativo — devolver `false` del manejador en ese caso (ya soportado por `useShortcuts`).
   2. `apps/lector-pdf/src/ui/viewer/text-selection.ts` — el manejador `copy` está en cada capa; con una selección que abarca varias páginas el evento no pasa por ellas y se copia sin `normalizeUnicode` (como en pdf.js, pero con `disableNormalization: true` pueden quedar ligaduras). Valorar un único `copy` en el visor. No hay criterio que lo exija.
 - Nota para el commit: la ficha comparte ficheros sin commitear con PDF-012 (`App.tsx`, `shortcuts.ts`, `messages.ts`, `MainToolbar.tsx`, `Viewer.tsx`, `use-shortcuts.ts`); hay que separar las partes al comitear.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) montar/update/cancel/registro | OK | `tests/ui/text-layer.test.tsx` (5 tests) dentro de `pnpm test`: 93 ficheros, 1235 tests verdes |
+| (T) endOfContent y sin oyentes globales | OK | `tests/ui/text-selection.test.tsx` (7 tests) |
+| (T) mano 100 px, H/V, H en input | OK | `tests/ui/hand-tool.test.tsx` (7 tests) + e2e propio en Chromium real (`text-qa.spec.ts`, 2/2) |
+| E2E doble clic, copiar 2 textos, zoom 200 % girada, Ctrl+A p3, ruso, 12 capas | OK | `playwright test text.spec.ts`: 6 passed (puerto propio 4391) |
+| lint / typecheck / test / coverage / e2e | OK | lint 0 avisos; typecheck OK; coverage líneas 97,94 %; e2e completo 42 passed (incluye los 2 nuevos del tester en la segunda tanda: 8 passed) |
+
+Nota: un primer intento de e2e falló por build roto/reconstruido transitoriamente por ediciones paralelas de otras fichas; al repetir con el build estable pasó todo (no es fallo de PDF-013).
+Tests añadidos: `apps/lector-pdf/tests/e2e/text-qa.spec.ts` (mano arrastra 100 px sin seleccionar y V restaura; H y Ctrl+A en el campo Zoom no tocan herramienta ni selección del PDF).
+Rendimiento: 20 saltos en `pages-5000.pdf` en ~2,2 s con ≤ 12 `.textLayer`; sin tareas largas nuevas. No ejecuté `pnpm perf` (no lo pide la ficha).
+Pendiente (no bloqueante, sugerencias del revisor): `select-all` hace `preventDefault` aunque no haya capa; `copy` multipágina sin normalizar.
