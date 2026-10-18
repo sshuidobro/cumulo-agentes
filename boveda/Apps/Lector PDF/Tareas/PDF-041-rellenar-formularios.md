@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-041
 titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-081]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -84,3 +84,9 @@ Comprobado: `pnpm lint` (raíz) 0 avisos, `pnpm --filter lector-pdf typecheck` O
 Reproducir: abrir `form-full.pdf`, activar modo noche, pulsar «Resaltar campos»: el texto de los campos rellenos (p. ej. «Ana») se lee mal sobre el azul claro.
 Arreglo pedido: en `FormLayer.module.css` añadir `.night.highlight { background: rgb(r g b / a%); }` con un azul oscuro (p. ej. `rgb(60 80 160 / 55%)`) que dé >= 4,5:1 con `#e6e6e6`. Opcional: reindentar `--shadow-page` en `theme.css` (nota 1 del revisor).
 Tests añadidos: `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (ROJO hasta que exista la regla `.night.highlight`). Rendimiento: sin regresión (`pnpm perf` y `chromium-perf` OK).
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/FormLayer.module.css` (regla `.night.highlight`); `apps/lector-pdf/src/ui/theme.css` (sangría de `--shadow-page` en el bloque oscuro); `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (sin cambiar qué comprueba: quito los `!` que prohíbe ESLint, usando desestructuración y un `?? []`).
+- Qué he hecho: añado `.night.highlight { background: rgb(60 80 160 / 55%); }` (azul oscuro, sobre él #e6e6e6 queda a 8,75:1 frente al fondo #1f1f23 del modo noche) y reindento `--shadow-page` según la nota del revisor. El resto del resaltado (modo claro) no cambia.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 errores, 0 avisos; antes fallaban 6 `no-non-null-assertion` en el test del tester); `pnpm --filter lector-pdf typecheck` OK; `pnpm --filter lector-pdf exec vitest run tests/unit/form-highlight-contrast.test.ts tests/ui/form-layer.test.tsx` OK (16/16). No ejecutado e2e ni perf (indicado por el líder: el tester está con PDF-044).
+- Dudas o cosas que no he podido hacer: el contraste en modo noche se comprueba con el test unitario (fórmula WCAG sobre el color pintado), no con captura de pantalla. Queda pendiente que el tester repita `pnpm --filter lector-pdf e2e` completo.

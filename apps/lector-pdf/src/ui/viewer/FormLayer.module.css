@@ -34,6 +34,11 @@ textarea.control {
   background: var(--form-highlight);
 }
 
+/* En modo noche el texto es claro: el resaltado claro lo volvería ilegible (contraste >= 4,5:1). */
+.night.highlight {
+  background: rgb(60 80 160 / 55%);
+}
+
 /* Con el foco: fondo opaco y texto visible para escribir o elegir. */
 .editing {
   background: #fff;
