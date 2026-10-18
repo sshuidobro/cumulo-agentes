@@ -198,7 +198,7 @@ Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PD
 | [[PDF-043-firma-visual]] | Firmar - colocar, mover y redimensionar la firma en la página | PDF-086 | pendiente |
 | [[PDF-087-nucleo-de-impresion]] | Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento | — | pendiente |
 | [[PDF-045-propiedades]] | Propiedades del documento (Ctrl+D) y menú «Más acciones» | — | pendiente |
-| [[PDF-088-fuentes-del-documento]] | Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable | PDF-045 | pendiente |
+| [[PDF-088-fuentes-del-documento]] | Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable | PDF-045 | cambios-pedidos |
 | [[PDF-044-imprimir]] | Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable | PDF-087, PDF-045, COM-014 | pendiente |
 | [[PDF-089-esperas-fijas-e2e]] | Quitar las esperas fijas de las pruebas e2e y prohibirlas con ESLint | — | hecha |
 | [[PDF-090-e2e-iteracion-3]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3 | PDF-083, PDF-043, PDF-044, PDF-088, PDF-089 | pendiente |

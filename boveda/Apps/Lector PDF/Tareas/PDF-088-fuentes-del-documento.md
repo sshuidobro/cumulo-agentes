@@ -69,7 +69,8 @@ export function qpdfPageFontNames(path: string): string[];
 ```
    Pseudocódigo sobre `qpdfObjects(path)` (`objs`; referencias como cadena `"N G R"`, nombres como `"/Nombre"`):
 ```
-deref(v) = typeof v === 'string' && /^\d+ \d+ R$/.test(v) ? objs['obj:' + v]?.value : v
+deref(v) = typeof v === 'string' && /^\d+ \d+ R$/.test(v) ? body(objs['obj:' + v]) : v
+body(o) = o?.value ?? o?.stream?.dict      // objeto normal → value; stream → stream.dict
 root  = deref(objs['trailer'].value['/Root']); visit(deref(root['/Pages']), undefined)
 visit(node, inheritedRes):
   res = deref(node['/Resources']) ?? inheritedRes
@@ -79,7 +80,7 @@ visit(node, inheritedRes):
 addFonts(res): for f of values(deref(res?.['/Font'])): name = deref(f)['/BaseFont'];
   if string: add(name.replace(/^\//, '').replace(/^[A-Z]{6}\+/, ''))
 ```
-   Los Form XObject son streams: en `--json=2` su diccionario está en `value.stream.dict`; `deref` debe devolver ese `dict` cuando el objeto tenga `stream`. Si `trailer` no está en `qpdf[1]`, lanzar `Error` (el test falla, no se salta).
+   Comprobado con qpdf en este fichero: un objeto normal es `{ "value": {...} }` y un stream es `{ "stream": { "dict": {...} } }` (sin `value`); por eso `body`. Ampliar el tipo `QpdfObjects` con `stream?: { dict?: unknown }`. En este fichero la página `26 0 R` tiene `/Font << /C2_0 37 0 R >>` y `37 0 R` es `/BRYEGL+Arial`; `15 0 R` (Helvetica) y `16 0 R` (ZapfDingbats) solo cuelgan de `/AcroForm /DR`. Si `trailer` no está en `qpdf[1]`, lanzar `Error` (el test falla, no se salta).
 2. `tests/unit/pdf-fonts.test.ts`, caso verapdf: `expect(names).toEqual(qpdfPageFontNames(path))`, `expect(qpdfPageFontNames(path)).toEqual(['Arial'])`, `expect(names).not.toContain('Helvetica')` y `'ZapfDingbats'`; conservar la aserción del objeto `Arial`. Añadir el mismo `toEqual(qpdfPageFontNames(...))` para `basic-5.pdf` y `libreoffice/multilingue.pdf` (así el oráculo se prueba con más de un fichero).
 3. Mensaje al detener: `stopped(done: string, total: string)` en `src/ui/messages-properties.ts` → `` `Búsqueda detenida tras revisar ${done} de ${total} páginas.` ``; `PropertiesDialog.tsx` le pasa `pagesDone` y `total`. `stoppedEarly` se queda igual (aceptado). Actualizar `tests/ui/properties-fonts.test.tsx` con un caso que detenga tras ≥ 1 lote y compruebe el texto exacto. El E2E (`/Búsqueda detenida/`) sigue valiendo.
 
