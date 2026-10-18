@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-073
 titulo: Ejecutar las pruebas e2e de long tasks en un proyecto Playwright en serie
 app: pdf
-estado: en-curso
+estado: bloqueada
 depende_de: [PDF-075, PDF-076, PDF-077]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -107,3 +107,34 @@ Ronda 1 aceptada en lo hecho (configuración `chromium-perf` y 7 etiquetas `@per
 - **`--repeat-each` no repite `chromium`**: es diseño de Playwright 1.56.1 (el `repeatEach` de la CLI solo se aplica a proyectos `top-level`; un proyecto que es dependencia de otro seleccionado siempre es `dependency`; ver `lib/runner/loadUtils.js` y `projectUtils.js`). Se cumple el criterio lanzando los dos proyectos por separado (abajo). Detalle en [[ADR-0016-e2e-long-tasks-en-serie]], «Revisión 2026-10-18».
 - Para clasificar futuros rojos, cada prueba `@perf` adjuntará instante y duración de cada *long task* y la carga de CPU → [[PDF-077-diagnostico-long-tasks]].
 
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: esta ficha (`estado` y este Registro). Sin cambios de código ni de Plan: la configuración y las 7 etiquetas `@perf` ya están en `a54642d` y coinciden con la ficha; la línea «E2E» del Plan no se ha tocado porque el criterio de cierre no se cumple.
+- Qué he hecho: he esperado a la condición de medida, he verificado listados y etiquetas, y he lanzado la batería completa (`pnpm --filter lector-pdf e2e`) con reporter JSON. La ejecución 1 pasa. La ejecución 2 falla una prueba `@perf` (`ink`). Según la ficha no repito, no toco nada y devuelvo la ficha al líder (`bloqueada`). No he lanzado la ejecución 3 ni las repeticiones ×3.
+- Condición de medida (antes de cada ejecución), `uptime` y sin procesos de test:
+  - Antes de la ejecución 1: `11:11:43 up 17 min, load average: 0.08, 1.42, 1.50`; `/proc/loadavg` 0,14; sin procesos `playwright|vitest|vite build`.
+  - Antes de la ejecución 2: `11:20:46 up 26 min, load average: 0.12, 0.83, 1.33`; sin procesos de test.
+- Comandos ejecutados y resultado:
+  - `playwright test --list` (sin filtro): **160 tests en 41 ficheros** (antes de la ronda 1 eran 156). Son 153 de `chromium` + 7 de `chromium-perf`, así que ninguna se pierde ni se duplica. La diferencia de +4 respecto a 156 no la causa esta ficha (no lo he comprobado test a test; probablemente las pruebas añadidas por PDF-075 y PDF-076).
+  - `--list --project=chromium-perf --no-deps`: **7 tests**, las de la tabla (`annotations-layer`, `annotations-performance`, `ink`, `performance`, `render`, `search`, `viewer`).
+  - `--list --project=chromium`: 153 tests; `grep -c "@perf"` = **0**.
+  - `pnpm --filter lector-pdf e2e`, **ejecución 1**: código 0, **160 pasan**, 0 fallos.
+  - `pnpm --filter lector-pdf e2e`, **ejecución 2**: código 1, **159 pasan y 1 falla**: `ink.spec.ts` «dibujar un trazo de 2 000 eventos no produce long tasks» (`chromium-perf`). Esperaba `[]` y recibió **[52] ms**.
+  - Anotaciones de las 7 pruebas `@perf` (carga inicial → final; long tasks):
+
+    | Prueba | Ejec. 1 | Ejec. 2 |
+    |---|---|---|
+    | annotations-layer | 3,78 → 3,78; ninguna | 5,10 → 5,10; ninguna (máx. 0 ms) |
+    | annotations-performance | 3,78 → 3,47; ninguna | 4,69 → 4,69; ninguna |
+    | ink | 3,47 → 2,52; ninguna | **4,69 → 3,13; 51 ms @ 51 ms, 52 ms @ 33 957 ms (falla)** |
+    | performance | 2,52 → 2,56; ninguna | 2,96 → 2,88; ninguna |
+    | render (`images-200`) | 2,56 → 2,56; ninguna (máx. 0 ms) | 2,88 → 2,88; 54 ms @ 71 ms (máx. 54 ms) |
+    | search | 2,56 → 2,67; ninguna (máx. 0 ms) | 2,88 → 2,88; ninguna (máx. 0 ms) |
+    | viewer | 2,67 → 2,67; 56 ms @ 47 ms (máx. 56 ms) | 2,89 → 2,89; ninguna (máx. 0 ms) |
+
+  - Ficha de la prueba fallida (`perf-diagnostico.json`, adjunto del reporte JSON): `entries` = `[{start: 51, duration: 51}, {start: 33957, duration: 52}]`, `loadStart` 4,69, `loadEnd` 3,13, 4 núcleos, procesos top: `headless_shell` 55,7 %, `headless_shell` 26,8 %, `node` 14,2 %, `headless_shell` 11,5 %, `node` 9,2 %.
+  - `pnpm lint`: código 0. `pnpm typecheck`: código 0. `pnpm test`: código 0 (147 ficheros, 1724 tests).
+  - Comprobaciones de la ficha que no dependen de la batería: `grep -ln "longTasks\|longtask"` da solo los 7 ficheros de la tabla. `git diff` de esta ronda no toca umbrales ni añade `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout`.
+- Dudas o cosas que no he podido hacer:
+  - **Bloqueada por fallo de un `@perf`** (criterio «si alguna @perf falla: no repetir ni tocar nada»). Pendiente del líder: decidir si `ink` debe optimizarse o si el presupuesto es intermitente (no está previsto en ADR-0016).
+  - Observación para el líder, sin investigar a fondo: la carga de 1 min al empezar `ink` era **4,69**, aunque la comprobación previa daba 0,12. La carga la heredó del proyecto `chromium` (2 workers) que acababa de terminar, y el `webServer` hace `vite build` al arrancar. Así, la condición «carga < 1,0 antes de la ejecución» no garantiza un arranque tranquilo del proyecto `chromium-perf`. Esto puede explicar también el 101 ms de `images-200` de la ronda 1 (carga 3,13 aquí). Conviene decidirlo en ADR-0016.
+  - La ejecución 3 y la repetición ×3 de `chromium` y de `chromium-perf` no se han hecho, por la condición de la ficha.
