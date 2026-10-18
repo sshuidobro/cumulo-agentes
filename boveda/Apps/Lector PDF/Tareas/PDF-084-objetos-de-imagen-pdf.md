@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-084
 titulo: Objetos de imagen PDF desde RGBA y JPEG
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -69,3 +69,17 @@ export function jpegImageObject(bytes: Uint8Array): Result<PdfStream>;  // err('
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 Lint de los ficheros de la ficha, typecheck y 19 tests propios en verde; los fallos de `pnpm lint` (structure.ts) y del test de temporización de búsqueda son ajenos a la ficha. Criterios cubiertos y nada fuera de alcance.
 1. `apps/lector-pdf/src/core/pdf/image.ts:135` (opcional) — `readJpegInfo` no comprueba la precisión del SOF y `jpegImageObject` fija `/BitsPerComponent 8`; un JPEG de 12 bits quedaría mal declarado. Devolver `null` si la precisión no es 8.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| RGBA 4×2: 24 B RGB, 8 B alfa, `/SMask` = ref | OK | test «convierte RGBA…» y «escribe /SMask…», 19/19 en `pdf-image.test.ts` |
+| Todo opaco → `smask` null sin `/SMask` | OK | test «si todos los alfa son 255…» |
+| `readJpegInfo` mínimo, PNG, truncado | OK | tests de lectura; todos los prefijos truncados dan null sin lanzar |
+| JPEG CMYK `/Decode` y bytes sin recomprimir | OK | test «JPEG CMYK…» |
+| PDF con imagen: `qpdf --check` 0 y `getOperatorList` | OK | test «pasa qpdf --check y pdf.js…» |
+| Cobertura `image.ts` ≥ 90 % | OK | líneas 100 %, sentencias 98,83 %, ramas 93,15 % |
+| lint / typecheck / test | OK | `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 155 ficheros, 1797/1797 |
+| `pnpm coverage` | Ajeno | falla por directorio `coverage/` bloqueado por otro proceso vitest (pid 21420); con directorio propio fallan 4 tests por timeout de 5 s bajo carga, ajenos: `qa-drafts.test.ts` (x2), `concat-source.test.ts`, `pdf/filters.test.ts` (pasan en `pnpm test`). |
+Observación (no bloqueante, ya señalada por el revisor): un JPEG con precisión ≠ 8 bits se acepta y se declara `/BitsPerComponent 8`. Recomendable devolver null en una ficha futura.
+Tests añadidos: ninguno (los 19 cubren los criterios). Rendimiento: no aplica.

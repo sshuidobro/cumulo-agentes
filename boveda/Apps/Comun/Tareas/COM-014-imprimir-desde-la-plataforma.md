@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-014
 titulo: Platform.print() - imprimir la ventana en web y en Tauri
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
