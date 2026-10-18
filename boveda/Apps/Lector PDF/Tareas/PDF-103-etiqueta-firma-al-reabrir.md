@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-103
 titulo: Etiqueta «Firma» en el panel al reabrir un PDF con firmas guardadas
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-085]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
@@ -34,3 +34,9 @@ Al reabrir un PDF guardado con firmas de la suite, el panel de comentarios las m
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: solo esta ficha (`estado: bloqueada`). No he tocado código.
+- Qué he hecho: he leído la ficha, `to-pdf.ts` (`SIGNATURE_STAMP_NAME`), `import.ts` (`importForeign`) y `comment-list.ts` (`FOREIGN_LABELS`). Comprobado en el fuente de pdf.js instalado (`pdfjs-dist@6.4.299`, `build/pdf.worker.mjs`, `class StampAnnotation`): el constructor solo guarda `hasOwnCanvas`, `isEditable` y `noHTML`; no expone el `/Name` del `/Stamp`. El objeto que devuelve `page.getAnnotations()` para un `Stamp` no trae ese dato, así que `importForeign` no puede distinguir `/SuiteFirma` de otro sello con la API pública de pdf.js.
+- Comandos ejecutados y resultado: ninguno de build/test (no había nada que compilar); solo lectura de código y del fuente de pdf.js.
+- Dudas o cosas que no he podido hacer: falta decidir el mecanismo. Opciones: (a) leer el diccionario `/Stamp` del fichero con un parser propio en `core/` (nuevo código de E/S de PDF, fuera de lo previsto), (b) acceder a objetos internos de pdf.js (no es API pública, frágil), (c) marcar la firma con otro dato que pdf.js sí exponga (p. ej. `/Subj` o `/Contents`), lo que cambia el escritor de PDF-085 y el formato escrito. Pido decisión al líder sobre cuál usar; con ella lo implemento. No he hecho commit: no hay cambios de código.
