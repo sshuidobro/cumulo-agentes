@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-015
 titulo: Panel lateral con pestañas y miniaturas virtualizadas
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-012]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -73,3 +73,8 @@ Comprobado: `pnpm typecheck` OK; `pnpm test` 1348 en verde. `pnpm lint` falla (v
 - Comandos ejecutados y resultado: `pnpm lint` código 0; `pnpm typecheck` código 0; `pnpm test` 106 ficheros, 1348 tests en verde. E2E completo en el puerto 4394 (config temporal fuera del repo, retirada después): 57/57 en la última pasada. En dos pasadas anteriores fallaron tests de tareas largas (`viewer.spec.ts:101` y `render.spec.ts:116`, límite 100 ms) con la carga de la máquina a 15–18 por otros testers en paralelo; aislados pasan 4/4 veces y en la pasada final todo pasó.
 - Dudas o cosas que no he podido hacer: `pnpm --filter lector-pdf e2e` fija el puerto 4173 en `playwright.config.ts`, así que usé una copia temporal con 4394 (no modificada en el repo). Los dos tests de tareas largas dependen de la carga del equipo: si el tester los ve rojos con otros procesos corriendo, conviene repetirlos aislados antes de tocar código. No he hecho commit.
 
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` código 0, `pnpm typecheck` OK, `pnpm test` 106 ficheros / 1348 en verde. Los puntos 1 y 2 de la ronda 1 están resueltos (Tab del visor sin número fijo de pulsaciones; lint de `text-qa.spec.ts` limpio). Sin cambios en código de producción.
+1. (opcional) Persistir la última pestaña usada aparte de `none` en `prefs` (decisión del líder). No bloquea.
+2. Nota para el tester: repetir aislados los e2e de tareas largas (`viewer.spec.ts:101`, `render.spec.ts:116`) si fallan por carga de la máquina.
