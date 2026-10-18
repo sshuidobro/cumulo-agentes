@@ -25,7 +25,7 @@ const FREETEXT_LEADING = 1.15;
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
-const HELV_FONT: PdfDict = dict({
+export const HELV_FONT: PdfDict = dict({
   Type: name('Font'),
   Subtype: name('Type1'),
   BaseFont: name('Helvetica'),
@@ -40,11 +40,11 @@ interface Drawing {
 }
 
 /** Número PDF con la misma serialización que el resto del escritor (4 decimales como máximo). */
-function num(n: number): string {
+export function num(n: number): string {
   return TEXT_DECODER.decode(serializeValue(n));
 }
 
-function nums(values: readonly number[]): string {
+export function nums(values: readonly number[]): string {
   return values.map(num).join(' ');
 }
 
@@ -53,7 +53,7 @@ function colorOp(c: Rgb, op: 'rg' | 'RG'): string {
 }
 
 /** Cadena literal PDF en WinAnsi (`(...)`, con escapes). Siempre ASCII. */
-function pdfText(s: string): string {
+export function pdfText(s: string): string {
   return TEXT_DECODER.decode(serializeValue(bytesString(toWinAnsi(s))));
 }
 
