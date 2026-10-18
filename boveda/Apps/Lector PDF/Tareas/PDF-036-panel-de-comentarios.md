@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-036
 titulo: Panel de comentarios - lista, filtros, ir a, editar y borrar
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-031, PDF-015]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones, accesibilidad]
 ---
 
@@ -62,3 +62,14 @@ La pestaña «Comentarios» del panel lateral lista todas las anotaciones del do
 ### [lider] suite de rendimiento — 2026-10-17
 Por [[ADR-0012-suite-de-rendimiento]], los asserts de tiempo de reloj (`performance.now()`) no van en `tests/unit/` ni `tests/ui/` (fallan bajo `pnpm coverage`), sino en `tests/perf/*.perf.test.ts`, que se ejecuta con `pnpm perf` (sin cobertura, en serie). Presupuestos sin cambios. Los relojes falsos inyectados (`now`) siguen en `tests/unit/`.
 Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, su entrada en `tsconfig.json` y `apps/lector-pdf/tests/perf/measure.ts` aún no existen (PDF-006 sin terminar), créalos **exactamente** como dice [[PDF-006-layout-virtual]] (Registro, entrada del líder, pasos 1-4); si existen, no los cambies.
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: esta ficha (estado `bloqueada`). No he tocado código.
+- Qué he hecho: he leído la ficha, el Plan y el código de referencia (`Sidebar.tsx`, `Thumbnails.tsx`, `annotation-store.ts`, `annotation-actions.ts`, `core/annotations/*`, `core/sidebar.ts`). Las dependencias declaradas (PDF-031, PDF-015) están en `hecha`. No he empezado a implementar porque falta una pieza que la ficha da por existente.
+- Comandos ejecutados y resultado: ninguno (no había código que comprobar).
+- Dudas o cosas que no he podido hacer:
+  1. `openPopup(id)` no existe. La ficha la lista en `annotation-actions.ts` (Contexto) y la usa en «Clic o Intro» y en el criterio (T) de Intro y en el E2E («su ventana abierta»). En el código no hay ni `openPopup`, ni `openPopupId` en `annotation-store.ts`, ni nada que abra ventanas de comentario. La define [[PDF-033-notas-emergentes]], que sigue en `pendiente` y no está en `depende_de` de esta ficha.
+  2. Además, PDF-033 depende de [[PDF-069-barra-comentar]] (pendiente), así que esta ficha también debe esperar a PDF-069 si se añade PDF-033 a `depende_de`.
+  3. La ficha dice «`openPopup(id)` cuando la página esté montada», pero no define cómo se espera a que la página monte (tras `goToPage` puede no estar montada). Eso también debería definirlo PDF-033.
+  4. Menor: `IconComment` no existe en `src/ui/icons.tsx`. Lo crearé si se desbloquea; no es el bloqueo.
+  Decisión que pido al líder: añadir PDF-033 (y, por ello, PDF-069) a `depende_de` de PDF-036, o decir explícitamente que `openPopup` lo implementa esta ficha. Lo segundo duplicaría trabajo y diseño de PDF-033, así que no lo he hecho.
