@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-022
 titulo: E2E de extremo a extremo y presupuestos de rendimiento de la iteración 1
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-004, PDF-011, PDF-012, PDF-013, PDF-014, PDF-016, PDF-018, PDF-019, PDF-020, PDF-021]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -88,3 +88,9 @@ Tamaños de referencia (líder, nota del 2026-10-17), `dist/assets` tras el buil
   3. **Dos PDF del corpus de dañados**: `corrupt-truncated.pdf` se rechaza con «El PDF está dañado y no se puede abrir.»; `corrupt-bad-startxref.pdf` no se rechaza: pdf.js reconstruye la xref y abre sus 5 páginas. Lo pruebo como recuperado, no como error.
   4. **Inestabilidad en la primera ronda `--repeat-each=3`**: `search.spec.ts` «durante la búsqueda…» con una long task de 118 ms (límite 100) y `recover-qa.spec.ts` «tras Recuperar…» (resaltado no encontrado). Ambas fallaron con PDF-069 en curso (UI en el árbol de trabajo) y con varias suites en paralelo; no las he tocado. La segunda ronda completa pasó 372/372. Conviene que el revisor vigile la long task de búsqueda bajo carga.
   5. Ninguna prueba se ha relajado; ningún presupuesto ha fallado. No hay commit (pedido por el usuario).
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Verificado (puerto propio `LECTOR_E2E_PORT=4391`): `pnpm lint`, `pnpm typecheck`, `pnpm test` (1541) y `pnpm perf` en verde; E2E de `performance`, `corpus`, `keyboard` y `stress` con `--repeat-each=3`: 120/120. Umbrales del Plan sin relajar, esperas por estado, sin `performance.now` en unit/ui, sin `test.skip`/`.only`. Sin cambios en `src/`.
+1. (decisión del líder, no bloquea) Criterio «ninguna prueba usa `waitForTimeout`»: se cumple en los 5 ficheros nuevos, pero quedan 10 llamadas en specs de otras fichas (viewer, save-qa, search:195, recover, links-qa, render, recover-qa, annotations-layer). Hay que interpretar el criterio como «specs de esta ficha» o abrir una ficha para sustituirlas por esperas de estado/`expect.poll` estable.
+2. (opcional) La long task de 118 ms vista en `search.spec.ts` bajo carga (con varias suites en paralelo) merece una ficha de seguimiento de rendimiento de búsqueda; el test de `performance.spec.ts` no la reprodujo en 3 repeticiones.
+3. (opcional) Las medidas viajan solo en `annotations`; con `reporter: 'list'` no se imprimen. Valorar un reporter `json`/`html` para que el tester las recoja.
