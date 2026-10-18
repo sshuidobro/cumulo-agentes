@@ -54,7 +54,7 @@ Ctrl+F abre una barra de búsqueda. Mientras se escribe, se busca en todo el doc
 - [ ] (T) `nextMatch` con coincidencias en p2 (1), p4 (2): actual p2#0 → p4#0 → p4#1 → p2#0 (vuelta); `prevMatch` desde p2#0 → p4#1.
 - [ ] (T) UI: `Ctrl+F` enfoca el campo; Intro llama a `nextMatch`; Mayús+Intro a `prevMatch`; Esc cierra; los botones de opción tienen `aria-pressed` y `title`.
 - [ ] E2E `basic-5.pdf`: buscar `busqueda` → «1 de 5» y 5 resaltados en total en las páginas montadas; la página 2 queda visible y su resaltado actual cubre la palabra «búsqueda» (el rectángulo `.hit-current` interseca el rectángulo de la selección de esa palabra); activar «Palabras completas» → «1 de 4».
-- [ ] E2E `pages-5000.pdf`: buscar `aguja` desde la página 1 → aparece «1 de 2» y la página 1234 visible en < 3 s; F3 → página 4999; durante la búsqueda la interfaz responde (`scroll` del visor y escribir en el campo de página funcionan) y no hay *long tasks* > 100 ms (anota la máxima).
+- [ ] E2E `pages-5000.pdf`: buscar `aguja` desde la página 1 → aparece «1 de 2» y la página 1234 visible (timeout 15 s); F3 → página 4999; durante la búsqueda la interfaz responde (`scroll` del visor y escribir en el campo de página funcionan) y no hay *long tasks* > 100 ms (anota la máxima). El tiempo de búsqueda se verifica en `pnpm perf` (recorrido < 10 s, primera coincidencia < 1 s, hueco máximo < 50 ms).
 - [ ] E2E: buscar con zoom 200 % y vista girada: los resaltados siguen sobre el texto (captura en el Registro).
 - [ ] E2E: «Detener» durante una búsqueda en `pages-100000.pdf` → el estado deja de cambiar y muestra los resultados encontrados hasta ese momento.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
