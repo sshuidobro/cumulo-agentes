@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-042
 titulo: Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-081, PDF-082, PDF-087]
 intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -77,3 +77,8 @@ Código y diseño correctos (fusión campo+widget en una sola escritura, `/I` or
 - Qué he hecho: (1) casilla con widgets sin `exportValue`: marcada → `PdfSyntaxError`; desmarcada → `/AS /Off` en todos los widgets y `/V /Off`. (2) lista múltiple sin elegidos: `/V []` y `/I []` validados con qpdf, y pdf.js la reimporta con `initial` = `{ kind: 'choice', selected: [] }`. (3) `pais` añadido a las aserciones de pdf.js. (4) mensaje `save-unreadable` → «No se pueden guardar los cambios: la estructura interna del PDF está dañada.»
 - Comandos ejecutados y resultado: `vitest run` de `forms-write.test.ts` + `save-actions.test.ts`: 31/31 OK. `vitest run apps/lector-pdf/tests/unit/forms`: 9 ficheros, 147/147 OK. `eslint` de los dos ficheros: 0 avisos. `pnpm --filter lector-pdf typecheck`: **falla** por un error ajeno, `src/ui/toolbar/CommentToolbar.tsx(66,35)` (tipo `'signature'` no asignable a `ColorTool | null`), fichero con cambios sin confirmar de otro agente; mis ficheros no dan errores de tipos.
 - Dudas o cosas que no he podido hacer: (1) El criterio 1 pide `pais` = `pt`, pero pdf.js devuelve `['pt']` (`pais` es una lista de selección simple, y pdf.js entrega las listas como array). La aserción usa `['pt']`; si el criterio pretendía un string, decídelo el líder. (2) El typecheck del monorepo queda rojo hasta que el agente de `CommentToolbar.tsx` (PDF-086/COM-017 u otro) termine. (3) No lancé e2e ni perf, según instrucciones.
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` OK (0 avisos); `forms-write.test.ts` + `save-actions.test.ts` 31/31. Typecheck: solo el error ajeno de `CommentToolbar.tsx` (PDF-043), ignorado por indicación. No lancé e2e/perf.
+Los puntos 1, 2 y 3 de la ronda 1 están cubiertos con tests que comprueban de verdad (casilla sin `exportValue` marcada/desmarcada, lista múltiple vacía con qpdf y ida y vuelta con pdf.js, `pais`). El punto 4 (mensaje `save-unreadable`) está aplicado.
+Duda sobre `pais`: es aceptable que pdf.js devuelva `['pt']` (lista de selección simple, pdf.js entrega las listas como array); el criterio no exige string de forma inequívoca. Sin problemas pendientes.
