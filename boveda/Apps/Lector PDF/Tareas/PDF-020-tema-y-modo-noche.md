@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-020
 titulo: Tema claro/oscuro/sistema y modo noche de las páginas
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-015]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -127,7 +127,7 @@ Si el dibujo se cancela, `opsPromise` no debe dejar un rechazo sin capturar: cr�
 - [ ] (T) `imageRects`: `save`, `transform([2,0,0,2,0,0])`, `restore`, `image(IDENTITY)` con base identidad → rect `{0,0,1,1}` (el `restore` deshace la escala); `restore` con pila vacía no lanza; `resetToBase` vuelve a `base`; con base identidad y lienzo 100×100: `image([0.7071068, 0.7071068, -0.7071068, 0.7071068, 10, 10])` (girada 45°) → `{ x: 9, y: 10, width: 2, height: 2 }`; `image([50,0,0,50,80,80])` → `{ x: 80, y: 80, width: 20, height: 20 }` (recortada); `image([90,0,0,100,0,0])` → ningún rect (escaneado) y `image([80,0,0,100,0,0])` → `{ x: 0, y: 0, width: 80, height: 100 }`.
 - [ ] (T) `applyNightMode` con colores por defecto: blanco `(255,255,255)` → `(31,31,35)`; negro → `(230,230,230)`; rojo `(255,0,0)` → `(230,31,35)`; gris `(128,128,128)` → `(130,130,132)`; el alfa no cambia; los píxeles dentro de `keep` quedan idénticos; `data` de longitud incorrecta → lanza. `parseHexColor('#1f1f23')` → `[31,31,35]`; `parseHexColor('red')` lanza.
 - [ ] (T) `toPaintSteps` con listas sintéticas cubre cada fila de la tabla de N2 (incluye `paintImageXObjectRepeat` con 2 posiciones → 2 `image`, una máscara → ningún paso, un `transform` con argumentos inválidos → ignorado).
-- [ ] (T) Integración en Node: `images-200.pdf` página 1, `getOperatorList({ annotationMode: AnnotationMode.ENABLE_STORAGE })` → `imageRects(toPaintSteps(list), page.getViewport({ scale: 1 }).transform, 595, 842)` = `[{ x: 97, y: 125, width: 400, height: 267 }]`.
+- [ ] (T) Integración en Node: `images-200.pdf` página 1, `getOperatorList({ annotationMode: AnnotationMode.ENABLE_STORAGE })` → `imageRects(toPaintSteps(list), page.getViewport({ scale: 1 }).transform, 612, 792)` = `[{ x: 97, y: 75, width: 400, height: 267 }]` (corregido en la revisión: la página mide 612×792 y la imagen acaba en y = 450 + 267 = 717 pt, luego arriba = 792 − 717 = 75; el `595, 842, y: 125` original era un error de la ficha).
 - [ ] (T) `renderPageToCanvas` con `night`: pdf.js recibe parámetros **sin** `pageColors`; se llama a `getOperatorList` con `annotationMode: AnnotationMode.ENABLE_STORAGE`; `putImageData` se llama una vez; si la señal aborta mientras se espera la lista de operadores → `'cancelled'` y no hay `putImageData`; sin `night` no se llama a `getOperatorList`.
 - [ ] Rendimiento (`pnpm perf`): `applyNightMode` sobre 2 000 000 píxeles con un rectángulo `keep` de 400×267 < 100 ms (mediana según `measure.ts`).
 - [ ] `grep -rn "pageColors" apps/lector-pdf/src` sin resultados.
@@ -175,3 +175,11 @@ Si el dibujo se cancela, `opsPromise` no debe dejar un rechazo sin capturar: cr�
   3. El `log.warn` de «sin modo noche» no lleva el error original, porque `opsPromise` se crea con `.catch(() => null)` tal como pide N3.
   4. No he hecho commit: lo pediste así y el árbol tiene cambios de PDF-038 y otros sin confirmar.
   5. La salida de `pnpm test` muestra «Not implemented: HTMLCanvasElement's getContext()» de jsdom. No viene de la ruta del modo noche (los tests de UI mockean `renderPageToCanvas` y los unitarios usan lienzos falsos). No he comprobado si ya aparecía antes de esta ronda.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint`, `pnpm typecheck` OK; `pnpm test` 1528/1528; `pnpm perf` 21/21 (incluye `night.perf`); `playwright test appearance` 5/5 (imagen conservada, miniatura, recarga, 1,5 ×, tema del sistema). `grep pageColors src` vacío. `core/night.ts` y `engine/night-ops.ts` coinciden con N1/N2; `render.ts` con N3 (`.catch(() => null)`, cancelación sin `putImageData`).
+- Nota sobre y:125 vs 75: **el error era de la ficha**. `images-200.pdf` tiene página 612×792 (viewport `[1,0,0,-1,0,792]`); la imagen va de y=450 a 717 pt, así que arriba = 792 − 717 = 75. Con 842 de alto saldría 125, pero ese no es el tamaño de la página. Criterio de integración corregido en la ficha a `612, 792` y `y: 75`; el test del programador es correcto.
+- Desviación del programador en `toPaintSteps` (mantener `save`/`restore` y omitir solo la matriz inválida): correcta, mantiene las pilas equilibradas. Aceptada.
+- (opcional) `render.ts:61` el aviso de log no incluye la causa real porque `.catch(() => null)` la descarta; aceptable por lo que pide N3.
+- (opcional) El aviso de jsdom «Not implemented: getContext» en `pnpm test` conviene investigarlo aparte; no bloquea.
+- Contrastes anotados en la ronda 1 revisados: todos ≥ 4,5 (texto) y ≥ 3 (controles). 0 problemas bloqueantes.
