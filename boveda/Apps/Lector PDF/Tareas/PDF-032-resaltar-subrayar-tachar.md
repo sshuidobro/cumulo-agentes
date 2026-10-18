@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-032
 titulo: Resaltar, subrayar y tachar texto seleccionado
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-031, PDF-013, PDF-069]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -72,3 +72,9 @@ Lint, typecheck (raíz), tests de la ficha (24) en verde. Clic de ratón en «Re
 3. `apps/lector-pdf/tests/e2e/markup.spec.ts` — añadir un E2E del clic de ratón en «Resaltar» de la barra «Comentar» con texto seleccionado (hoy solo se prueba con teclado); la comprobación manual pasó, falta que quede fijada.
 4. (opcional) `src/ui/viewer/SelectionActions.tsx:58` — si falla `clipboard.writeText` el usuario no recibe aviso.
 5. (opcional) `src/state/markup-actions.ts:3` — `state` importa de `ui`; valorar mover `selection-to-pages` a `engine/`.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/selection-to-pages.ts` (reescrito), `apps/lector-pdf/tests/ui/markup.test.tsx` (fakes por nodo de texto, 2 tests nuevos), `apps/lector-pdf/tests/e2e/markup.spec.ts` (2 E2E nuevos y 2 funciones auxiliares). Sin commit.
+- Qué he hecho: (1) el bloqueante: `selectionPageRects` ya no usa `getClientRects` del rango completo; recorta cada nodo de texto a los extremos del rango y solo cuenta nodos dentro del contenedor de una capa registrada, asignados a su capa por contención. Descarta área nula y fragmentos fuera de su capa. Al depurar en navegador aparecía también un marcador de número de página (`aria-hidden`, dentro del marco y fuera de la capa) que se colaba en la selección: también queda excluido, con test unitario. (2) Test unitario con caja de contenedor entera en el rango, y E2E de selección de p1 (mitad) a p3 (mitad) con la 2 entera y «Tachar»: cada marcado debe caber en la caja de su texto. (3) E2E de clic de ratón en «Resaltar» de «Comentar» con Ctrl+A: crea el resaltado y `aria-pressed` queda en `false`.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (135 ficheros, 1586 tests; una ejecución anterior mostró ELIFECYCLE con todos los ficheros en verde, y las dos siguientes salieron con código 0); `pnpm coverage` OK (código 0); E2E completo con `LECTOR_E2E_PORT=4522 LECTOR_E2E_OUTDIR=dist/e2e-pdf032 pnpm exec playwright test` → 136 passed (`markup.spec.ts` 7/7). Build propio dentro de `dist/`, que ESLint y git ignoran (un directorio fuera de `dist/` hacía fallar el lint con 9438 errores por el build).
+- Dudas o cosas que no he podido hacer: (a) Los puntos opcionales 4 (aviso si falla el portapapeles) y 5 (`state` importa de `ui`) no los he tocado: el revisor los marcó como opcionales y no son bloqueantes. (b) La ejecución que dio ELIFECYCLE no la he podido reproducir; conviene vigilarla. (c) Playwright sigue usando `dist/` compartido si otra ficha lanza el E2E sin `LECTOR_E2E_OUTDIR`.
