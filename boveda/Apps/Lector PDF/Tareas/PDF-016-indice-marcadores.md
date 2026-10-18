@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-016
 titulo: Índice (marcadores) del documento en el panel lateral
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-015, PDF-014]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, navegacion]
 ---
 
