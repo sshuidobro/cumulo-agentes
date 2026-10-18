@@ -1,7 +1,9 @@
 import { createLogger, err, ok, type Result } from '@suite/shared';
 import { PlatformIoError, platformError } from '../errors';
 import { createStorageStore } from '../prefs';
-import type { ByteSource, FileFilter, OpenedFile, Platform, PlatformErrorCode, SaveData, SaveOutcome } from '../types';
+import type {
+  ByteSource, FileFilter, OpenedFile, Platform, PlatformErrorCode, RecentFile, SaveData, SaveOutcome,
+} from '../types';
 import type { TauriApi } from './tauri-api';
 import { realTauriApi } from './tauri-api';
 
@@ -17,6 +19,16 @@ interface FileInfoDto {
   path: string;
   size: number;
   lastModified: number | null;
+}
+
+/** Forma de un reciente en Rust (serialización camelCase de `RecentDto`, COM-016). */
+interface RecentDto {
+  id: string;
+  name: string;
+  path: string;
+  size: number | null;
+  openedAt: number;
+  available: boolean;
 }
 
 const PLATFORM_ERROR_CODES: ReadonlySet<string> = new Set<PlatformErrorCode>([
@@ -35,7 +47,7 @@ function errorCode(cause: unknown): string | undefined {
 /** Códigos de `PlatformErrorCode` se respetan; `unknown-token` es un fichero que ya no está registrado. */
 function mapCode(code: string | undefined): PlatformErrorCode {
   if (code !== undefined && PLATFORM_ERROR_CODES.has(code)) return code as PlatformErrorCode;
-  if (code === 'unknown-token') return 'not-found';
+  if (code === 'unknown-token' || code === 'unknown-recent') return 'not-found';
   return 'io';
 }
 
@@ -63,6 +75,17 @@ function tauriSource(api: TauriApi, token: string, size: number): ByteSource {
         throw new PlatformIoError(mapCode(errorCode(cause)), { cause });
       }
     },
+  };
+}
+
+function toRecent(dto: RecentDto): RecentFile {
+  return {
+    id: dto.id,
+    name: dto.name,
+    path: dto.path,
+    size: dto.size,
+    openedAt: dto.openedAt,
+    available: dto.available,
   };
 }
 
@@ -236,21 +259,39 @@ export function createTauriPlatform(
       }
     },
 
-    // Recientes de escritorio: pendientes de COM-016.
-    recentFiles() {
-      return Promise.resolve([]);
+    async recentFiles(): Promise<readonly RecentFile[]> {
+      try {
+        const dtos = await api.invoke<RecentDto[]>('suite_recent_list');
+        return dtos.map(toRecent);
+      } catch (cause) {
+        log.warn('No se han podido leer los documentos recientes.', cause);
+        return [];
+      }
     },
 
-    openRecent() {
-      return Promise.resolve(err(platformError('unsupported')));
+    async openRecent(id: string): Promise<Result<OpenedFile | null>> {
+      try {
+        const dto = await api.invoke<FileInfoDto>('suite_recent_open', { id });
+        return ok(toOpened(api, dto));
+      } catch (cause) {
+        return err(platformError(mapCode(errorCode(cause)), cause));
+      }
     },
 
-    removeRecent() {
-      return Promise.resolve();
+    async removeRecent(id: string): Promise<void> {
+      try {
+        await api.invoke<unknown>('suite_recent_remove', { id });
+      } catch (cause) {
+        log.warn('No se ha podido quitar el documento de recientes.', cause);
+      }
     },
 
-    clearRecents() {
-      return Promise.resolve();
+    async clearRecents(): Promise<void> {
+      try {
+        await api.invoke<unknown>('suite_recent_clear');
+      } catch (cause) {
+        log.warn('No se han podido vaciar los documentos recientes.', cause);
+      }
     },
   };
 }

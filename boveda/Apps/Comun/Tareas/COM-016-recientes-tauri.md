@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-016
 titulo: Documentos recientes en Tauri (lista guardada por Rust)
 app: comun
-estado: en-curso
+estado: en-revision
 depende_de: [COM-015]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -42,3 +42,15 @@ En escritorio, Rust guarda la lista de recientes (rutas que el usuario abrió po
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `packages/platform/rust/src/recent.rs` (nuevo), `packages/platform/rust/src/lib.rs`, `packages/platform/rust/src/commands.rs`, `packages/platform/rust/Cargo.toml`, `packages/platform/rust/tests/recent.rs` (nuevo), `packages/platform/src/tauri/platform-tauri.ts`, `packages/platform/tests/tauri/recent-tauri.test.ts` (nuevo).
+- Qué he hecho: módulo puro `recent` (`RecentList`, `load` tolerante, `save` atómico vía `atomic_write`, `touch` con máximo 20, `remove`, `clear`, `open_recent`). En `commands.rs`: estado con candado `recents_gate`, `touch` en `suite_open_dialog`, «Guardar como» y aperturas del SO; comandos `suite_recent_list`, `suite_recent_open`, `suite_recent_remove`, `suite_recent_clear` registrados. En TS: `recentFiles`, `openRecent`, `removeRecent`, `clearRecents` sobre esos comandos; `unknown-recent` se mapea a `not-found`.
+- Dependencias: `serde` pasa de opcional a obligatoria (`=1.0.229`) y `serde_json =1.0.154` pasa de dev-dependency a dependencia normal. Ambas versiones ya estaban en el lockfile; no entra ninguna dependencia nueva.
+- Comandos ejecutados y resultado: en `packages/platform/rust`: `cargo fmt --check` OK; `cargo clippy --all-targets --all-features -- -D warnings` OK; `cargo test --all-features` OK (tests nuevos de `recent.rs`: 14 en total en ese fichero, además de los existentes). En `apps/lector-pdf/src-tauri`: `cargo check` OK. En raíz: `pnpm lint` OK, `pnpm typecheck` OK, `pnpm test` 187 ficheros y 2 187 tests en verde, `pnpm coverage` OK (líneas 98,71 %). No he lanzado e2e ni perf.
+- Dudas o cosas que no he podido hacer:
+  - Interpretación 1: `suite_recent_open` también sube la entrada a primera posición (se trata como una elección del diálogo). La ficha no lo dice de forma explícita; si el revisor lo quiere distinto, es un cambio de una línea.
+  - Interpretación 2: en «Guardar como» se anota la ruta al elegir el destino, no al terminar la escritura. Un destino nuevo queda sin tamaño (`size: null`) hasta que se vuelva a abrir.
+  - Los errores de guardar `recent.json` en `touch` y en `suite_recent_open` se ignoran (la apertura no falla por eso). En `suite_recent_remove` y `suite_recent_clear` sí se devuelve error, y TS lo registra con el logger.
+  - Una ruta que no sea UTF-8 no se puede serializar en JSON: la entrada no se guarda y no hay error visible. Caso raro; lo anoto.
+  - Los criterios de la ficha no están marcados: los verifica el tester.
