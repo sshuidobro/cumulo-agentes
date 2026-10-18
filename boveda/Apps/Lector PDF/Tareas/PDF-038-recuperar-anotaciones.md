@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-038
 titulo: Recuperar anotaciones no guardadas tras un cierre inesperado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-037, COM-012]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -63,3 +63,8 @@ Si la app o el ordenador se cierran con anotaciones sin guardar, al volver a abr
   3. En el Plan, PDF-037 y COM-012 aparecen como `pendiente`, pero su código existe (`state/save-actions.ts`, `packages/platform/src/drafts.ts`) y lo he usado tal cual. No he revisado sus fichas.
   4. Limitación: el borrado de «No guardar» se espera antes de seguir, pero si el navegador o la ventana se cierran justo después, el borrado podría no completarse.
   5. No he hecho commit (lo pidió el usuario).
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Lint, typecheck, test (1528) y coverage en verde; `recover.spec.ts` pasa. Criterios cubiertos con tests reales (ida y vuelta, debounce 2 s, recuperar como una entrada deshacible, descartar, put rechazado, borrador inválido, purga de 30 días).
+1. (opcional) `tests/e2e/recover.spec.ts` — usa supresión en vez de crear un resaltado porque aún no hay interfaz de creación; añadir el caso de creación cuando llegue PDF-032. El tester debe dar por válida esta desviación.
+2. (opcional) `draft-sync.ts:191-194` — si el usuario edita con el aviso de recuperación aún abierto, el borrador antiguo se sobrescribe; improbable con el diálogo modal.
