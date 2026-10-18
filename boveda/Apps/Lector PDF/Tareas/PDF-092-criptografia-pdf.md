@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-092
 titulo: Manejador de seguridad estándar - claves, contraseñas y cifrado por objeto
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-091]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -83,3 +83,12 @@ export function encryptBytes(h: SecurityHandler, kind: 'string' | 'stream', num:
 - Desviación de `ObjectReader` aceptada: leer `/Encrypt` con `parseIndirectObject` es inevitable hasta PDF-093 y prueba lo mismo (sin cambiar código fuera de alcance). PDF-093 debería añadir un test de integración con `ObjectReader`.
 1. `security.ts:271` (opcional) — la ficha dice `MD5(h)` completo en las 50 vueltas de la clave de propietario; el código usa `h[0..n]` (como qpdf). Solo difiere con claves < 128 bits; confirmar con un fixture RC4 de 40 bits en PDF-093/test.
 2. `pnpm-lock.yaml` (opcional) — el programador avisa de cambios ajenos en el lockfile; revisar antes del commit.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| RC4 RFC 6229, 6 fixtures user/owner/mal, descifrado p1, ida y vuelta, unsupported | OK | `vitest run --coverage` (coverage propio): 197 ficheros, 2374 tests en verde; `pdf-crypto.test.ts` incluido |
+| lint / typecheck | OK | sin errores ni avisos |
+| Cobertura `crypto/` | 100 % líneas (index, rc4, security); global 98,65 % | coverage-summary.json |
+| Rendimiento R6 < 50 ms | OK | `pnpm perf`: 18 ficheros, 29 tests en verde |
+Tests añadidos: ninguno (los existentes cubren cada criterio). Nota abierta del revisor (h[0..n] en clave de propietario) no falla en los fixtures RC4-40.
