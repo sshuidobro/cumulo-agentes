@@ -8,4 +8,6 @@ export const formMsg = {
   signatureField: 'Campo de firma digital',
   /** Explicación al pasar el puntero por un campo de firma. */
   signatureTitle: 'Campo de firma digital: aún no se puede firmar con certificado.',
-} as const;
+  /** Nombre accesible de una opción de un grupo de botones de opción: «color: Azul». */
+  radioOptionName: (group: string, option: string): string => `${group}: ${option}`,
+};

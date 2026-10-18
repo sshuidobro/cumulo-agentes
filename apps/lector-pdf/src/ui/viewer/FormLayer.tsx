@@ -66,15 +66,24 @@ export function FormLayer({ pageIndex, viewport }: FormLayerProps) {
   const passive = tool !== 'none';
 
   const controls: ReactNode[] = [];
-  /** Widgets rellenables de la página en orden de tabulación: Tab y Mayús+Tab saltan entre páginas desde sus extremos. */
-  const tabOrder: string[] = [];
+  /**
+   * Paradas de tabulación de la página en orden: una por campo, salvo los botones de opción, que son una sola
+   * parada por grupo (el navegador las trata así). Tab y Mayús+Tab saltan a otra página desde sus extremos.
+   */
+  const tabStops: string[] = [];
+  /** Parada de tabulación a la que pertenece cada widget rellenable. */
+  const tabStopOf = new Map<string, string>();
   for (const name of names ?? []) {
     const field = fields.get(name);
     if (field === undefined || !SUPPORTED_TYPES.has(field.type)) continue;
     const value = values.get(field.name) ?? field.initial;
     for (const widget of field.widgets) {
       if (widget.pageIndex !== pageIndex) continue;
-      if (isFillable(field)) tabOrder.push(widget.id);
+      if (isFillable(field)) {
+        const stop = field.type === 'radio' ? `radio:${field.name}` : widget.id;
+        tabStopOf.set(widget.id, stop);
+        if (!tabStops.includes(stop)) tabStops.push(stop);
+      }
       controls.push(
         <FormControl
           key={widget.id}
@@ -102,14 +111,16 @@ export function FormLayer({ pageIndex, viewport }: FormLayerProps) {
   }, [pageIndex, controlCount, navSeq]);
 
   if (names === undefined) return null;
-  const firstId = tabOrder[0];
-  const lastId = tabOrder[tabOrder.length - 1];
+  const firstStop = tabStops[0];
+  const lastStop = tabStops[tabStops.length - 1];
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key !== 'Tab' || !(event.target instanceof HTMLElement)) return;
     const id = event.target.dataset.widgetId;
     if (id === undefined) return;
+    const stop = tabStopOf.get(id);
+    if (stop === undefined) return;
     const backward = event.shiftKey;
-    if (backward ? id !== firstId : id !== lastId) return;
+    if (backward ? stop !== firstStop : stop !== lastStop) return;
     if (focusAdjacentPage(pageIndex, backward ? -1 : 1)) event.preventDefault();
   };
   return (
@@ -211,7 +222,7 @@ function FormControl({ field, widget, value, viewport, highlight, night, passive
         />
       );
     }
-    // Un control por widget: el nombre accesible es su estado («Azul»); las flechas recorren el grupo `name`.
+    // Un control por widget: el nombre accesible incluye el campo y su estado («color: Azul»); las flechas recorren el grupo `name`.
     const onState = widget.onState;
     return (
       <input
@@ -219,7 +230,7 @@ function FormControl({ field, widget, value, viewport, highlight, night, passive
         className={toggleClass}
         type="radio"
         name={`campo:${field.name}`}
-        aria-label={onState ?? label}
+        aria-label={onState === null ? label : formMsg.radioOptionName(label, onState)}
         disabled={!fillable}
         checked={value.kind === 'radio' && onState !== null && value.selected === onState}
         onChange={() => {

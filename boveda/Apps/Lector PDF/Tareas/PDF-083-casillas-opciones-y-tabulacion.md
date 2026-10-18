@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-083
 titulo: Casillas, botones de opción, tabulación entre páginas y E2E de formularios
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-041, PDF-042]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -70,3 +70,9 @@ Typecheck OK; tests de la ficha (41) OK; e2e no ejecutado por indicación. Lint 
 1. `apps/lector-pdf/src/ui/viewer/FormLayer.tsx` (`onKeyDown`, `firstId`/`lastId`) — con un grupo de botones de opción como último (o primer) campo de la página, Tab (o Mayús+Tab) no salta de página: el navegador trata el grupo como una sola parada y el foco suele estar en la opción marcada, que no es el último (ni el primero) widget del grupo, así que `id !== lastId` corta el salto. Hay que decidir «extremo» por grupo de campo (mismo `name`), no por id de widget, y añadir test UI (radio como último campo con otra opción enfocada).
 2. `FormLayer.tsx` radio — cada botón se nombra solo «Azul», sin el nombre del campo (`color`), que pide el criterio; sin `role="radiogroup"` ni etiqueta de grupo un lector de pantalla no sabe a qué pregunta responde. Envolver los widgets del grupo o poner un nombre accesible que incluya el campo (p. ej. `color: Azul`) y ajustar el test.
 3. (opcional) `aria-label` de la firma sin el nombre del campo; y `yFraction` ignora el giro de la vista.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/FormLayer.tsx` (paradas de Tab por grupo de botones de opción y nombre accesible), `apps/lector-pdf/src/ui/messages-forms.ts` (`radioOptionName`), tests `tests/ui/form-layer.test.tsx` (3 tests nuevos de Tab por grupo y nombres «color: Rojo/Verde/Azul») y `tests/e2e/forms.spec.ts` (nombres de las opciones).
+- Qué he hecho: (1) Tab y Mayús+Tab deciden «extremo» por parada: un grupo de botones de opción (mismo `name`) es una sola parada, así que desde la opción marcada, aunque no sea la última, Tab pasa a la página siguiente si el grupo es el último de la página. (2) Cada opción se nombra «campo: estado» (p. ej. «color: Azul») para que un lector de pantalla sepa a qué pregunta responde; el criterio «nombre accesible (`color`)» queda cumplido.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf exec vitest run tests/ui/form-layer.test.tsx tests/unit/forms-actions.test.ts` → 45 pasan. `pnpm typecheck` → OK. `pnpm --filter lector-pdf e2e -- tests/e2e/forms.spec.ts` → 5 pasan. `pnpm lint` → código 1, todos los errores en `apps/lector-pdf/dist-firma/` (build ajeno, ya conocido); ningún error en ficheros de esta ficha. `pnpm coverage` → 2325 pasan, 1 falla: `tests/ui/zoom-controls.test.tsx` (ajena, ya conocida).
+- Dudas o cosas que no he podido hacer: sin cambios en `dist-firma/` ni en el test de zoom (fuera de alcance; requieren decisión del líder). Pendientes del revisor opcionales no tratados: `aria-label` de la firma sin el nombre del campo y `yFraction` sin tener en cuenta el giro de la vista. Un grupo de opciones con el mismo nombre en dos páginas compartiría grupo de flechas en el navegador (caso no cubierto por la ficha).

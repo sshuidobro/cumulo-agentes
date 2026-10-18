@@ -106,9 +106,9 @@ test('solo con teclado: rellenar form-full.pdf, guardar, reabrir y ver los valor
 
   // Botones de opción: el grupo entra por el marcado (Verde); una flecha pasa a Azul.
   await page.keyboard.press('Tab');
-  await expect(p1('radio', 'Verde')).toBeFocused();
+  await expect(p1('radio', 'color: Verde')).toBeFocused();
   await page.keyboard.press('ArrowRight');
-  await expect(p1('radio', 'Azul')).toBeChecked();
+  await expect(p1('radio', 'color: Azul')).toBeChecked();
 
   // Combo «pais»: la inicial elige Portugal; lista «idiomas»: la inicial elige Francés.
   await page.keyboard.press('Tab');
@@ -143,7 +143,7 @@ test('solo con teclado: rellenar form-full.pdf, guardar, reabrir y ver los valor
   const reopened = await openInNewPage(page, saved);
   await expect(reopened.getByRole('textbox', { name: 'nombre', exact: true }).first()).toHaveValue('María José');
   await expect(pageFrame(reopened, 1).getByRole('checkbox', { name: 'acepto' })).toBeChecked();
-  await expect(pageFrame(reopened, 1).getByRole('radio', { name: 'Azul' })).toBeChecked();
+  await expect(pageFrame(reopened, 1).getByRole('radio', { name: 'color: Azul' })).toBeChecked();
   await expect(reopened).not.toHaveTitle(/• /);
 });
 

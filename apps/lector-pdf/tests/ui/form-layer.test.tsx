@@ -340,9 +340,16 @@ describe('capa de formularios · casillas, botones de opción y firma', () => {
   it('clic sobre el botón «Azul» confirma selected «Azul»; el grupo marca «Verde» al inicio', async () => {
     const user = userEvent.setup();
     renderPage();
-    expect(screen.getByRole('radio', { name: 'Verde' })).toBeChecked();
-    await user.click(screen.getByRole('radio', { name: 'Azul' }));
+    expect(screen.getByRole('radio', { name: 'color: Verde' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'color: Azul' }));
     expect(setFieldValue).toHaveBeenCalledWith('color', { kind: 'radio', selected: 'Azul' });
+  });
+
+  it('cada botón de opción se nombra con el campo y su estado («color: Rojo»)', () => {
+    renderPage();
+    expect(screen.getByRole('radio', { name: 'color: Rojo' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'color: Verde' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'color: Azul' })).toBeInTheDocument();
   });
 
   it('los botones de opción comparten el grupo del campo (las flechas recorren el grupo)', () => {
@@ -358,7 +365,7 @@ describe('capa de formularios · casillas, botones de opción y firma', () => {
     box.focus();
     expect(box).toHaveFocus();
     expect(box.className).toMatch(/toggle/);
-    const blue = screen.getByRole('radio', { name: 'Azul' });
+    const blue = screen.getByRole('radio', { name: 'color: Azul' });
     blue.focus();
     expect(blue).toHaveFocus();
   });
@@ -410,5 +417,36 @@ describe('capa de formularios · Tab entre páginas', () => {
     renderPage();
     expect(takePendingFocus).toHaveBeenCalledWith(0);
     expect(screen.getByRole('checkbox', { name: 'acepto' })).toHaveFocus();
+  });
+
+  it('un grupo de botones de opción al final de la página cuenta como una parada: Tab desde la opción marcada (no la última) pide la página siguiente', async () => {
+    const user = userEvent.setup();
+    vi.mocked(focusAdjacentPage).mockReturnValue(true);
+    setForms([nombre, color]);
+    renderPage();
+    const green = screen.getByRole('radio', { name: 'color: Verde' });
+    green.focus();
+    await user.tab();
+    expect(focusAdjacentPage).toHaveBeenCalledWith(0, 1);
+  });
+
+  it('un grupo de botones de opción al principio: Mayús+Tab desde la opción marcada (no la primera) pide la página anterior', async () => {
+    const user = userEvent.setup();
+    vi.mocked(focusAdjacentPage).mockReturnValue(true);
+    setForms([color, nombre]);
+    renderPage();
+    const green = screen.getByRole('radio', { name: 'color: Verde' });
+    green.focus();
+    await user.tab({ shift: true });
+    expect(focusAdjacentPage).toHaveBeenCalledWith(0, -1);
+  });
+
+  it('Tab desde una opción de un grupo que no está al final no pide la página siguiente', async () => {
+    const user = userEvent.setup();
+    setForms([color, nombre]);
+    renderPage();
+    screen.getByRole('radio', { name: 'color: Verde' }).focus();
+    await user.tab();
+    expect(focusAdjacentPage).not.toHaveBeenCalled();
   });
 });
