@@ -5,9 +5,11 @@ import { fixtureSource, nodeAssetBase } from '../../helpers/pdfjs-node';
 import { loadPdf, type LoadedPdf } from '../../../src/engine';
 import type { RawAnnotation } from '../../../src/core/annotations/import';
 import { PALETTE } from '../../../src/core/annotations/palette';
+import { PageDimsTable } from '../../../src/core/page-dims';
 import {
   addAnnotation,
   addAnnotations,
+  addNoteFromKeyboard,
   deleteAnnotation,
   endAnnotationSession,
   ensurePageAnnotations,
@@ -16,6 +18,7 @@ import {
   redo,
   setAuthor,
   setInkWidth,
+  setTool,
   setToolColor,
   startAnnotationSession,
   undo,
@@ -236,5 +239,55 @@ describe('preferencias', () => {
     expect(useAnnotations.getState().author).toBe('Usuario');
     setAuthor('  Ana  ');
     expect(useAnnotations.getState().author).toBe('Ana');
+  });
+});
+
+describe('nota con teclado (PDF-072)', () => {
+  it('crea la nota en la página actual, arriba a la izquierda de lo visible, y la deja seleccionada con su ventana abierta', () => {
+    useViewer.setState({ dims: PageDimsTable.uniform(3, 612, 792, 0), currentPage: 1, currentYFraction: 0, rotation: 0 });
+    setTool('note');
+
+    const id = addNoteFromKeyboard();
+
+    expect(id).not.toBeNull();
+    const note = id === null ? undefined : getEffective().get(id);
+    expect(note?.type).toBe('note');
+    expect(note?.pageIndex).toBe(1);
+    expect(note?.rect).toEqual([24, 748, 44, 768]);
+    expect(useAnnotations.getState().tool).toBe('none');
+    expect(useAnnotations.getState().selectedId).toBe(id);
+    expect(useAnnotations.getState().openPopupId).toBe(id);
+  });
+
+  it('usa la fracción vertical visible y la rotación total de la vista', () => {
+    useViewer.setState({ dims: PageDimsTable.uniform(2, 612, 792, 0), currentPage: 0, currentYFraction: 0.5, rotation: 90 });
+
+    const id = addNoteFromKeyboard();
+
+    const note = id === null ? undefined : getEffective().get(id);
+    expect(note?.rect).toEqual([330, 24, 350, 44]);
+  });
+
+  it('una sola entrada de deshacer: Ctrl+Z la quita y Ctrl+Y la repone', () => {
+    useViewer.setState({ dims: PageDimsTable.uniform(3, 612, 792, 0), currentPage: 1, currentYFraction: 0, rotation: 0 });
+    const id = addNoteFromKeyboard();
+    expect(id).not.toBeNull();
+
+    undo();
+    expect(id === null ? true : getEffective().has(id)).toBe(false);
+
+    redo();
+    expect(id === null ? false : getEffective().has(id)).toBe(true);
+  });
+
+  it('sin documento (dims null) o con página actual fuera de rango devuelve null y no añade nada', () => {
+    useViewer.setState({ dims: null, currentPage: 0 });
+    expect(addNoteFromKeyboard()).toBeNull();
+
+    useViewer.setState({ dims: PageDimsTable.uniform(2, 612, 792, 0), currentPage: 2 });
+    expect(addNoteFromKeyboard()).toBeNull();
+
+    expect(getEffective().size).toBe(0);
+    expect(useAnnotations.getState().tool).toBe('none');
   });
 });

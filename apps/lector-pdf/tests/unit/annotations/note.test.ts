@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NOTE_SIZE_PT, newNoteAnnotation, noteRectAt } from '../../../src/core/annotations/note';
+import { NOTE_SIZE_PT, keyboardNoteRect, newNoteAnnotation, noteRectAt } from '../../../src/core/annotations/note';
 import { isAnnotation } from '../../../src/core/annotations/model';
 import {
   isBoxOnPage,
@@ -94,5 +94,26 @@ describe('pageBox e isBoxOnPage (PDF-033)', () => {
   it('una caja fuera de la página no está en ella', () => {
     expect(isBoxOnPage({ left: 700, top: 0, right: 720, bottom: 10 }, { width: 612, height: 792 })).toBe(false);
     expect(isBoxOnPage({ left: 600, top: 780, right: 620, bottom: 800 }, { width: 612, height: 792 })).toBe(true);
+  });
+});
+
+describe('keyboardNoteRect (PDF-072)', () => {
+  const W = 612;
+  const H = 792;
+
+  it.each([
+    [0, 0, [24, 748, 44, 768]],
+    [90, 0, [24, 24, 44, 44]],
+    [180, 0, [568, 24, 588, 44]],
+    [270, 0, [568, 748, 588, 768]],
+    [0, 0.5, [24, 352, 44, 372]],
+    [0, 1, [24, 0, 44, 20]],
+    [-90, 0, [568, 748, 588, 768]],
+  ])('rotación %i y fracción %f → %j', (rotation, yFraction, expected) => {
+    expect(keyboardNoteRect(W, H, rotation, yFraction)).toEqual(expected);
+  });
+
+  it('con rotación 90 el alto visible es el ancho de la página: la fracción se mide sobre él', () => {
+    expect(keyboardNoteRect(W, H, 90, 0.5)).toEqual([330, 24, 350, 44]);
   });
 });

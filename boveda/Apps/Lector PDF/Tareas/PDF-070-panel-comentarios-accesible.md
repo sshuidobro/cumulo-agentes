@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-070
 titulo: Hacer accesible el panel de comentarios (nombre visible y Borrar fuera de la fila)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-036]
 intentos: 0
 skills: [calidad-profesional]
@@ -129,3 +129,21 @@ Instrucciones exactas (única corrección pendiente):
   - `pnpm --filter lector-pdf exec playwright test annotations-a11y`: 3 de 3 en verde (0 violaciones serious/critical).
   - `pnpm --filter lector-pdf e2e`: 155 pruebas en verde, código 0 (incluye `annotations-flow` y `annotations-keyboard`, que en la ronda 1 fallaban).
 - Dudas o cosas que no he podido hacer: ninguna. Commit solo de los ficheros de esta ficha; `Plan.md`, PDF-039, PDF-071, PDF-072 y la bitácora quedan sin commitear porque pertenecen a otras fichas.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Commit `cd45199`. `pnpm lint`, `typecheck` y `test` (1693) con código 0; a11y, comments-panel, annotations-flow y annotations-keyboard en verde (7/7). Estructura de fila, `deleteRow`, Supr/Retroceso, botón «Borrar comentario» e icono decorativo conformes con la ficha; tests con las mismas aserciones y solo localizadores cambiados.
+1. (opcional) `tests/ui/comments-panel.test.tsx` — el título del test «ninguna fila contiene botones… ( ni con comentario de solo lectura)» tiene un paréntesis mal redactado.
+2. (opcional) Tras borrar con el botón «Borrar comentario», este queda deshabilitado si no hay fila activa y el foco se pierde; decisión del líder («el foco no se mueve»), valorar en una ficha futura.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Tests de `comments-panel.test.tsx` (nombre, sin botones/tabindex, Supr + Ctrl+Z, solo lectura, «Borrar comentario», icono sin navegar) | OK | `vitest run tests/ui/comments-panel.test.tsx`: 19/19 (18 + 1 añadido) |
+| `annotations-a11y` | OK | 3 de 3 en verde, 0 violaciones serious/critical |
+| `pnpm --filter lector-pdf e2e` | OK | 155 de 155, código 0 |
+| Sin skip/only/expect(true); sin aserciones perdidas | OK | grep vacío; el diff solo cambia localizadores |
+| lint, typecheck, test, build web | OK | lint 0 avisos; typecheck 0; 1693 tests en verde; build correcto |
+
+Tests añadidos: «al borrar con Supr la última fila, la activa pasa a la anterior» (`tests/ui/comments-panel.test.tsx`).
+Rendimiento: sin cambios en el test de 10 000 anotaciones (menos de 40 filas montadas), en verde.
+Observación (no bloquea): tras borrar con el botón «Borrar comentario» sin fila siguiente, el botón se deshabilita y el foco se pierde (ya anotado por el revisor).

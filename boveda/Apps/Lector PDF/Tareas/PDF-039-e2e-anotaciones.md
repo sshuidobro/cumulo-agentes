@@ -3,8 +3,8 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: bloqueada
-depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069]
+estado: en-curso
+depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
 creado: 2026-10-17
@@ -67,3 +67,15 @@ Demostrar el flujo completo que pidió el usuario —subrayar y hacer notas, gua
   3. **Bug en la barra «Comentar» (PDF-069), fuera de alcance:** con el foco en un botón de la barra, ←/→ mueven el foco entre botones y además cambian de página (el atajo global `next-page` también recibe la tecla; `CommentToolbar` no detiene la propagación). Reproducción: foco en «Resaltar», pulsar → una vez: página +1. La prueba de teclado no usa ←→ en la barra para no depender de ese bug; conviene arreglarlo con un test rojo previo en PDF-069.
   4. Por lo anterior, la ficha no cumple «`pnpm --filter lector-pdf e2e` con código 0» ni el criterio de axe. No la paso a `en-revision` con pruebas en rojo: queda `bloqueada` hasta que el líder decida sobre los puntos 1 y 2 (y corrija el 3).
   5. Commit: solo los ficheros de esta ficha. Quedan sin commitear cambios ajenos que ya había (`apps/lector-pdf/tests/ui/ink.test.tsx` y la ficha PDF-035), que no tocan esta ficha.
+
+### [lider] replanificación — 2026-10-18
+Decisiones técnicas y de accesibilidad (no de producto) sobre los puntos de la ronda 1:
+1. Panel de comentarios (axe) → [[PDF-070-panel-comentarios-accesible]]: el nombre de la fila pasa a ser su contenido visible (empieza por «Nota de Ana, página 1»), sin `aria-label`; ningún control enfocable dentro de `role="option"`: borrar con Supr/Retroceso en la lista, botón «Borrar comentario» en la barra del panel y papelera decorativa (`aria-hidden`) para el ratón. Esa ficha adapta los localizadores de los e2e de esta ficha (`optionName()` en `annotations-kit.ts`).
+2. Nota solo con teclado → [[PDF-072-nota-con-teclado]]: activar «Nota» con Intro/Espacio (clic con `detail === 0`) crea la nota en la página actual, arriba a la izquierda de lo visible, con su ventana abierta; Esc y flechas la mueven. Con ratón, sin cambios.
+3. ←/→ de la barra «Comentar» cambiando de página → [[PDF-071-barra-comentar-flechas]] (test rojo previo; falta `stopPropagation()`).
+- `depende_de` gana PDF-070, PDF-071 y PDF-072. Estado → `pendiente`, `intentos: 0`. Lo commiteado en la ronda 1 se conserva.
+- **Qué queda en esta ficha al reanudarla:**
+  - `annotations-keyboard.spec.ts`: recorrer la barra «Comentar» con ←/→ (comprobando que el indicador de página no cambia) y crear la nota solo con teclado (foco en «Nota», Intro, escribir, Esc, flechas), sin ningún clic; quitar la nota de cabecera sobre el clic.
+  - Volver a ejecutar toda la batería: `pnpm --filter lector-pdf e2e` y con `--repeat-each=3` (código 0, incluido axe), `qpdf --check` y medidas del punto 3 en el Registro.
+  - Los cambios ajenos sin commitear (`tests/ui/ink.test.tsx`, ficha PDF-035) no son de esta ficha.
+
