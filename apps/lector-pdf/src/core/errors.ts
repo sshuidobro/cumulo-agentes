@@ -9,7 +9,8 @@ export type PdfErrorCode =
   | 'io'
   | 'cancelled'
   | 'save-encrypted'
-  | 'save-unreadable';
+  | 'save-unreadable'
+  | 'invalid-image';
 
 export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
@@ -21,6 +22,7 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'cancelled': 'Apertura cancelada.',
   'save-encrypted': 'No se pueden guardar anotaciones en este PDF porque está cifrado. Llegará en una próxima versión.',
   'save-unreadable': 'No se pueden guardar las anotaciones: la estructura interna del PDF está dañada.',
+  'invalid-image': 'La imagen no es válida o no está en un formato admitido (PNG o JPEG).',
 };
 
 /** Crea un error de PDF con mensaje en español. `cause` conserva el error original para diagnóstico. */

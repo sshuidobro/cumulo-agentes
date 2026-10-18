@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-084
 titulo: Objetos de imagen PDF desde RGBA y JPEG
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -54,3 +54,14 @@ export function jpegImageObject(bytes: Uint8Array): Result<PdfStream>;  // err('
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/image.ts` (nuevo), `apps/lector-pdf/tests/unit/pdf-image.test.ts` (nuevo), `apps/lector-pdf/src/core/errors.ts` (código `invalid-image` y mensaje), `apps/lector-pdf/src/core/pdf/index.ts` (re-exporta `./image`).
+- Qué he hecho: `rgbaImageObjects` (RGB + SMask gris con FlateDecode; sin SMask si todo es opaco; `RangeError` si dimensiones o `rgba` no cuadran), `readJpegInfo` (recorre marcadores hasta SOF0/1/2; `null` ante cualquier dato inválido o truncado, sin lanzar) y `jpegImageObject` (`/DCTDecode`, gris/RGB/CMYK con `/Decode` para CMYK; los bytes del JPEG se pasan tal cual). Tests: 19, con qpdf --check y `getOperatorList` de pdf.js sobre un PDF de una página con la imagen RGBA. Sin dependencias nuevas; `@napi-rs/canvas` no está en el proyecto, así que se usó `getOperatorList` como indica la ficha.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/pdf-image.test.ts`: 19/19 OK.
+  - `npx eslint --max-warnings 0` sobre mis 4 ficheros: OK. `pnpm typecheck`: OK (0 errores).
+  - `pnpm coverage` (ruta): `image.ts` con 100 % de líneas, 98,8 % de sentencias y 93,2 % de ramas (criterio ≥ 90 % cumplido).
+  - `pnpm lint` (raíz): **falla** por un error ajeno a esta ficha: `apps/lector-pdf/tests/fixtures/structure.ts:486` `no-constant-condition`. Ese fichero tiene cambios sin commitear de otro trabajo en curso (no lo he tocado).
+  - `pnpm test` (raíz): 1759/1760 OK. Falla `tests/unit/search-actions.test.ts` («cambiar una opción cancela la búsqueda anterior…»), un test de temporización que pasa en aislado (7/7); parece intermitencia por la carga de la máquina, no tiene relación con esta ficha.
+- Dudas o cosas que no he podido hacer: el criterio de `pnpm lint` y `pnpm test` en raíz no se cumple por los dos motivos de arriba, ajenos a esta ficha; conviene que el líder lo confirme cuando el otro trabajo esté commiteado. Los bytes de `jpegImageObject` se pasan sin copiar (el `data` del stream es el mismo `Uint8Array` del llamante), como pide la ficha.
