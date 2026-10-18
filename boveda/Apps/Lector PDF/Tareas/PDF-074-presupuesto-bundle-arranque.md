@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-074
 titulo: Comprobar tras el build el presupuesto del JavaScript de arranque (test rojo previo)
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -79,3 +79,23 @@ Un comando `pnpm --filter lector-pdf bundle:check` que, tras el build, falle si 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/vite.config.ts` (`manifest: true`), `apps/lector-pdf/package.json` (script `bundle:check`), nuevos `apps/lector-pdf/tests/bundle/bundle-budget.ts`, `apps/lector-pdf/tests/bundle/check-bundle.ts`, `apps/lector-pdf/tests/unit/bundle-budget.test.ts`. Esta ficha (estado y Registro).
+- Qué he hecho: implementado `checkBundle` y la CLI según el algoritmo de la ficha, y 6 tests unitarios según sus casos. Dos de esos casos (1 y 2) contradicen el algoritmo de la propia ficha, así que no los he resuelto por mi cuenta (ver Dudas). `bundle:check` funciona y falla hoy como debe.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/bundle-budget.test.ts` → 4 pasan, 2 fallan (`expected 300000 to be 400000` y `expected true to be false`).
+  - `pnpm --filter lector-pdf build` → OK (`index-*.js` 917.14 kB).
+  - `pnpm --filter lector-pdf bundle:check` → código 1. Salida:
+    ```
+    Arranque: 918971 bytes en 2 ficheros JS (máximo 500000).
+    El JavaScript de arranque pesa 918971 bytes (máximo 500000).
+    pdf.js no está en un chunk diferido (import()).
+    ```
+  - `node tests/bundle/check-bundle.ts /tmp/no-existe` (desde `apps/lector-pdf`) → código 1: `Falta /tmp/no-existe/.vite/manifest.json: ejecuta antes el build.`
+  - `eslint` sobre los ficheros nuevos → sin errores. `pnpm --filter lector-pdf typecheck` → OK.
+  - No ejecutado: `pnpm lint`, `pnpm test` de la raíz (no se ha pasado porque la ficha no está cerrada) y la e2e, según indicación.
+- Dudas o cosas que no he podido hacer:
+  - **Contradicción en la ficha.** El algoritmo dice que `entryBytes` suma solo los `.js` del cierre estático desde `index.html` por `imports`, sin `dynamicImports`. Pero el caso 1 espera `entryBytes: 400000` y `staticFiles` con los dos `.js` (incluido el chunk de pdf.js, que es diferido e `isDynamicEntry`), y el caso 2 espera error `pesa 550000 bytes` con 450 000 + 100 000. Con el algoritmo, el caso 1 da 300 000 y el caso 2 da 450 000 (sin error). Para que el caso 1 y el caso 2 se cumplan, el chunk diferido de pdf.js tendría que contar en el presupuesto de arranque, y entonces el total (≈ 918 000 bytes, con pdf.js dentro) nunca bajaría de 500 000, así que PDF-075 no podría pasar a verde. Implementé el algoritmo, que es el que tiene sentido para el objetivo. Hace falta que el líder o el usuario decidan cuál de las dos cosas es la correcta.
+  - Por eso no he cambiado los casos 1 y 2 para que pasen, y no he hecho commit: la rama tiene 2 tests en rojo y no quiero dejarlos en un commit como si estuvieran terminados.
+  - El criterio «`pnpm lint`, `pnpm typecheck` y `pnpm test` con código 0» no se puede cumplir mientras los 2 tests de `bundle-budget.test.ts` estén en rojo.

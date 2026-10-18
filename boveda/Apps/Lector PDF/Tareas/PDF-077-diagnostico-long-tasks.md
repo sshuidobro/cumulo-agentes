@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-077
 titulo: Adjuntar a cada prueba @perf el diagnóstico de long tasks y la carga de la máquina
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -96,3 +96,7 @@ Que cada prueba `@perf` deje en su informe **cuándo** ocurrió cada *long task*
   - Prueba sin `@perf` «un zigzag de 5 segmentos…» (`--project=chromium -g "zigzag de 5"`): código 0, passed, sin anotaciones `carga-cpu-1min` ni `long-tasks` ni adjunto.
   - `grep -l "perf-fixture"`: exactamente los 7 ficheros. `grep "@perf"`: sin cambios. `git diff`: sin `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout`.
 - Dudas o cosas que no he podido hacer: los observadores de long tasks de la fixture se instalan también en las pruebas sin `@perf` de esos 7 ficheros (así lo pide el paso 1 de la ficha); solo cuesta un observador por prueba. Si se quiere evitarlo, habría que condicionar el `addInitScript` a la etiqueta, y eso es decisión de diseño del líder.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Verificado: `--list` 156 tests/39 ficheros y `chromium-perf --no-deps` 7; lint y typecheck con código 0; diff de los 7 specs solo cambia imports; `perf-fixture` en exactamente los 7 ficheros; sin retries/skip/only/fixme/waitForTimeout; teardown en try/catch y solo con `@perf`. No he repetido la batería e2e ni `pnpm test` (indicación del coordinador; el programador reportó verde).
+1. (opcional) `perf-fixture.ts` — el observador se instala también en pruebas sin `@perf`; coste mínimo, decisión del líder.
