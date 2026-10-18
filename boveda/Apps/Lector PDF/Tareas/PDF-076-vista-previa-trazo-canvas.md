@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-076
 titulo: Dibujar la vista previa del trazo de forma incremental en un canvas temporal (test rojo previo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -132,3 +132,17 @@ Que dibujar a mano alzada cueste lo mismo por frame con 10 o con 2 000 puntos y 
 - Desviación `as unknown as CanvasRenderingContext2D` en lugar de `as never`: aceptada.
 - (opcional) Si el zoom o el viewport cambian en mitad de un trazo, el contexto ya preparado conserva el tamaño anterior; caso marginal, no bloquea.
 - (opcional) `AnnotationLayer.tsx`: la línea de `FreeTextEditor` ya estaba mal indentada antes del cambio.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Rojo previo en el Registro | OK | Registro del programador: commits = 100 vs 0 esperado; test sigue en `ink.test.tsx` y ahora pasa |
+| vitest ink.test.tsx + ink-preview.test.ts | OK | incluido en `pnpm test`: 1724/1724 |
+| e2e `-g "ink\|Dibujo\|trazo"` | OK | 15 passed (incluye `ink-preview.spec.ts` a 50 % y 300 %) |
+| Rendimiento `trazo de 2 000` x5 | OK | 5 passed (34,4 s cada uno). Carga al medir: `load average: 6.47` (venía de mi e2e anterior; sin otros procesos playwright/vitest). Pasa incluso con carga |
+| Teclado/deshacer/temas, 125 %/150 % | OK | Ctrl+Z cubierto por `ink.spec.ts` (verde); dpr 1,5 en `ink-preview.test.ts` |
+| Sin canvas extra con herramienta inactiva | OK | test de `ink.test.tsx` comprueba `ink-preview` solo durante el trazo |
+| Sin skip/.only/retries/waitForTimeout | OK | grep del diff del commit a98dc4e: solo coincide texto del Registro |
+| lint, typecheck, test, perf | OK | todos con código 0 |
+Tests añadidos: ninguno (los de la ficha cubren los criterios). Rendimiento: ver arriba.
+Nota: el caso marginal del revisor (cambio de zoom en mitad de un trazo) no se ha probado; no bloquea.
