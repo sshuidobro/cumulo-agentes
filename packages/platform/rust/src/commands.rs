@@ -13,6 +13,7 @@ use tauri_plugin_dialog::{DialogExt, FileDialogBuilder, FilePath};
 use crate::files::{
     atomic_copy_append, atomic_write, file_info, read_range, FileError, FileInfo, FileRegistry,
 };
+use crate::recent::{self, RecentEntry, RecentList, RecentOpenError};
 
 /// Evento que recibe JS cuando el SO pide abrir ficheros.
 pub const OS_OPEN_EVENT: &str = "suite://file-opened";
@@ -21,11 +22,13 @@ const TOKEN_HEADER: &str = "x-suite-token";
 const BASE_TOKEN_HEADER: &str = "x-suite-base-token";
 const EXPECTED_SIZE_HEADER: &str = "x-suite-expected-size";
 
-/// Estado gestionado por la app: registro de rutas y cola de ficheros abiertos desde el SO.
+/// Estado gestionado por la app: registro de rutas, cola de ficheros abiertos desde el SO
+/// y candado que serializa las lecturas y escrituras de `recent.json`.
 #[derive(Default)]
 pub struct SuitePlatformState {
     pub registry: FileRegistry,
     pub pending: Mutex<Vec<FileInfo>>,
+    pub recents_gate: Mutex<()>,
 }
 
 /// Metadatos de un fichero tal como los recibe JS.
@@ -47,6 +50,32 @@ impl From<FileInfo> for FileInfoDto {
             path: info.path,
             size: info.size,
             last_modified: info.last_modified_ms,
+        }
+    }
+}
+
+/// Documento reciente tal como lo recibe JS (`RecentFile` de `@suite/platform`).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentDto {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub size: Option<u64>,
+    pub opened_at: u64,
+    pub available: bool,
+}
+
+impl From<RecentEntry> for RecentDto {
+    fn from(entry: RecentEntry) -> Self {
+        let available = entry.path.exists();
+        RecentDto {
+            id: entry.id,
+            name: entry.name,
+            path: entry.path.to_string_lossy().into_owned(),
+            size: entry.size,
+            opened_at: entry.opened_at,
+            available,
         }
     }
 }
@@ -98,6 +127,53 @@ fn raw_body<'a>(request: &'a Request<'_>) -> Result<&'a [u8], CommandError> {
 
 fn lock_pending(state: &SuitePlatformState) -> MutexGuard<'_, Vec<FileInfo>> {
     state.pending.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+fn lock_recents(state: &SuitePlatformState) -> MutexGuard<'_, ()> {
+    state.recents_gate.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// `recent.json` en la carpeta de datos de la app.
+fn recent_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, FileError> {
+    app.path()
+        .app_data_dir()
+        .map(|dir| dir.join("recent.json"))
+        .map_err(|_| FileError::Io("carpeta de datos no disponible".to_string()))
+}
+
+/// Lee, cambia y guarda la lista de recientes con el candado tomado.
+fn update_recents<R: Runtime, T>(
+    app: &AppHandle<R>,
+    state: &SuitePlatformState,
+    change: impl FnOnce(&mut RecentList) -> T,
+) -> Result<T, FileError> {
+    let file = recent_file(app)?;
+    let _gate = lock_recents(state);
+    let mut list = recent::load(&file);
+    let result = change(&mut list);
+    recent::save(&file, &list)?;
+    Ok(result)
+}
+
+/// Anota en recientes una ruta elegida por el usuario o recibida del SO. Es un
+/// efecto secundario: si no se puede guardar la lista, la apertura sigue adelante.
+fn remember<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &SuitePlatformState,
+    path: &Path,
+    size: Option<u64>,
+) {
+    let _ = update_recents(app, state, |list| list.touch(path, size, recent::now_ms()));
+}
+
+fn recent_open_error(error: RecentOpenError) -> CommandError {
+    match error {
+        RecentOpenError::UnknownId => CommandError {
+            code: "unknown-recent".to_string(),
+            message: "Ese fichero ya no está en recientes.".to_string(),
+        },
+        RecentOpenError::File(error) => CommandError::from(error),
+    }
 }
 
 fn apply_filters<R: Runtime>(
@@ -158,7 +234,9 @@ pub async fn suite_open_dialog<R: Runtime>(
         None => Ok(None),
         Some(picked) => {
             let path = picked_path(picked)?;
-            Ok(Some(register_existing(&state.registry, &path)?.into()))
+            let info = register_existing(&state.registry, &path)?;
+            remember(&app, &state, &path, Some(info.size));
+            Ok(Some(info.into()))
         }
     }
 }
@@ -176,7 +254,11 @@ pub async fn suite_save_dialog<R: Runtime>(
         None => Ok(None),
         Some(picked) => {
             let path = picked_path(picked)?;
-            Ok(Some(register_target(&state.registry, &path)?.into()))
+            let info = register_target(&state.registry, &path)?;
+            // Un destino que aún no existe no tiene tamaño: se anota sin él.
+            let size = info.last_modified_ms.map(|_| info.size);
+            remember(&app, &state, &path, size);
+            Ok(Some(info.into()))
         }
     }
 }
@@ -236,6 +318,60 @@ pub async fn suite_append_atomic(
     Ok(file_info(target_token, &target)?.into())
 }
 
+/// Lista de recientes, la más reciente primero. `available` indica si la ruta sigue existiendo.
+#[tauri::command]
+pub async fn suite_recent_list<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Vec<RecentDto>, CommandError> {
+    let file = recent_file(&app)?;
+    Ok(recent::load(&file)
+        .entries
+        .into_iter()
+        .map(RecentDto::from)
+        .collect())
+}
+
+/// Reabre el reciente `id`: registra su ruta como si se hubiera elegido en el diálogo.
+/// JS nunca envía una ruta, solo el id de la lista que guarda Rust.
+#[tauri::command]
+pub async fn suite_recent_open<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, SuitePlatformState>,
+    id: String,
+) -> Result<FileInfoDto, CommandError> {
+    let file = recent_file(&app)?;
+    let _gate = lock_recents(&state);
+    let mut list = recent::load(&file);
+    let info = recent::open_recent(&state.registry, &mut list, &id, recent::now_ms())
+        .map_err(recent_open_error)?;
+    // La apertura ya es válida: si no se puede guardar el orden, no se deshace.
+    let _ = recent::save(&file, &list);
+    Ok(info.into())
+}
+
+/// Quita una entrada de recientes. No borra el fichero.
+#[tauri::command]
+pub async fn suite_recent_remove<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, SuitePlatformState>,
+    id: String,
+) -> Result<(), CommandError> {
+    update_recents(&app, &state, |list| {
+        list.remove(&id);
+    })?;
+    Ok(())
+}
+
+/// Vacía la lista de recientes. No borra ningún fichero.
+#[tauri::command]
+pub async fn suite_recent_clear<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, SuitePlatformState>,
+) -> Result<(), CommandError> {
+    update_recents(&app, &state, RecentList::clear)?;
+    Ok(())
+}
+
 /// Quita un token del registro. Devuelve `true` si existía.
 #[tauri::command]
 pub fn suite_close(state: State<'_, SuitePlatformState>, token: String) -> bool {
@@ -270,6 +406,7 @@ pub fn register_os_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<PathBuf>) {
         let Ok(info) = register_existing(&state.registry, &path) else {
             continue;
         };
+        remember(app, &state, &path, Some(info.size));
         lock_pending(&state).push(info);
         queued = true;
     }
@@ -290,6 +427,10 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
         suite_close,
         suite_take_pending_opens,
         suite_print,
+        suite_recent_list,
+        suite_recent_open,
+        suite_recent_remove,
+        suite_recent_clear,
     ]
 }
 
@@ -338,6 +479,37 @@ mod tests {
                 "path": "/x/a.pdf",
                 "size": 10,
                 "lastModified": 5
+            })
+        );
+    }
+
+    #[test]
+    fn recent_dto_serializa_con_claves_en_camel_case_y_disponibilidad() {
+        let dir = std::env::temp_dir().join(format!("suite-recent-dto-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("crear directorio temporal");
+        let existing = dir.join("a.pdf");
+        std::fs::write(&existing, b"%PDF").expect("crear fichero");
+        let entry = RecentEntry {
+            id: "r1-0".to_string(),
+            path: existing.clone(),
+            name: "a.pdf".to_string(),
+            size: Some(4),
+            opened_at: 7,
+        };
+
+        let json = serde_json::to_value(RecentDto::from(entry)).expect("serializar");
+        let _ = std::fs::remove_dir_all(&dir);
+
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "id": "r1-0",
+                "name": "a.pdf",
+                "path": existing.to_string_lossy(),
+                "size": 4,
+                "openedAt": 7,
+                "available": true
             })
         );
     }

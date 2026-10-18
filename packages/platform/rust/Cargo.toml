@@ -10,12 +10,12 @@ name = "suite_platform"
 
 [features]
 default = []
-tauri = ["dep:tauri", "dep:tauri-plugin-dialog", "dep:serde"]
+tauri = ["dep:tauri", "dep:tauri-plugin-dialog"]
 
 [dependencies]
 tauri = { version = "=2.12.4", optional = true }
 tauri-plugin-dialog = { version = "=2.8.3", optional = true }
-serde = { version = "=1.0.229", features = ["derive"], optional = true }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
 
 [dev-dependencies]
-serde_json = "=1.0.154"
