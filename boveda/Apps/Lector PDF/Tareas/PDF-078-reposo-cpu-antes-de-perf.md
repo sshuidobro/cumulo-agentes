@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-078
 titulo: Esperar a que la CPU esté en reposo antes de cada prueba @perf y medir la CPU real durante ella
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
@@ -103,3 +103,17 @@ Que ninguna prueba `@perf` empiece a medir con la CPU ocupada: antes de cada una
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/cpu-usage.ts` (nuevo), `apps/lector-pdf/tests/unit/cpu-usage.test.ts` (nuevo, escrito antes que el módulo: rojo por import inexistente), `apps/lector-pdf/tests/e2e/perf-fixture.ts` (puerta de reposo, anotaciones `reposo-cpu` y `cpu-durante`, `top` en vez de `ps`, `timeout: 200_000`), esta ficha.
+- Qué he hecho: implementado el módulo de CPU y la puerta de reposo según la ficha; los 8 tests unitarios pasan. Con la máquina en reposo la prueba `@perf` pasa; con dos bucles `node` ocupando 2 núcleos falla tras 150 s con el mensaje esperado. Única desviación textual: en `waitForCpuRest` he declarado `let last: number;` sin el `= 1` inicial, porque ESLint (`no-useless-assignment`) lo marcaba como asignación inútil; el valor inicial nunca se lee.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/cpu-usage.test.ts`: rojo antes (import inexistente), verde después: 8/8.
+  - `pnpm lint`: 0 (tras corregir la asignación inútil). `pnpm typecheck`: 0.
+  - `pnpm test` (suite completa, en serie): 0. 148 ficheros, 1732 tests.
+  - `playwright test --project=chromium-perf --no-deps -g "trazo de 2 000" --reporter=list,json` con reposo: código 0. Anotaciones de referencia en reposo (valor de referencia para PDF-073): `carga-cpu-1min` 2.42 → 2.18 (4 núcleos); `reposo-cpu` 4 % tras 3 s de espera; `cpu-durante` 27 % de 4 núcleos; `long-tasks` 58 ms @ 63 ms. `topProcesses` (ahora): `2.0 claude`, `2.0 headless_shell.`, `0.0 process_api`, `0.0 kthreadd`, `0.0 pool_workqueue_release`. Los campos `restBusy`, `restWaitedMs` y `cpuDuring` están en el adjunto `perf-diagnostico.json`.
+  - Puerta con carga (dos `node` busy-loop de 200 s en paralelo, 2 de 4 núcleos): código 1; mensaje: «La máquina no está en reposo: CPU ocupada 51 % (máximo 15 %) tras 150 s. La medida de long tasks no sería válida (ADR-0016); repite cuando no haya otras baterías en marcha.». Los dos `node` se han matado y `pgrep` no encuentra ninguno.
+  - `--project=chromium -g "zigzag de 5"` (sin `@perf`): código 0 en ambas versiones. Duración de la prueba en el JSON: 1782 ms; tiempo de pared del comando 8,53 s sin el cambio de fixture y 8,56 s con él (incluye el build). 0 anotaciones y 0 adjuntos.
+  - `--list`: 160 tests en 41 ficheros (sin cambios en ningún `.spec.ts`, así que el total no cambia). `--list --project=chromium-perf --no-deps`: 7.
+  - Auditoría: `git diff` no toca umbrales de long tasks ni ningún `.spec.ts`; no hay `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout` en lo añadido.
+- Dudas o cosas que no he podido hacer: (1) En el caso con carga, Playwright muestra «(170ms)» junto a la prueba fallida, mientras que el mensaje dice «tras 150 s» (calculado con `Date.now`). Parece que el reporte `list` no cuenta el tiempo de la fixture; no lo he investigado, el mensaje sí demuestra la espera de 150 s. (2) La batería ×3 no es de esta ficha (es la verificación de PDF-073).
