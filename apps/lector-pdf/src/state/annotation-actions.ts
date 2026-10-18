@@ -328,6 +328,22 @@ export function deleteAnnotation(id: string): void {
   }
 }
 
+/** Etiqueta de la entrada de deshacer que aplica un borrador recuperado (PDF-038). */
+const RECOVER_LABEL = 'recuperar cambios';
+
+/** Aplica los cambios de un borrador recuperado como una única entrada de deshacer. */
+export function recoverEdits(recovered: AnnotationEdits): void {
+  const ids = new Set([...recovered.upserts.keys(), ...recovered.removed]);
+  if (ids.size === 0) return;
+  apply(() => {
+    stack.group(RECOVER_LABEL, () => {
+      for (const id of ids) {
+        stack.execute(setEntryCommand(RECOVER_LABEL, id, recovered.upserts.get(id), recovered.removed.has(id)));
+      }
+    });
+  });
+}
+
 export function undo(): void {
   apply(() => {
     stack.undo();

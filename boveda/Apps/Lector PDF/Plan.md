@@ -4,13 +4,13 @@ app: pdf
 estado: en-curso
 iteracion: 1
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [plan, pdf]
 ---
 
 # Plan · Lector PDF
 
-Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0014-localizar-paginas-por-count]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]] (se crea al cerrar la iteración 1)
+Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0014-localizar-paginas-por-count]] · [[ADR-0015-modo-noche-por-pixeles]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]] (se crea al cerrar la iteración 1)
 
 ## Objetivo
 Sustituir a Adobe Acrobat Reader (y a lo más usado de Acrobat Pro) para uso personal, en escritorio (Tauri) y navegador.
@@ -120,7 +120,7 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 | [[PDF-017-busqueda-nucleo]] | Núcleo de búsqueda incremental | PDF-005 | pendiente |
 | [[PDF-018-busqueda-ui]] | Búsqueda en la interfaz | PDF-017, PDF-013 | pendiente |
 | [[PDF-019-recordar-posicion]] | Recordar última página y zoom | PDF-012 | pendiente |
-| [[PDF-020-tema-y-modo-noche]] | Tema claro/oscuro y modo noche | PDF-015 | pendiente |
+| [[PDF-020-tema-y-modo-noche]] | Tema claro/oscuro y modo noche | PDF-015 | cambios-pedidos (desbloqueada, [[ADR-0015-modo-noche-por-pixeles]]) |
 | [[PDF-021-app-tauri]] | App de escritorio Tauri | PDF-008, COM-009, COM-010 | pendiente |
 | [[PDF-022-e2e-y-rendimiento-iteracion-1]] | E2E y presupuestos de la iteración 1 | PDF-004, PDF-011, PDF-012, PDF-013, PDF-014, PDF-016, PDF-018, PDF-019, PDF-020, PDF-021 | pendiente |
 

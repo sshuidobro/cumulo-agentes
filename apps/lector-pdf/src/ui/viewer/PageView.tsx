@@ -112,7 +112,7 @@ export const PageView = memo(function PageView({
           rotation: normalizeRotation(loaded.rotate + rotation),
           outputScale: plan.outputScale,
           signal,
-          ...(nightMode ? { pageColors: NIGHT_PAGE_COLORS } : {}),
+          ...(nightMode ? { night: NIGHT_PAGE_COLORS } : {}),
         });
         if (pendingRef.current === canvas) pendingRef.current = null;
 

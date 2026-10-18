@@ -3,7 +3,7 @@ import { DEFAULT_NIGHT_MODE, DEFAULT_THEME, type Theme } from '../core/appearanc
 
 export interface AppearanceState {
   readonly theme: Theme;
-  /** Modo noche de las páginas: el documento se dibuja con `NIGHT_PAGE_COLORS`. */
+  /** Modo noche de las páginas: los píxeles de cada página se transforman con `NIGHT_PAGE_COLORS` (ADR-0015). */
   readonly nightMode: boolean;
 }
 

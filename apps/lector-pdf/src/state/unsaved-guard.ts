@@ -1,6 +1,7 @@
 import { msg } from '../ui/messages';
 import { useAnnotations } from './annotation-store';
 import { askChoice } from './choice';
+import { discardCurrentDraft } from './draft-sync';
 import { save } from './save-actions';
 import { services } from './services';
 import { useViewer } from './viewer-store';
@@ -22,7 +23,10 @@ export async function confirmDiscardOrSave(): Promise<'proceed' | 'cancel'> {
     ],
     cancel: 'cancel',
   });
-  if (choice === 'discard') return 'proceed';
+  if (choice === 'discard') {
+    await discardCurrentDraft();
+    return 'proceed';
+  }
   if (choice === 'save') {
     const result = await save();
     return result === 'saved' || result === 'downloaded' || result === 'nothing' ? 'proceed' : 'cancel';

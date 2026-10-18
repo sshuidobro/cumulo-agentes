@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-018
 titulo: Búsqueda en la interfaz (Ctrl+F, opciones, resaltado, siguiente/anterior, progreso)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-017, PDF-013]
 intentos: 2
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -125,3 +125,23 @@ Medición propia (puerto 4408, `workers: 1`, load medio 3-6 en 4 núcleos por ot
   - El criterio «`pnpm --filter lector-pdf e2e` con código 0» **no se cumple** por el fallo ajeno de `appearance.spec.ts:125`. No lo he saltado ni tocado.
   - `pnpm perf` no es estable con la carga actual de la máquina (ver segunda ejecución). Pasa en la última; conviene repetirlo al revisar.
   - No he hecho commit (el usuario lo ha prohibido en el árbol compartido).
+
+### [revisor] ronda 3 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` 0, `typecheck` 0, `pnpm test` 1470/1470. E2E de `search.spec.ts` con config temporal propia (puerto 4421, borrada) y `--repeat-each=2`: 10/10 en verde, incluido `aguja` (3,9 s y 2,8 s). El test ya no mide tiempo de reloj (15 s de timeout) y el criterio de la ficha está reescrito. Núcleo, store, barra y resaltado cumplen la ficha; la máxima long task (87 ms) queda por debajo de 100 ms.
+1. (opcional) `apps/lector-pdf/tests/e2e/search.spec.ts:194` — `waitForTimeout(1_000)` aceptable para verificar ausencia de cambios.
+2. Informativo para el tester: `pnpm perf` es sensible a la carga de la máquina (load ~8 al revisar); repetirlo con la máquina libre. El fallo de `appearance.spec.ts:125` (modo noche) es ajeno a esta ficha.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Sesión única con debounce, opciones, cierre (T) | PASA | `pnpm test` 124 ficheros, 1470/1470 (`search-actions.test.ts`) |
+| Siguiente/anterior con vuelta (T) | PASA | `search-cursor.test.ts` y `search-actions.test.ts` en verde |
+| UI: Ctrl+F, Intro, Mayús+Intro, Esc, `aria-pressed`/`title` (T) | PASA | `tests/ui/search-bar.test.tsx` en verde |
+| E2E basic-5: «1 de 5», resaltado actual sobre la palabra, «Palabras completas» «1 de 4» | PASA | `search.spec.ts` ×3 repeticiones: 15/15 |
+| E2E pages-5000: «1 de 2», pág. 1234, F3 a 4999, UI responde, sin long tasks > 100 ms | PASA | 3/3 (2,7 s cada uno); máxima long task según ronda 2: 87 ms |
+| E2E zoom 200 % + giro | PASA | 3/3 |
+| E2E «Detener» en pages-100000 | PASA | 3/3 |
+| lint, typecheck, test, coverage, e2e | PASA | lint 0, typecheck 0, test 1470/1470, coverage 0 (1510 tests), e2e completo 80/80 (build en directorio propio, puerto 4437, config temporal borrada) |
+
+Rendimiento (`pnpm perf`, load ~4 por otros agentes, 20/20, código 0): búsqueda 5000 páginas total 1717 ms (< 10 s), primera coincidencia 575 ms (< 1 s), hueco máximo 29,6 ms (< 50 ms); con caché 68 ms.
+Tests añadidos: ninguno nuevo; los existentes cubren los criterios.

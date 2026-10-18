@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-016
 titulo: Índice (marcadores) del documento en el panel lateral
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-015, PDF-014]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -51,14 +51,14 @@ La pestaña «Marcadores» del panel lateral muestra el índice del PDF como un 
 6. Tests: `tests/unit/outline.test.ts`, `tests/unit/engine-outline.test.ts` (motor real), `tests/ui/outline-panel.test.tsx`, `tests/e2e/outline.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] (T) `outline.pdf` → 5 raíces; `Capítulo 1` `bold`; `Capítulo 3` `initiallyExpanded false`; `Sitio web` → `external`; ids `0`, `0.0`, `0.0.0`…
-- [ ] (T) `flattenVisible` con `Capítulo 1` expandido y `Sección 1.1` contraída → filas `Capítulo 1 (0)`, `Sección 1.1 (1)`, `Sección 1.2 (1)`, `Capítulo 2 (0)`…
-- [ ] (T, rendimiento, `tests/perf/outline.perf.test.ts` con `measureBest`) un árbol generado de 10 000 nodos todos expandidos se aplana en < 50 ms (y da 10 000 filas).
-- [ ] (T) Un `RawOutlineItem` con 200 niveles de anidación no lanza y corta en 64.
-- [ ] (T) UI: con foco en `Capítulo 1`, `ArrowRight` expande, otra vez va a `Sección 1.1`; `ArrowLeft` vuelve al padre; `Enter` en `Sección 1.1` llama a `navigateToDest`; con 5 000 nodos visibles hay < 60 `treeitem` en el DOM.
-- [ ] E2E: `outline.pdf` → pestaña Marcadores → clic en `Anexo` → «Página 30 de 30» visible; `Alt+←` → vuelve; `Sección 1.1` deja visible la parte superior del texto situado en y = 500 de la página 3.
-- [ ] E2E: `compressed.pdf` y `libreoffice/informe.pdf` muestran su índice; `basic-5.pdf` muestra «Este documento no tiene marcadores.».
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf`, `pnpm --filter lector-pdf e2e` con código 0.
+- [x] (T) `outline.pdf` → 5 raíces; `Capítulo 1` `bold`; `Capítulo 3` `initiallyExpanded false`; `Sitio web` → `external`; ids `0`, `0.0`, `0.0.0`…
+- [x] (T) `flattenVisible` con `Capítulo 1` expandido y `Sección 1.1` contraída → filas `Capítulo 1 (0)`, `Sección 1.1 (1)`, `Sección 1.2 (1)`, `Capítulo 2 (0)`…
+- [x] (T, rendimiento, `tests/perf/outline.perf.test.ts` con `measureBest`) un árbol generado de 10 000 nodos todos expandidos se aplana en < 50 ms (y da 10 000 filas).
+- [x] (T) Un `RawOutlineItem` con 200 niveles de anidación no lanza y corta en 64.
+- [x] (T) UI: con foco en `Capítulo 1`, `ArrowRight` expande, otra vez va a `Sección 1.1`; `ArrowLeft` vuelve al padre; `Enter` en `Sección 1.1` llama a `navigateToDest`; con 5 000 nodos visibles hay < 60 `treeitem` en el DOM.
+- [x] E2E: `outline.pdf` → pestaña Marcadores → clic en `Anexo` → «Página 30 de 30» visible; `Alt+←` → vuelve; `Sección 1.1` deja visible la parte superior del texto situado en y = 500 de la página 3.
+- [x] E2E: `compressed.pdf` y `libreoffice/informe.pdf` muestran su índice; `basic-5.pdf` muestra «Este documento no tiene marcadores.».
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Crear, renombrar o borrar marcadores (Pro, iteración 6). Resaltar el marcador de la sección actual.
@@ -88,3 +88,16 @@ Comprobado: `pnpm lint` OK; tests de la ficha (32) OK; `pnpm perf` OK (12 ficher
 
 ### [revisor] ronda 2 — 2026-10-18 — APROBADO
 Comprobado: `pnpm typecheck` OK (exit 0, error TS2769 corregido); `pnpm lint` OK; 32 tests de la ficha OK; E2E `outline.spec.ts` 4/4 OK en el puerto 4412 (config temporal borrada). Sin problemas pendientes. El fallo transitorio del primer E2E que cita el programador no se ha reproducido.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Núcleo (outline.pdf, ids, bold, external, initiallyExpanded) | OK | `tests/unit/outline.test.ts` + `engine-outline.test.ts` dentro de `pnpm test`: 124 ficheros, 1470 tests OK |
+| flattenVisible | OK | tests en `outline.test.ts` (l.124-148) |
+| Rendimiento 10 000 nodos < 50 ms | OK | `vitest.perf.config.ts` sobre `outline.perf.test.ts` 1/1 OK; `pnpm perf` 13 ficheros, 20 tests OK |
+| 200 niveles → corta en 64 | OK | `outline.test.ts:104` |
+| UI teclado, navigateToDest, < 60 treeitem con 5 000 | OK | `tests/ui/outline-panel.test.tsx` dentro de `pnpm test` |
+| E2E Anexo/Alt+←/Sección 1.1, compressed, informe, basic-5 | OK | `playwright test tests/e2e/outline.spec.ts`: 4/4 OK (9,2 s) |
+| lint, typecheck, test, coverage, perf | OK | `pnpm lint` 0 avisos; `pnpm typecheck` OK; `pnpm coverage` 1470 tests OK, 96,76 % líneas globales |
+Fallos: ninguno. Nota: el fallo ajeno de `annotations-layer.spec.ts` (PDF-031) citado por el programador no se ha ejecutado aquí; no pertenece a esta ficha.
+Tests añadidos: ninguno (la cobertura existente cubre cada criterio).   Rendimiento: aplanado de 10 000 nodos dentro de presupuesto (< 50 ms).

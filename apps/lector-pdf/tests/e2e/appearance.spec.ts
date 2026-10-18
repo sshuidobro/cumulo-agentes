@@ -200,3 +200,37 @@ test.describe('escalado 125 % y 150 %', () => {
     expect(ratio).toBeLessThan(1.55);
   });
 });
+
+/** Color del píxel (4, 4) del lienzo de la miniatura `index`, o `null` si aún no hay lienzo. */
+async function thumbnailCorner(page: Page, index: number): Promise<readonly number[] | null> {
+  return page.evaluate((i) => {
+    const canvas = document.querySelector<HTMLCanvasElement>(`[data-thumb-index="${String(i)}"] canvas`);
+    if (canvas === null) return null;
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) throw new Error('lienzo sin contexto 2d');
+    const data = ctx.getImageData(4, 4, 1, 1).data;
+    return [data[0] ?? 0, data[1] ?? 0, data[2] ?? 0];
+  }, index);
+}
+
+test('modo noche: la miniatura de la página 1 también tiene la esquina oscura', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('[data-testid=open-input]').setInputFiles(IMAGES_PDF);
+  await expectViewerReady(page);
+  await page.keyboard.press('F4');
+  await expect(page.getByRole('listbox', { name: 'Miniaturas' })).toBeVisible();
+  await expect(page.locator('[data-thumb-index="0"]')).toHaveAttribute('data-rendered', 'true');
+
+  const before = await thumbnailCorner(page, 0);
+  expect(before?.[0] ?? 0).toBeGreaterThan(200);
+
+  await page.getByRole('button', { name: 'Apariencia' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Modo noche de las páginas' }).click();
+
+  await expect
+    .poll(async () => {
+      const corner = await thumbnailCorner(page, 0);
+      return corner !== null && corner.every((channel) => channel < 60);
+    }, { message: 'la esquina de la miniatura 1 debe oscurecerse' })
+    .toBe(true);
+});
