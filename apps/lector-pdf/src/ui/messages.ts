@@ -89,6 +89,11 @@ export const msg = {
   /** Título del diálogo al cerrar o abrir con cambios sin guardar. */
   unsavedQuestion: (name: string): string => `¿Guardar los cambios en «${name}»?`,
   discard: 'No guardar',
+  /** Recuperación de anotaciones sin guardar tras un cierre inesperado (PDF-038). */
+  draftFound: (name: string, when: string): string =>
+    `Hay cambios sin guardar de la última vez en «${name}» (${when}).`,
+  draftRecover: 'Recuperar',
+  draftDiscard: 'Descartar',
   changedOnDiskTitle: 'El fichero ha cambiado',
   /** Búsqueda en el documento (PDF-018). */
   search: 'Buscar',

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-022
 titulo: E2E de extremo a extremo y presupuestos de rendimiento de la iteración 1
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-004, PDF-011, PDF-012, PDF-013, PDF-014, PDF-016, PDF-018, PDF-019, PDF-020, PDF-021]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]

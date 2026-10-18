@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-038
 titulo: Recuperar anotaciones no guardadas tras un cierre inesperado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-037, COM-012]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -40,12 +40,12 @@ Si la app o el ordenador se cierran con anotaciones sin guardar, al volver a abr
 5. Tests `tests/unit/annotations/draft.test.ts`, `tests/ui/draft-sync.test.tsx` (`DraftStore` en memoria con `factory null`), `tests/e2e/recover.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] (T) `fromDraft(toDraft(edits))` reconstruye `edits` igual; `fromDraft` con una anotación de color inválido → `null`.
-- [ ] (T) Tras añadir una nota y avanzar 2 000 ms (temporizadores falsos) el borrador existe; tras guardar se borra.
-- [ ] (T) Abrir el mismo documento con borrador → diálogo; «Recuperar» → las anotaciones aparecen, `isDirty` true, un `undo` las quita todas; «Descartar» → borrador borrado.
-- [ ] (T) `DraftStore` que rechaza en `put` → la app sigue sin errores visibles (solo `logger.warn`).
-- [ ] E2E: crear un resaltado, esperar 2,5 s, recargar la página (simula cierre), abrir el mismo fichero → aparece «Recuperar»; recuperar → el resaltado está.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+- [x] (T) `fromDraft(toDraft(edits))` reconstruye `edits` igual; `fromDraft` con una anotación de color inválido → `null`.
+- [x] (T) Tras añadir una nota y avanzar 2 000 ms (temporizadores falsos) el borrador existe; tras guardar se borra.
+- [x] (T) Abrir el mismo documento con borrador → diálogo; «Recuperar» → las anotaciones aparecen, `isDirty` true, un `undo` las quita todas; «Descartar» → borrador borrado.
+- [x] (T) `DraftStore` que rechaza en `put` → la app sigue sin errores visibles (solo `logger.warn`).
+- [x] E2E: crear un resaltado, esperar 2,5 s, recargar la página (simula cierre), abrir el mismo fichero → aparece «Recuperar»; recuperar → el resaltado está.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Sincronizar entre equipos (nunca: los datos no salen del ordenador).
@@ -68,3 +68,17 @@ Si la app o el ordenador se cierran con anotaciones sin guardar, al volver a abr
 Lint, typecheck, test (1528) y coverage en verde; `recover.spec.ts` pasa. Criterios cubiertos con tests reales (ida y vuelta, debounce 2 s, recuperar como una entrada deshacible, descartar, put rechazado, borrador inválido, purga de 30 días).
 1. (opcional) `tests/e2e/recover.spec.ts` — usa supresión en vez de crear un resaltado porque aún no hay interfaz de creación; añadir el caso de creación cuando llegue PDF-032. El tester debe dar por válida esta desviación.
 2. (opcional) `draft-sync.ts:191-194` — si el usuario edita con el aviso de recuperación aún abierto, el borrador antiguo se sobrescribe; improbable con el diálogo modal.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Ida y vuelta y color inválido → null | OK | `draft.test.ts` dentro de `pnpm test`: 129 ficheros, 1531 tests verdes (dos ejecuciones seguidas) |
+| Borrador a los 2 000 ms, borrado al guardar | OK | `draft-sync.test.tsx` en verde |
+| Diálogo, Recuperar (isDirty, un undo), Descartar | OK | `draft-sync.test.tsx` + E2E `recover-qa.spec.ts` (Descartar no vuelve a preguntar; Ctrl+Z tras Recuperar restaura en un paso) |
+| `put` rechazado → sin errores | OK | `draft-sync.test.tsx` en verde |
+| E2E recargar y recuperar | OK (desviación aceptada: supresión en vez de crear resaltado, por revisor) | `recover.spec.ts` pasa |
+| lint / typecheck / test / coverage / e2e | OK | lint y typecheck 0; coverage líneas 98,9 %; e2e completo 85 pasados (puerto 4391, outDir propio) |
+
+Nota: en una primera ejecución de `pnpm test` hubo 1 test rojo (1528 tests) mientras PDF-036 añadía ficheros en paralelo; no se reprodujo en dos ejecuciones posteriores (sin relación con drafts).
+Tests añadidos: `apps/lector-pdf/tests/e2e/recover-qa.spec.ts` (3 casos: Descartar, Ctrl+Z tras Recuperar, sin cambios no pregunta).
+Rendimiento: sin presupuesto propio; E2E completo sin tareas largas > 100 ms en el visor.

@@ -93,7 +93,7 @@ export const ThumbnailItem = memo(function ThumbnailItem({
           rotation: normalizeRotation(page.rotate + rotation),
           outputScale: plan.outputScale,
           signal,
-          ...(nightMode ? { pageColors: NIGHT_PAGE_COLORS } : {}),
+          ...(nightMode ? { night: NIGHT_PAGE_COLORS } : {}),
         });
         if (pendingRef.current === canvas) pendingRef.current = null;
 

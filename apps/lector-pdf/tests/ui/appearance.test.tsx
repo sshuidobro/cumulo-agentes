@@ -123,7 +123,7 @@ describe('Apariencia · modo noche', () => {
     );
   });
 
-  it('con el modo noche activo, la página pide un render nuevo con pageColors', async () => {
+  it('con el modo noche activo, la página pide un render nuevo con night (sin pageColors)', async () => {
     const doc = {
       getPage: (n: number) =>
         Promise.resolve({
@@ -155,7 +155,7 @@ describe('Apariencia · modo noche', () => {
       });
     });
     expect(draws).toHaveBeenCalled();
-    for (const call of draws.mock.calls) expect(call[2]).not.toHaveProperty('pageColors');
+    for (const call of draws.mock.calls) expect(call[2]).not.toHaveProperty('night');
 
     draws.mockClear();
     act(() => {
@@ -168,6 +168,7 @@ describe('Apariencia · modo noche', () => {
     });
     expect(draws).toHaveBeenCalled();
     const last = draws.mock.calls.at(-1);
-    expect(last?.[2]).toMatchObject({ pageColors: NIGHT_PAGE_COLORS });
+    expect(last?.[2]).toMatchObject({ night: NIGHT_PAGE_COLORS });
+    for (const call of draws.mock.calls) expect(call[2]).not.toHaveProperty('pageColors');
   });
 });
