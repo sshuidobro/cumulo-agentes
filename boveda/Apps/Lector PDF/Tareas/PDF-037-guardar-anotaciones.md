@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-037
 titulo: Guardar y Guardar como con anotaciones, recarga y aviso de cambios sin guardar
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-028, PDF-030, PDF-019, COM-007, COM-010, COM-013]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, stack-tauri]
@@ -92,3 +92,17 @@ Criterio E2E (resaltado + nota, descarga, reabrir y ver 2 en «Comentarios»): *
 Sin problemas bloqueantes.
 (opcional) Discrepancia con COM-007 (Chromium con `showSaveFilePicker` abre el selector aunque el fichero venga de `<input>`, en vez de descargar): decisión del líder; el comportamiento actual es razonable y no impide guardar.
 (opcional) Ciclo de importaciones `document-actions` ↔ `unsaved-guard` ↔ `save-actions`: hoy funciona, pero conviene romperlo si se añaden más acciones.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 8 criterios (T) | OK | `vitest run` de `save-actions`, `unsaved-guard`, `choice-dialog`, `save-toolbar`: 26/26 en verde |
+| Validez del PDF guardado | OK | nuevo `tests/unit/save-qa.test.ts`: original+delta y segundo guardado encadenado (ruta con espacios y ñ) pasan `qpdf --check` y conservan el prefijo byte a byte |
+| E2E resaltado+nota | DIFERIDO a PDF-039 (aprobado por el revisor; no hay UI de resaltar/notas) | — |
+| E2E de cableado | OK | nuevo `tests/e2e/save-qa.spec.ts` (puerto 4405, config temporal): Ctrl+Mayús+S descarga copia idéntica y avisa; Ctrl+S sin cambios no descarga. 2/2 |
+| `pnpm lint` | 0 | |
+| `pnpm typecheck` | falla solo en `tests/e2e/outline.spec.ts:50` (PDF-016, ajeno) | |
+| `pnpm test` | 1454/1456; fallan 2 en `tests/ui/annotation-layer.test.tsx` (PDF-031 en reparación, ajeno) | |
+| Cobertura | `save-actions.ts` 94 % líneas / 100 % funciones, `unsaved-guard.ts` 100 % | |
+Tests añadidos: `tests/unit/save-qa.test.ts`, `tests/e2e/save-qa.spec.ts`. Rendimiento: no aplica (guardar no tiene presupuesto propio).
+Pendiente para el líder: discrepancia con COM-007 (selector de File System Access con ficheros de `<input>`); PDF-039 debe cubrir el caso de nota con editor enfocado al pulsar Ctrl+S.
