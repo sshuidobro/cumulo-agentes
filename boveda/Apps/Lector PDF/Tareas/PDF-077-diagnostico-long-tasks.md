@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-077
 titulo: Adjuntar a cada prueba @perf el diagnóstico de long tasks y la carga de la máquina
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]
