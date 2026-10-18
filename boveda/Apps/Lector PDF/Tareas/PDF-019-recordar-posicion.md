@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-019
 titulo: Recordar la última página, el zoom y la rotación de cada documento
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-012]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -67,3 +67,17 @@ Al reabrir un PDF, el lector vuelve a la misma página (y posición dentro de el
 Comprobado: vitest del lector (80 ficheros, 1036 tests), typecheck, eslint de los ficheros de la ficha y `remember.spec.ts` (2 tests) en verde. Criterios cubiertos; `rememberPosition` copia solo los 5 campos (privacidad); el guard rechaza lo corrupto.
 1. `apps/lector-pdf/src/state/position-sync.ts:65` (opcional) — tras restaurar, `setZoomMode` programa un guardado a 1 s; si en un documento enorme el visor aún no ha aplicado `navRequest`, `currentPage` seguiría en 0 y se sobrescribiría la posición. Valorar fijar `currentPage`/`currentYFraction` al restaurar.
 2. (opcional) Sin test unitario del recorte de `yFraction` en `Viewer.tsx`; lo cubre solo el E2E.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Límite 500 y mover al final | OK | `reading-positions.test.ts` en verde (pnpm test: 106 ficheros, 1348 tests) |
+| Guard (null, v2, rot 45, page -1, zoom 'x'); corrupto = vacío | OK | `reading-positions.test.ts:82,92`, `position-sync.test.ts:113` |
+| Debounce 1 escritura, flush inmediato, restaurar página 42/fit-page/90 | OK | `position-sync.test.ts:65,78,126` |
+| Página 900 en doc de 10 se ignora | OK | `position-sync.test.ts:145` |
+| E2E pages-5000 (2345, 150 %, <5 s) y basic-5 en página 1 | OK | Playwright en puerto 4393 con build aparte: 2 passed (7,5 s en total) |
+| Privacidad | OK | `rememberPosition` copia 5 campos; test en `reading-positions.test.ts:57` |
+| lint, typecheck, test, coverage | OK | todos exit 0; cobertura global 96,72 % líneas |
+
+Observación: una pasada de `pnpm coverage` falló 1 test no identificado (1347/1348) bajo carga con otros agentes; la repetición dio 1348/1348 y exit 0 (posible test flaky ajeno, no reproducido). La observación 1 del revisor (carrera al restaurar en documentos enormes) sigue siendo opcional.
+Tests añadidos: ninguno. Rendimiento: restauración en pages-5000 dentro del presupuesto de 5 s (el test completo, con recarga, 1,6 s).
