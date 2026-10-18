@@ -99,7 +99,7 @@ test('el visor es enfocable con Tab y las páginas tienen etiqueta accesible', a
   await expect(page.getByTestId('viewer')).toBeFocused();
 });
 
-test('durante un scroll continuo no hay tareas largas de más de 100 ms', async ({ page }, testInfo) => {
+test('durante un scroll continuo no hay tareas largas de más de 100 ms', { tag: '@perf' }, async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     const longTasks: number[] = [];
     (window as unknown as { __longTasks: number[] }).__longTasks = longTasks;

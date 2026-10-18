@@ -19,7 +19,18 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@perf/ },
+    // Pruebas de long tasks (ADR-0016): solas, en serie y después del resto, sin carga concurrente.
+    {
+      name: 'chromium-perf',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@perf/,
+      workers: 1,
+      fullyParallel: false,
+      dependencies: ['chromium'],
+    },
+  ],
   webServer: {
     command: `pnpm assets && pnpm exec vite build --outDir ${outDir} && pnpm exec vite preview --outDir ${outDir} --port ${String(port)} --strictPort`,
     url: baseURL,

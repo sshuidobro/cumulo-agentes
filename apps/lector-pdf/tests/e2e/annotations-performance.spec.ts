@@ -50,7 +50,7 @@ async function highlightFirstWord(page: Page, n: number): Promise<void> {
   await expect(zoneOf(page, n, 'Resaltado de')).toHaveCount(1);
 }
 
-test('pages-5000.pdf: escaneo de anotaciones < 10 s sin long tasks > 100 ms; 10 resaltados y guardar < 1 s con < 50 KB de crecimiento', async ({
+test('pages-5000.pdf: escaneo de anotaciones < 10 s sin long tasks > 100 ms; 10 resaltados y guardar < 1 s con < 50 KB de crecimiento', { tag: '@perf' }, async ({
   page,
 }, testInfo: TestInfo) => {
   await installPerfProbes(page);

@@ -147,7 +147,7 @@ function manyHighlights(): Uint8Array {
   });
 }
 
-test('una página con 500 anotaciones se desplaza sin tareas largas de más de 100 ms', async ({ page }, testInfo) => {
+test('una página con 500 anotaciones se desplaza sin tareas largas de más de 100 ms', { tag: '@perf' }, async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     const longTasks: { start: number; duration: number }[] = [];
     (window as unknown as { __longTasks: typeof longTasks }).__longTasks = longTasks;

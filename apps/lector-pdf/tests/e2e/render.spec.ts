@@ -114,7 +114,7 @@ test('pages-5000: la página 1 se dibuja en menos de 5 s y, tras 20 saltos, no h
   if (heap >= 0) expect(heap).toBeLessThan(HEAP_BUDGET_BYTES);
 });
 
-test('images-200: al recorrer las 20 primeras páginas, las visibles se dibujan sin tareas largas', async ({ page }) => {
+test('images-200: al recorrer las 20 primeras páginas, las visibles se dibujan sin tareas largas', { tag: '@perf' }, async ({ page }) => {
   await page.addInitScript(() => {
     const tasks: number[] = [];
     (window as Window & { __longTasks?: number[] }).__longTasks = tasks;

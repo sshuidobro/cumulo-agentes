@@ -118,7 +118,7 @@ test.describe('búsqueda en la interfaz', () => {
     await expect(page.locator('[data-page-index="4998"]')).toBeInViewport({ ratio: 0.1 });
   });
 
-  test('durante la búsqueda el visor y el campo de página siguen respondiendo', async ({ page }, testInfo: TestInfo) => {
+  test('durante la búsqueda el visor y el campo de página siguen respondiendo', { tag: '@perf' }, async ({ page }, testInfo: TestInfo) => {
     // El observador se instala antes de cargar la página, para registrar también las long tasks de la apertura.
     await page.addInitScript(() => {
       const longTasks: number[] = [];

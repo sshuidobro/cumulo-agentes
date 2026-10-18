@@ -166,7 +166,7 @@ test('pages-5000: la 1.ª coincidencia de «marcador-1» aparece en menos de 1 s
   expect(full).toBeLessThan(SEARCH_FULL_MS);
 });
 
-test('pages-5000: ninguna long task supera 100 ms durante scroll, zoom y búsqueda', async ({ page }, testInfo) => {
+test('pages-5000: ninguna long task supera 100 ms durante scroll, zoom y búsqueda', { tag: '@perf' }, async ({ page }, testInfo) => {
   await installPerfProbes(page);
   await openFixture(page, 'pages-5000.pdf');
   await waitPageRendered(page, 1);
