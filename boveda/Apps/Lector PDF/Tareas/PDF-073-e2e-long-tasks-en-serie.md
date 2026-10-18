@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-073
 titulo: Ejecutar las pruebas e2e de long tasks en un proyecto Playwright en serie
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-075, PDF-076, PDF-077, PDF-078]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -192,3 +192,17 @@ Sin relanzar la batería e2e (verificada 3 veces por el programador, 3 ejecucion
 3. Diff de las 7 specs desde `a54642d^`: solo la etiqueta `{ tag: '@perf' }` y el cambio de import al fixture `perf-fixture`; ningún umbral, `retries`, `skip`, `only`, `fixme` ni `waitForTimeout` nuevos. Umbrales de la puerta de reposo (15 %, 3 ventanas de 1 s, 150 s) conformes a ADR-0016 rev. 2 y fallan (no saltan).
 4. Plan: línea «E2E» actualizada y coherente con ADR-0016. Lint/typecheck/test reportados en verde (1732 tests).
 Sin problemas bloqueantes. (opcional) Las anotaciones `tarea-larga-maxima-ms` no existen; ya documentado por el programador.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+Una sola ejecución completa, sin otras baterías en paralelo (antes: `uptime` carga 1 min 1,23; `pgrep playwright|vitest|vite build` vacío).
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `chromium-perf --no-deps` lista 7 | OK | `Total: 7 tests in 7 files` |
+| `chromium` sin `@perf` | OK | `grep -c "@perf"` = 0 |
+| Total sin filtro | OK | 160 en 41 ficheros (153 + 7) |
+| `e2e` código 0 | OK | `160 passed (3.7m)`, EXIT=0; las 7 `@perf` en verde (annotations-layer 2,4 s, annotations-performance 4,8 s, ink 34,4 s, performance 4,8 s, render 2,5 s, search 1,5 s, viewer 3,0 s); la puerta de reposo no saltó |
+| Umbrales/retries/skip/only/fixme/waitForTimeout | OK | `git diff a54642d^` sin líneas añadidas con esos términos |
+| lint / typecheck / test | OK | los tres con código 0 |
+| `grep longtask` | OK | solo los 7 ficheros de la tabla |
+Nota: no se repitieron las series ×3 (ya verificadas por el programador en la ronda 3 y aprobadas por el revisor); esta ronda fue una ejecución completa, como pidió la coordinación. Sin fallos `@perf`, no hizo falta repetir por reposo.
+Tests añadidos: ninguno. Rendimiento: sin long tasks > 100 ms en las 7 pruebas.
