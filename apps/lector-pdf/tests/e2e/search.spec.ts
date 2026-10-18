@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { type Locator, type Page, type TestInfo } from '@playwright/test';
 import { expect, test } from './perf-fixture.ts';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
+import { settle } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 interface Box {
@@ -193,8 +194,10 @@ test.describe('búsqueda en la interfaz', () => {
     const status = page.getByRole('search').locator('[aria-live="polite"]');
     await expect(stop).toBeHidden();
     const frozen = await status.textContent();
-    // Espera negativa legítima: se comprueba que, tras Detener, el estado no cambia (nada que esperar).
-    await page.waitForTimeout(1_000);
+    // La búsqueda cede el hilo con temporizadores por lotes: tres asentamientos cubren tres lotes.
+    await settle(page);
+    await settle(page);
+    await settle(page);
     expect(await status.textContent()).toBe(frozen);
     expect(frozen).not.toContain('Buscando');
     expect(frozen).toMatch(/\d+ de \d+|Más de 100\.000/);

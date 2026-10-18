@@ -131,26 +131,42 @@ export async function settleFrames(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Espera a que hayan terminado los manejadores síncronos de la página y sus microtareas: dos fotogramas
+ * y una vuelta de `setTimeout(0)`. Sirve para comprobar que «no pasa nada» sin esperar un tiempo fijo.
+ */
+export async function settle(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setTimeout(resolve, 0);
+          });
+        });
+      }),
+  );
+}
+
+/** Número de borradores guardados en IndexedDB (`lector-pdf` / `drafts`); 0 si aún no existe el almacén. */
+export function draftCount(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const open = indexedDB.open('lector-pdf');
+        open.onerror = () => { resolve(0); };
+        open.onsuccess = () => {
+          const db = open.result;
+          if (!db.objectStoreNames.contains('drafts')) { db.close(); resolve(0); return; }
+          const count = db.transaction('drafts', 'readonly').objectStore('drafts').count();
+          count.onsuccess = () => { db.close(); resolve(count.result); };
+          count.onerror = () => { db.close(); resolve(0); };
+        };
+      }),
+  );
+}
+
 /** Espera a que el autoguardado (PDF-038) haya escrito un borrador en IndexedDB (`lector-pdf` / `drafts`). */
 export async function waitDraftSaved(page: Page): Promise<void> {
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () =>
-            new Promise<number>((resolve) => {
-              const open = indexedDB.open('lector-pdf');
-              open.onerror = () => { resolve(0); };
-              open.onsuccess = () => {
-                const db = open.result;
-                if (!db.objectStoreNames.contains('drafts')) { db.close(); resolve(0); return; }
-                const count = db.transaction('drafts', 'readonly').objectStore('drafts').count();
-                count.onsuccess = () => { db.close(); resolve(count.result); };
-                count.onerror = () => { db.close(); resolve(0); };
-              };
-            }),
-        ),
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThan(0);
+  await expect.poll(() => draftCount(page), { timeout: 10_000 }).toBeGreaterThan(0);
 }

@@ -151,3 +151,43 @@ test.describe('tema oscuro', () => {
   });
 });
 
+
+test('teclado: pestañas con ←/→ y menú «Más acciones» con flechas e Intro; Esc devuelve el foco', async ({ page }) => {
+  await openFixture(page, 'basic-5.pdf');
+  const more = page.getByRole('button', { name: 'Más acciones' });
+  await more.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem', { name: /Propiedades del documento/ })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(more).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitem', { name: /Propiedades del documento/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+
+  const dialog = propertiesDialog(page);
+  await expect(dialog).toBeVisible();
+  const first = dialog.getByRole('tab', { name: 'Descripción' });
+  const second = dialog.getByRole('tab', { name: 'Avanzado' });
+  await expect(first).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(second).toBeFocused();
+  await expect(second).toHaveAttribute('aria-selected', 'true');
+  await expect(valueRow(dialog, 'Páginas')).toHaveText('5');
+  await page.keyboard.press('ArrowLeft');
+  await expect(first).toHaveAttribute('aria-selected', 'true');
+  // Tab no escapa del diálogo (el foco queda atrapado).
+  for (let i = 0; i < 6; i += 1) await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement?.closest('[role=dialog]') !== null)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
+test('los PDF corruptos no permiten abrir las propiedades y no rompen la app', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('/');
+  await page.locator('[data-testid=open-input]').setInputFiles(fixture('corrupt-truncated.pdf'));
+  await page.keyboard.press('Control+d');
+  await expect(page.getByRole('dialog', { name: 'Propiedades del documento' })).toBeHidden();
+  await expect(page.locator('body')).not.toBeEmpty();
+  expect(errors.filter((e) => /TypeError|ReferenceError/.test(e))).toEqual([]);
+});
