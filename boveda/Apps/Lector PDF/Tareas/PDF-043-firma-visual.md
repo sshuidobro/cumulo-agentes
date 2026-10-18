@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-043
 titulo: Firmar - colocar, mover y redimensionar la firma en la página
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-086]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
