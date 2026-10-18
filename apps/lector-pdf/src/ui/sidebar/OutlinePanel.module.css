@@ -1,0 +1,109 @@
+/* Barra de «Expandir todo» y «Contraer todo». */
+.toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.button {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.button:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.message {
+  margin: 0;
+  padding: 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+/* Contenedor con desplazamiento; la altura del contenido la pone el espaciador. */
+.tree {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+}
+
+.tree:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.spacer {
+  position: relative;
+  width: 100%;
+}
+
+/* Fila de alto fijo (28 px): el panel la coloca con `top` según su posición en la lista aplanada. */
+.row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding-right: 0.5rem;
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.row[aria-selected='true'] {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* Flecha de desplegar; en las hojas se deja el hueco para alinear los títulos. */
+.chevron {
+  flex: 0 0 16px;
+  width: 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+  user-select: none;
+  transition: transform 0.1s;
+}
+
+.row[aria-expanded='true'] > .chevron {
+  transform: rotate(90deg);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bold {
+  font-weight: 700;
+}
+
+.italic {
+  font-style: italic;
+}

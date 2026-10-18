@@ -6,12 +6,24 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { clearMocks, mockIPC, mockWindows } from '@tauri-apps/api/mocks';
 import { loadPlatform, type Platform } from '@suite/platform';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { App } from '../../src/ui/App';
 import { closeDocument } from '../../src/state/document-actions';
 import { initServices } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
+
+// jsdom no tiene canvas 2D: la capa de texto de pdf.js no puede montarse aquí (lo real se prueba en e2e).
+vi.mock('../../src/engine/text', async (importOriginal) => ({
+  ...(await importOriginal()),
+  createTextLayer: () => ({
+    textDivs: [],
+    items: [],
+    render: () => Promise.resolve(),
+    update: () => undefined,
+    cancel: () => undefined,
+  }),
+}));
 
 /**
  * Integración de escritorio con `mockIPC` (PDF-021): la plataforma Tauri real, sus comandos

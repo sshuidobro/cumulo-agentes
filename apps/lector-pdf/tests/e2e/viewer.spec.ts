@@ -89,8 +89,9 @@ test('el visor es enfocable con Tab y las páginas tienen etiqueta accesible', a
   await openFixture(page, 'basic-5.pdf');
   await expect(page.getByRole('group', { name: 'Página 1 de 5' })).toBeVisible();
   await page.locator('body').click({ position: { x: 1, y: 1 } });
-  // Orden de tabulación: los controles de la barra principal (Abrir, zoom, giro) y luego el visor.
-  for (let press = 0; press < 12; press++) {
+  // Orden de tabulación: los controles de la barra principal (Abrir, zoom, giro, panel) y luego el visor.
+  // Sin número fijo de pulsaciones: cada control nuevo de la barra añade una.
+  for (let press = 0; press < 40; press++) {
     if (await page.getByTestId('viewer').evaluate((el) => el === document.activeElement)) break;
     await page.keyboard.press('Tab');
   }

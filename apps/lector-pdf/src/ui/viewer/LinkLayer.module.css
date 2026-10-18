@@ -1,0 +1,27 @@
+/* Capa por encima del texto: cada enlace es un rectángulo. Solo los rectángulos reciben el puntero. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.link,
+.blocked {
+  position: absolute;
+  display: block;
+  pointer-events: auto;
+}
+
+.link {
+  cursor: pointer;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.blocked {
+  cursor: not-allowed;
+}

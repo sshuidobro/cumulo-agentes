@@ -1,16 +1,24 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { createLogger } from '@suite/shared';
 import { planCanvas } from '../../core/canvas-size';
 import { normalizeRotation, type Rotation } from '../../core/rotation';
 import { zoomToScale } from '../../core/zoom';
 import { readPageDims } from '../../engine/page-dims';
+import { NIGHT_PAGE_COLORS } from '../../core/night';
 import { renderPageToCanvas } from '../../engine/render';
 import type { PDFPageProxy } from '../../engine/pdfjs';
+import { ensurePageAnnotations } from '../../state/annotation-actions';
+import { useAppearance } from '../../state/appearance-store';
+import { useAnnotations } from '../../state/annotation-store';
 import { reportPageDims } from '../../state/document-actions';
 import { renderQueue, releaseCanvas } from '../../state/render-service';
 import { useViewer } from '../../state/viewer-store';
 import { msg } from '../messages';
+import { AnnotationLayer } from './AnnotationLayer';
+import { LinkLayer } from './LinkLayer';
 import { PageFrame } from './PageFrame';
+import { SearchHighlights } from './SearchHighlights';
+import { TextLayerView } from './TextLayerView';
 import styles from './Viewer.module.css';
 
 const log = createLogger('viewer');
@@ -54,6 +62,13 @@ export const PageView = memo(function PageView({
   const doc = useViewer((s) => s.pdf?.doc ?? null);
   const [rendered, setRendered] = useState(false);
   const [failed, setFailed] = useState(false);
+  /** Página de pdf.js ya cargada; de ella sale el viewport de la capa de anotaciones. */
+  const [page, setPage] = useState<PDFPageProxy | null>(null);
+  /** Versión de las anotaciones de esta página: al cambiar, el lienzo se vuelve a dibujar. */
+  const version = useAnnotations((s) => s.pageVersion.get(index) ?? 0);
+  const scan = useAnnotations((s) => s.scan);
+  /** Modo noche: al cambiar, la página se vuelve a dibujar con los colores de noche. */
+  const nightMode = useAppearance((s) => s.nightMode);
 
   const key = `page:${index}`;
   const hostRef = useRef<HTMLDivElement>(null);
@@ -68,17 +83,23 @@ export const PageView = memo(function PageView({
     renderQueue.setPriority(key, visible ? PRIORITY_VISIBLE : PRIORITY_OVERSCAN);
   }, [key, visible]);
 
-  // Dibuja al montar y cada vez que cambian el documento, el zoom, la rotación o el tamaño del marco.
+  // Documentos grandes: la página se importa sus anotaciones al hacerse visible (una sola vez).
+  useEffect(() => {
+    if (visible && scan === 'lazy') void ensurePageAnnotations(index);
+  }, [visible, index, scan]);
+
+  // Dibuja al montar y cada vez que cambian el documento, el zoom, la rotación, el tamaño del marco o las anotaciones.
   useEffect(() => {
     if (doc === null) return;
     const host = hostRef.current;
 
     const run = async (signal: AbortSignal): Promise<void> => {
       try {
-        const page = await doc.getPage(index + 1);
-        pageRef.current = page;
+        const loaded = await doc.getPage(index + 1);
+        pageRef.current = loaded;
         if (signal.aborted) return;
-        reportPageDims(await readPageDims(page));
+        setPage(loaded);
+        reportPageDims(await readPageDims(loaded));
         if (signal.aborted) return;
 
         const plan = planCanvas(width, height, window.devicePixelRatio);
@@ -86,11 +107,12 @@ export const PageView = memo(function PageView({
         canvas.width = plan.width;
         canvas.height = plan.height;
         pendingRef.current = canvas;
-        const outcome = await renderPageToCanvas(page, canvas, {
+        const outcome = await renderPageToCanvas(loaded, canvas, {
           scale: zoomToScale(zoom),
-          rotation: normalizeRotation(page.rotate + rotation),
+          rotation: normalizeRotation(loaded.rotate + rotation),
           outputScale: plan.outputScale,
           signal,
+          ...(nightMode ? { pageColors: NIGHT_PAGE_COLORS } : {}),
         });
         if (pendingRef.current === canvas) pendingRef.current = null;
 
@@ -115,7 +137,16 @@ export const PageView = memo(function PageView({
       priority: visibleRef.current ? PRIORITY_VISIBLE : PRIORITY_OVERSCAN,
       run,
     });
-  }, [doc, key, index, zoom, rotation, width, height]);
+  }, [doc, key, index, zoom, rotation, width, height, version, nightMode]);
+
+  // Viewport con el mismo zoom y rotación que el lienzo; la capa de anotaciones lo usa para dibujar.
+  const viewport = useMemo(
+    () =>
+      page === null
+        ? null
+        : page.getViewport({ scale: zoomToScale(zoom), rotation: normalizeRotation(page.rotate + rotation) }),
+    [page, zoom, rotation],
+  );
 
   // Al desmontar: se cancela el dibujo, se liberan los lienzos y la página de pdf.js.
   useEffect(() => {
@@ -139,8 +170,13 @@ export const PageView = memo(function PageView({
       width={width}
       height={height}
       rendered={rendered}
+      night={nightMode}
     >
       <div ref={hostRef} className={styles.canvasHost} />
+      <SearchHighlights index={index} zoom={zoom} rotation={rotation} />
+      <TextLayerView index={index} zoom={zoom} rotation={rotation} />
+      {viewport !== null && <AnnotationLayer pageIndex={index} viewport={viewport} />}
+      <LinkLayer index={index} zoom={zoom} rotation={rotation} />
       {failed && (
         <span className={styles.renderError} role="status">
           {msg.pageRenderFailed}

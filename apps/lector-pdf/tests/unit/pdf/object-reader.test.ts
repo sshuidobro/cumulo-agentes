@@ -285,6 +285,35 @@ describe('ObjectReader · árbol de páginas incoherente', () => {
     expect(await reader.pageRef(0)).toEqual(ref(3));
     await expect(reader.pageRef(1)).rejects.toMatchObject({ message: 'page-not-found' });
   });
+
+  it('[QA] hoja duplicada en /Kids: ambos métodos terminan sin otro error que page-not-found', async () => {
+    const reader = await readerOf({
+      objects: {
+        1: '<< /Type /Catalog /Pages 2 0 R >>',
+        2: '<< /Type /Pages /Kids [3 0 R 3 0 R 4 0 R] /Count 3 >>',
+        3: LEAF,
+        4: LEAF,
+      },
+    });
+    const all = await reader.pageRefs();
+    expect(all.length).toBeGreaterThan(0);
+    for (let i = 0; i < 5; i++) {
+      try {
+        const r = await reader.pageRef(i);
+        expect([3, 4]).toContain(r.num);
+      } catch (e) {
+        expect(e).toMatchObject({ message: 'page-not-found' });
+      }
+    }
+  });
+
+  it('[QA] PDF vacío o truncado: open falla con error de sintaxis, no cuelga', async () => {
+    await expect(ObjectReader.open(memorySource(new Uint8Array(0)))).rejects.toBeInstanceOf(Error);
+    const full = buildPdf({
+      objects: { 1: '<< /Type /Catalog /Pages 2 0 R >>', 2: '<< /Type /Pages /Kids [] /Count 0 >>' },
+    });
+    await expect(ObjectReader.open(memorySource(full.slice(0, full.length - 40)))).rejects.toBeInstanceOf(Error);
+  });
 });
 
 describe('ObjectReader · corpus público frente a pdf.js', () => {

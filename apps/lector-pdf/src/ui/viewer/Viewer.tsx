@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type PointerEvent,
   type ReactElement,
 } from 'react';
 import {
@@ -27,7 +28,9 @@ import { resolveZoom, zoomToScale, type Size, type ZoomMode } from '../../core/z
 import type { PageDimsTable } from '../../core/page-dims';
 import type { Rotation } from '../../core/rotation';
 import { msg } from '../messages';
-import { setCurrentPage } from '../../state/navigation';
+import { select } from '../../state/annotation-actions';
+import { useAnnotations } from '../../state/annotation-store';
+import { setCurrentPage, setCurrentYFraction, setHorizontalOverflow } from '../../state/navigation';
 import { zoomWithWheel } from '../../state/view-actions';
 import { useViewer } from '../../state/viewer-store';
 import { PageView } from './PageView';
@@ -72,6 +75,12 @@ function clampY(y: number, maxY: number): number {
   return Math.min(Math.max(y, 0), maxY);
 }
 
+/** Un clic fuera de las anotaciones de la página deselecciona la anotación seleccionada. */
+function clearAnnotationSelection(target: EventTarget | null): void {
+  if (target instanceof Element && target.closest('[data-annot-id]') !== null) return;
+  if (useAnnotations.getState().selectedId !== null) select(null);
+}
+
 export function Viewer() {
   const dims = useViewer((s) => s.dims);
   const dimsVersion = useViewer((s) => s.dimsVersion);
@@ -80,6 +89,8 @@ export function Viewer() {
   const rotation = useViewer((s) => s.rotation);
   const navRequest = useViewer((s) => s.navRequest);
   const name = useViewer((s) => s.file?.name ?? '');
+  const tool = useViewer((s) => s.tool);
+  const annotationTool = useAnnotations((s) => s.tool);
 
   const ref = useRef<HTMLDivElement>(null);
   const viewport = useViewportSize(ref);
@@ -234,8 +245,21 @@ export function Viewer() {
   // Página actual: la que queda en el tercio superior del visor.
   useEffect(() => {
     if (layout === null || layout.count === 0) return;
-    setCurrentPage(pageAtY(layout, contentY + vh / 3));
+    const page = pageAtY(layout, contentY + vh / 3);
+    setCurrentPage(page);
+    // Posición dentro de la página: el borde superior del visor, con el mismo margen que usa «ir a página».
+    const height = layout.heights[page] ?? 0;
+    const top = layout.tops[page] ?? 0;
+    const yFraction = height > 0 ? Math.min(Math.max((contentY + NAV_TOP_MARGIN - top) / height, 0), 1) : 0;
+    setCurrentYFraction(yFraction);
   }, [layout, contentY, vh]);
+
+  // Ancho del contenido frente al del visor (el espaciador nunca es más estrecho que el visor).
+  const contentWidth = layout === null ? 0 : layout.maxWidth + 2 * DEFAULT_PADDING;
+  const hasOverflow = contentWidth > viewport.width;
+  useEffect(() => {
+    setHorizontalOverflow(hasOverflow);
+  }, [hasOverflow]);
 
   // Con scroll escalado el navegador no puede recorrer todo el contenido: rueda y teclado se gestionan aquí.
   const scaled = map.factor > 1;
@@ -287,17 +311,38 @@ export function Viewer() {
       case ' ':
         next = current + (event.shiftKey ? -pageStep : pageStep);
         break;
-      case 'Home':
-        next = 0;
-        break;
-      case 'End':
-        next = maxY;
-        break;
       default:
         return;
     }
     event.preventDefault();
     applyContentY(next);
+  };
+
+  // Herramienta mano: el arrastre desplaza el visor por el mismo camino que el teclado (`contentYRef`), así
+  // funciona igual con scroll nativo y con scroll escalado.
+  const panRef = useRef<{ readonly pointerId: number; lastY: number } | null>(null);
+  const [panning, setPanning] = useState(false);
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
+    clearAnnotationSelection(event.target);
+    if (tool !== 'hand' || event.button !== 0) return;
+    panRef.current = { pointerId: event.pointerId, lastY: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setPanning(true);
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
+    const pan = panRef.current;
+    if (pan === null || pan.pointerId !== event.pointerId) return;
+    const dy = event.clientY - pan.lastY;
+    pan.lastY = event.clientY;
+    applyContentY(contentYRef.current - dy);
+  };
+
+  const endPan = (event: PointerEvent<HTMLDivElement>): void => {
+    if (panRef.current?.pointerId !== event.pointerId) return;
+    panRef.current = null;
+    setPanning(false);
   };
 
   // Tras abrir un documento, el visor recibe el foco para que el teclado funcione de inmediato.
@@ -344,13 +389,19 @@ export function Viewer() {
   return (
     <div
       ref={ref}
-      className={styles.viewer}
+      className={panning ? `${styles.viewer} ${styles.panning}` : styles.viewer}
       role="region"
       aria-label={msg.documentRegion(name)}
       data-testid="viewer"
+      data-tool={annotationTool === 'none' ? tool : annotationTool}
       tabIndex={0}
       onScroll={onScroll}
       onKeyDown={onKeyDown}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endPan}
+      onPointerCancel={endPan}
+      onLostPointerCapture={endPan}
     >
       {layout !== null && (
         <div className={styles.spacer} style={{ height: map.scrollHeight, width: spacerWidth }}>

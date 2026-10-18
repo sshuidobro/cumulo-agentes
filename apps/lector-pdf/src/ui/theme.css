@@ -7,11 +7,15 @@
   --color-text: #1d1d1f;
   --color-text-muted: #55555c;
   --color-border: #c7c7cc;
+  --color-control-border: #76767c;
   --color-accent: #0a58ca;
   --color-accent-text: #ffffff;
   --color-focus: #0a58ca;
   --color-viewer-bg: #d1d1d6;
   --color-danger: #b3261e;
+  /* Papel de las páginas (no cambia con el tema) y su texto secundario (número de página). */
+  --color-paper: #ffffff;
+  --color-paper-text: #55555c;
   --shadow-page: 0 1px 3px rgb(0 0 0 / 0.3);
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --radius: 0.375rem;
@@ -25,6 +29,7 @@
     --color-text: #f2f2f7;
     --color-text-muted: #aeaeb2;
     --color-border: #5a5a5e;
+    --color-control-border: #8e8e93;
     --color-accent: #4da3ff;
     --color-accent-text: #002b52;
     --color-focus: #7cb8ff;
@@ -41,6 +46,7 @@
   --color-text: #f2f2f7;
   --color-text-muted: #aeaeb2;
   --color-border: #5a5a5e;
+  --color-control-border: #8e8e93;
   --color-accent: #4da3ff;
   --color-accent-text: #002b52;
   --color-focus: #7cb8ff;
@@ -56,6 +62,7 @@
   --color-text: #1d1d1f;
   --color-text-muted: #55555c;
   --color-border: #c7c7cc;
+  --color-control-border: #76767c;
   --color-accent: #0a58ca;
   --color-accent-text: #ffffff;
   --color-focus: #0a58ca;

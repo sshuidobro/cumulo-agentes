@@ -97,6 +97,26 @@ describe('openDocument', () => {
     expect(platform.setTitle).toHaveBeenLastCalledWith('basic-5.pdf — Lector PDF');
   });
 
+  it('lee las etiquetas de página del PDF en segundo plano (page-labels.pdf: «i», «ii», … «A-1»)', async () => {
+    await openDocument(openedFile('page-labels.pdf', fixtureSource('page-labels.pdf')));
+    expect(useViewer.getState().status).toBe('ready');
+
+    await waitUntil(() => useViewer.getState().pageLabels !== null);
+
+    const labels = useViewer.getState().pageLabels;
+    expect(labels?.length).toBe(12);
+    expect(labels?.[0]).toBe('i');
+    expect(labels?.[3]).toBe('iv');
+    expect(labels?.[11]).toBe('A-1');
+  });
+
+  it('un PDF sin etiquetas de página deja pageLabels en null', async () => {
+    await openDocument(openedFile('basic-5.pdf', fixtureSource('basic-5.pdf')));
+
+    expect(await useViewer.getState().pdf?.doc.getPageLabels()).toBeNull();
+    expect(useViewer.getState().pageLabels).toBeNull();
+  });
+
   it('tras el escaneo corrige las dimensiones de las páginas distintas de la primera', async () => {
     await openDocument(openedFile('sizes-mixed.pdf', fixtureSource('sizes-mixed.pdf')));
     const versionAfterOpen = useViewer.getState().dimsVersion;

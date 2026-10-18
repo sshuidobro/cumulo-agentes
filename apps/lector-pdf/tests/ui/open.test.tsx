@@ -170,6 +170,10 @@ describe('atajos y botones', () => {
     await user.tab();
     expect(within(screen.getByRole('toolbar')).getByRole('button', { name: 'Abrir…' })).toHaveFocus();
 
+    // Sin documento, la barra solo tiene activo «Apariencia» (PDF-020): el Tab pasa por él antes del visor.
+    await user.tab();
+    expect(within(screen.getByRole('toolbar')).getByRole('button', { name: 'Apariencia' })).toHaveFocus();
+
     await user.tab();
     expect(within(screen.getByRole('main')).getByRole('button', { name: 'Abrir…' })).toHaveFocus();
   });

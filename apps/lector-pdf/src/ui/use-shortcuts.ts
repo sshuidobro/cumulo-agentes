@@ -4,13 +4,19 @@ import { services } from '../state/services';
 import { shortcuts, type ShortcutId } from './shortcuts';
 
 /** Atajos que también funcionan dentro de campos de texto (el resto se deja al propio campo). */
-export const ALLOW_IN_EDITABLE: ReadonlySet<ShortcutId> = new Set<ShortcutId>(['open']);
+export const ALLOW_IN_EDITABLE: ReadonlySet<ShortcutId> = new Set<ShortcutId>(['open', 'save', 'save-as', 'go-to-page', 'find']);
+
+/**
+ * Manejador de un atajo. Si devuelve `false`, el atajo no se ha consumido: el evento sigue su curso
+ * (p. ej. las flechas hacen scroll horizontal cuando el contenido es más ancho que el visor).
+ */
+export type ShortcutHandler = (event: KeyboardEvent) => unknown;
 
 /**
  * Escucha el teclado de la ventana y llama al manejador del atajo pulsado.
  * Dentro de un campo editable solo actúan los atajos de `ALLOW_IN_EDITABLE`.
  */
-export function useShortcuts(handlers: Partial<Record<ShortcutId, () => void>>): void {
+export function useShortcuts(handlers: Partial<Record<ShortcutId, ShortcutHandler>>): void {
   const latest = useRef(handlers);
   useEffect(() => {
     latest.current = handlers;
@@ -24,8 +30,8 @@ export function useShortcuts(handlers: Partial<Record<ShortcutId, () => void>>):
       if (isEditableTarget(event.target) && !ALLOW_IN_EDITABLE.has(id)) return;
       const handler = latest.current[id];
       if (handler === undefined) return;
+      if (handler(event) === false) return;
       event.preventDefault();
-      handler();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
