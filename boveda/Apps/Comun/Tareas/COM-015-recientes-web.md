@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-015
 titulo: Documentos recientes en @suite/platform - tipos e implementación web
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-014]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri]
