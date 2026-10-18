@@ -4,7 +4,7 @@ id: PDF-091
 titulo: Documentos de prueba cifrados y con permisos (qpdf)
 app: pdf
 estado: pendiente
-depende_de: []
+depende_de: [PDF-040]
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
 creado: 2026-10-18

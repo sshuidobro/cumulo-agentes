@@ -4,7 +4,7 @@ id: COM-017
 titulo: Pantalla completa en @suite/platform
 app: comun
 estado: pendiente
-depende_de: []
+depende_de: [COM-016]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
 creado: 2026-10-18

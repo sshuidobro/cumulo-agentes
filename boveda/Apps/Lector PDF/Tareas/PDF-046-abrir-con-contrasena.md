@@ -4,7 +4,7 @@ id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
 estado: pendiente
-depende_de: [PDF-091]
+depende_de: [PDF-091, PDF-090]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
