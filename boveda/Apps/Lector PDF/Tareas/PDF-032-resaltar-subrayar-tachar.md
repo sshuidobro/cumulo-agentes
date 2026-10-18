@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-032
 titulo: Resaltar, subrayar y tachar texto seleccionado
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-031, PDF-013, PDF-069]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -64,3 +64,11 @@ El usuario selecciona texto y lo resalta, subraya o tacha: (a) con la herramient
 - Qué he hecho: quads por línea (puro) y mapeo de la selección a páginas en puntos PDF; `markupSelection` crea una anotación por página en un solo paso de deshacer. Herramienta de marcado activa: al soltar sobre una capa marca la selección. Barra flotante «Acciones de la selección» (resaltar, subrayar, tachar, copiar) sin herramienta activa; «Resaltar/Subrayar/Tachar» de «Comentar» marcan la selección sin cambiar la herramienta.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` (raíz) OK; `pnpm test` 133 ficheros, 1557 tests OK; `pnpm coverage` OK (core 100 % en `line-quads.ts`); `LECTOR_E2E_PORT=4217 pnpm --filter lector-pdf e2e` 129/129 OK (incluye `markup.spec.ts` 5/5).
 - Dudas o cosas que no he podido hacer: (1) `markup-actions.ts` (state) importa `selection-to-pages.ts` (ui), porque la ficha lo pide así; si se quiere separar, sería decisión del líder. (2) El arrastre de subrayado debe empezar dentro de un carácter: un `mousedown` en el hueco de la capa no inicia selección en Chromium; el E2E lo hace así. (3) Con clic de ratón en «Resaltar» de «Comentar», no he verificado en navegador real que el `mousedown` no colapse la selección (los tests de jsdom usan `fireEvent`); la barra flotante sí evita ese colapso. (4) «Copiar» usa `navigator.clipboard`; si falla solo se registra en el log, sin aviso al usuario. (5) `markupSelection` vacía la selección aunque no cree nada (decisión tomada: la ficha dice «vacía la selección»). (6) El E2E construye en `dist/` compartido: no lo ejecuté en paralelo con otro E2E. No he hecho commit.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Lint, typecheck (raíz), tests de la ficha (24) en verde. Clic de ratón en «Resaltar» de «Comentar» verificado en Chromium real (puerto 4391, build propio fuera de `dist/`): la selección se conserva, se crea el resaltado y la herramienta no cambia. Quads en orden Z (sup-izq, sup-der, inf-izq, inf-der) y apariencia Multiply correctos para Adobe.
+1. `apps/lector-pdf/src/ui/viewer/selection-to-pages.ts:13` — BLOQUEANTE: `Range.getClientRects()` devuelve también las cajas de los elementos contenedores totalmente incluidos en el rango (div de la capa, marco de página: p. ej. `[538,65,204,264]` = la página entera a zoom 25 %). `layerAt` las acepta porque su centro cae dentro de la capa. Comprobado en navegador: selección desde la mitad de p1 hasta la p3 con «Resaltar» → la anotación de p1 y la de p2 miden 205×265 (página completa); en Adobe se vería la página entera resaltada. Hay que quedarse solo con los rectángulos de nodos de texto (p. ej. recorrer los nodos de texto de cada capa con `range.intersectsNode`, crear un sub-rango por nodo recortado a los extremos del rango y usar su `getClientRects()`), o descartar rectángulos que sean cajas de elementos. Descartar también los rects de ancho o alto 0.
+2. `apps/lector-pdf/tests/e2e/markup.spec.ts` (test multipágina) y `tests/ui/markup.test.tsx` — el test de dos páginas solo cuenta anotaciones, por eso no detectó el fallo anterior. Añadir un E2E de selección que cruce 3 páginas (la de en medio completa) comprobando que el `rect` de cada anotación no excede la caja del texto de su página (no es la página entera), y un test unitario con un `Range` falso que devuelva una caja de contenedor entera junto a rects de texto.
+3. `apps/lector-pdf/tests/e2e/markup.spec.ts` — añadir un E2E del clic de ratón en «Resaltar» de la barra «Comentar» con texto seleccionado (hoy solo se prueba con teclado); la comprobación manual pasó, falta que quede fijada.
+4. (opcional) `src/ui/viewer/SelectionActions.tsx:58` — si falla `clipboard.writeText` el usuario no recibe aviso.
+5. (opcional) `src/state/markup-actions.ts:3` — `state` importa de `ui`; valorar mover `selection-to-pages` a `engine/`.
