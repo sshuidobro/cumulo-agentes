@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-103
 titulo: Etiqueta «Firma» para sellos de la suite - núcleo
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-085]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
@@ -76,3 +76,13 @@ pdf.js 6.4.299 no expone `/Name` de un `/Stamp`. Se descartan (b) objetos intern
 ### [revisor] ronda 1 — 2026-10-18 — APROBADO
 - eslint (anotaciones y tests), typecheck y 336 tests de anotaciones y firma en verde. Cumple los criterios: ida y vuelta, Approved/sin Name, ids inválidos, espía de getDict, `withStampNames` con `toBe`, comment-list. Sin cambios en `importPageAnnotations`.
 - Nota: el fallo de `zoom-controls.test.tsx` y el lint de `dist-firma/` que cita el programador son ajenos a esta ficha; el tester debe confirmarlos con `pnpm coverage` completo.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Ida y vuelta, Approved, sin Name, ids inválidos, espía, withStampNames, comment-list | OK | `vitest run --coverage` (dir propio): 195/196 ficheros, 2334/2335 tests; los de la ficha en verde |
+| typecheck | OK | `pnpm typecheck` código 0 |
+| lint | Falla por ajeno | 9622 errores solo en `apps/lector-pdf/dist-firma/` (ignorado por git, 0 ficheros versionados); ninguno en código de la ficha |
+| coverage | 1 fallo ajeno | `tests/ui/zoom-controls.test.tsx` (foco/Tab) falla en la batería completa y pasa 13/13 aislado: sensible a carga, sin relación con anotaciones |
+Nota: `pnpm coverage` en `coverage/` choca con otro vitest en ejecución; usado `--coverage.reportsDirectory`.
+Pendiente fuera de la ficha: ignorar `dist-firma` en ESLint y estabilizar zoom-controls.
