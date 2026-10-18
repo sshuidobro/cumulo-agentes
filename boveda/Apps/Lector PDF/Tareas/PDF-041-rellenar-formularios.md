@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-041
 titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-081]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -54,3 +54,15 @@ Sobre cada página visible hay una capa con un control HTML por widget de texto,
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/FormLayer.tsx`, `FormLayer.module.css` (nuevos); `src/ui/messages-forms.ts` (nuevo); `src/ui/viewer/PageView.tsx` (montaje tras `AnnotationLayer`); `src/ui/toolbar/MainToolbar.tsx` (botón «Resaltar campos»); `src/ui/icons.tsx` (`IconFormFields`); `src/ui/theme.css` (`--form-highlight`); `src/state/form-actions.ts` (aviso una vez por documento); tests `tests/ui/form-layer.test.tsx`, `tests/ui/form-highlight-toggle.test.tsx`, `tests/unit/form-notice.test.ts`, `tests/e2e/forms-text.spec.ts`.
+- Qué he hecho: capa `FormLayer` con un control por widget de texto (input, password, textarea), combo (select o input con datalist si es editable) y lista (select múltiple o simple), posicionados con las esquinas del widget pasadas al viewport. El texto se confirma al salir o con Intro (no en multilínea), Esc descarta y devuelve el foco al visor; combo y lista confirman en cada cambio. Resaltado, estilos con/sin foco, modo noche, pointer-events con herramienta de anotación activa, botón de barra y aviso al abrir un documento con campos rellenables.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (183 ficheros, 2148 tests); `pnpm coverage` OK (líneas 98,98 %); `pnpm --filter lector-pdf e2e` OK (184 pruebas, incluido `chromium-perf`); E2E `forms-text.spec.ts` 4/4; `bundle:check` 478 040 bytes (máx. 500 000).
+- Dudas o cosas que no he podido hacer:
+  - `convertToViewportRectangle` no existe en pdf.js 6.4 (lo dice `LinkLayer`): uso las cuatro esquinas con `convertToViewportPoint`, mismo resultado.
+  - Combo editable: la ficha pide confirmar en `change`, pero un `<input list>` confirmaría en cada tecla. Lo confirmo al salir o con Intro, como el texto.
+  - `<select>` no admite `readonly`: combos y listas de solo lectura van con `disabled`.
+  - El aviso «hay campos» no estaba en la lista de ficheros de la ficha: se dispara en `importPages` de `form-actions.ts`, el único sitio donde llegan los campos.
+  - E2E de «pais»: la tecla «p» (búsqueda por inicial) elige Portugal en un solo cambio; dos flechas darían dos entradas de deshacer.
+  - Para revisar: tras Ctrl+Z el «Ana» lo pinta pdf.js desde el valor, no la apariencia original del fichero (en `form-full.pdf` difieren unos 12 500 píxeles de la p2). Es coherente con ADR-0019, pero la comparación de píxeles en el E2E se ha escrito contando ese caso.

@@ -1,0 +1,57 @@
+/* Capa de formularios: encima de la página (y de los enlaces). Solo los controles reciben el puntero. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.control {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 2px;
+  min-width: 0;
+  font-family: Helvetica, Arial, sans-serif;
+  line-height: 1.15;
+  pointer-events: auto;
+}
+
+textarea.control {
+  resize: none;
+  padding-top: 2px;
+}
+
+/* En reposo se ve lo que pinta pdf.js: el control es transparente. */
+.idle {
+  background: transparent;
+  color: transparent;
+}
+
+.highlight {
+  background: var(--form-highlight);
+}
+
+/* Con el foco: fondo opaco y texto visible para escribir o elegir. */
+.editing {
+  background: #fff;
+  color: #000;
+  outline: 2px solid var(--color-focus);
+  outline-offset: 0;
+}
+
+.night.editing {
+  background: #1f1f23;
+  color: #e6e6e6;
+}
+
+/* Solo lectura: sin resaltado y con el cursor normal. */
+.readOnly {
+  cursor: default;
+}
+
+.control:disabled {
+  cursor: default;
+}

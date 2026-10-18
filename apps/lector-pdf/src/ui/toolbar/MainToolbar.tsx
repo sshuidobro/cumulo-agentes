@@ -1,8 +1,9 @@
 import { IconButton } from '../kit/IconButton';
 import { MenuButton } from '../kit/MenuButton';
-import { IconAppearance, IconComment, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
+import { IconAppearance, IconComment, IconFormFields, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
 import { msg } from '../messages';
 import { printMsg } from '../messages-print';
+import { formMsg } from '../messages-forms';
 import { formatOpenShortcut, formatShortcut } from '../shortcuts';
 import { ZoomControls } from './ZoomControls';
 import { DocumentMenu } from './DocumentMenu';
@@ -18,6 +19,8 @@ import { setTheme, toggleNightMode } from '../../state/appearance-actions';
 import { toggleSidebar } from '../../state/sidebar-actions';
 import { rotateView, setViewTool } from '../../state/view-actions';
 import { openPrintDialog } from '../../state/print-actions';
+import { setFormHighlight } from '../../state/form-actions';
+import { useForms } from '../../state/form-store';
 import { useViewer } from '../../state/viewer-store';
 import styles from './MainToolbar.module.css';
 
@@ -44,6 +47,8 @@ export function MainToolbar() {
   const saving = useSaving((s) => s.saving);
   const theme = useAppearance((s) => s.theme);
   const nightMode = useAppearance((s) => s.nightMode);
+  const hasFields = useForms((s) => s.fields.size > 0);
+  const formHighlight = useForms((s) => s.highlight);
 
   return (
     <header className={styles.toolbar} role="toolbar" aria-label={msg.toolbarLabel}>
@@ -151,6 +156,15 @@ export function MainToolbar() {
       >
         <IconComment />
       </IconButton>
+      {hasFields && (
+        <IconButton
+          label={formMsg.highlight}
+          pressed={formHighlight}
+          onClick={() => { setFormHighlight(!formHighlight); }}
+        >
+          <IconFormFields />
+        </IconButton>
+      )}
       <div role="separator" aria-orientation="vertical" className={styles.separator} />
       <ZoomControls />
       <div role="separator" aria-orientation="vertical" className={styles.separator} />

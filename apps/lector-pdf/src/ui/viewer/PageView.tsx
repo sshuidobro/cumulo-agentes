@@ -16,6 +16,7 @@ import { useViewer } from '../../state/viewer-store';
 import { msg } from '../messages';
 import { AnnotationLayer } from './AnnotationLayer';
 import { AnnotationPopup } from './AnnotationPopup';
+import { FormLayer } from './FormLayer';
 import { LinkLayer } from './LinkLayer';
 import { PageFrame } from './PageFrame';
 import { SearchHighlights } from './SearchHighlights';
@@ -177,6 +178,7 @@ export const PageView = memo(function PageView({
       <SearchHighlights index={index} zoom={zoom} rotation={rotation} />
       <TextLayerView index={index} zoom={zoom} rotation={rotation} />
       {viewport !== null && <AnnotationLayer pageIndex={index} viewport={viewport} />}
+      {viewport !== null && <FormLayer pageIndex={index} viewport={viewport} />}
       {viewport !== null && <AnnotationPopup pageIndex={index} viewport={viewport} visible={visible} />}
       <LinkLayer index={index} zoom={zoom} rotation={rotation} />
       {failed && (
