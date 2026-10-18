@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-037
 titulo: Guardar y Guardar como con anotaciones, recarga y aviso de cambios sin guardar
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-028, PDF-030, PDF-019, COM-007, COM-010, COM-013]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, stack-tauri]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones, ficheros]
 ---
 
@@ -72,3 +72,14 @@ Ctrl+S guarda las anotaciones **dentro del PDF** (anexando un incremento de form
 ### [líder] ajuste por desbloqueo de PDF-028 — 2026-10-17
 - `save-actions` abre el lector con `openForSave` (nuevo en [[PDF-028-escritor-incremental]]), que traduce cifrado → `save-encrypted` y estructura dañada → `save-unreadable` sin lanzar. Así el criterio del PDF cifrado es cumplible (antes `ObjectReader.open` lanzaba `encrypted`). Añadido criterio de PDF dañado.
 
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados (`apps/lector-pdf/`): nuevos `src/state/save-actions.ts`, `src/state/unsaved-guard.ts`, `src/state/choice.ts`, `src/ui/kit/ChoiceDialog.tsx`, `tests/helpers/save-harness.ts`, `tests/unit/save-actions.test.ts`, `tests/unit/unsaved-guard.test.ts`, `tests/ui/choice-dialog.test.tsx`, `tests/ui/save-toolbar.test.tsx`; modificados `src/state/document-actions.ts` (`openDocument(file, opts?)`, `openRequested`), `src/state/position-sync.ts` (`readCurrentPosition`, `expectRestore`), `src/ui/toolbar/MainToolbar.tsx`, `src/ui/App.tsx`, `src/ui/messages.ts`, `src/ui/shortcuts.ts`, `src/ui/use-shortcuts.ts`, `src/ui/icons.tsx` (`IconSave`, `IconSaveAs`), `src/main.tsx`.
+- Qué he hecho: `save`/`saveAs` según la ficha (append con `expectedSize` = tamaño del original, lector con `openForSave`, reapertura en la misma posición, `changed-on-disk` con diálogo, bloqueo mientras guarda); aviso de cambios sin guardar al cerrar (`installCloseGuard`) y al abrir otro documento (`openRequested`); botones Guardar / Guardar como… y atajos `Mod+S` / `Mod+Shift+S` con confirmación del editor activo. Los diálogos de elección van por `askChoice` (store) y `ChoiceDialog`.
+- Comandos ejecutados y resultado: `pnpm lint` → 0; `pnpm typecheck` → 0 (última pasada); `pnpm test` → 121 ficheros y 1455 tests en verde, pero el comando sale con código 1 por 3 «Unhandled Rejection» en `tests/ui/open.test.tsx` (mock de `../../src/engine` sin `getOutline`: trabajo ajeno en curso, no es de esta ficha); `pnpm coverage` (con `--coverage.reportsDirectory` propio, el directorio `coverage/` estaba ocupado por otro proceso) → 0, `save-actions.ts` 100 % líneas; `pnpm build` → 0; smoke temporal de Playwright en puerto 4397 (config y spec borrados después): abrir basic-5, botones habilitados, «Guardar como…» descarga un PDF byte a byte igual al original y muestra el aviso, sin errores de página → pasa.
+- Dudas o cosas que no he podido hacer:
+  1. **E2E de la ficha no escrito** (`tests/e2e/save.spec.ts`, criterio de resaltado + nota): no hay UI de resaltar ni de notas (PDF-032/PDF-033 pendientes). Pendiente hasta que existan.
+  2. **Discrepancia con COM-007**: en Chromium, `platform.saveAs` abre el selector de File System Access siempre que exista `showSaveFilePicker`, también con ficheros abiertos con `<input>`. La ficha dice que ahí debe descargar. No lo he cambiado (es de COM-007); en el smoke tuve que quitar `showSaveFilePicker`. Necesita decisión del líder.
+  3. **Ubicación de tests**: `vitest.config` solo recoge `tests/unit/*.test.ts` y `tests/ui/*.test.tsx`, y el jsdom no carga pdf.js (`import.meta.url` no es `file:`). Por eso `save-actions` y `unsaved-guard` van en `tests/unit/` (Node, PDF real) y el diálogo se prueba en `tests/ui/choice-dialog.test.tsx`.
+  4. **Dos decisiones menores, para revisar**: (a) `save()` sin diferencias llama a `markAnnotationsSaved()` además de devolver `'nothing'`, para que el estado «sucio» no quede atascado; (b) el aviso de cierre trata `'nothing'` como «seguir» (no queda nada que perder). Ambas son coherentes con la ficha, pero no estaban escritas.
+  5. El `tests/ui/annotation-layer.test.tsx` y `tests/e2e/annotations-layer.spec.ts` no son míos; en un momento fallaron por ediciones en curso de PDF-031 y en la última pasada pasan.
+  6. No he hecho commit (instrucción de no usar git commit/stash/checkout con el árbol compartido).

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-031
 titulo: Capa de anotaciones - dibujar, seleccionar, mover y borrar
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-030, PDF-010, PDF-011, PDF-013]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
