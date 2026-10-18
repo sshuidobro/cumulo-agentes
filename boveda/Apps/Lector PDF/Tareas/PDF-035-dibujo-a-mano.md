@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-035
 titulo: Dibujo a mano alzada con ratón, lápiz o dedo
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -31,14 +31,14 @@ Con la herramienta «Dibujar», el usuario traza a mano alzada sobre la página 
 5. Tests `tests/unit/annotations/simplify.test.ts`, `tests/ui/ink.test.tsx`, `tests/e2e/ink.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] (T) `simplifyPath` de 1 000 puntos sobre una recta con ruido < 0,1 → 2 puntos; de un cuadrado muestreado → conserva las 4 esquinas (±0,5); 100 000 puntos sin desbordar la pila (en `tests/unit/`).
-- [ ] (T, rendimiento, `tests/perf/simplify.perf.test.ts` con `measureBest`) `simplifyPath` de 100 000 puntos en < 100 ms.
-- [ ] (T) Un trazo simulado de 50 eventos → 1 anotación `ink` con `width` de la herramienta y `rect` que contiene todos los puntos; `pointercancel` → ninguna.
-- [ ] (T) Dos trazos → 2 anotaciones y 2 entradas de deshacer.
-- [ ] E2E: dibujar con `page.mouse` un zigzag de 5 segmentos en `basic-5.pdf` → píxeles rojos a lo largo del trazo; Ctrl+Z → desaparecen.
-- [ ] E2E: con zoom 50 % y 300 % el trazo dibujado aparece bajo el puntero (píxel del punto medio, tolerancia 3 px).
-- [ ] Rendimiento: un trazo de 2 000 eventos no produce *long tasks* > 50 ms.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf`, `pnpm --filter lector-pdf e2e` con código 0.
+- [x] (T) `simplifyPath` de 1 000 puntos sobre una recta con ruido < 0,1 → 2 puntos; de un cuadrado muestreado → conserva las 4 esquinas (±0,5); 100 000 puntos sin desbordar la pila (en `tests/unit/`).
+- [x] (T, rendimiento, `tests/perf/simplify.perf.test.ts` con `measureBest`) `simplifyPath` de 100 000 puntos en < 100 ms.
+- [x] (T) Un trazo simulado de 50 eventos → 1 anotación `ink` con `width` de la herramienta y `rect` que contiene todos los puntos; `pointercancel` → ninguna.
+- [x] (T) Dos trazos → 2 anotaciones y 2 entradas de deshacer.
+- [x] E2E: dibujar con `page.mouse` un zigzag de 5 segmentos en `basic-5.pdf` → píxeles rojos a lo largo del trazo; Ctrl+Z → desaparecen.
+- [x] E2E: con zoom 50 % y 300 % el trazo dibujado aparece bajo el puntero (píxel del punto medio, tolerancia 3 px).
+- [x] Rendimiento: un trazo de 2 000 eventos no produce *long tasks* > 50 ms.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm perf`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Goma de borrar parcial, presión del lápiz, formas geométricas (PDF-057).
@@ -58,3 +58,21 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 - Qué he hecho: `simplifyPath` (RDP iterativo con pila explícita) y la herramienta «Dibujar» con Pointer Events: trazo con `setPointerCapture`, puntos coalescidos, recorte a la página, vista previa en `polyline` por frame, al soltar simplificación 0,5 pt y `addAnnotation` («añadir dibujo»); `pointercancel` descarta; segundo puntero ignorado y con dos dedos se descarta el trazo. «Grosor» y «Color» aparecen también con un dibujo seleccionado y cambian ese dibujo («cambiar grosor» / «cambiar color»).
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (143 ficheros, 1684 tests); `pnpm coverage` OK (líneas 98,97 %); `pnpm perf` OK (16 ficheros, 25 tests, incluido `simplify` de 100 000 puntos); `pnpm --filter lector-pdf e2e` OK (145 tests, incluidos los 4 de `ink.spec.ts`).
 - Dudas o cosas que no he podido hacer: (1) Decisiones menores tomadas al implementar, para revisar: un clic sin arrastre no crea dibujo (una muestra repetida no se guarda y el trazo queda en un punto); con «Dibujar» activa, el trazo empieza aunque el puntero caiga sobre otra anotación (la zona no selecciona ni arrastra, igual que con «Nota»). (2) La tabla de iteración 2 del Plan sigue mostrando PDF-031 y PDF-069 como `pendiente`; sus fichas están `hecha`. (3) No he marcado las casillas de criterios: quedan para el tester.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Ejecutados: `pnpm lint`, `pnpm typecheck`, `pnpm test` (1684 OK), `pnpm perf` OK y `ink.spec.ts` (4 OK). Cumple los criterios; RDP iterativo correcto, Pointer Events con captura, segundo puntero ignorado, `pointercancel` descarta, limpieza al desmontar. Las dos decisiones menores del programador (clic sin arrastre no crea dibujo; el trazo empieza sobre otra anotación) son razonables.
+1. (opcional) `AnnotationLayer.tsx:343` — si el dedo suelta con `lostpointercapture` sin `pointerup`, el trazo quedaría abierto; considerar tratarlo como cancelación.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| simplifyPath (recta, cuadrado, 100 000 sin pila) | OK | `pnpm test`: 1684 OK (antes de añadir 1) |
+| Perf 100 000 puntos < 100 ms | OK | `pnpm perf`: 16 ficheros, 25 tests OK |
+| Trazo 50 eventos / cancel / dos trazos | OK | `tests/ui/ink.test.tsx` 12 OK |
+| E2E zigzag + Ctrl+Z; zoom 50 y 300 % | OK | `ink.spec.ts` x5 repeticiones: 20/20 |
+| 2 000 eventos sin long tasks | OK | incluido en e2e, 5/5 |
+| lint, typecheck, test, coverage (líneas 98,97 %), e2e | OK | `pnpm --filter lector-pdf e2e`: 145 passed |
+
+Tests añadidos: recorte del trazo a los bordes de la página en `tests/ui/ink.test.tsx`.
+Rendimiento: simplify 100 000 puntos < 100 ms (perf verde); sin long tasks con 2 000 eventos.
+Nota (no bloqueante): sugerencia del revisor sobre `lostpointercapture` sigue sin tratarse.
