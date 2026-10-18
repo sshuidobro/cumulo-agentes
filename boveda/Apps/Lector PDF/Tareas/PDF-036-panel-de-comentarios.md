@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-036
 titulo: Panel de comentarios - lista, filtros, ir a, editar y borrar
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-031, PDF-015, PDF-033]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -81,3 +81,9 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 - Dudas o cosas que no he podido hacer:
   1. No he hecho commit. El árbol mezcla este trabajo con el de PDF-034 (texto libre) en los mismos ficheros (`annotation-actions.ts`, `annotation-store.ts`, `messages.ts`, `core/annotations/index.ts`, `AnnotationLayer.tsx`). Separarlo exige partir hunks, así que lo dejo sin commitear para que el líder o el usuario decidan el reparto de commits.
   2. Quedan fuera de mi alcance los avisos de rendimiento de la capa de anotaciones (`annotation-layer.perf.test.ts`) si vuelven a fallar en carga.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (1665) OK; cobertura OK (con directorio propio porque otro proceso bloqueaba `coverage/`; `comment-list.ts` 100 % líneas); `comment-list.perf.test.ts` OK; E2E `comments-panel` 2/2 OK. Criterios cubiertos, núcleo sin React, textos en `messages.ts`, listbox accesible con teclado.
+1. (opcional) `annotation-actions.ts` `openPopupWhenPageCurrent` — la suscripción pendiente no se cancela en `endAnnotationSession`; cancelarla ahí evitaría abrir una ventana tras cerrar el documento.
+2. (opcional) `CommentsPanel.tsx` — sin atajo Supr para borrar la fila activa (el botón Borrar sí es alcanzable con Tab).
+3. Nota para el líder: el trabajo está sin commitear y mezclado con PDF-034 en `annotation-actions.ts`, `annotation-store.ts`, `messages.ts`, `core/annotations/index.ts`.
