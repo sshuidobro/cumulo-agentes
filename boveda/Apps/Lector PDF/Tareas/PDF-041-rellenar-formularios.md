@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-041
 titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-081]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
