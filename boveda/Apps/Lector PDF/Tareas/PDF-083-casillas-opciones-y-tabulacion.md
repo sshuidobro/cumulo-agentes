@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-083
 titulo: Casillas, botones de opción, tabulación entre páginas y E2E de formularios
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-041, PDF-042]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -76,3 +76,16 @@ Typecheck OK; tests de la ficha (41) OK; e2e no ejecutado por indicación. Lint 
 - Qué he hecho: (1) Tab y Mayús+Tab deciden «extremo» por parada: un grupo de botones de opción (mismo `name`) es una sola parada, así que desde la opción marcada, aunque no sea la última, Tab pasa a la página siguiente si el grupo es el último de la página. (2) Cada opción se nombra «campo: estado» (p. ej. «color: Azul») para que un lector de pantalla sepa a qué pregunta responde; el criterio «nombre accesible (`color`)» queda cumplido.
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf exec vitest run tests/ui/form-layer.test.tsx tests/unit/forms-actions.test.ts` → 45 pasan. `pnpm typecheck` → OK. `pnpm --filter lector-pdf e2e -- tests/e2e/forms.spec.ts` → 5 pasan. `pnpm lint` → código 1, todos los errores en `apps/lector-pdf/dist-firma/` (build ajeno, ya conocido); ningún error en ficheros de esta ficha. `pnpm coverage` → 2325 pasan, 1 falla: `tests/ui/zoom-controls.test.tsx` (ajena, ya conocida).
 - Dudas o cosas que no he podido hacer: sin cambios en `dist-firma/` ni en el test de zoom (fuera de alcance; requieren decisión del líder). Pendientes del revisor opcionales no tratados: `aria-label` de la firma sin el nombre del campo y `yFraction` sin tener en cuenta el giro de la vista. Un grupo de opciones con el mismo nombre en dos páginas compartiría grupo de flechas en el navegador (caso no cubierto por la ficha).
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Typecheck OK; 45 tests de la ficha OK. Los dos puntos de la ronda 1 resueltos (Tab por parada de grupo con tests; nombre «color: Azul»). Lint (`dist-firma/`) y test de zoom: fallos ajenos conocidos, a decidir por el líder; no bloquean esta ficha.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| UI checkbox/radio/firma, Tab entre páginas | OK | `pnpm coverage`: 2334 pasan, 1 falla ajena |
+| E2E teclado, reabrir, Ctrl+Z, aviso cerrar, recuperar borrador, axe | OK | `playwright test forms.spec.ts --project=chromium`: 5/5 |
+| typecheck | OK | código 0 |
+| lint | Solo `apps/lector-pdf/dist-firma/` (9622 errores, build versionado en c047858); `eslint . --ignore-pattern 'apps/lector-pdf/dist-firma/**'` → 0 | Arreglo seguro: añadir `dist-firma/` a los ignores de ESLint (decisión del líder) |
+| coverage | Falla `tests/ui/zoom-controls.test.tsx:117` (bucle Tab de 10 iteraciones no llega a «Reducir»; probable aumento de controles en la barra) | Ajena a la ficha |
+| e2e completo | 2 fallos en la tanda completa (`pdfjs-deferred`, `recover-qa` Ctrl+Z) que pasan aislados (10/10): temporización bajo carga, no de esta ficha | Vigilar flakiness |

@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-017
 titulo: Pantalla completa en @suite/platform
 app: comun
-estado: en-revision
+estado: hecha
 depende_de: [COM-016]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -55,3 +55,19 @@ onFullscreenChange(cb: (on: boolean) => void): () => void;
 - Qué he hecho: he verificado cada punto de «Qué hay que hacer» y cada criterio contra el código existente. Los criterios 1 a 4 se cumplen: los 64 tests de plataforma (web y Tauri) pasan y `cargo check --workspace --all-features` termina con código 0. No he modificado código porque ya cumplía lo pedido.
 - Comandos ejecutados y resultado: `npx vitest run` en `packages/platform` con `tests/web/fullscreen-web.test.ts` y `tests/tauri`: 8 ficheros y 64 tests OK. `cargo check --workspace --all-features`: OK. `pnpm typecheck`: OK. `pnpm lint`: FALLA, con 9622 errores que solo están en `apps/lector-pdf/dist-firma/` (salida de build minificada versionada en git, sin estar en `ignores` de `eslint.config.*`; no es de esta ficha). `pnpm coverage`: FALLA por un test ajeno, `apps/lector-pdf/tests/ui/zoom-controls.test.tsx` («el campo, la lista y los botones son alcanzables con Tab»); el resto pasa (2334 de 2335). El criterio de lint y de coverage no se cumple por causas fuera de COM-017.
 - Dudas o cosas que no he podido hacer: (1) ¿Quién añade `dist-firma/` al `ignores` de ESLint, o se saca del repositorio? Es decisión del líder y no la he tomado. (2) El fallo de `zoom-controls` podría venir del trabajo sin commit de otros agentes en `messages-forms.ts`; no lo he investigado. (3) Si el líder quiere que esta ficha vuelva a implementarse desde cero, hay que aclararlo porque el código ya existe.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+1. Criterios 1-4 cubiertos por código y tests (web: ok/rechazo/ausente/evento/baja; Tauri: llamada, aviso solo al cambiar). Capacidad con los dos permisos; `cargo check --workspace --all-features` rc=0.
+2. `pnpm lint`, `typecheck` y `coverage` en verde tras 4804e5d (líneas 98,6 %).
+3. (opcional) `platform-web.ts` setFullscreen(false) fuera de pantalla completa devuelve `unsupported` si `exitFullscreen` rechaza; podría tratarse como `ok`.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Web ok/rechazo/ausente | OK | `fullscreen-web.test.ts` dentro de `pnpm coverage` rc=0 |
+| Web evento y baja | OK | idem |
+| Tauri llamada y aviso solo al cambiar | OK | `fullscreen-tauri.test.ts`, idem |
+| Capacidad y cargo | OK | permisos en `default.json` líneas 8-9; `cargo check --workspace --all-features` rc=0 |
+| lint/typecheck/coverage | OK | los tres rc=0; líneas 98,6 % |
+
+Tests añadidos: ninguno. Rendimiento: no aplica.
