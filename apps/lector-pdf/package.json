@@ -8,6 +8,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "e2e": "playwright test",
     "fixtures": "node tests/fixtures/cli.ts --force",
+    "interop:samples": "node scripts/interop-samples.mjs",
     "tauri": "tauri"
   },
   "dependencies": { "@suite/platform": "workspace:*", "@suite/shared": "workspace:*", "fflate": "0.8.3", "pdfjs-dist": "6.4.299",
