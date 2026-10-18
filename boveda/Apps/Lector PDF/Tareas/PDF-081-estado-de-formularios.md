@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-081
 titulo: Estado de formularios y sincronización con el lienzo de pdf.js
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-080]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional]
@@ -76,3 +76,9 @@ export const useForms: UseBoundStore<StoreApi<FormState>>;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/engine/form-storage.ts` (nuevo), `apps/lector-pdf/src/state/form-store.ts` (nuevo), `apps/lector-pdf/src/state/form-actions.ts` (nuevo), `apps/lector-pdf/src/state/annotation-actions.ts` (listeners `onEditsPublished`/`onPagesImported`, `executeEdit`, `bumpPageVersions`, `recoverEdits` con campos), `apps/lector-pdf/src/state/document-actions.ts` (`startFormSession` tras `startAnnotationSession`, `endFormSession` en `releaseSession`), `apps/lector-pdf/tests/unit/forms-actions.test.ts` (nuevo, 8 tests sobre `form-full.pdf`).
+- Qué he hecho: store `useForms` y sesión de formularios sobre los avisos de anotaciones; los cambios de valor (`setFieldValue`, `undo`/`redo`, borradores) escriben en `annotationStorage` de los widgets y suben `pageVersion` de sus páginas; las páginas importadas más tarde reciben el valor ya cambiado. Los avisos viven en `annotation-actions.ts` y `form-actions.ts` solo lo importa, sin ciclos.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (174 ficheros, 2033 tests); `pnpm coverage` OK (exit 0; líneas 98,96 %, sentencias 97,16 %). `tests/unit/forms-actions.test.ts` 8/8.
+- Dudas o cosas que no he podido hacer: (1) El test no está en `tests/ui/form-actions.test.ts` como pide la ficha: en jsdom los helpers de fixtures fallan (`new URL(import.meta.url)`: «The URL must be of scheme file») y el glob de Vitest solo recoge `tests/ui/**/*.test.tsx`. Lo he puesto en `tests/unit/` (entorno node, sin DOM). (2) La ficha pide `getValue(id, null)`; con pdfjs-dist 6.4.299 eso lanza, así que el test usa `getValue(id, {})`. (3) No he añadido un test del caso «borrador recuperado antes de importar la página»; el código lo cubre pero solo está probado indirectamente. (4) No commiteo `package.json`, `pnpm-lock.yaml` ni ficheros de PDF-086/088/089 (son de otras fichas).
