@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-036
 titulo: Panel de comentarios - lista, filtros, ir a, editar y borrar
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-031, PDF-015, PDF-033]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
