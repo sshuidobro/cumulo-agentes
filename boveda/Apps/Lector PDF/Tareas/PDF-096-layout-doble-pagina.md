@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-096
 titulo: Layout de doble página (pares y con portada)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
