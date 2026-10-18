@@ -4,7 +4,7 @@ id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
 estado: pendiente
-depende_de: [PDF-100, PDF-101, PDF-049]
+depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
@@ -26,7 +26,7 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 
 ## Qué hay que hacer
 1. `src/ui/tabs/TabBar.tsx` + `TabBar.module.css`: se muestra solo con **2 o más** pestañas. `role="tablist"` con `aria-label` «Documentos abiertos»; cada pestaña es un `role="tab"` con `aria-selected`, `aria-controls` al visor, `title` = nombre completo, texto truncado con elipsis (ancho máx. 220 px, mín. 120 px; si no caben, la barra hace scroll horizontal y la activa se mantiene visible con `scrollIntoView({ inline: 'nearest' })`), «• » delante si `dirty`, indicador de carga si `status === 'loading'` e icono de aviso si `'error'`. Botón × (`aria-label` «Cerrar “<nombre>”», `tabIndex={-1}`) a la derecha. Clic central (botón 1) cierra. *Roving tabindex*: solo la activa tiene `tabIndex=0`; ←/→ mueven el foco, Inicio/Fin a la primera/última, Intro/Espacio activan, Supr cierra la enfocada.
-2. `App.tsx`: `<TabBar />` encima de `MainToolbar`; el visor y el panel se montan una vez (cambian de contenido al cambiar `useViewer`).
+2. `App.tsx`: `<TabBar />` encima de `MainToolbar` (oculta en pantalla completa, `useFullscreen.on`, PDF-097); el visor y el panel se montan una vez (cambian de contenido al cambiar `useViewer`).
 3. Atajos en `shortcuts.ts` (sintaxis de `@suite/shared`: solo existe `Mod`, que es Ctrl fuera de Mac): `next-tab: ['Mod+Tab']`, `prev-tab: ['Mod+Shift+Tab']`, `close-tab: ['Mod+W', 'Mod+F4']`, con descripciones `tabsMsg.nextTab` «Documento siguiente», `tabsMsg.prevTab` «Documento anterior», `tabsMsg.closeTab` «Cerrar documento». Con una sola pestaña, `close-tab` cierra el documento. Chrome no deja a una página capturar Ctrl+Tab ni Ctrl+W: los atajos funcionan en la app de escritorio (y en Playwright); en el navegador se usa la barra con ratón o teclado. Anotarlo para el Manual en el Registro.
 4. Bloqueos: con `isSaving()`, con un diálogo modal abierto (`useChoice`, contraseña, impresión) o mientras se dibuja la firma, cambiar o cerrar pestaña no hace nada.
 5. Cierre de ventana (`installCloseGuard`): si `hasAnyUnsavedChanges()`, se cancela el cierre y, pestaña a pestaña con cambios (de izquierda a derecha), se activa y se llama a `confirmDiscardOrSave()`; un «Cancelar» detiene el proceso y deja la app abierta en esa pestaña; si todas siguen, `closeWindow()`.
