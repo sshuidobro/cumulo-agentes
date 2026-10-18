@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-018
 titulo: Búsqueda en la interfaz (Ctrl+F, opciones, resaltado, siguiente/anterior, progreso)
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-017, PDF-013]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -79,3 +79,9 @@ Ctrl+F abre una barra de búsqueda. Mientras se escribe, se busca en todo el doc
   - Decisiones menores tomadas en la implementación (no estaban en la ficha): F3 también funciona dentro del campo; «Cerrar» borra la consulta y conserva las opciones; cambiar de documento cierra la barra.
   - La aserción «5 resaltados en total» no se puede comprobar en el DOM: el visor solo monta las páginas cercanas. El total lo verifica el contador «1 de 5».
   - Queda pendiente el error de typecheck de `tests/e2e/outline.spec.ts`, ajeno a esta ficha. El criterio «pnpm typecheck sin errores» solo se cumplirá cuando lo resuelva su dueño.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Comprobado: `pnpm lint` 0; tests nuevos de búsqueda 23/23 en verde; `typecheck` solo falla en `tests/e2e/outline.spec.ts` (ajeno, PDF-016). Núcleo, store, acciones, barra y resaltado cumplen la ficha.
+1. `apps/lector-pdf/tests/e2e/search.spec.ts:108-138` — el criterio de *long tasks* > 100 ms y de interfaz que responde es vacuo: el `PerformanceObserver` se instala en el test de `pages-5000` («aguja») pero nunca se lee; el test siguiente («durante la búsqueda…») lee `window.longTasks` en otra página, donde no existe, y `?? []` hace que `worst` sea 0 siempre. Por eso la «máxima 0,0 ms» del Registro no vale. Hay que instalar el observador y comprobarlo en el mismo test (idealmente antes de abrir el fichero, con `addInitScript`, o justo antes de buscar), anotar el máximo real en el Registro y quitar el `?? []` que enmascara el fallo.
+2. `apps/lector-pdf/tests/e2e/search.spec.ts:122-134` — la ficha exige también que durante la búsqueda funcione el `scroll` del visor; solo se prueba el campo de página. Añadir una comprobación de scroll (cambia `scrollTop` del visor) mientras el estado es «Buscando…» (comprobar que sigue buscando al hacerlo, p. ej. visible el botón «Detener» antes de interactuar).
+3. Registro — «pnpm typecheck» no estará a 0 hasta que PDF-016 arregle `outline.spec.ts`; volver a pasar `typecheck`, `coverage` y e2e (puerto propio) al reenviar. (informativo)
