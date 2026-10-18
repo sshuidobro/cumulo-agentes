@@ -8,6 +8,7 @@ export const propertiesMsg = {
   tabsLabel: 'Secciones de propiedades',
   tabDescription: 'Descripción',
   tabAdvanced: 'Avanzado',
+  tabFonts: 'Fuentes',
   reading: 'Leyendo propiedades…',
   empty: '—',
   yes: 'Sí',
@@ -32,5 +33,16 @@ export const propertiesMsg = {
     fastWebView: 'Vista web rápida',
     encrypted: 'Cifrado',
     hasForm: 'Formulario',
+  },
+  /** Pestaña «Fuentes» (PDF-088). */
+  fonts: {
+    columns: { name: 'Nombre', type: 'Tipo', encoding: 'Codificación', embedded: 'Incrustada' },
+    embeddedSubset: 'Sí, subconjunto',
+    scanning: (done: string, total: string): string => `Buscando fuentes… ${done} de ${total} páginas`,
+    stop: 'Detener',
+    none: 'No se han encontrado fuentes en el documento.',
+    stopped: (page: string): string => `Búsqueda detenida en la página ${page}.`,
+    stoppedEarly: 'Búsqueda detenida antes de terminar la primera página.',
+    error: 'No se han podido leer las fuentes de este PDF.',
   },
 } as const;
