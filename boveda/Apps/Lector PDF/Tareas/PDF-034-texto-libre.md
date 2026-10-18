@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-034
 titulo: Cuadros de texto libre sobre la página
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -56,3 +56,10 @@ Con la herramienta «Texto», un clic (o arrastrar un rectángulo) crea un cuadr
 - Qué he hecho: revisado el código frente a los puntos 1–6 y a los criterios de aceptación; cada criterio tiene su test (creación con Esc sin texto, 1 anotación y 1 deshacer al confirmar, borrado con deshacer, Mayús+→ ×3 en una entrada, E2E de texto y de zoom 200 %). No he tocado el trabajo de PDF-036 (`comment-list.ts`, `CommentsPanel*`, `Sidebar.tsx`, sus tests ni los hunks de PDF-036 en los ficheros compartidos).
 - Comandos ejecutados y resultado: `pnpm lint` → 0; `pnpm typecheck` → 0; `pnpm test` → 141 ficheros, 1665 tests en verde; `pnpm coverage` → 0 (líneas 98,96 %, ramas 92,73 %); `pnpm --filter lector-pdf e2e` → 140 pasan y 1 falla: `performance.spec.ts:169` («ninguna long task supera 100 ms», 111 ms). Repetido en aislado dos veces: pasa las dos (9,5–9,7 s). Lo tomo por ruido de carga tras la suite completa; no es un fallo de esta ficha, pero conviene que el tester lo vigile. `tests/e2e/freetext.spec.ts`: 2/2 OK.
 - Dudas o cosas que no he podido hacer: no he hecho commit. El árbol mezcla hunks de PDF-034 y PDF-036 en los mismos ficheros compartidos (`annotation-actions.ts`, `AnnotationLayer.tsx`, `annotation-store.ts`, `messages.ts`, `CommentToolbar.tsx`, `index.ts`), y separarlos sin `git add -p` interactivo es arriesgado. Hace falta decidir si se commitea todo junto o se parte. Las casillas de criterios siguen sin marcar para que las marque el tester.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 141 ficheros / 1665 tests en verde, `freetext.spec.ts` 2/2. Cada criterio tiene su test; el núcleo (`freetext.ts`, `freetext-box.ts`) es puro y el editor reproduce fuente, márgenes (2 pt) e interlineado (1,15) de la apariencia.
+- `pnpm --filter lector-pdf e2e` no dio 0 en mi ejecución: falló `open-qa.spec.ts:59` (pasa en aislado, 9/9); en la del programador falló `performance.spec.ts:169`. Son flakys por carga, distintos cada vez y ajenos a esta ficha. El tester debe confirmar con una ejecución limpia.
+1. (opcional) `src/state/annotation-actions.ts:480` — si al confirmar la edición `current` ya no es un texto libre, se sale sin llamar a `syncFileVisibility` y un texto del fichero podría quedar oculto — llamar a la sincronización antes de salir.
+2. (opcional) `src/ui/viewer/AnnotationLayer.tsx:460` — sangría incorrecta de la línea del `FreeTextEditor`.
+3. (opcional) El árbol mezcla hunks de PDF-034 y PDF-036 en ficheros compartidos; commitear juntos o separar con cuidado.
