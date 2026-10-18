@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-087
 titulo: Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica]
