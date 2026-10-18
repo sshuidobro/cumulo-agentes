@@ -1,13 +1,12 @@
 import type { ReactElement } from 'react';
+import { FREETEXT_LEADING, FREETEXT_MARGIN_PT } from '../../core/annotations/freetext';
 import type { Annotation, FreeTextAnnotation, NoteAnnotation, TextMarkupAnnotation } from '../../core/annotations/model';
 import { wrapText } from '../../core/annotations/wrap';
 import { cssColor, svgPathForQuads, svgPointsForPath } from './annotation-geometry';
 import styles from './AnnotationLayer.module.css';
 
-/** Mismos valores que la apariencia de PDF-027, para que se vean igual en el visor y en otros programas. */
+/** Mismo valor que la apariencia de PDF-027, para que se vea igual en el visor y en otros programas. */
 const NOTE_SIZE = 20;
-const FREETEXT_MARGIN = 2;
-const FREETEXT_LEADING = 1.15;
 const HELVETICA = 'Helvetica, Arial, sans-serif';
 
 /** Dibujo de una anotación nueva o modificada (en puntos PDF; la capa aplica la matriz de la página). */
@@ -105,10 +104,10 @@ function FreeTextShape({ a }: { readonly a: FreeTextAnnotation }): ReactElement 
   const [x1, y1, x2, y2] = a.rect;
   const width = x2 - x1;
   const height = y2 - y1;
-  const lines = wrapText(a.contents, width - 2 * FREETEXT_MARGIN, a.fontSize);
+  const lines = wrapText(a.contents, width - 2 * FREETEXT_MARGIN_PT, a.fontSize);
   const leading = FREETEXT_LEADING * a.fontSize;
   const clipId = `clip-${a.id.replace(/[^A-Za-z0-9_-]/g, '_')}`;
-  let baseline = y2 - FREETEXT_MARGIN - a.fontSize;
+  let baseline = y2 - FREETEXT_MARGIN_PT - a.fontSize;
   const texts: ReactElement[] = [];
   lines.forEach((line, i) => {
     if (line !== '') {
@@ -116,7 +115,7 @@ function FreeTextShape({ a }: { readonly a: FreeTextAnnotation }): ReactElement 
       texts.push(
         <text
           key={i}
-          transform={`translate(${x1 + FREETEXT_MARGIN} ${baseline}) scale(1 -1)`}
+          transform={`translate(${x1 + FREETEXT_MARGIN_PT} ${baseline}) scale(1 -1)`}
           fontFamily={HELVETICA}
           fontSize={a.fontSize}
           fill={cssColor(a.textColor)}

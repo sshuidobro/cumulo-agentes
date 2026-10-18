@@ -3,11 +3,12 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../src/ui/App';
-import { endAnnotationSession } from '../../src/state/annotation-actions';
+import { addAnnotation, endAnnotationSession, getEffective, select } from '../../src/state/annotation-actions';
 import { initialAnnotationState, useAnnotations } from '../../src/state/annotation-store';
 import { initServices } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
 import { createFakePlatform } from '../helpers/fake-platform';
+import { newAnnotation } from '../unit/annotations/factories';
 
 beforeEach(() => {
   initServices({ platform: createFakePlatform(), assetBaseUrl: 'http://localhost/pdfjs/' });
@@ -161,5 +162,33 @@ describe('barra «Comentar» · teclado', () => {
     const reachable = toolbar.querySelectorAll('[tabindex="0"]');
     expect(reachable).toHaveLength(1);
     expect(reachable[0]).toBe(color);
+  });
+});
+
+describe('texto libre seleccionado (PDF-034)', () => {
+  it('con un texto libre seleccionado y ninguna herramienta activa, «Color» y «Tamaño de letra» aparecen', async () => {
+    const user = userEvent.setup();
+    addAnnotation({ ...newAnnotation('suite-t', 'freetext'), contents: 'Hola' });
+    await openCommentBar(user);
+    expect(screen.queryByRole('button', { name: 'Tamaño de letra' })).toBeNull();
+
+    act(() => {
+      select('suite-t');
+    });
+    expect(screen.getByRole('button', { name: 'Tamaño de letra' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Color' })).toBeEnabled();
+  });
+
+  it('«Tamaño de letra» cambia el tamaño del texto libre seleccionado', async () => {
+    const user = userEvent.setup();
+    addAnnotation({ ...newAnnotation('suite-t', 'freetext'), contents: 'Hola' });
+    await openCommentBar(user);
+    act(() => {
+      select('suite-t');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Tamaño de letra' }));
+    await user.click(screen.getByRole('menuitemradio', { name: '24 pt' }));
+    expect(getEffective().get('suite-t')).toMatchObject({ fontSize: 24 });
   });
 });

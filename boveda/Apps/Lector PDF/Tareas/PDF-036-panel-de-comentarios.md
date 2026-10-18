@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-036
 titulo: Panel de comentarios - lista, filtros, ir a, editar y borrar
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-031, PDF-015, PDF-033]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -87,3 +87,21 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 1. (opcional) `annotation-actions.ts` `openPopupWhenPageCurrent` — la suscripción pendiente no se cancela en `endAnnotationSession`; cancelarla ahí evitaría abrir una ventana tras cerrar el documento.
 2. (opcional) `CommentsPanel.tsx` — sin atajo Supr para borrar la fila activa (el botón Borrar sí es alcanzable con Tab).
 3. Nota para el líder: el trabajo está sin commitear y mezclado con PDF-034 en `annotation-actions.ts`, `annotation-store.ts`, `messages.ts`, `core/annotations/index.ts`.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint, typecheck | OK | `pnpm lint && pnpm typecheck` salida 0 |
+| `pnpm test` | OK | 141 ficheros, 1665 tests |
+| `pnpm coverage` | OK | líneas 98,96 % |
+| `pnpm perf` (2 pasadas limpias) | OK | 15 ficheros, 24 tests, ambas veces; `comment-list.perf` 3/3 |
+| `pnpm --filter lector-pdf e2e` | OK | 141 pasados (1,8 min), incluidos los 2 de `comments-panel.spec.ts` |
+| (T) filas de `annotated.pdf` (3 cabeceras + 6, Square «Rectángulo» solo lectura) | OK | `comment-list.test.ts:302` |
+| (T) filtro «previo» | OK con matiz | Deja resaltado y texto libre. La nota se llama «Nota previa» y no contiene «previo»: el criterio de la ficha está mal redactado (la nota sale con «previa», test en `comment-list.test.ts:320`). No es un fallo de código; conviene corregir el texto del criterio. |
+| (T) 10 000 anotaciones < 40 filas en el DOM | OK | `comments-panel.test.tsx:92` |
+| (T) Intro / solo lectura / «Ana» | OK | `comments-panel.test.tsx:103,123,146` |
+| E2E annotated y pages-100000 (aviso, progreso, cancelar) | OK | `comments-panel.spec.ts:18,37` |
+Sin `skip`/`only` en tests. Los fallos intermitentes previos de `annotation-layer.perf` no se han reproducido en 3 ejecuciones limpias de perf (2 + 1 filtrada).
+Tests añadidos: ninguno nuevo; la cobertura existente basta.
+Rendimiento: `buildCommentRows` 10 000 anotaciones dentro de presupuesto (< 100 ms, test perf verde).
+Opcionales del revisor (Supr para borrar, cancelar suscripción en `endAnnotationSession`) sin tocar.

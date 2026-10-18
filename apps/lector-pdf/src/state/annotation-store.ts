@@ -4,6 +4,7 @@ import {
   EMPTY_EDITS,
   type Annotation,
   type AnnotationEdits,
+  type FreeTextAnnotation,
   type Rgb,
 } from '../core/annotations/model';
 import type { ForeignAnnotation } from '../core/annotations/import';
@@ -20,6 +21,17 @@ export type AnnotationTool = 'none' | 'highlight' | 'underline' | 'strikeout' | 
 export type ColorTool = Exclude<AnnotationTool, 'none'>;
 export type ScanState = 'idle' | 'scanning' | 'done' | 'lazy';
 
+/**
+ * Cuadro de texto libre en edición (PDF-034). `base` es el cuadro tal como se mostrará: uno nuevo que aún no está en
+ * la pila de cambios (`inStore: false`), o la anotación existente (`inStore: true`). `floor` es el borde inferior de la
+ * página en puntos PDF: el cuadro puede crecer hacia abajo hasta ahí.
+ */
+export interface FreeTextEditing {
+  readonly base: FreeTextAnnotation;
+  readonly inStore: boolean;
+  readonly floor: number;
+}
+
 /** Estado de las anotaciones del documento abierto. Lo escriben solo las acciones de `annotation-actions.ts`. */
 export interface AnnotationState {
   /** Anotaciones soportadas importadas del fichero, por id. */
@@ -31,12 +43,16 @@ export interface AnnotationState {
   readonly scan: ScanState;
   /** Páginas importadas hasta ahora. */
   readonly scanProgress: number;
+  /** `true` mientras corre el escaneo completo que lanza el usuario desde el panel de comentarios (PDF-036): se puede cancelar. */
+  readonly scanCancelable: boolean;
   readonly edits: AnnotationEdits;
   readonly undo: UndoState;
   readonly selectedId: string | null;
   /** Anotación cuya ventana emergente de comentario está abierta (PDF-033), o ninguna. */
   readonly openPopupId: string | null;
   readonly tool: AnnotationTool;
+  /** Cuadro de texto libre que se edita en el sitio, o ninguno (PDF-034). */
+  readonly editing: FreeTextEditing | null;
   readonly colors: Readonly<Record<ColorTool, Rgb>>;
   readonly inkWidth: (typeof INK_WIDTHS)[number];
   readonly fontSize: (typeof FONT_SIZES)[number];
@@ -64,11 +80,13 @@ export function initialAnnotationState(): AnnotationState {
     importedPages: new Set(),
     scan: 'idle',
     scanProgress: 0,
+    scanCancelable: false,
     edits: EMPTY_EDITS,
     undo: EMPTY_UNDO,
     selectedId: null,
     openPopupId: null,
     tool: 'none',
+    editing: null,
     colors: { ...DEFAULT_TOOL_COLORS },
     inkWidth: DEFAULT_INK_WIDTH,
     fontSize: DEFAULT_FONT_SIZE,

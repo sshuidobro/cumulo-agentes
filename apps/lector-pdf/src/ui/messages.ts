@@ -140,4 +140,26 @@ export const msg = {
   /** Barra flotante sobre una selección de texto (PDF-032). */
   selectionActions: 'Acciones de la selección',
   copy: 'Copiar',
+  /** Pestaña «Comentarios» del panel lateral (PDF-036). */
+  comments: 'Comentarios',
+  commentsList: 'Comentarios del documento',
+  commentsAuthor: 'Tu nombre',
+  commentsSearch: 'Buscar en comentarios',
+  commentsFilter: 'Filtrar',
+  commentsAllAuthors: 'Todos los autores',
+  commentsCount: (n: number): string => (n === 1 ? '1 comentario' : `${n.toLocaleString('es-ES')} comentarios`),
+  commentsScanning: (done: number, total: number): string =>
+    `Cargando comentarios… (${done.toLocaleString('es-ES')} de ${total.toLocaleString('es-ES')} páginas)`,
+  commentsLazyNotice: 'Documento muy grande: se muestran los comentarios de las páginas visitadas.',
+  commentsScanAll: 'Buscar en todo el documento',
+  commentsEmpty: 'Este documento no tiene comentarios. Usa la barra «Comentar» para añadir uno.',
+  commentsNoMatches: 'Ningún comentario coincide con el filtro.',
+  commentPage: (n: number): string => `Página ${n.toLocaleString('es-ES')}`,
+  /** Nombre accesible de una fila, p. ej. «Resaltado de Ana, página 2». */
+  commentOption: (name: string, page: number): string => `${name}, página ${page.toLocaleString('es-ES')}`,
+  commentReadOnly: 'solo lectura',
+  commentDelete: 'Borrar',
+  /** Texto libre (PDF-034): editor en el sitio y tirador de tamaño. */
+  freeTextBox: 'Texto del cuadro',
+  resizeHandle: 'Cambiar tamaño',
 } as const;

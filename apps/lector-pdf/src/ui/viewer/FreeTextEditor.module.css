@@ -1,0 +1,21 @@
+/* Editor de texto libre (PDF-034). Se coloca y gira con `transform` según la matriz de la página; el tamaño de letra,
+   el margen y el color van en línea. Fondo transparente: se ve el texto de la página debajo mientras se escribe. */
+.editor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  margin: 0;
+  border: 1px dashed;
+  border-radius: 0;
+  background: transparent;
+  font-family: Helvetica, Arial, sans-serif;
+  line-height: 1.15;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  resize: none;
+  transform-origin: 0 0;
+  pointer-events: auto;
+}
