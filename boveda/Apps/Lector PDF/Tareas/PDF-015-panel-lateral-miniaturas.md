@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-015
 titulo: Panel lateral con pestañas y miniaturas virtualizadas
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-012]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -78,3 +78,21 @@ Comprobado: `pnpm typecheck` OK; `pnpm test` 1348 en verde. `pnpm lint` falla (v
 Comprobado: `pnpm lint` código 0, `pnpm typecheck` OK, `pnpm test` 106 ficheros / 1348 en verde. Los puntos 1 y 2 de la ronda 1 están resueltos (Tab del visor sin número fijo de pulsaciones; lint de `text-qa.spec.ts` limpio). Sin cambios en código de producción.
 1. (opcional) Persistir la última pestaña usada aparte de `none` en `prefs` (decisión del líder). No bloquea.
 2. Nota para el tester: repetir aislados los e2e de tareas largas (`viewer.spec.ts:101`, `render.spec.ts:116`) si fallan por carga de la máquina.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| (T) 100 000 páginas, ≤ 12 opciones, también al final | OK | `tests/ui/thumbnails.test.tsx:75`; e2e QA `pages-100000.pdf`: tras `End` ≤ 12 opciones y la última existe |
+| (T) Clic en la 7 → `goToPage(6)`; ArrowDown; End | OK | `thumbnails.test.tsx:104,115`; e2e QA: End/Home/AvPág sobre 100 000 páginas |
+| (T) Prioridad 2 tras la cola de prioridad 0 | OK | `thumbnails.test.tsx:157` |
+| (T) F4, prefs, `PageMode /UseOutlines` | OK | `sidebar.test.tsx:70`, `unit/sidebar-actions.test.ts:46`; e2e QA: sin documento F4 no hace nada |
+| E2E pages-5000: miniatura 1 con píxeles < 3 s, ≤ 20 lienzos, clic en la última | OK | `thumbnails.spec.ts` 3/3 (1,2 s) |
+| E2E visor en página 40 → miniatura 40 marcada | OK | `thumbnails.spec.ts:67`; QA: con rueda del ratón la miniatura marcada queda visible y coincide con la página del visor |
+| Accesibilidad (teclado, foco visible) | OK | QA: flechas entre pestañas, foco con outline/box-shadow no nulo en la lista |
+| lint / typecheck / test / e2e | OK | `pnpm lint` 0; `pnpm typecheck` 0; `pnpm test` 106 ficheros / 1348 en verde; e2e puerto 4398 con config temporal (retirada): 57/57, antes de añadir mi spec, y 4/4 de mi spec |
+| `pnpm coverage` | Ajeno a la ficha | Falla `unit/document-actions.test.ts > openBrowserFile…` (status `loading`): PDF-037 en curso añade `await confirmDiscardOrSave()` antes de fijar `loading` en `openRequested`, y el test sondea `!== 'loading'` demasiado pronto. Ignorado por indicación; pasaba en `pnpm test` previo. El responsable de PDF-037 debe actualizarlo. |
+
+Casos límite: documento sin abrir, abrir/cerrar el panel conservando la página 77, `sizes-mixed` (apaisadas y giradas; escala común, las apaisadas miden ≈170 px, es lo que pide la ficha), 100 000 páginas.
+Tests añadidos: `apps/lector-pdf/tests/e2e/thumbnails-qa.spec.ts` (4 tests, lint limpio).
+Rendimiento: miniatura 1 dibujada en < 3 s (e2e 1,2 s en total, incluida apertura); sin tareas largas en esta pasada (`viewer.spec.ts:101` y `render.spec.ts:116` pasaron con carga baja).
+Observación no bloqueante: la última pestaña usada solo persiste en memoria (opcional del revisor).
