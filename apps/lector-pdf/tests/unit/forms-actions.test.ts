@@ -1,6 +1,7 @@
 import { createStorageStore, memorySource, type Platform } from '@suite/platform';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EMPTY_EDITS } from '../../src/core/annotations/model';
+import { PageDimsTable } from '../../src/core/page-dims';
 import type { FieldValue } from '../../src/core/forms';
 import { loadPdf, type LoadedPdf, type PDFDocumentProxy } from '../../src/engine';
 import {
@@ -11,7 +12,15 @@ import {
   undo,
 } from '../../src/state/annotation-actions';
 import { useAnnotations } from '../../src/state/annotation-store';
-import { endFormSession, fieldValue, setFieldValue, setFormHighlight, startFormSession } from '../../src/state/form-actions';
+import {
+  endFormSession,
+  fieldValue,
+  focusAdjacentPage,
+  setFieldValue,
+  setFormHighlight,
+  startFormSession,
+  takePendingFocus,
+} from '../../src/state/form-actions';
 import { useForms } from '../../src/state/form-store';
 import { initServices } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
@@ -211,5 +220,68 @@ describe('sesión de formularios sobre form-full.pdf', () => {
     const pdf = await openForm();
     startFormSession(pdf);
     expect(useForms.getState().highlight).toBe(false);
+  });
+});
+
+describe('Tab entre páginas (PDF-083)', () => {
+  /** Dos páginas de 612 × 792 pt, como form-full.pdf. */
+  function setTwoPages(): void {
+    useViewer.setState({ dims: PageDimsTable.uniform(2, 612, 792, 0) });
+  }
+
+  it('Tab desde la página 1 lleva el foco al primer campo rellenable de la página 2 y pide esa página', async () => {
+    await openDocument();
+    setTwoPages();
+    expect(focusAdjacentPage(0, 1)).toBe(true);
+    const nombreP2 = useForms.getState().fields.get('nombre')?.widgets.find((w) => w.pageIndex === 1);
+    expect(nombreP2).toBeDefined();
+    expect(useViewer.getState().navRequest?.page).toBe(1);
+    expect(takePendingFocus(1)).toBe(nombreP2?.id);
+  });
+
+  it('la posición pedida es el borde superior del widget: (alto − y2) / alto de la página', async () => {
+    await openDocument();
+    setTwoPages();
+    focusAdjacentPage(0, 1);
+    // nombre en la página 2 tiene el borde superior en y = 780 pt de una página de 792 pt.
+    expect(useViewer.getState().navRequest?.yFraction).toBeCloseTo(12 / 792, 6);
+  });
+
+  it('Mayús+Tab desde la página 2 lleva el foco al último campo rellenable de la página 1', async () => {
+    await openDocument();
+    setTwoPages();
+    expect(focusAdjacentPage(1, -1)).toBe(true);
+    expect(useViewer.getState().navRequest?.page).toBe(0);
+    const id = takePendingFocus(0);
+    const onPage1 = [...useForms.getState().fields.values()]
+      .flatMap((f) => f.widgets)
+      .some((w) => w.pageIndex === 0 && w.id === id);
+    expect(onPage1).toBe(true);
+  });
+
+  it('no hay página más allá de la última ni antes de la primera: devuelve false y no navega', async () => {
+    await openDocument();
+    setTwoPages();
+    expect(focusAdjacentPage(1, 1)).toBe(false);
+    expect(focusAdjacentPage(0, -1)).toBe(false);
+    expect(useViewer.getState().navRequest).toBeNull();
+  });
+
+  it('sin documento con dimensiones no hace nada', async () => {
+    await openDocument();
+    expect(focusAdjacentPage(0, 1)).toBe(false);
+  });
+
+  it('el foco pendiente solo se entrega a su página y una sola vez; cerrar la sesión lo borra', async () => {
+    await openDocument();
+    setTwoPages();
+    focusAdjacentPage(0, 1);
+    expect(takePendingFocus(0)).toBeNull();
+    expect(takePendingFocus(1)).not.toBeNull();
+    expect(takePendingFocus(1)).toBeNull();
+
+    focusAdjacentPage(0, 1);
+    endFormSession();
+    expect(takePendingFocus(1)).toBeNull();
   });
 });

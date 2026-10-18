@@ -1,11 +1,22 @@
-import { useId, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { isFillable, type ChoiceOption, type FieldValue, type FormField, type FormWidget } from '../../core/forms';
 import type { RectPt } from '../../core/annotations/model';
 import type { PageViewport } from '../../engine/pdfjs';
-import { setFieldValue } from '../../state/form-actions';
+import { focusAdjacentPage, setFieldValue, takePendingFocus } from '../../state/form-actions';
 import { useAnnotations } from '../../state/annotation-store';
 import { useAppearance } from '../../state/appearance-store';
 import { useForms } from '../../state/form-store';
+import { useViewer } from '../../state/viewer-store';
+import { formMsg } from '../messages-forms';
 import styles from './FormLayer.module.css';
 
 /** Tamaño de letra por defecto de pdf.js cuando el campo no lo indica (`/DA` con 0 = automático), en puntos. */
@@ -13,8 +24,15 @@ const DEFAULT_FONT_PT = 12;
 /** Tamaño automático de texto de una línea y de combo: `min(12, (alto − 4) / 1,15)` puntos (como pdf.js). */
 const AUTO_LINE_PAD_PT = 4;
 const AUTO_LINE_FACTOR = 1.15;
-/** Tipos de campo que este control maneja; casillas y botones de opción los hace PDF-083. */
-const SUPPORTED_TYPES: ReadonlySet<FormField['type']> = new Set<FormField['type']>(['text', 'combo', 'list']);
+/** Tipos de campo que este control maneja (los botones sin valor no tienen control). */
+const SUPPORTED_TYPES: ReadonlySet<FormField['type']> = new Set<FormField['type']>([
+  'text',
+  'combo',
+  'list',
+  'checkbox',
+  'radio',
+  'signature',
+]);
 const ALIGN_TEXT = ['left', 'center', 'right'] as const;
 
 export interface FormLayerProps {
@@ -43,16 +61,20 @@ export function FormLayer({ pageIndex, viewport }: FormLayerProps) {
   const values = useAnnotations((s) => s.edits.fields);
   const tool = useAnnotations((s) => s.tool);
   const night = useAppearance((s) => s.nightMode);
+  const navSeq = useViewer((s) => s.navRequest?.seq);
+  const layerRef = useRef<HTMLDivElement>(null);
   const passive = tool !== 'none';
 
-  if (names === undefined) return null;
   const controls: ReactNode[] = [];
-  for (const name of names) {
+  /** Widgets rellenables de la página en orden de tabulación: Tab y Mayús+Tab saltan entre páginas desde sus extremos. */
+  const tabOrder: string[] = [];
+  for (const name of names ?? []) {
     const field = fields.get(name);
     if (field === undefined || !SUPPORTED_TYPES.has(field.type)) continue;
     const value = values.get(field.name) ?? field.initial;
     for (const widget of field.widgets) {
       if (widget.pageIndex !== pageIndex) continue;
+      if (isFillable(field)) tabOrder.push(widget.id);
       controls.push(
         <FormControl
           key={widget.id}
@@ -67,7 +89,34 @@ export function FormLayer({ pageIndex, viewport }: FormLayerProps) {
       );
     }
   }
-  return <div className={styles.layer}>{controls}</div>;
+  const controlCount = controls.length;
+
+  // Al montarse la página (o al navegar), enfoca el widget que pidió Tab desde la página anterior (PDF-083).
+  useEffect(() => {
+    const id = takePendingFocus(pageIndex);
+    if (!id) return;
+    const target = Array.from(layerRef.current?.querySelectorAll<HTMLElement>('[data-widget-id]') ?? []).find(
+      (el) => el.dataset.widgetId === id,
+    );
+    target?.focus();
+  }, [pageIndex, controlCount, navSeq]);
+
+  if (names === undefined) return null;
+  const firstId = tabOrder[0];
+  const lastId = tabOrder[tabOrder.length - 1];
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key !== 'Tab' || !(event.target instanceof HTMLElement)) return;
+    const id = event.target.dataset.widgetId;
+    if (id === undefined) return;
+    const backward = event.shiftKey;
+    if (backward ? id !== firstId : id !== lastId) return;
+    if (focusAdjacentPage(pageIndex, backward ? -1 : 1)) event.preventDefault();
+  };
+  return (
+    <div className={styles.layer} ref={layerRef} onKeyDown={onKeyDown}>
+      {controls}
+    </div>
+  );
 }
 
 interface FormControlProps {
@@ -108,6 +157,7 @@ function FormControl({ field, widget, value, viewport, highlight, night, passive
   const common = {
     className,
     style,
+    'data-widget-id': widget.id,
     'aria-label': label,
     'aria-required': field.required || undefined,
     title: label,
@@ -134,6 +184,59 @@ function FormControl({ field, widget, value, viewport, highlight, night, passive
         onCommit={(text) => {
           setFieldValue(field.name, { kind: 'text', text });
         }}
+      />
+    );
+  }
+
+  if (field.type === 'checkbox' || field.type === 'radio') {
+    const toggleClass = [
+      styles.control,
+      styles.toggle,
+      highlight && fillable && !focused ? styles.highlight : '',
+      night ? styles.night : '',
+    ]
+      .filter((c) => c !== '')
+      .join(' ');
+    if (field.type === 'checkbox') {
+      return (
+        <input
+          {...common}
+          className={toggleClass}
+          type="checkbox"
+          disabled={!fillable}
+          checked={value.kind === 'checkbox' && value.checked}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setFieldValue(field.name, { kind: 'checkbox', checked: event.currentTarget.checked });
+          }}
+        />
+      );
+    }
+    // Un control por widget: el nombre accesible es su estado («Azul»); las flechas recorren el grupo `name`.
+    const onState = widget.onState;
+    return (
+      <input
+        {...common}
+        className={toggleClass}
+        type="radio"
+        name={`campo:${field.name}`}
+        aria-label={onState ?? label}
+        disabled={!fillable}
+        checked={value.kind === 'radio' && onState !== null && value.selected === onState}
+        onChange={() => {
+          if (onState !== null) setFieldValue(field.name, { kind: 'radio', selected: onState });
+        }}
+      />
+    );
+  }
+
+  if (field.type === 'signature') {
+    return (
+      <div
+        className={[styles.control, styles.signature, night ? styles.night : ''].filter((c) => c !== '').join(' ')}
+        style={style}
+        role="img"
+        aria-label={formMsg.signatureField}
+        title={formMsg.signatureTitle}
       />
     );
   }
@@ -197,6 +300,7 @@ interface TextEntryProps {
   readonly style: CSSProperties;
   readonly 'aria-label': string;
   readonly 'aria-required': true | undefined;
+  readonly 'data-widget-id': string;
   readonly title: string;
   readonly onFocus: () => void;
   readonly onBlur: () => void;
@@ -221,6 +325,7 @@ function TextEntry({
   style,
   'aria-label': ariaLabel,
   'aria-required': ariaRequired,
+  'data-widget-id': widgetId,
   title,
   onFocus,
   onBlur,
@@ -271,6 +376,7 @@ function TextEntry({
     style,
     'aria-label': ariaLabel,
     'aria-required': ariaRequired,
+    'data-widget-id': widgetId,
     title,
     readOnly,
     value: shown,

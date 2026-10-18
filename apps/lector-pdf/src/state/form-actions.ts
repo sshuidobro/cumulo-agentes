@@ -17,7 +17,9 @@ import { bumpPageVersions, executeEdit, onEditsPublished, onPagesImported } from
 import { useAnnotations } from './annotation-store';
 import { services } from './services';
 import { initialFormState, useForms, type FormState } from './form-store';
+import { goToPage } from './navigation';
 import { showNotice } from './notice';
+import { useViewer } from './viewer-store';
 import { formMsg } from '../ui/messages-forms';
 
 /** Clave de la preferencia de resaltado de campos (el almacén ya antepone el prefijo de la app). */
@@ -32,6 +34,8 @@ interface FormSession {
 let session: FormSession | null = null;
 /** El aviso «hay campos que rellenar» se muestra una vez por documento (PDF-041). */
 let fillableNoticeShown = false;
+/** Widget que debe recibir el foco al montarse su página (Tab entre páginas, PDF-083). */
+let pendingFocus: { readonly pageIndex: number; readonly widgetId: string } | null = null;
 
 function isBoolean(v: unknown): v is boolean {
   return typeof v === 'boolean';
@@ -64,6 +68,7 @@ export function endFormSession(): void {
   current?.stopPages();
   current?.stopEdits();
   fillableNoticeShown = false;
+  pendingFocus = null;
   useForms.setState(initialFormState(useForms.getState().highlight));
 }
 
@@ -92,6 +97,48 @@ export function setFieldValue(name: string, value: FieldValue): void {
 export function setFormHighlight(on: boolean): void {
   services().platform.prefs.set(HIGHLIGHT_PREF, on);
   useForms.setState({ highlight: on });
+}
+
+/**
+ * Lleva el foco al primer (dir 1) o último (dir −1) campo rellenable de la siguiente (o anterior) página que tenga
+ * alguno. Pide al visor esa página con la posición del borde superior del widget. Devuelve false si no hay ninguna.
+ */
+export function focusAdjacentPage(pageIndex: number, dir: 1 | -1): boolean {
+  const { dims } = useViewer.getState();
+  if (dims === null) return false;
+  const fillablePages = [...useForms.getState().byPage.keys()]
+    .filter((page) => fillableWidgetsOf(page).length > 0)
+    .sort((a, b) => a - b);
+  const target = dir === 1 ? fillablePages.find((page) => page > pageIndex) : fillablePages.findLast((page) => page < pageIndex);
+  if (target === undefined) return false;
+  const widgets = fillableWidgetsOf(target);
+  const widget = dir === 1 ? widgets[0] : widgets[widgets.length - 1];
+  if (widget === undefined) return false;
+  pendingFocus = { pageIndex: target, widgetId: widget.id };
+  const height = dims.height(target);
+  const top = widget.rect[3];
+  goToPage(target, { yFraction: height > 0 ? (height - top) / height : 0 });
+  return true;
+}
+
+/** Id del widget a enfocar al montarse la página `pageIndex`, o null. Lo consume: devuelve el id una sola vez. */
+export function takePendingFocus(pageIndex: number): string | null {
+  if (pendingFocus === null || pendingFocus.pageIndex !== pageIndex) return null;
+  const { widgetId } = pendingFocus;
+  pendingFocus = null;
+  return widgetId;
+}
+
+/** Widgets rellenables de una página, en el orden en que los pinta `FormLayer` (por nombre, luego por widget). */
+function fillableWidgetsOf(pageIndex: number): readonly FormWidget[] {
+  const { fields, byPage } = useForms.getState();
+  const widgets: FormWidget[] = [];
+  for (const name of byPage.get(pageIndex) ?? []) {
+    const field = fields.get(name);
+    if (field === undefined || !isFillable(field)) continue;
+    widgets.push(...field.widgets.filter((widget) => widget.pageIndex === pageIndex));
+  }
+  return widgets;
 }
 
 /** Incorpora los widgets de páginas recién importadas y pone en el lienzo los valores que ya tienen cambios. */

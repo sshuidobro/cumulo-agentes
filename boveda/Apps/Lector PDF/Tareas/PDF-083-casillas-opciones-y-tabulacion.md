@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-083
 titulo: Casillas, botones de opción, tabulación entre páginas y E2E de formularios
 app: pdf
-estado: pendiente
+estado: cambios-pedidos
 depende_de: [PDF-041, PDF-042]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
 actualizado: 2026-10-18
@@ -53,3 +53,20 @@ export function takePendingFocus(pageIndex: number): string | null; // id de wid
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/FormLayer.tsx`, `FormLayer.module.css`, `src/state/form-actions.ts` (`focusAdjacentPage`, `takePendingFocus`), `src/ui/messages-forms.ts`, `src/ui/use-shortcuts.ts`, `src/state/draft-sync.ts`, tests `tests/ui/form-layer.test.tsx`, `tests/unit/forms-actions.test.ts`, `tests/e2e/forms.spec.ts` (nuevo).
+- Qué he hecho: casillas (`checkbox`), botones de opción (`radio`, un control por widget con `name=campo:<nombre>`) y firma (`role="img"`, no enfocable). Tab y Mayús+Tab saltan a la página vecina con campos rellenables con foco pendiente. Dos correcciones necesarias para el E2E: (1) la oferta de recuperar borrador ignoraba los campos (solo contaba anotaciones); (2) los atajos de página se comían las flechas dentro de un botón de opción.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf exec vitest run tests/ui/form-layer.test.tsx tests/unit/forms-actions.test.ts` → 25 + 16 pasan. `pnpm typecheck` → OK. `pnpm --filter lector-pdf e2e` → 194 pasan, código 0 (incluye los 5 de `forms.spec.ts`). `pnpm lint` → **falla** por `apps/lector-pdf/dist-firma/` (build versionado en `c047858`, sin ignorar en ESLint; ajeno a esta ficha, no lo he tocado). `pnpm coverage` → **1 test falla**: `tests/ui/zoom-controls.test.tsx` («el campo, la lista y los botones son alcanzables con Tab»); no toco barra ni zoom, pero no lo he comprobado en un árbol limpio.
+- Dudas o cosas que no he podido hacer:
+  - Radio: el nombre accesible de cada botón es su estado de exportación («Azul») y no «color», para que `getByRole('radio', { name: 'Azul' })` funcione. El criterio menciona «color»: confirmar.
+  - Firma: `aria-label` = `formMsg.signatureField` tal cual («Campo de firma digital»), sin el nombre del campo.
+  - `yFraction` de `focusAdjacentPage` usa la altura base de la página (`dims.height`) y no tiene en cuenta el giro de la vista.
+  - La recuperación de borrador de solo formularios no tiene test unitario propio; lo cubre el E2E «tras cerrar sin guardar».
+  - Lint y cobertura no pasan por lo indicado arriba: hace falta decisión del líder sobre `dist-firma` y sobre el test de zoom.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Typecheck OK; tests de la ficha (41) OK; e2e no ejecutado por indicación. Lint y coverage: fallos ajenos conocidos.
+1. `apps/lector-pdf/src/ui/viewer/FormLayer.tsx` (`onKeyDown`, `firstId`/`lastId`) — con un grupo de botones de opción como último (o primer) campo de la página, Tab (o Mayús+Tab) no salta de página: el navegador trata el grupo como una sola parada y el foco suele estar en la opción marcada, que no es el último (ni el primero) widget del grupo, así que `id !== lastId` corta el salto. Hay que decidir «extremo» por grupo de campo (mismo `name`), no por id de widget, y añadir test UI (radio como último campo con otra opción enfocada).
+2. `FormLayer.tsx` radio — cada botón se nombra solo «Azul», sin el nombre del campo (`color`), que pide el criterio; sin `role="radiogroup"` ni etiqueta de grupo un lector de pantalla no sabe a qué pregunta responde. Envolver los widgets del grupo o poner un nombre accesible que incluya el campo (p. ej. `color: Azul`) y ajustar el test.
+3. (opcional) `aria-label` de la firma sin el nombre del campo; y `yFraction` ignora el giro de la vista.

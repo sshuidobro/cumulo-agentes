@@ -134,7 +134,7 @@ export function startDraftSync(store: DraftStore): () => void {
       await remove(t.key);
       return;
     }
-    if (edits.upserts.size === 0 && edits.removed.size === 0) {
+    if (edits.upserts.size === 0 && edits.removed.size === 0 && edits.fields.size === 0) {
       await remove(t.key);
       return;
     }
