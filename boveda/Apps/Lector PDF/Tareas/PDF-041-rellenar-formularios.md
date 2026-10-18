@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-041
 titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-081]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -54,3 +54,54 @@ Sobre cada página visible hay una capa con un control HTML por widget de texto,
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/FormLayer.tsx`, `FormLayer.module.css` (nuevos); `src/ui/messages-forms.ts` (nuevo); `src/ui/viewer/PageView.tsx` (montaje tras `AnnotationLayer`); `src/ui/toolbar/MainToolbar.tsx` (botón «Resaltar campos»); `src/ui/icons.tsx` (`IconFormFields`); `src/ui/theme.css` (`--form-highlight`); `src/state/form-actions.ts` (aviso una vez por documento); tests `tests/ui/form-layer.test.tsx`, `tests/ui/form-highlight-toggle.test.tsx`, `tests/unit/form-notice.test.ts`, `tests/e2e/forms-text.spec.ts`.
+- Qué he hecho: capa `FormLayer` con un control por widget de texto (input, password, textarea), combo (select o input con datalist si es editable) y lista (select múltiple o simple), posicionados con las esquinas del widget pasadas al viewport. El texto se confirma al salir o con Intro (no en multilínea), Esc descarta y devuelve el foco al visor; combo y lista confirman en cada cambio. Resaltado, estilos con/sin foco, modo noche, pointer-events con herramienta de anotación activa, botón de barra y aviso al abrir un documento con campos rellenables.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (183 ficheros, 2148 tests); `pnpm coverage` OK (líneas 98,98 %); `pnpm --filter lector-pdf e2e` OK (184 pruebas, incluido `chromium-perf`); E2E `forms-text.spec.ts` 4/4; `bundle:check` 478 040 bytes (máx. 500 000).
+- Dudas o cosas que no he podido hacer:
+  - `convertToViewportRectangle` no existe en pdf.js 6.4 (lo dice `LinkLayer`): uso las cuatro esquinas con `convertToViewportPoint`, mismo resultado.
+  - Combo editable: la ficha pide confirmar en `change`, pero un `<input list>` confirmaría en cada tecla. Lo confirmo al salir o con Intro, como el texto.
+  - `<select>` no admite `readonly`: combos y listas de solo lectura van con `disabled`.
+  - El aviso «hay campos» no estaba en la lista de ficheros de la ficha: se dispara en `importPages` de `form-actions.ts`, el único sitio donde llegan los campos.
+  - E2E de «pais»: la tecla «p» (búsqueda por inicial) elige Portugal en un solo cambio; dos flechas darían dos entradas de deshacer.
+  - Para revisar: tras Ctrl+Z el «Ana» lo pinta pdf.js desde el valor, no la apariencia original del fichero (en `form-full.pdf` difieren unos 12 500 píxeles de la p2). Es coherente con ADR-0019, pero la comparación de píxeles en el E2E se ha escrito contando ese caso.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` (raíz) 0 avisos, `pnpm --filter lector-pdf typecheck` OK, tests de la ficha (19) en verde. Criterios cubiertos por tests UI y E2E; sin ficheros fuera de la ficha salvo `form-actions.ts` (aviso), justificado en el Registro. Las desviaciones del programador (esquinas con `convertToViewportPoint`, combo editable confirma al salir/Intro, `disabled` en select de solo lectura) son razonables.
+1. (opcional) `apps/lector-pdf/src/ui/theme.css:39-40` — la línea `--shadow-page` del bloque oscuro de `prefers-color-scheme` perdió la sangría tras insertar `--form-highlight` — reindentar.
+2. (opcional) `theme.css` — `--form-highlight` idéntico en claro y oscuro; vale, pero conviene que el tester compruebe el contraste en tema oscuro.
+
+### [tester] ronda 1 — 2026-10-18 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| UI / E2E de la ficha (controles, Tab/Esc/Intro, pointer-events, Luis, Portugal, zoom+rotación) | PASA | `pnpm --filter lector-pdf e2e`: 184 passed (4,3 min, incluye axe y `chromium-perf`), código 0 |
+| Axe serious/critical p1 | PASA | dentro del e2e anterior |
+| Presupuestos | PASA | `pnpm perf`: 17 ficheros, 28 tests, código 0 |
+| lint, typecheck, test, coverage | PASA | código 0; líneas 98,98 % |
+| Contraste en oscuro (sugerencia del revisor) | FALLA | `--form-highlight` es igual en claro y oscuro. En modo noche (fondo `#1f1f23`, texto `#e6e6e6`) el resaltado compuesto es ~`rgb(126 132 156)` y el texto de la página queda a 2,96:1 (< 4,5:1 AA). En claro es 17,4:1. Con el tema oscuro del sistema pero sin modo noche, la página sigue blanca (17,4:1), sin problema. |
+
+Reproducir: abrir `form-full.pdf`, activar modo noche, pulsar «Resaltar campos»: el texto de los campos rellenos (p. ej. «Ana») se lee mal sobre el azul claro.
+Arreglo pedido: en `FormLayer.module.css` añadir `.night.highlight { background: rgb(r g b / a%); }` con un azul oscuro (p. ej. `rgb(60 80 160 / 55%)`) que dé >= 4,5:1 con `#e6e6e6`. Opcional: reindentar `--shadow-page` en `theme.css` (nota 1 del revisor).
+Tests añadidos: `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (ROJO hasta que exista la regla `.night.highlight`). Rendimiento: sin regresión (`pnpm perf` y `chromium-perf` OK).
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/FormLayer.module.css` (regla `.night.highlight`); `apps/lector-pdf/src/ui/theme.css` (sangría de `--shadow-page` en el bloque oscuro); `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (sin cambiar qué comprueba: quito los `!` que prohíbe ESLint, usando desestructuración y un `?? []`).
+- Qué he hecho: añado `.night.highlight { background: rgb(60 80 160 / 55%); }` (azul oscuro, sobre él #e6e6e6 queda a 8,75:1 frente al fondo #1f1f23 del modo noche) y reindento `--shadow-page` según la nota del revisor. El resto del resaltado (modo claro) no cambia.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 errores, 0 avisos; antes fallaban 6 `no-non-null-assertion` en el test del tester); `pnpm --filter lector-pdf typecheck` OK; `pnpm --filter lector-pdf exec vitest run tests/unit/form-highlight-contrast.test.ts tests/ui/form-layer.test.tsx` OK (16/16). No ejecutado e2e ni perf (indicado por el líder: el tester está con PDF-044).
+- Dudas o cosas que no he podido hacer: el contraste en modo noche se comprueba con el test unitario (fórmula WCAG sobre el color pintado), no con captura de pantalla. Queda pendiente que el tester repita `pnpm --filter lector-pdf e2e` completo.
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: typecheck OK, eslint del test sin avisos, `form-highlight-contrast` y `form-layer` en verde (16/16). La regla `.night.highlight` se aplica (`FormLayer.tsx` pone `styles.night` y `styles.highlight` solo sin foco, así que no pisa a `.night.editing`). Color `rgb(60 80 160 / 55%)` sobre `#1f1f23` da contraste suficiente frente a `#e6e6e6`. Sangría de `--shadow-page` corregida. Sin e2e/perf por indicación (tester ocupado); el tester debe repetir el e2e completo. Sin problemas bloqueantes (0).
+
+### [tester] ronda 2 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Contraste en modo noche (rechazo ronda 1) | PASA | `form-highlight-contrast.test.ts` en verde dentro de `pnpm test`: 186 ficheros, 2180 tests |
+| UI / E2E de la ficha, axe p1, zoom+rotación | PASA | `pnpm --filter lector-pdf e2e` en reposo (loadavg 2,1): 184 passed (4,1 min), código 0, incluido `chromium-perf` |
+| lint, typecheck | PASA | código 0, 0 avisos |
+| test, coverage | PASA | `vitest run --coverage` (carpeta propia, la de la raíz estaba en uso por otro proceso): 2180 tests, líneas 98,61 %, código 0 |
+| Presupuestos | PASA | `pnpm perf`: 17 ficheros, 28 tests |
+
+Incidencias ajenas a la ficha: 1) corridas bajo carga concurrente (loadavg ~10) fallaron `open.spec` (100 000 páginas) y `open-qa` (arrastrar y soltar) por tiempo, y `zoom-qa` y 4 unitarios por tomar a medias la edición de PDF-098 (MAX_ZOOM 800 % a 6 400 %). Repetidas en reposo y con PDF-098 ya confirmado: todo verde. 2) `pnpm coverage` en la raíz choca si otro proceso usa `coverage/`.
+Tests añadidos: ninguno nuevo en esta ronda. Rendimiento: sin regresión.

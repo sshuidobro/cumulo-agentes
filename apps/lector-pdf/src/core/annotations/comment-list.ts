@@ -46,6 +46,7 @@ const SUPPORTED_LABELS: Readonly<Record<AnnotationType, string>> = {
   note: 'Nota',
   freetext: 'Texto',
   ink: 'Dibujo',
+  signature: 'Firma',
 };
 
 /** Subtipos ajenos con nombre en español; el resto se muestra con su `subtype` tal cual. */

@@ -46,7 +46,7 @@ describe('Controles de zoom', () => {
 
     expect(input).toHaveValue('100 %');
     expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent('Escribe un porcentaje entre 10 y 800');
+    expect(screen.getByRole('alert')).toHaveTextContent('Escribe un porcentaje entre 10 y 6400');
     expect(useViewer.getState().zoomMode).toEqual({ kind: 'auto' });
   });
 

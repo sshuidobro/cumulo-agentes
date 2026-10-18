@@ -32,6 +32,8 @@ export function newAnnotation(id: string, type: AnnotationType = 'highlight', pa
       return { ...base, type, fontSize: 12, textColor: [0, 0, 0] };
     case 'ink':
       return { ...base, type, paths: [[10, 20, 30, 40, 50, 20]], width: 2 };
+    case 'signature':
+      return { ...base, type, art: { kind: 'ink', paths: [[0, 0, 50, 25]], width: 2, box: [100, 50] } };
   }
 }
 

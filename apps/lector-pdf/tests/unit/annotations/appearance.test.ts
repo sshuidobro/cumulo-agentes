@@ -229,7 +229,7 @@ describe('buildAppearance · ink', () => {
 
 describe('buildAppearance · tipos', () => {
   it('genera apariencia para todos los tipos', () => {
-    const types: AnnotationType[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
+    const types: AnnotationType[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink', 'signature'];
     for (const type of types) {
       const ap = buildAppearance(newAnnotation('x', type));
       expect(decodeStreamData(ap.stream).length).toBeGreaterThan(0);
@@ -245,6 +245,7 @@ const SUBTYPE: Readonly<Record<AnnotationType, string>> = {
   note: 'Text',
   freetext: 'FreeText',
   ink: 'Ink',
+  signature: 'Stamp',
 };
 
 /** Extras de la anotación que pdf.js lee además de `/AP` (QuadPoints para marcados, InkList para trazos). */

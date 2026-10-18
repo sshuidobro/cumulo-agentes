@@ -1,3 +1,4 @@
+import { rowFirstPage, stepRow } from '../core/view-mode';
 import { useViewer } from './viewer-store';
 
 let lastSeq = 0;
@@ -33,17 +34,20 @@ export function setCurrentYFraction(yFraction: number): void {
   if (Math.abs(current - yFraction) > 0.01) useViewer.setState({ currentYFraction: yFraction });
 }
 
-/** Va a la página siguiente a la actual. En la última no hace nada. */
+/** Va a la primera página de la fila siguiente (según el modo de vista). En la última no hace nada. */
 export function nextPage(): void {
-  const { currentPage, dims } = useViewer.getState();
-  if (dims === null || currentPage >= dims.count - 1) return;
-  goToPage(currentPage + 1);
+  const { currentPage, dims, viewMode } = useViewer.getState();
+  if (dims === null) return;
+  const target = stepRow(currentPage, 1, viewMode.spread, dims.count);
+  if (target !== null) goToPage(target);
 }
 
-/** Va a la página anterior a la actual. En la primera no hace nada. */
+/** Va a la primera página de la fila anterior (según el modo de vista). En la primera no hace nada. */
 export function prevPage(): void {
-  if (useViewer.getState().currentPage <= 0) return;
-  goToPage(useViewer.getState().currentPage - 1);
+  const { currentPage, dims, viewMode } = useViewer.getState();
+  if (dims === null) return;
+  const target = stepRow(currentPage, -1, viewMode.spread, dims.count);
+  if (target !== null) goToPage(target);
 }
 
 /** Va a la primera página. */
@@ -51,11 +55,11 @@ export function firstPage(): void {
   goToPage(0);
 }
 
-/** Va a la última página. */
+/** Va a la primera página de la última fila. */
 export function lastPage(): void {
   const dims = useViewer.getState().dims;
   if (dims === null || dims.count === 0) return;
-  goToPage(dims.count - 1);
+  goToPage(rowFirstPage(dims.count - 1, useViewer.getState().viewMode.spread));
 }
 
 /** Actualiza si el contenido es más ancho que el visor. Solo escribe si cambia. */

@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-017
 titulo: Pantalla completa en @suite/platform
 app: comun
-estado: pendiente
+estado: en-curso
 depende_de: [COM-016]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]

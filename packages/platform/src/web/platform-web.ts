@@ -3,9 +3,11 @@ import type { AppError, Result } from '@suite/shared';
 import { blobSource } from '../byte-source';
 import { platformError } from '../errors';
 import { createStorageStore } from '../prefs';
-import type { FileFilter, OpenedFile, Platform, SaveData, SaveOutcome } from '../types';
+import type { FileFilter, OpenedFile, Platform, RecentFile, SaveData, SaveOutcome } from '../types';
 import type { DataTransferItemFsAccess, PermissionHandle } from './fs-access';
 import { toAcceptAttribute, toAcceptTypes } from './mime';
+import { MAX_RECENTS, createRecentStore, rememberEntry } from './recent-store';
+import type { RecentRecord } from './recent-store';
 import { defaultWebEnv } from './web-env';
 import type { WebEnv } from './web-env';
 
@@ -36,12 +38,15 @@ function failure(cause: unknown): Result<never, AppError> {
   return err(platformError('io', cause));
 }
 
-/** Sin `queryPermission` no hay forma de comprobarlo: se intenta escribir y la escritura falla si no hay permiso. */
-async function hasWritePermission(handle: PermissionHandle): Promise<boolean> {
+/**
+ * Pide (si hace falta) el permiso. Sin `queryPermission` no hay forma de comprobarlo: se asume concedido
+ * y la operación falla si no lo está.
+ */
+async function hasPermission(handle: PermissionHandle, mode: 'read' | 'readwrite'): Promise<boolean> {
   if (handle.queryPermission === undefined) return true;
-  if ((await handle.queryPermission({ mode: 'readwrite' })) === 'granted') return true;
+  if ((await handle.queryPermission({ mode })) === 'granted') return true;
   if (handle.requestPermission === undefined) return false;
-  return (await handle.requestPermission({ mode: 'readwrite' })) === 'granted';
+  return (await handle.requestPermission({ mode })) === 'granted';
 }
 
 type AppendData = Extract<SaveData, { readonly kind: 'append' }>;
@@ -52,6 +57,9 @@ export function createWebPlatform(
   env: WebEnv = defaultWebEnv(),
 ): Platform {
   const registry = new Map<string, RegisteredFile>();
+  const recents = createRecentStore(options.prefsPrefix, env.indexedDB);
+  /** Recientes cuyo fichero ya no se pudo leer. Solo en memoria: el registro guardado no lleva ese campo. */
+  const missing = new Set<string>();
   let counter = 0;
   /** Tras `closeWindow` el aviso de `beforeunload` ya no se cancela. */
   let closing = false;
@@ -73,9 +81,19 @@ export function createWebPlatform(
     return describeFile(token, file, handle);
   };
 
+  /** Añade a recientes; un fallo al guardar no impide abrir el fichero. */
+  const remember = async (handle: PermissionHandle, file: File): Promise<void> => {
+    try {
+      await rememberEntry(recents, handle, { name: file.name, size: file.size }, Date.now());
+    } catch (cause) {
+      log.warn('No se ha podido añadir el fichero a recientes.', cause);
+    }
+  };
+
   const openHandle = async (handle: FileSystemFileHandle): Promise<Result<OpenedFile>> => {
     try {
       const file = await handle.getFile();
+      await remember(handle, file);
       return ok(toOpened(file, handle));
     } catch (cause) {
       return failure(cause);
@@ -144,7 +162,7 @@ export function createWebPlatform(
 
   /** Escribe `data` en `handle` de forma atómica (`createWritable` confirma al cerrar). */
   const writeTo = async (handle: PermissionHandle, data: SaveData): Promise<Result<File>> => {
-    if (!(await hasWritePermission(handle))) return err(platformError('permission-denied'));
+    if (!(await hasPermission(handle, 'readwrite'))) return err(platformError('permission-denied'));
     const parts = contentParts(data);
     if (!parts.ok) return parts;
 
@@ -210,7 +228,59 @@ export function createWebPlatform(
     }
     const written = await writeTo(handle, data);
     if (!written.ok) return written;
+    await remember(handle, written.value);
     return ok({ kind: 'saved', file: toOpened(written.value, handle) });
+  };
+
+  const toRecentFile = (record: RecentRecord): RecentFile => ({
+    id: record.id,
+    name: record.name,
+    path: null,
+    size: record.size,
+    openedAt: record.openedAt,
+    available: !missing.has(record.id),
+  });
+
+  /** Reabre un reciente. Sin permiso de escritura se abre en solo lectura; sin lectura, `ok(null)`. */
+  const openRecent = async (id: string): Promise<Result<OpenedFile | null>> => {
+    let record: RecentRecord | undefined;
+    try {
+      record = await recents.get(id);
+    } catch (cause) {
+      return failure(cause);
+    }
+    if (record === undefined) return err(platformError('not-found'));
+    const { handle } = record;
+    const canSaveInPlace = await hasPermission(handle, 'readwrite');
+    if (!canSaveInPlace && !(await hasPermission(handle, 'read'))) return ok(null);
+    let file: File;
+    try {
+      file = await handle.getFile();
+    } catch (cause) {
+      if (errorName(cause) !== 'NotFoundError') return failure(cause);
+      missing.add(id);
+      return err(platformError('not-found', cause));
+    }
+    missing.delete(id);
+    await remember(handle, file);
+    return ok(toOpened(file, canSaveInPlace ? handle : null));
+  };
+
+  /** Pantalla completa de la página entera (`documentElement`), sin barra de navegación cuando el navegador lo permite. */
+  const setFullscreen = async (on: boolean): Promise<Result<void>> => {
+    const { document: doc } = env.window;
+    try {
+      if (on) {
+        if (typeof doc.documentElement.requestFullscreen !== 'function') return err(platformError('unsupported'));
+        await doc.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      } else {
+        if (typeof doc.exitFullscreen !== 'function') return err(platformError('unsupported'));
+        await doc.exitFullscreen();
+      }
+    } catch (cause) {
+      return err(platformError('unsupported', cause));
+    }
+    return ok(undefined);
   };
 
   const platform: Platform = {
@@ -276,6 +346,48 @@ export function createWebPlatform(
         return err(platformError('io', cause));
       }
       return ok(undefined);
+    },
+
+    async recentFiles(): Promise<readonly RecentFile[]> {
+      try {
+        return (await recents.list()).slice(0, MAX_RECENTS).map(toRecentFile);
+      } catch (cause) {
+        log.warn('No se han podido leer los ficheros recientes.', cause);
+        return [];
+      }
+    },
+
+    openRecent,
+
+    async removeRecent(id: string): Promise<void> {
+      missing.delete(id);
+      try {
+        await recents.delete(id);
+      } catch (cause) {
+        log.warn('No se ha podido quitar el fichero de recientes.', cause);
+      }
+    },
+
+    async clearRecents(): Promise<void> {
+      missing.clear();
+      try {
+        await recents.clear();
+      } catch (cause) {
+        log.warn('No se han podido borrar los ficheros recientes.', cause);
+      }
+    },
+
+    setFullscreen,
+
+    isFullscreen(): boolean {
+      return env.window.document.fullscreenElement !== null;
+    },
+
+    onFullscreenChange(cb: (on: boolean) => void): () => void {
+      const { document: doc } = env.window;
+      const listener = (): void => { cb(doc.fullscreenElement !== null); };
+      doc.addEventListener('fullscreenchange', listener);
+      return () => { doc.removeEventListener('fullscreenchange', listener); };
     },
   };
   return platform;

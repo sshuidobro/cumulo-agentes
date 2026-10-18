@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-080
 titulo: Valores de campo en el historial común y en los borradores
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-079]
 intentos: 0
 skills: [stack-typescript-react]
@@ -71,3 +71,22 @@ export function diffFields(fields: ReadonlyMap<string, FormField>, edits: Annota
   1. **Desviación de criterio, revisar:** la ficha pide «sin cambiar sus aserciones», pero la propia ficha hace que `toDraft` escriba la versión 2 y que la 2 sea válida. Tres aserciones que fijaban el número de versión han tenido que cambiar: `tests/unit/annotations/draft.test.ts` (`version: 1` → `2` en el ida y vuelta; la «versión distinta» usa ahora `version: 3`, porque la 2 ya es válida) y `tests/ui/draft-sync.test.tsx` (`version: 1` → `2`). No se ha tocado ninguna otra aserción.
   2. `storageValue` para opciones de grupo: he añadido la guarda `widget.onState !== null &&` para que un widget sin estado de exportación nunca salga marcado (con la fórmula literal, `null === null` daría `true`). Solo cambia el caso mal formado.
   3. Prettier marca ficheros existentes del proyecto (también `forms/import.ts`); no es parte de `pnpm lint`, no lo he tocado.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Lint y typecheck en 0; tests dirigidos (forms, anotaciones, pdf, draft-sync: 43 ficheros, 703 tests) en verde.
+- Desviación declarada aceptada: `toDraft` debe escribir v2 por mandato de la ficha, así que las aserciones `version: 1` -> `2` y «versión distinta» 2 -> 3 son consecuencia inevitable; no se ha debilitado ninguna otra aserción. El resto de cambios en tests solo añade `fields: new Map()`.
+- Guarda `onState !== null` en `storageValue` aceptada (solo afecta a casos mal formados y tiene test).
+- Los criterios tienen test que falla si se incumplen (undo/redo, `color` -> false/false/true, `diffFields`, v1/v2 de borradores).
+1. (opcional) `forms/commands.ts` — `invert` conserva bien el valor previo; sin cambios necesarios.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| undo/redo de `setFieldCommand`, `addAnnotationCommand` conserva `fields` | OK | `forms-commands.test.ts` en verde; añadido caso con varios campos, Unicode (ñ, emoji, hebreo) y deshacer en orden |
+| `storageValue` color Azul = false,false,true | OK | `forms-effective.test.ts` en verde |
+| `diffFields` ignora igual al fichero y solo lectura | OK | código revisado + tests en verde |
+| Borrador v1 sin campos; v2 ida y vuelta; inválidos -> null | OK | `draft.test.ts` + mi `forms-history-qa.test.ts` (JSON real, basura, `fields` no array, valor `kind` desconocido) |
+| Tests existentes en verde (desviación `version` 1->2 aceptada por el revisor) | OK | `pnpm test`: 164 ficheros, 1895 tests |
+| lint, typecheck, test, coverage | OK | los cuatro con código 0; coverage 165 ficheros, 1898 tests |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/forms-history-qa.test.ts` (3). Rendimiento: no aplica (modelo puro).

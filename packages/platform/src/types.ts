@@ -20,6 +20,15 @@ export type SaveOutcome =
   | { readonly kind: 'cancelled' };
 export type PlatformErrorCode = 'not-found' | 'permission-denied' | 'io' | 'changed-on-disk'
   | 'save-in-place-unsupported' | 'unsupported' | 'out-of-range';
+/** Fichero reciente. Solo metadatos: nunca el contenido. */
+export interface RecentFile {
+  readonly id: string;              // estable por fichero
+  readonly name: string;
+  readonly path: string | null;     // Tauri: ruta; web: null
+  readonly size: number | null;
+  readonly openedAt: number;        // ms desde epoch
+  readonly available: boolean;      // false si ya no existe (Tauri) o no se puede reabrir
+}
 export interface KeyValueStore {
   get<T>(key: string, guard: (v: unknown) => v is T): T | null;
   set(key: string, value: unknown): void;
@@ -48,4 +57,15 @@ export interface Platform {
   closeWindow(): Promise<void>;
   /** Abre el diálogo de impresión del sistema. Resuelve cuando el diálogo se ha abierto (web: cuando `window.print()` vuelve). */
   print(): Promise<Result<void>>;
+  /** Más reciente primero, máximo 20. */
+  recentFiles(): Promise<readonly RecentFile[]>;
+  /** null = el usuario negó el permiso. */
+  openRecent(id: string): Promise<Result<OpenedFile | null>>;
+  removeRecent(id: string): Promise<void>;
+  clearRecents(): Promise<void>;
+  /** Pone o quita la pantalla completa. err('unsupported') si el entorno no lo permite. */
+  setFullscreen(on: boolean): Promise<Result<void>>;
+  isFullscreen(): boolean;
+  /** Avisa cuando cambia (también si lo cambia el usuario o el SO). Devuelve la baja. */
+  onFullscreenChange(cb: (on: boolean) => void): () => void;
 }

@@ -28,7 +28,7 @@ import { resolveZoom, zoomToScale, type Size, type ZoomMode } from '../../core/z
 import type { PageDimsTable } from '../../core/page-dims';
 import type { Rotation } from '../../core/rotation';
 import { msg } from '../messages';
-import { select } from '../../state/annotation-actions';
+import { placeSignatureFromKeyboard, select } from '../../state/annotation-actions';
 import { useAnnotations } from '../../state/annotation-store';
 import { setCurrentPage, setCurrentYFraction, setHorizontalOverflow } from '../../state/navigation';
 import { zoomWithWheel } from '../../state/view-actions';
@@ -292,6 +292,13 @@ export function Viewer() {
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (!scaled || event.ctrlKey || event.altKey || event.metaKey) return;
+    // Con la herramienta «Firmar», Intro coloca la firma en la página actual, a un tercio de lo visible (PDF-043).
+    if (event.key === 'Enter' && useAnnotations.getState().tool === 'signature') {
+      event.preventDefault();
+      const pagePx = layout?.heights[useViewer.getState().currentPage] ?? 0;
+      placeSignatureFromKeyboard(pagePx > 0 ? Math.min(1, vh / pagePx) : 1);
+      return;
+    }
     const pageStep = vh - ARROW_STEP;
     const current = contentYRef.current;
     let next: number;

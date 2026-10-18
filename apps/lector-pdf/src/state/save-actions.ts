@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import { createLogger, err, ok, type AppError, type Result } from '@suite/shared';
 import type { OpenedFile } from '@suite/platform';
 import { diffAnnotations, isEmptyDiff, type AnnotationDiff } from '../core/annotations/diff';
+import { diffFields, type FieldChange } from '../core/forms';
 import { buildIncrementalUpdate, openForSave } from '../core/pdf';
 import { msg } from '../ui/messages';
 import { markAnnotationsSaved, nowIso } from './annotation-actions';
 import { useAnnotations } from './annotation-store';
 import { askChoice } from './choice';
 import { openDocument, PDF_FILTERS } from './document-actions';
+import { useForms } from './form-store';
 import { readCurrentPosition } from './position-sync';
 import { showNotice } from './notice';
 import { services } from './services';
@@ -33,7 +35,7 @@ export async function save(): Promise<SaveResult> {
   return runExclusive(async () => {
     const file = openedFile();
     if (file === null) return 'nothing';
-    if (isEmptyDiff(currentDiff())) {
+    if (!hasChanges(currentDiff())) {
       markAnnotationsSaved();
       return 'nothing';
     }
@@ -76,9 +78,19 @@ function openedFile(): OpenedFile | null {
   return status === 'ready' ? file : null;
 }
 
-function currentDiff(): AnnotationDiff {
+/** Cambios pendientes: anotaciones (frente a la línea base del fichero) y valores de formulario. */
+interface PendingChanges {
+  readonly diff: AnnotationDiff;
+  readonly fields: readonly FieldChange[];
+}
+
+function currentDiff(): PendingChanges {
   const { baseline, edits } = useAnnotations.getState();
-  return diffAnnotations(baseline, edits);
+  return { diff: diffAnnotations(baseline, edits), fields: diffFields(useForms.getState().fields, edits) };
+}
+
+function hasChanges(changes: PendingChanges): boolean {
+  return !isEmptyDiff(changes.diff) || changes.fields.length > 0;
 }
 
 /**
@@ -87,12 +99,18 @@ function currentDiff(): AnnotationDiff {
  * Lo usan guardar, guardar como e imprimir (PDF-087).
  */
 export async function buildCurrentDelta(file: OpenedFile): Promise<Result<Uint8Array | null, AppError>> {
-  const diff = currentDiff();
+  const changes = currentDiff();
   const reader = await openForSave(file.source);
   if (!reader.ok) return err(reader.error);
-  const built = await buildIncrementalUpdate({ source: file.source, reader: reader.value, diff, now: nowIso() });
+  const built = await buildIncrementalUpdate({
+    source: file.source,
+    reader: reader.value,
+    diff: changes.diff,
+    fields: changes.fields,
+    now: nowIso(),
+  });
   if (!built.ok) return err(built.error);
-  return ok(isEmptyDiff(diff) ? null : built.value.delta);
+  return ok(hasChanges(changes) ? built.value.delta : null);
 }
 
 /** Guarda una copia con el incremento (la plataforma pide el nombre). */

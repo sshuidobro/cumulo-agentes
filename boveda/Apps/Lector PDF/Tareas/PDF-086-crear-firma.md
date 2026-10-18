@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-086
 titulo: Crear firma (dibujar, escribir o imagen) y firmas guardadas
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-085]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -57,3 +57,30 @@ export function inkArtFromStrokes(strokes: readonly (readonly number[])[], width
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/package.json` y `pnpm-lock.yaml` (`@fontsource/dancing-script@5.3.0` exacta); `apps/lector-pdf/src/core/annotations/model.ts` (exporta `isSignatureArt`); `apps/lector-pdf/src/ui/kit/Dialog.tsx` (acción con `disabled?`); `apps/lector-pdf/src/ui/kit/MenuButton.tsx` y `MenuButton.module.css` (miniatura `thumbnail?` en `MenuActionSpec`); `apps/lector-pdf/src/ui/icons.tsx` (`IconSignature`). Nuevos: `apps/lector-pdf/src/core/signature/stored.ts`, `apps/lector-pdf/src/core/signature/image-art.ts`, `apps/lector-pdf/src/state/signature-actions.ts`, `apps/lector-pdf/src/ui/messages-signature.ts`, `apps/lector-pdf/src/ui/signature/` (`SignatureDialog.tsx` + `.module.css`, `SignatureMenu.tsx`, `text-art.ts`, `image-art.ts`, `thumbnail.ts`), `apps/lector-pdf/tests/unit/signature-stored.test.ts`, `apps/lector-pdf/tests/ui/signature-dialog.test.tsx`.
+- Qué he hecho: núcleo puro de firmas guardadas (máx. 5, validación, `inkArtFromStrokes`), almacén `useSignatures` con lectura de vuelta para detectar la cuota (el almacén traga los errores de escritura), diálogo «Crear firma» con pestañas Dibujar/Escribir/Imagen accesibles por teclado y casilla de guardado, y menú de firmas con miniaturas y borrado. Textos en `messages-signature.ts`.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (177 ficheros, 2065 tests); `pnpm coverage` OK (`core/signature` 98 % líneas); `pnpm --filter lector-pdf build` OK (arranque 459 861 bytes ≤ 500 000; sin `fonts.googleapis` en dist).
+- Dudas o cosas que no he podido hacer: (1) el requisito de cuota se verifica releyendo la preferencia, porque `KeyValueStore.set` no devuelve error; (2) «Crear firma…» en el menú entrega la firma recién creada a `onPick` directamente (la ficha no decía qué pasa después; PDF-043 puede cambiarlo); (3) la fuente Dancing Script no aparece en `dist` hasta que algo del grafo importe `SignatureDialog` (lo hará PDF-043); (4) los cambios de `annotation-actions.ts`, `core/pdf/index.ts` y de las fichas PDF-081/088/089 que había en el árbol son de otros agentes y no van en mi commit.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Tests de la ficha (27) en verde; `tsc` y ESLint sin avisos sobre los ficheros de la ficha. Criterios cubiertos con tests; sin red (fuente por `@fontsource`); núcleo sin React.
+1. (opcional) `apps/lector-pdf/src/ui/signature/SignatureDialog.tsx:accept` — un doble clic rápido en Aceptar con la pestaña Escribir (espera `fonts.load`) puede guardar la firma dos veces y llamar a `onDone` dos veces; añadir un guarda `busy`.
+2. (opcional) `SignatureDialog.tsx:accept` — si `rasterizeSignatureText` devuelve `null` (sin canvas) el botón no hace nada y no avisa; mostrar un mensaje.
+3. (opcional) `src/ui/signature/image-art.ts` — un JPEG con orientación EXIF: `createImageBitmap` aplica la rotación pero los bytes se guardan tal cual con ancho/alto del bitmap; comprobar en PDF-043.
+No he ejecutado build/coverage/suite global (otros agentes trabajan en el árbol); el programador reporta build 459 861 bytes.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `inkArtFromStrokes` y `null` | OK | `signature-stored.test.ts` (box [44,34], trazo [2,32,42,2]) |
+| `addStored` / `isStoredSignatures` | OK | mismo fichero, 27 tests verdes ×3 ejecuciones |
+| UI Aceptar/Esc/flechas/foco | OK | `signature-dialog.test.tsx` |
+| Escribir «Ana Pérez» → rgba-deflate | OK | test «la pestaña Escribir…» |
+| Guardar marcada/desmarcada + preferencia | OK | test «con Guardar esta firma…» |
+| Sin red | OK | `grep -rl fonts.googleapis dist` sin resultados |
+| Build + bundle:check | OK | «Arranque: 459861 bytes … (máximo 500000)» |
+| tsc / ESLint sobre ficheros de la ficha | OK | sin salida |
+Alcance limitado por indicación: no ejecuté `pnpm test`/`coverage` globales (otros agentes compilan); el programador reporta 2065 tests y cobertura OK. Sin tests skip/only. Sugerencias opcionales del revisor (doble clic en Aceptar, canvas nulo, EXIF) pendientes para PDF-043.
+Tests añadidos: ninguno nuevo. Rendimiento: no aplica.

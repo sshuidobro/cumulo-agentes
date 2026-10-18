@@ -119,6 +119,47 @@ describe('nextPage, prevPage, firstPage, lastPage', () => {
   });
 });
 
+describe('navegación por filas según el modo de vista', () => {
+  function requestedPage(): number | undefined {
+    return useViewer.getState().navRequest?.page;
+  }
+
+  it('con pares, la página siguiente desde la p1 va a la p3 (índice 2)', () => {
+    withPages(10);
+    useViewer.setState({ viewMode: { scroll: 'continuous', spread: 'pairs' } });
+    setCurrentPage(0);
+    nextPage();
+    expect(requestedPage()).toBe(2);
+  });
+
+  it('con pares, la anterior desde la p3 va a la p1 (índice 0)', () => {
+    withPages(10);
+    useViewer.setState({ viewMode: { scroll: 'paged', spread: 'pairs' } });
+    setCurrentPage(2);
+    prevPage();
+    expect(requestedPage()).toBe(0);
+  });
+
+  it('con portada, la última fila empieza en la página impar correcta', () => {
+    withPages(6);
+    useViewer.setState({ viewMode: { scroll: 'continuous', spread: 'cover' } });
+    lastPage();
+    expect(requestedPage()).toBe(5);
+    withPages(5);
+    useViewer.setState({ viewMode: { scroll: 'continuous', spread: 'cover' } });
+    lastPage();
+    expect(requestedPage()).toBe(3);
+  });
+
+  it('con pares, la siguiente desde la última fila no pide navegación', () => {
+    withPages(5);
+    useViewer.setState({ viewMode: { scroll: 'continuous', spread: 'pairs' } });
+    setCurrentPage(4);
+    nextPage();
+    expect(useViewer.getState().navRequest).toBeNull();
+  });
+});
+
 describe('setHorizontalOverflow', () => {
   it('escribe solo cuando cambia el valor', () => {
     setHorizontalOverflow(false);

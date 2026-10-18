@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-085
 titulo: Anotación de firma - modelo, apariencia, escritura y dibujo en la capa
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-084, PDF-080]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
@@ -54,3 +54,33 @@ export interface SignatureAnnotation extends Base { readonly type: 'signature'; 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/base64.ts` (nuevo), `src/core/annotations/{model,appearance,to-pdf,commands,comment-list,import}.ts`, `src/core/pdf/incremental.ts`, `src/ui/messages.ts`, `src/ui/viewer/annotation-shapes.tsx`, `src/ui/viewer/signature-image.ts` (nuevo), `tests/support/standard-annotations.ts`, `tests/unit/annotations/{appearance.test.ts,factories.ts}`, `tests/unit/base64.test.ts` (nuevo), `tests/unit/signature-annotation.test.ts` (nuevo), `tests/ui/signature-shapes.test.tsx` (nuevo).
+- Qué he hecho: modelo `SignatureAnnotation` (`ink` / `image` rgba-deflate o jpeg) con validación y `resizeSignature`; apariencia `Stamp` (`/Name /SuiteFirma`) con `buildAppearance(a, imageRef?)`; escritor incremental reserva `extra` (2 para rgba, 1 para jpeg) y escribe imagen y SMask (`null` si todo el alfa es 255); etiqueta «Firma» en comandos, panel y mensajes; `<image>` en la capa SVG (con voltear Y) y polylines para la firma dibujada. Base64 propio en `core/` porque el `lib` de TypeScript no tiene `toBase64`. `import.ts` excluye `signature` de `kindOf` (un `/Stamp` ajeno se importa como ajeno).
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK; `pnpm exec vitest run` de los tests nuevos (base64, signature-annotation, signature-shapes): 30/30 OK; `pnpm test` (raíz): 170 ficheros, 1972 tests OK; `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>`: OK (exit 0). `pnpm lint`: mis ficheros limpios; queda un error ajeno en `apps/lector-pdf/tests/unit/forms-history-qa.test.ts:29` (no es mío, no lo he tocado). `qpdf --check` = 0 sobre basic-5 con las tres firmas; pdf.js ve 3 `Stamp` con `hasAppearance: true` en sus rects; incremento < 30 KB (comprobado en el test).
+- Dudas o cosas que no he podido hacer:
+  1. Al reabrir un PDF con una firma guardada, pdf.js la ve como `/Stamp` ajeno y el panel la muestra como «Sello» (`FOREIGN_LABELS`), no como «Firma». La ficha pide «Firma» en el panel; para eso habría que etiquetar por `/Name SuiteFirma` en `import.ts`/`comment-list.ts`, fuera de lo indicado. Decisión del líder.
+  2. Formato `rgba-deflate` = deflate crudo (`fflate.deflateSync` / `inflateSync`). PDF-086 debe producirlo así; lo he dejado documentado en `model.ts`.
+  3. Una firma de origen `file` no existe (el import trata los `Stamp` como ajenos), así que la rama de «modificada» en `rewritePage` no escribe imagen. Si alguna vez llegara, `buildAppearance` lanzaría el error de programación.
+  4. Durante la coverage hubo un conflicto con otro proceso de Vitest sobre `coverage/` (ajeno); lo ejecuté con un directorio de informes propio. Un aviso «getContext() not implemented» de jsdom sale de otro fichero de tests, no de los míos.
+
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Cumple los criterios: modelo/validación, apariencia, reserva de `extra` con SMask `null`, etiquetas, capa SVG y tests (30/30 propios). `pnpm lint` y `pnpm typecheck` OK. `pnpm test` da 1 fallo en `tests/unit/save-actions.test.ts` («sin cambios → nothing») causado por una edición ajena sin confirmar en `src/state/save-actions.ts` (`if (false)`, no es de PDF-085); con el árbol limpio no aplica. El tester debe volver a ejecutar la suite con ese fichero restaurado.
+1. (opcional) `src/ui/viewer/signature-image.ts` — el orden de imports pone `fflate` tras los locales; solo estilo.
+Duda 1 del programador: es coherente con ADR-0020 (siguen siendo ajenas y de solo lectura) y no es parte de esta ficha; abierta como [[PDF-103-etiqueta-firma-al-reabrir]] (pendiente, depende de PDF-085). El líder debe añadirla al Plan.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 3 firmas en basic-5: pdf.js 3 Stamp con apariencia, qpdf 0, incremento < 30 KB | OK | `signature-annotation.test.ts` (verde en `pnpm test`) |
+| Imagen opaca sin SMask, número reservado como null en xref | OK | mismo fichero |
+| `isAnnotation` acepta/rechaza (svg, pixelWidth 0, box [0,10]); ida y vuelta de borrador | OK | mismo fichero + 12 casos hostiles nuevos |
+| translate/resizeSignature solo cambian rect | OK | mismo fichero |
+| Deshacer/rehacer «añadir firma» | OK | mismo fichero |
+| UI: `<image>` con `data:image/png;base64,` y polylines por trazo | OK | `tests/ui/signature-shapes.test.tsx` |
+| lint, typecheck, test, coverage | OK | lint 0; typecheck 0; 170 ficheros / 1972 tests OK; coverage exit 0 (líneas 99,01 %) |
+
+El fallo de `save-actions` citado por el revisor ya no se da (`src/state/save-actions.ts` limpio). Observación no bloqueante: reabrir una firma guardada muestra «Sello» (abierta en PDF-103).
+Tests añadidos: `apps/lector-pdf/tests/unit/signature-qa.test.ts` (12 entradas hostiles rechazadas; 30 firmas mixtas en dos guardados sucesivos, pdf.js las lee todas). Rendimiento: sin presupuesto específico; los 13 tests QA tardan 0,8 s. No se ejecutó e2e (indicado) ni mutaciones; `src/` sin cambios míos.

@@ -6,11 +6,16 @@
  */
 import type { ByteSource } from '@suite/platform';
 import { err, ok, type AppError, type Result } from '@suite/shared';
+import { inflateSync } from 'fflate';
 import { buildAppearance } from '../annotations/appearance';
 import { isEmptyDiff, type AnnotationDiff } from '../annotations/diff';
 import type { Annotation, PdfObjRef } from '../annotations/model';
 import { annotationDict, popupDict, updatedDict } from '../annotations/to-pdf';
+import { fromBase64 } from '../base64';
 import { pdfError } from '../errors';
+import type { FieldChange } from '../forms/diff';
+import { planFieldWrites } from '../forms/to-pdf';
+import { jpegImageObject, rgbaImageObjects } from './image';
 import {
   bytesString,
   dict,
@@ -35,6 +40,8 @@ export interface IncrementalInput {
   readonly diff: AnnotationDiff;
   /** ISO 8601; lo pasa quien llama (así el resultado es determinista). */
   readonly now: string;
+  /** Valores de formulario cambiados (PDF-042). Por defecto, ninguno. */
+  readonly fields?: readonly FieldChange[];
 }
 
 export interface IncrementalOutput {
@@ -57,6 +64,11 @@ interface AddedPlan {
   readonly ap: PdfRef;
   /** Solo para notas. */
   readonly popup: PdfRef | null;
+  /**
+   * Números reservados para los objetos de imagen de una firma: `[imagen, SMask]` si es `rgba-deflate`,
+   * `[imagen]` si es `jpeg`, ninguno en el resto. Se reservan aquí para que la xref no tenga huecos.
+   */
+  readonly extra: readonly PdfRef[];
 }
 
 interface ModifiedPlan {
@@ -105,7 +117,8 @@ export async function openForSave(source: ByteSource): Promise<Result<ObjectRead
 
 async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> {
   const { source, reader, diff, now } = input;
-  if (isEmptyDiff(diff)) {
+  const fields = input.fields ?? [];
+  if (isEmptyDiff(diff) && fields.length === 0) {
     return { delta: new Uint8Array(0), expectedSize: source.size, written: new Map() };
   }
 
@@ -120,9 +133,11 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
     const annot = ref(next++);
     const ap = ref(next++);
     const popup = a.type === 'note' ? ref(next++) : null;
-    return { a, annot, ap, popup };
+    const extra = Array.from({ length: imageObjectCount(a) }, () => ref(next++));
+    return { a, annot, ap, popup, extra };
   });
   const modified: ModifiedPlan[] = diff.modified.map((a) => ({ a, origin: fileOrigin(a).ref, ap: ref(next++) }));
+  const fieldWrites = await planFieldWrites(reader, fields, () => ref(next++));
   const xrefNum = reader.xref.lastKind === 'stream' ? next++ : null;
   const size = next;
   const objectCount = size - reader.xref.size;
@@ -166,6 +181,9 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
     writer.object(m.origin.num, m.origin.gen, updatedDict(original, m.a, { apRef: m.ap, now }));
     writer.object(m.ap.num, 0, buildAppearance(m.a).stream);
   }
+
+  // Valores de formulario (PDF-042): tras las anotaciones modificadas y antes de las páginas.
+  for (const w of fieldWrites) writer.object(w.num, w.gen, w.value);
 
   // Páginas tocadas, en orden para que la salida sea determinista.
   const pages = [...new Set([...addedByPage.keys(), ...removedByPage.keys()])].sort((x, y) => x - y);
@@ -235,7 +253,8 @@ async function rewritePage(
 
   for (const p of added) {
     writer.object(p.annot.num, 0, annotationDict(p.a, { pageRef, apRef: p.ap, popupRef: p.popup, now }));
-    writer.object(p.ap.num, 0, buildAppearance(p.a).stream);
+    writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
+    writeSignatureImage(writer, p.a, p.extra);
     if (p.popup !== null && p.a.type === 'note') {
       writer.object(p.popup.num, 0, popupDict(p.annot, p.a.rect, p.a.open));
     }
@@ -246,6 +265,45 @@ async function rewritePage(
   } else {
     writer.object(annots.indirect.num, annots.indirect.gen, newAnnots);
   }
+}
+
+/** Objetos de imagen que necesita `a` además de su apariencia (ver `AddedPlan.extra`). */
+function imageObjectCount(a: Annotation): number {
+  if (a.type !== 'signature' || a.art.kind !== 'image') return 0;
+  return a.art.format === 'rgba-deflate' ? 2 : 1;
+}
+
+/**
+ * Escribe el Image XObject de una firma con imagen y, si la hay, su SMask. Una SMask que no hace falta
+ * (todo el alfa a 255) se escribe como `null` en su número reservado. Un dato que no se puede decodificar
+ * es una estructura no legible (`save-unreadable`).
+ */
+function writeSignatureImage(writer: DeltaWriter, a: Annotation, refs: readonly PdfRef[]): void {
+  if (a.type !== 'signature' || a.art.kind !== 'image') return;
+  const art = a.art;
+  const [imageRef, smaskRef] = refs;
+  if (imageRef === undefined || (art.format === 'rgba-deflate' && smaskRef === undefined)) {
+    throw new RangeError(`faltan números de objeto para la firma ${a.id}`);
+  }
+  const bytes = fromBase64(art.data);
+  if (bytes === null) throw unreadable(`firma ${a.id}`);
+
+  if (art.format === 'jpeg') {
+    const image = jpegImageObject(bytes);
+    if (!image.ok) throw unreadable(`firma ${a.id}`);
+    writer.object(imageRef.num, 0, image.value);
+    return;
+  }
+  if (smaskRef === undefined) throw new RangeError(`falta el número de SMask de la firma ${a.id}`);
+  let rgba: Uint8Array;
+  try {
+    rgba = inflateSync(bytes);
+  } catch {
+    throw unreadable(`firma ${a.id}`);
+  }
+  const objects = rgbaImageObjects({ width: art.pixelWidth, height: art.pixelHeight, rgba }, smaskRef);
+  writer.object(imageRef.num, 0, objects.image);
+  writer.object(smaskRef.num, 0, objects.smask);
 }
 
 /** Array `/Annots` de la página: directo, indirecto o ausente (`items` vacío). */

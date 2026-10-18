@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
 import { msg } from '../../src/ui/messages.ts';
+import { settle } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 interface Win {
@@ -46,8 +47,7 @@ test('clic de rueda y ctrl+clic en enlace externo no abren sin confirmar', async
   await link.click({ modifiers: ['Control'] });
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
-  // Espera negativa legítima: se comprueba que no se abre ninguna ventana (ausencia de evento).
-  await page.waitForTimeout(300);
+  await settle(page);
   expect(popups).toEqual([]);
   expect(await opened(page)).toEqual([]);
   expect(page.url()).not.toContain('example.org');
@@ -69,6 +69,8 @@ test('mailto pide confirmación y Enter con teclado activa enlace interno', asyn
 test('enlaces (b) y (c) navegan y Alt+← encadena el historial', async ({ page }) => {
   await openLinks(page);
   const internals = page.getByRole('link', { name: msg.internalLink });
+  // `count()` no espera: primero se espera al tercer enlace interno (la página 1 aún puede estar montándose).
+  await expect(internals.nth(2)).toBeAttached();
   const n = await internals.count();
   expect(n).toBeGreaterThanOrEqual(3);
   await internals.nth(1).click();

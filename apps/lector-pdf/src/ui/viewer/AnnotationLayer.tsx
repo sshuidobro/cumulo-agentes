@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import {
+  resizeSignature,
   translateAnnotation,
   type Annotation,
   type AnnotationType,
   type FreeTextAnnotation,
   type RectPt,
+  type SignatureAnnotation,
 } from '../../core/annotations/model';
 import { freeTextClickRect, freeTextDragRect, resizeFreeTextRect } from '../../core/annotations/freetext';
 import { newInkAnnotation } from '../../core/annotations/ink';
 import { newNoteAnnotation, noteRectAt } from '../../core/annotations/note';
 import { simplifyPath } from '../../core/annotations/simplify';
+import { resizeKeepingAspect } from '../../core/signature/signature';
 import type { PageViewport } from '../../engine/pdfjs';
 import {
   addAnnotation,
@@ -21,6 +24,7 @@ import {
   nowIso,
   openPopup,
   pageAnnotations,
+  placeSignature,
   resizeFreeText,
   select,
   setTool,
@@ -50,7 +54,9 @@ const LABEL_CONTENTS_CHARS = 80;
 /** Caracteres del comentario que muestra el `title` nativo al pasar el ratón (PDF-033). */
 const TOOLTIP_CHARS = 200;
 /** Tipos que se pueden mover. El marcado de texto va unido al texto y no se mueve. */
-const MOVABLE: ReadonlySet<AnnotationType> = new Set<AnnotationType>(['note', 'freetext', 'ink']);
+const MOVABLE: ReadonlySet<AnnotationType> = new Set<AnnotationType>(['note', 'freetext', 'ink', 'signature']);
+/** Tipos con tirador de tamaño en la esquina inferior derecha cuando están seleccionados. */
+type Resizable = FreeTextAnnotation | SignatureAnnotation;
 /** Marcador del foco tras borrar: se lleva el foco al visor (la región del documento). */
 const FOCUS_VIEWER = 'viewer';
 /** Tolerancia de la simplificación de un trazo a mano alzada al soltar, en puntos PDF (PDF-035). */
@@ -207,7 +213,7 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
    */
   function beginPointer(event: PointerEvent<SVGGElement>, a: Annotation): void {
     const tool = useAnnotations.getState().tool;
-    if (event.button !== 0 || tool === 'note' || tool === 'ink') return;
+    if (event.button !== 0 || tool === 'note' || tool === 'ink' || tool === 'signature') return;
     select(a.id);
     if (!MOVABLE.has(a.type)) return;
     event.preventDefault();
@@ -281,8 +287,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     );
   }
 
-  /** Tirador de tamaño de un texto libre (PDF-034): arrastrarlo cambia ancho y alto, con la esquina superior izquierda fija. */
-  function beginResize(event: PointerEvent<SVGRectElement>, a: FreeTextAnnotation): void {
+  /**
+   * Tirador de tamaño de un texto libre (PDF-034) o de una firma (PDF-043): arrastrarlo cambia ancho y alto, con la
+   * esquina superior izquierda fija. La firma mantiene su proporción.
+   */
+  function beginResize(event: PointerEvent<SVGRectElement>, a: Resizable): void {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -292,7 +301,9 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     const rectAt = (e: globalThis.PointerEvent): RectPt => {
       // Arrastrar hacia abajo (PDF y decreciente) hace más alto el cuadro: dh = -dy.
       const [dx, dy] = pdfDelta(e.clientX - startX, e.clientY - startY);
-      return resizeFreeTextRect(original, dx, -dy, a.fontSize);
+      return a.type === 'freetext'
+        ? resizeFreeTextRect(original, dx, -dy, a.fontSize)
+        : resizeKeepingAspect(original, 'se', dx, -dy);
     };
     followPointer(
       (e) => {
@@ -301,16 +312,32 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
       (e) => {
         setResizing(null);
         if (e.type === 'pointercancel') return;
-        resizeFreeText(a.id, rectAt(e));
+        if (a.type === 'freetext') resizeFreeText(a.id, rectAt(e));
+        else updateAnnotation(resizeSignature(a, rectAt(e)), 'cambiar tamaño de la firma');
       },
     );
   }
 
-  /** Clic o arrastre sobre la capa: primero la herramienta «Nota», luego «Texto» y «Dibujar» (cada una comprueba la suya). */
+  /** Clic o arrastre sobre la capa: primero la herramienta «Nota», luego «Texto», «Dibujar» y «Firmar» (cada una comprueba la suya). */
   function onLayerPointerDown(event: PointerEvent<SVGSVGElement>): void {
     createNoteAt(event);
     beginFreeTextCreate(event);
     beginInk(event);
+    createSignatureAt(event);
+  }
+
+  /**
+   * Herramienta «Firmar» (PDF-043): un clic en la página coloca la firma pendiente centrada en el punto, la selecciona
+   * y devuelve la herramienta a «ninguna».
+   */
+  function createSignatureAt(event: PointerEvent<SVGSVGElement>): void {
+    const state = useAnnotations.getState();
+    if (event.button !== 0 || state.tool !== 'signature' || state.pendingSignature === null) return;
+    event.preventDefault();
+    const box = event.currentTarget.getBoundingClientRect();
+    const [x = 0, y = 0] = viewport.convertToPdfPoint(event.clientX - box.left, event.clientY - box.top);
+    const [x1, y1, x2, y2] = pageBoundsPt();
+    placeSignature(pageIndex, [x, y], [x1, y1, x2, y2]);
   }
 
   /** Guarda un punto del puntero en el trazo, en puntos PDF y recortado a la página. Un punto repetido no se guarda. */
@@ -519,13 +546,14 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     }
   }
 
-  // Tirador del texto libre seleccionado, en la esquina inferior derecha (PDF-034); no aparece mientras se edita.
-  const selectedText = items.find((a): a is FreeTextAnnotation => a.id === selectedId && a.type === 'freetext');
-  const handleRect = selectedText === undefined ? undefined : resizing?.id === selectedText.id ? resizing.rect : selectedText.rect;
+  // Tirador del texto libre o de la firma seleccionados, en la esquina inferior derecha (PDF-034, PDF-043); no aparece mientras se edita.
+  const selectedResizable = items.find((a): a is Resizable => a.id === selectedId && (a.type === 'freetext' || a.type === 'signature'));
+  const handleRect =
+    selectedResizable === undefined ? undefined : resizing?.id === selectedResizable.id ? resizing.rect : selectedResizable.rect;
   const handle =
-    selectedText === undefined || handleRect === undefined || editingHere !== null
+    selectedResizable === undefined || handleRect === undefined || editingHere !== null
       ? null
-      : { a: selectedText, ...toPx(viewport.transform, handleRect) };
+      : { a: selectedResizable, ...toPx(viewport.transform, handleRect) };
 
   return (
     <>

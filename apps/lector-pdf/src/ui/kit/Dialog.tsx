@@ -5,6 +5,8 @@ import styles from './Dialog.module.css';
 export interface DialogAction {
   readonly label: string;
   readonly onClick: () => void;
+  /** Deshabilitado: no se puede pulsar ni recibe el foco de Tab. */
+  readonly disabled?: boolean;
 }
 
 export interface DialogProps {
@@ -91,7 +93,13 @@ function DialogPanel({ title, children, actions, onClose }: Omit<DialogProps, 'o
         <div className={styles.body}>{children}</div>
         <div className={styles.actions}>
           {actions.map((action) => (
-            <button key={action.label} type="button" className={styles.button} onClick={action.onClick}>
+            <button
+              key={action.label}
+              type="button"
+              className={styles.button}
+              disabled={action.disabled ?? false}
+              onClick={action.onClick}
+            >
               {action.label}
             </button>
           ))}

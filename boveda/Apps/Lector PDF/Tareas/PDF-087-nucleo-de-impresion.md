@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-087
 titulo: Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica]
@@ -86,3 +86,18 @@ export async function openPrintSource(): Promise<PrintSource | null>;
 - Cumple los criterios: rangos, plan, escala, `concatSource` (1 000 lecturas), `openPrintSource` y extracción de `buildCurrentDelta` sin cambios de comportamiento en guardar.
 - (opcional) La ruta `tests/unit/print-source.test.ts` en vez de `tests/ui/` es correcta por la config de Vitest; conviene corregir la ficha.
 - (opcional) Pendiente de `pnpm coverage` en reposo (el tester).
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| parsePageRange (casos de la ficha) | OK | `print-range.test.ts` + `print-qa.test.ts` (espacios, desorden, `-`, `1-2-3`, `1.5`, cifras full-width, número enorme, numPages 0) |
+| planPage 842×595 en hoja vertical | OK | `print-plan.test.ts`; QA añade el caso inverso |
+| printScale 300 ppp y 5000×5000 | OK | tests de ficha; QA: 14400², 1×1 y 100000×10 dan escala finita y ≤ 33 554 432 px (con floor) |
+| concatSource 1 000 lecturas | OK | `concat-source.test.ts` |
+| openPrintSource temporal / sin cambios / dispose | OK | `print-source.test.ts` |
+| Guardar sigue pasando | OK | `save-actions`, `save-qa`, `unsaved-guard` en la batería |
+| lint, typecheck, test, coverage | OK | lint 0, typecheck 0, vitest --coverage (directorio propio, `pnpm coverage` bloqueado por otro proceso): 160 ficheros, 1831 tests, `core/print` 100 % líneas |
+
+Fallos ajenos vistos y repetidos en aislado (pasan): `annotations/commands.test.ts` (timeout 5 s con la máquina cargada), `platform/qa-drafts.test.ts` 50 MiB y `pdf/filters.test.ts` (timeouts bajo cobertura).
+Observación menor: con `Math.ceil` el lienzo de `printScale` puede exceder el tope en ~0,01 %; no afecta si el render usa floor (misma lógica que `canvas-size.ts`).
+Tests añadidos: `apps/lector-pdf/tests/unit/print-qa.test.ts`. Rendimiento: no aplica (núcleo sin UI).

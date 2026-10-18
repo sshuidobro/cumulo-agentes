@@ -4,9 +4,17 @@
  * coordenadas de página. Así Adobe, navegadores y móviles la dibujan igual que nosotros.
  */
 import { flateEncode } from '../pdf/filters';
-import { bytesString, dict, name, stream, type PdfDict, type PdfStream, type PdfValue } from '../pdf/objects';
+import { bytesString, dict, name, stream, type PdfDict, type PdfRef, type PdfStream, type PdfValue } from '../pdf/objects';
 import { serializeValue } from '../pdf/serialize';
-import type { Annotation, FreeTextAnnotation, InkAnnotation, NoteAnnotation, Rgb, TextMarkupAnnotation } from './model';
+import type {
+  Annotation,
+  FreeTextAnnotation,
+  InkAnnotation,
+  NoteAnnotation,
+  Rgb,
+  SignatureAnnotation,
+  TextMarkupAnnotation,
+} from './model';
 import { wrapText } from './wrap';
 import { toWinAnsi } from './winansi';
 
@@ -25,7 +33,7 @@ const FREETEXT_LEADING = 1.15;
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
-const HELV_FONT: PdfDict = dict({
+export const HELV_FONT: PdfDict = dict({
   Type: name('Font'),
   Subtype: name('Type1'),
   BaseFont: name('Helvetica'),
@@ -37,14 +45,16 @@ interface Drawing {
   readonly ops: readonly string[];
   readonly gs?: PdfDict;
   readonly font?: boolean;
+  /** Recursos `/XObject` (la imagen de una firma). */
+  readonly xobject?: PdfDict;
 }
 
 /** Número PDF con la misma serialización que el resto del escritor (4 decimales como máximo). */
-function num(n: number): string {
+export function num(n: number): string {
   return TEXT_DECODER.decode(serializeValue(n));
 }
 
-function nums(values: readonly number[]): string {
+export function nums(values: readonly number[]): string {
   return values.map(num).join(' ');
 }
 
@@ -53,7 +63,7 @@ function colorOp(c: Rgb, op: 'rg' | 'RG'): string {
 }
 
 /** Cadena literal PDF en WinAnsi (`(...)`, con escapes). Siempre ASCII. */
-function pdfText(s: string): string {
+export function pdfText(s: string): string {
   return TEXT_DECODER.decode(serializeValue(bytesString(toWinAnsi(s))));
 }
 
@@ -150,10 +160,10 @@ function freeTextDrawing(a: FreeTextAnnotation): Drawing {
   return { ...withOpacity(a, ops), font: true };
 }
 
-/** Dibujo a mano: trazos redondeados de `width` puntos. Un trazo de un punto es un segmento de longitud 0. */
-function inkDrawing(a: InkAnnotation): Drawing {
-  const ops = [`1 J 1 j ${num(a.width)} w`, colorOp(a.color, 'RG')];
-  for (const p of a.paths) {
+/** Trazos (`[x0, y0, x1, y1, ...]` cada uno) como operadores de trazo; sin fijar color ni grosor. */
+function strokeOps(paths: readonly (readonly number[])[]): string[] {
+  const ops: string[] = [];
+  for (const p of paths) {
     const [x0, y0] = pointAt(p, 0);
     ops.push(`${nums([x0, y0])} m`);
     // Un único punto: segmento de longitud 0 (con extremos redondeados se ve como un punto).
@@ -164,10 +174,43 @@ function inkDrawing(a: InkAnnotation): Drawing {
     }
     ops.push('S');
   }
-  return withOpacity(a, ops);
+  return ops;
 }
 
-function drawingOf(a: Annotation): Drawing {
+/** Dibujo a mano: trazos redondeados de `width` puntos. Un trazo de un punto es un segmento de longitud 0. */
+function inkDrawing(a: InkAnnotation): Drawing {
+  return withOpacity(a, [`1 J 1 j ${num(a.width)} w`, colorOp(a.color, 'RG'), ...strokeOps(a.paths)]);
+}
+
+/**
+ * Firma (ADR-0020). `ink`: trazos escalados de su caja al `rect` (`q sx 0 0 sy x1 y1 cm`), así el grosor también
+ * se escala como en el visor. `image`: la imagen ocupa todo el `rect`.
+ */
+function signatureDrawing(a: SignatureAnnotation, imageRef: PdfRef | undefined): Drawing {
+  const [x1, y1, x2, y2] = a.rect;
+  const art = a.art;
+  if (art.kind === 'ink') {
+    const [boxW, boxH] = art.box;
+    const sx = (x2 - x1) / boxW;
+    const sy = (y2 - y1) / boxH;
+    const ops = [
+      `q ${num(sx)} 0 0 ${num(sy)} ${nums([x1, y1])} cm`,
+      `1 J 1 j ${num(art.width)} w`,
+      colorOp(a.color, 'RG'),
+      ...strokeOps(art.paths),
+      'Q',
+    ];
+    return withOpacity(a, ops);
+  }
+  if (imageRef === undefined) {
+    // Quien escribe una firma con imagen debe reservar y pasar su referencia (PDF-085, incremental.ts).
+    throw new Error(`firma ${a.id} con imagen sin referencia de XObject`);
+  }
+  const ops = [`q ${num(x2 - x1)} 0 0 ${num(y2 - y1)} ${nums([x1, y1])} cm /Im0 Do Q`];
+  return { ...withOpacity(a, ops), xobject: dict({ Im0: imageRef }) };
+}
+
+function drawingOf(a: Annotation, imageRef: PdfRef | undefined): Drawing {
   switch (a.type) {
     case 'highlight':
       return highlightDrawing(a);
@@ -181,15 +224,21 @@ function drawingOf(a: Annotation): Drawing {
       return freeTextDrawing(a);
     case 'ink':
       return inkDrawing(a);
+    case 'signature':
+      return signatureDrawing(a, imageRef);
   }
 }
 
-/** Genera el Form XObject de la apariencia normal de `a`. Función pura: mismo `a`, mismos bytes. */
-export function buildAppearance(a: Annotation): Appearance {
-  const drawing = drawingOf(a);
+/**
+ * Genera el Form XObject de la apariencia normal de `a`. Función pura: mismo `a`, mismos bytes.
+ * `imageRef` es el Image XObject de una firma con imagen (obligatorio en ese caso; se ignora en el resto).
+ */
+export function buildAppearance(a: Annotation, imageRef?: PdfRef): Appearance {
+  const drawing = drawingOf(a, imageRef);
   const entries: Record<string, PdfValue> = {};
   if (drawing.gs !== undefined) entries.ExtGState = dict({ GS0: drawing.gs });
   if (drawing.font === true) entries.Font = dict({ Helv: HELV_FONT });
+  if (drawing.xobject !== undefined) entries.XObject = drawing.xobject;
   const resources = dict(entries);
 
   const content = TEXT_ENCODER.encode(`${drawing.ops.join('\n')}\n`);

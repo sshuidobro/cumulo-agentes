@@ -7,6 +7,7 @@ import { DEFAULT_ZOOM_MODE, type ZoomMode } from '../core/zoom';
 import type { Rotation } from '../core/rotation';
 import type { SidebarState } from '../core/sidebar';
 import type { OutlineNode } from '../core/outline';
+import { DEFAULT_VIEW_MODE, type ViewMode } from '../core/view-mode';
 
 export type DocStatus = 'empty' | 'loading' | 'ready' | 'error';
 
@@ -61,6 +62,8 @@ export interface ViewerState {
   readonly zoom: number;
   /** Rotación de vista (se suma a la de cada página). */
   readonly rotation: Rotation;
+  /** Modo de vista (desplazamiento y páginas por fila). Es una preferencia global: sobrevive a abrir otro documento (PDF-102). */
+  readonly viewMode: ViewMode;
   /** Punto fijo del próximo cambio de layout (zoom o giro). `null`: el visor conserva el borde superior. */
   readonly zoomFocusY: ZoomFocus | null;
   readonly navRequest: NavRequest | null;
@@ -97,6 +100,7 @@ export const initialViewerState: ViewerState = {
   zoomMode: DEFAULT_ZOOM_MODE,
   zoom: 1,
   rotation: 0,
+  viewMode: DEFAULT_VIEW_MODE,
   zoomFocusY: null,
   navRequest: null,
   pageLabels: null,

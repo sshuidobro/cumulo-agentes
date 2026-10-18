@@ -160,6 +160,16 @@ export function IconSaveAs() {
   );
 }
 
+export function IconPrint() {
+  return (
+    <Svg>
+      <path d="M6 7V3.5h8V7" />
+      <rect x="3" y="7" width="14" height="6" rx="1" />
+      <path d="M6 13v3.5h8V13" />
+    </Svg>
+  );
+}
+
 export function IconAppearance() {
   return (
     <Svg>
@@ -279,6 +289,24 @@ export function IconClose() {
   return (
     <Svg>
       <path d="M5 5l10 10M15 5L5 15" />
+    </Svg>
+  );
+}
+
+export function IconSignature() {
+  return (
+    <Svg>
+      <path d="M3 15c2-4 3-7 4-5s-1 5 1 4 3-4 4-3-1 3 1 3 2-2 3-1" />
+      <path d="M3 17.5h14" />
+    </Svg>
+  );
+}
+
+export function IconFormFields() {
+  return (
+    <Svg>
+      <rect x="3" y="4.5" width="14" height="11" rx="1.5" />
+      <path d="M6 8h4.5M6 11.5h8" />
     </Svg>
   );
 }

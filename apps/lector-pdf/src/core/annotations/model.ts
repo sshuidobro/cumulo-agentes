@@ -65,7 +65,39 @@ export interface InkAnnotation extends Base {
   readonly width: number;
 }
 
-export type Annotation = TextMarkupAnnotation | NoteAnnotation | FreeTextAnnotation | InkAnnotation;
+/**
+ * Dibujo de una firma (PDF-085, ADR-0020), en coordenadas propias de la firma:
+ * - `ink`: trazos en la caja `box` (ancho × alto, origen abajo-izquierda), escalados al `rect`.
+ * - `image`: `rgba-deflate` = píxeles RGBA sin cabecera, comprimidos en deflate crudo (fflate `deflateSync`),
+ *   o `jpeg` = bytes JPEG tal cual. `data` va en base64.
+ */
+export type SignatureArt =
+  | {
+      readonly kind: 'ink';
+      readonly paths: readonly (readonly number[])[];
+      readonly width: number;
+      readonly box: readonly [number, number];
+    }
+  | {
+      readonly kind: 'image';
+      readonly format: 'rgba-deflate' | 'jpeg';
+      readonly data: string;
+      readonly pixelWidth: number;
+      readonly pixelHeight: number;
+    };
+
+/** Firma visual: se escribe como `/Stamp` con `/Name /SuiteFirma` (ADR-0020). */
+export interface SignatureAnnotation extends Base {
+  readonly type: 'signature';
+  readonly art: SignatureArt;
+}
+
+export type Annotation =
+  | TextMarkupAnnotation
+  | NoteAnnotation
+  | FreeTextAnnotation
+  | InkAnnotation
+  | SignatureAnnotation;
 export type AnnotationType = Annotation['type'];
 
 /**
@@ -130,8 +162,14 @@ export function translateAnnotation(a: Annotation, dx: number, dy: number): Anno
       };
     case 'note':
     case 'freetext':
+    case 'signature':
       return { ...a, rect };
   }
+}
+
+/** Nueva caja de una firma: solo cambia `rect` (el dibujo va en coordenadas propias de la firma). */
+export function resizeSignature(a: SignatureAnnotation, rect: RectPt): SignatureAnnotation {
+  return { ...a, rect };
 }
 
 /** Validación completa de una anotación (para borradores y datos externos). */
@@ -148,9 +186,40 @@ export function isAnnotation(v: unknown): v is Annotation {
       return isPositive(v.fontSize) && isRgb(v.textColor);
     case 'ink':
       return isArrayOf(v.paths, isPath) && hasItems(v.paths) && isPositive(v.width);
+    case 'signature':
+      return isSignatureArt(v.art);
     default:
       return false;
   }
+}
+
+const SIGNATURE_FORMATS: readonly unknown[] = ['rgba-deflate', 'jpeg'];
+
+/** Validación de la forma de la firma: `ink` como una tinta más caja positiva; `image` con formato y dimensiones. */
+export function isSignatureArt(v: unknown): boolean {
+  if (!isRecord(v)) return false;
+  if (v.kind === 'ink') {
+    const box = numbers(v.box, 2);
+    return (
+      isArrayOf(v.paths, isPath) &&
+      hasItems(v.paths) &&
+      isPositive(v.width) &&
+      box !== null &&
+      box.every(isPositive)
+    );
+  }
+  if (v.kind === 'image') {
+    return (
+      SIGNATURE_FORMATS.includes(v.format) &&
+      typeof v.data === 'string' &&
+      v.data.length > 0 &&
+      isInt(v.pixelWidth) &&
+      v.pixelWidth > 0 &&
+      isInt(v.pixelHeight) &&
+      v.pixelHeight > 0
+    );
+  }
+  return false;
 }
 
 const NOTE_ICONS: readonly unknown[] = ['Comment', 'Note', 'Key', 'Help', 'NewParagraph', 'Paragraph', 'Insert'];

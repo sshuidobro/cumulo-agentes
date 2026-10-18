@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-040
 titulo: Generar el documento de prueba de formularios completo (form-full.pdf)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
@@ -70,3 +70,19 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 3) · Decisiones: [[ADR-0019-for
 - Qué he hecho: generador de `form-full.pdf` según la tabla (2 páginas, 15 + 2 widgets, todos con `/AP`, campo jerárquico `nombre` y `persona.apellido`, botones de opción, combo, lista, firma sin firmar). Tests con pdf.js en Node que comprueban los atributos de la ficha.
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf fixtures` (18 generados); `qpdf --check fixtures/pdf/generated/form-full.pdf` → código 0; `pnpm lint` → 0; `pnpm test` → 154/154 ficheros, 1793 tests en verde; `pnpm coverage` → 0 (líneas 97,15 %). `pnpm typecheck` falla por `apps/lector-pdf/tests/unit/print-render.test.ts(131,41)` (`noPrint` no existe): fichero de otra ficha en curso, no tocado.
 - Dudas o cosas que no he podido hacer: (1) pdf.js devuelve `fieldValue` de un combo como array (`['España']`); el test lo refleja. (2) Las apariencias las genera el propio fixture con la fórmula de la ficha: `importe` (`/Q 2`) y `rotado` (`/MK /R 90`) se dibujan alineados a la izquierda y sin girar; es inocuo para pdf.js con `ENABLE_STORAGE`, pero si PDF-079 necesita una apariencia alineada o girada hay que cambiarla. (3) La ficha pedía «Formulario completo · página N»: el `·` no estaba en la tabla WinAnsi, así que lo añadí (no cambia ningún fixture existente). (4) El recuento de fixtures pasa de 17 a 18 en `fixtures.test.ts`; es consecuencia directa del nuevo fichero.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: fixtures (18 generados), `qpdf --check` código 0, lint 0, typecheck 0, `pnpm test` 0, tests de fixtures en verde. Tabla de campos, orden de `/Annots` (15 + 2) y `/Fields` conforme a la ficha; tests cubren los criterios.
+1. (opcional) `apps/lector-pdf/tests/fixtures/structure.ts:409,417` — `importe` y `rotado` tienen apariencia sin alinear/girar (ya anotado por el programador); revisar en PDF-079 si hace falta.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| fixtures + qpdf | OK | `pnpm --filter lector-pdf fixtures` (18 generados); `qpdf --check` código 0 |
+| 15 + 2 widgets y atributos | OK | `tests/unit/fixtures-form-full.test.ts` en verde (3 ficheros de fixtures, 40 tests) |
+| `hasAppearance` en todos | OK | cubierto por el mismo test |
+| Fixtures anteriores intactos | OK | `fixtures.test.ts` en verde |
+| lint / typecheck | OK | ambos código 0 |
+| test / coverage | OK con matiz | Con carga de máquina 27, fallan por `Test timed out in 5000ms` tests ajenos y distintos en cada pasada (search-actions, annotations/commands, qa-drafts, concat-source, fuzz-roundtrip). Los dos de la 1.ª pasada pasan al ejecutarlos solos. No relacionados con esta ficha; conviene subir `testTimeout` o bajar paralelismo. Coverage lanzado con `reportsDirectory` propio porque otro proceso bloqueaba `coverage/`. |
+
+Tests añadidos: ninguno nuevo (los del programador cubren los criterios). Rendimiento: generación de fixtures 4,66 s.

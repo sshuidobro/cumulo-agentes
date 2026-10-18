@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { CORPUS_DIR } from '../fixtures/paths.ts';
-import { fixture, openFixture } from './helpers.ts';
+import { clearLongTasks, fixture, installPerfProbes, longTasks, openFixture, recordMeasure } from './helpers.ts';
+import { test as perfTest } from './perf-fixture.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 /**
@@ -151,3 +152,117 @@ test.describe('tema oscuro', () => {
   });
 });
 
+
+test('teclado: pestañas con ←/→ y menú «Más acciones» con flechas e Intro; Esc devuelve el foco', async ({ page }) => {
+  await openFixture(page, 'basic-5.pdf');
+  const more = page.getByRole('button', { name: 'Más acciones' });
+  await more.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem', { name: /Propiedades del documento/ })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(more).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitem', { name: /Propiedades del documento/ })).toBeVisible();
+  await page.keyboard.press('Enter');
+
+  const dialog = propertiesDialog(page);
+  await expect(dialog).toBeVisible();
+  const first = dialog.getByRole('tab', { name: 'Descripción' });
+  const second = dialog.getByRole('tab', { name: 'Avanzado' });
+  await expect(first).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(second).toBeFocused();
+  await expect(second).toHaveAttribute('aria-selected', 'true');
+  await expect(valueRow(dialog, 'Páginas')).toHaveText('5');
+  await page.keyboard.press('ArrowLeft');
+  await expect(first).toHaveAttribute('aria-selected', 'true');
+  // Tab no escapa del diálogo (el foco queda atrapado).
+  for (let i = 0; i < 6; i += 1) await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement?.closest('[role=dialog]') !== null)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
+test('los PDF corruptos no permiten abrir las propiedades y no rompen la app', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('/');
+  await page.locator('[data-testid=open-input]').setInputFiles(fixture('corrupt-truncated.pdf'));
+  await page.keyboard.press('Control+d');
+  await expect(page.getByRole('dialog', { name: 'Propiedades del documento' })).toBeHidden();
+  await expect(page.locator('body')).not.toBeEmpty();
+  expect(errors.filter((e) => /TypeError|ReferenceError/.test(e))).toEqual([]);
+});
+
+/** Pestaña «Fuentes» (PDF-088): la tabla, con sus cabeceras, dentro del diálogo abierto. */
+async function openFontsTab(dialog: Locator): Promise<Locator> {
+  await dialog.getByRole('tab', { name: 'Fuentes' }).click();
+  const table = dialog.getByRole('table');
+  await expect(dialog.getByRole('status')).toBeHidden({ timeout: 30_000 });
+  await expect(table).toBeVisible();
+  return table;
+}
+
+test('pestaña «Fuentes» con basic-5.pdf: una fuente Helvetica, Type1, WinAnsiEncoding y no incrustada', async ({ page }) => {
+  await openFixture(page, 'basic-5.pdf');
+  const dialog = await openWithCtrlD(page);
+  const table = await openFontsTab(dialog);
+  await expect(table.getByRole('columnheader')).toHaveText(['Nombre', 'Tipo', 'Codificación', 'Incrustada']);
+  await expect(table.getByRole('row')).toHaveCount(2);
+  await expect(table.getByRole('row').nth(1).getByRole('cell')).toHaveText(['Helvetica', 'Type1', 'WinAnsiEncoding', 'No']);
+});
+
+test('pestaña «Fuentes» con libreoffice/multilingue.pdf: TrueType incrustadas en subconjunto y sin prefijo «XXXXXX+»', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('[data-testid=open-input]').setInputFiles(join(CORPUS_DIR, 'libreoffice', 'multilingue.pdf'));
+  await expect(page.getByTestId('viewer')).toBeVisible();
+  await expectViewerReady(page);
+  const dialog = await openWithCtrlD(page);
+  const table = await openFontsTab(dialog);
+  const rows = table.locator('tbody tr');
+  expect(await rows.count()).toBeGreaterThan(1);
+  for (let i = 0; i < (await rows.count()); i += 1) {
+    const cells = await rows.nth(i).getByRole('cell').allTextContents();
+    expect(cells[0]).not.toMatch(/^[A-Z]{6}\+/);
+    expect(cells[1]).toBe('TrueType');
+    expect(cells[3]).toBe('Sí, subconjunto');
+  }
+});
+
+test('pestaña «Fuentes»: Esc cierra el diálogo y, al volver a abrirlo, la pestaña vuelve a leer el documento', async ({ page }) => {
+  await openFixture(page, 'basic-5.pdf');
+  const dialog = await openWithCtrlD(page);
+  await openFontsTab(dialog);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  const again = await openWithCtrlD(page);
+  await openFontsTab(again);
+  await expect(again.getByRole('row').nth(1).getByRole('cell').first()).toHaveText('Helvetica');
+});
+
+test('axe: pestaña «Fuentes» sin incidencias serious ni critical', async ({ page }, testInfo) => {
+  await openFixture(page, 'basic-5.pdf');
+  const dialog = await openWithCtrlD(page);
+  await openFontsTab(dialog);
+  await expectNoSeriousViolations(page, testInfo);
+});
+
+perfTest('pages-100000.pdf: el escaneo de fuentes no tiene long tasks > 100 ms y «Detener» lo para en < 200 ms', { tag: '@perf' }, async ({ page }, testInfo) => {
+  await installPerfProbes(page);
+  await openFixture(page, 'pages-100000.pdf');
+  const dialog = await openWithCtrlD(page);
+  await clearLongTasks(page);
+  await dialog.getByRole('tab', { name: 'Fuentes' }).click();
+  // Esperamos a que haya progreso visible y a que la barra siga escaneando; luego se pulsa «Detener».
+  await expect(dialog.getByRole('status')).toContainText('de 100.000 páginas');
+  const stop = dialog.getByRole('button', { name: 'Detener' });
+  const clicked = Date.now();
+  await stop.click();
+  await expect(dialog.getByText(/Búsqueda detenida/)).toBeVisible();
+  const stopMs = Date.now() - clicked;
+  recordMeasure(testInfo, `«Detener» hasta ver «Búsqueda detenida»: ${stopMs.toFixed(0)} ms (presupuesto < 200 ms)`);
+  expect(stopMs).toBeLessThan(200);
+
+  const tasks = await longTasks(page);
+  recordMeasure(testInfo, `long tasks durante el escaneo: ${String(tasks.length)}, máxima ${Math.max(0, ...tasks).toFixed(0)} ms`);
+  expect(tasks.filter((d) => d > 100)).toEqual([]);
+});

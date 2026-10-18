@@ -33,6 +33,7 @@ export default defineConfig(
   { files: ['apps/*/src/engine/**/*.{ts,tsx}'], rules: { 'no-restricted-imports': ['error', { patterns: [noTauri, noNode] }] } },
   { files: ['apps/*/src/core/**/*.ts'], rules: { 'no-restricted-imports': ['error', { patterns: [noPdfjs, noTauri, noNode, noUi] }] } },
   { files: ['packages/platform/src/**/*.ts'], ignores: ['packages/platform/src/tauri/**'], rules: { 'no-restricted-imports': ['error', { patterns: [noTauri, noNode] }] } },
+  { files: ['apps/*/tests/e2e/**/*.ts'], rules: { 'no-restricted-properties': ['error', { property: 'waitForTimeout', message: 'Espera a una condición (expect, page.clock o settle), no a un tiempo fijo.' }] } },
   { files: ['**/*.cjs'], languageOptions: { sourceType: 'commonjs', globals: { module: 'writable', require: 'readonly' } } },
   { files: ['**/*.mjs'], languageOptions: { globals: { ...globals.node } } },
 );

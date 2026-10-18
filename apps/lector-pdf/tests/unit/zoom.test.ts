@@ -39,7 +39,9 @@ describe('constantes de zoom', () => {
 describe('clampZoom', () => {
   it('acota a [MIN_ZOOM, MAX_ZOOM] y deja intactos los valores válidos', () => {
     expect(clampZoom(0.01)).toBe(MIN_ZOOM);
-    expect(clampZoom(20)).toBe(MAX_ZOOM);
+    expect(clampZoom(20)).toBe(20);
+    expect(clampZoom(70)).toBe(MAX_ZOOM);
+    expect(clampZoom(100)).toBe(64);
     expect(clampZoom(1.5)).toBe(1.5);
   });
 
@@ -58,8 +60,18 @@ describe('nextZoom', () => {
     expect(nextZoom(0.5, 1)).toBe(0.67);
   });
 
+  it('llega hasta 6 400 % con los pasos 12, 16, 24, 32, 48 y 64', () => {
+    expect(nextZoom(8, 1)).toBe(12);
+    expect(nextZoom(12, 1)).toBe(16);
+    expect(nextZoom(32, 1)).toBe(48);
+    expect(nextZoom(48, 1)).toBe(64);
+    expect(nextZoom(64, -1)).toBe(48);
+    expect(nextZoom(12, -1)).toBe(8);
+  });
+
   it('en el extremo devuelve el extremo', () => {
-    expect(nextZoom(8, 1)).toBe(8);
+    expect(nextZoom(64, 1)).toBe(64);
+    expect(nextZoom(MAX_ZOOM, 1)).toBe(MAX_ZOOM);
     expect(nextZoom(MAX_ZOOM + 5, 1)).toBe(MAX_ZOOM);
     expect(nextZoom(0.1, -1)).toBe(0.1);
     expect(nextZoom(0.05, -1)).toBe(MIN_ZOOM);
@@ -108,7 +120,7 @@ describe('resolveZoom', () => {
 
   it('custom usa el zoom indicado, acotado', () => {
     expect(resolveZoom({ kind: 'custom', zoom: 2 }, PAGE, VIEWPORT, MARGIN)).toBe(2);
-    expect(resolveZoom({ kind: 'custom', zoom: 50 }, PAGE, VIEWPORT, MARGIN)).toBe(MAX_ZOOM);
+    expect(resolveZoom({ kind: 'custom', zoom: 100 }, PAGE, VIEWPORT, MARGIN)).toBe(MAX_ZOOM);
   });
 });
 
@@ -137,8 +149,12 @@ describe('parseZoomInput', () => {
     expect(parseZoomInput('1,2,3')).toBeNull();
   });
 
-  it('acota lo que queda fuera de rango', () => {
-    expect(parseZoomInput('5000')).toBe(8);
+  it('acota lo que queda fuera de rango (hasta 6 400 %)', () => {
+    expect(parseZoomInput('6400')).toBe(64);
+    expect(parseZoomInput('6400 %')).toBe(64);
+    expect(parseZoomInput('7000 %')).toBe(64);
+    expect(parseZoomInput('5000')).toBe(50);
+    expect(MAX_ZOOM).toBe(64);
     expect(parseZoomInput('1')).toBe(0.1);
     expect(parseZoomInput('0')).toBe(MIN_ZOOM);
   });
@@ -154,7 +170,7 @@ describe('wheelZoom', () => {
 
   it('acota el resultado: líneas grandes en páginas llevan al mínimo', () => {
     expect(wheelZoom(1, 100, 1)).toBe(MIN_ZOOM);
-    expect(wheelZoom(8, -100, 0)).toBe(MAX_ZOOM);
+    expect(wheelZoom(MAX_ZOOM, -100, 0)).toBe(MAX_ZOOM);
   });
 
   it('rechaza un deltaY no finito', () => {

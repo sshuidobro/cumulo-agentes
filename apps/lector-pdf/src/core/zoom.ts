@@ -2,11 +2,12 @@
 export const CSS_UNITS = 96 / 72;
 
 export const MIN_ZOOM = 0.1;
-export const MAX_ZOOM = 8;
+export const MAX_ZOOM = 64;
 
 /** Pasos del botón «alejar/acercar» y de Ctrl+rueda por pasos. */
 export const ZOOM_STEPS: readonly number[] = [
-  0.1, 0.25, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6.4, 8,
+  0.1, 0.25, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6.4, 8, 12, 16, 24,
+  32, 48, 64,
 ];
 
 export type ZoomMode =

@@ -5,14 +5,18 @@ import { formatFileSize, formatPageSize, type DocumentProperties } from '../../c
 import { Dialog } from '../kit/Dialog';
 import { propertiesMsg } from '../messages-properties';
 import { closeProperties, usePropertiesDialog } from '../../state/properties-store';
+import { cancelFontScan, resetFontScan, startFontScan } from '../../state/fonts-actions';
+import { useFontScan } from '../../state/fonts-store';
 import { useViewer } from '../../state/viewer-store';
+import type { FontInfo } from '../../core/pdf';
 import styles from './PropertiesDialog.module.css';
 
-type TabId = 'description' | 'advanced';
+type TabId = 'description' | 'advanced' | 'fonts';
 
 const TABS: readonly { readonly id: TabId; readonly label: string }[] = [
   { id: 'description', label: propertiesMsg.tabDescription },
   { id: 'advanced', label: propertiesMsg.tabAdvanced },
+  { id: 'fonts', label: propertiesMsg.tabFonts },
 ];
 
 /** Formato de fechas del diálogo: día, mes y año en español, con la hora local. */
@@ -32,7 +36,7 @@ function formatDate(iso: string | null): string {
 }
 
 /** Filas (etiqueta, valor) de cada pestaña. Los valores vacíos se muestran como «—». */
-function rowsFor(tab: TabId, p: DocumentProperties): readonly (readonly [string, string])[] {
+function rowsFor(tab: Exclude<TabId, 'fonts'>, p: DocumentProperties): readonly (readonly [string, string])[] {
   const rows = propertiesMsg.rows;
   if (tab === 'description') {
     return [
@@ -78,6 +82,12 @@ function PropertiesContent({ pdf, file, pageIndex }: { readonly pdf: LoadedPdf; 
     };
   }, [pdf, file, pageIndex]);
 
+  // El escaneo de fuentes arranca al elegir su pestaña (PDF-088) y se cancela al cerrar el diálogo o cambiar de documento.
+  useEffect(() => {
+    if (tab === 'fonts') startFontScan();
+  }, [tab, pdf, file]);
+  useEffect(() => () => { resetFontScan(); }, [pdf, file]);
+
   // ←/→ cambian de pestaña (patrón ARIA: tabs con foco itinerante); Inicio y Fin van a la primera y la última.
   const onTabKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const index = TABS.findIndex((t) => t.id === tab);
@@ -96,7 +106,9 @@ function PropertiesContent({ pdf, file, pageIndex }: { readonly pdf: LoadedPdf; 
   };
 
   let body: ReactNode;
-  if (props === null) {
+  if (tab === 'fonts') {
+    body = <FontsPanel />;
+  } else if (props === null) {
     body = <p className={styles.reading}>{propertiesMsg.reading}</p>;
   } else {
     body = (
@@ -133,6 +145,66 @@ function PropertiesContent({ pdf, file, pageIndex }: { readonly pdf: LoadedPdf; 
       <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${tab}`} tabIndex={0} className={styles.panel}>
         {body}
       </div>
+    </div>
+  );
+}
+
+function embeddedText(font: FontInfo): string {
+  if (!font.embedded) return propertiesMsg.no;
+  return font.subset ? propertiesMsg.fonts.embeddedSubset : propertiesMsg.yes;
+}
+
+/** Pestaña «Fuentes» (PDF-088): la tabla crece por lotes mientras el escaneo avanza. */
+function FontsPanel() {
+  const status = useFontScan((s) => s.status);
+  const fonts = useFontScan((s) => s.fonts);
+  const pagesDone = useFontScan((s) => s.pagesDone);
+  const total = useFontScan((s) => s.total);
+  const msg = propertiesMsg.fonts;
+
+  return (
+    <div className={styles.fonts}>
+      {status === 'scanning' && (
+        <div className={styles.scanRow}>
+          <p role="status" className={styles.reading}>
+            {msg.scanning(pagesDone.toLocaleString('es-ES'), total.toLocaleString('es-ES'))}
+          </p>
+          <button type="button" className={styles.stop} onClick={cancelFontScan}>
+            {msg.stop}
+          </button>
+        </div>
+      )}
+      {fonts.length > 0 && (
+        <table className={styles.fontTable}>
+          <thead>
+            <tr>
+              <th scope="col">{msg.columns.name}</th>
+              <th scope="col">{msg.columns.type}</th>
+              <th scope="col">{msg.columns.encoding}</th>
+              <th scope="col">{msg.columns.embedded}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fonts.map((font) => (
+              <tr key={`${font.name}|${font.subtype}|${String(font.embedded)}`}>
+                <td>{orEmpty(font.name)}</td>
+                <td>{font.subtype}</td>
+                <td>{orEmpty(font.encoding)}</td>
+                <td>{embeddedText(font)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {status === 'done' && fonts.length === 0 && <p className={styles.reading}>{msg.none}</p>}
+      {status === 'cancelled' && (
+        <p className={styles.reading}>
+          {pagesDone === 0
+            ? msg.stoppedEarly
+            : msg.stopped(pagesDone.toLocaleString('es-ES'), total.toLocaleString('es-ES'))}
+        </p>
+      )}
+      {status === 'error' && <p className={styles.error}>{msg.error}</p>}
     </div>
   );
 }

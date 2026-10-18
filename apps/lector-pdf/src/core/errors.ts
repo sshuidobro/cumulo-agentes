@@ -21,7 +21,7 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'io': 'No se ha podido leer el fichero. Comprueba que sigue en su sitio.',
   'cancelled': 'Apertura cancelada.',
   'save-encrypted': 'No se pueden guardar anotaciones en este PDF porque está cifrado. Llegará en una próxima versión.',
-  'save-unreadable': 'No se pueden guardar las anotaciones: la estructura interna del PDF está dañada.',
+  'save-unreadable': 'No se pueden guardar los cambios: la estructura interna del PDF está dañada.',
   'invalid-image': 'La imagen no es válida o no está en un formato admitido (PNG o JPEG).',
 };
 

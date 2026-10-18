@@ -63,7 +63,7 @@ function visibleControls(tool: AnnotationTool, selection: Selection): ControlId[
 function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTool | null {
   if (selection.text) return 'freetext';
   if (selection.ink) return 'ink';
-  return tool === 'none' ? null : tool;
+  return tool === 'none' || tool === 'signature' ? null : tool;
 }
 
 /**

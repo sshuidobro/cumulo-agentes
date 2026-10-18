@@ -1,4 +1,4 @@
-import { createLogger, UndoStack } from '@suite/shared';
+import { createLogger, UndoStack, type Command } from '@suite/shared';
 import type { KeyValueStore } from '@suite/platform';
 import {
   addAnnotationCommand,
@@ -6,6 +6,7 @@ import {
   setEntryCommand,
   updateAnnotationCommand,
 } from '../core/annotations/commands';
+import { setFieldCommand } from '../core/forms/commands';
 import { annotationsOfPage, effectiveAnnotations } from '../core/annotations/effective';
 import type { ForeignAnnotation, ImportedPage } from '../core/annotations/import';
 import {
@@ -17,9 +18,15 @@ import {
   type InkAnnotation,
   type RectPt,
   type Rgb,
+  type SignatureArt,
 } from '../core/annotations/model';
 import { fitFreeTextRect, isBlankText, newFreeTextAnnotation } from '../core/annotations/freetext';
 import { keyboardNoteRect, newNoteAnnotation } from '../core/annotations/note';
+import {
+  keyboardSignatureCenter,
+  newSignatureAnnotation,
+  signatureRectAt,
+} from '../core/signature/signature';
 import {
   DEFAULT_AUTHOR,
   DEFAULT_FONT_SIZE,
@@ -84,6 +91,30 @@ let stack = createStack();
 let memo: { readonly baseline: AnnotationState['baseline']; readonly edits: AnnotationEdits; readonly result: ReadonlyMap<string, Annotation> } | null = null;
 /** Anotaciones de cada página ya calculadas, con la versión de la página con que se calcularon. */
 const pageMemo = new Map<number, { readonly version: number; readonly items: readonly Annotation[] }>();
+
+/** Aviso tras publicar un cambio de la pila (antes y después). Lo usan los formularios (ADR-0019). */
+export type EditsListener = (before: AnnotationEdits, after: AnnotationEdits) => void;
+/** Aviso tras fusionar páginas importadas (escaneo, importación perezosa). */
+export type PagesListener = (pages: readonly ImportedPage[]) => void;
+
+const editsListeners = new Set<EditsListener>();
+const pagesListeners = new Set<PagesListener>();
+
+/** Se llama al final de cada `publish()`. Devuelve la función que da de baja el aviso. */
+export function onEditsPublished(listener: EditsListener): () => void {
+  editsListeners.add(listener);
+  return () => {
+    editsListeners.delete(listener);
+  };
+}
+
+/** Se llama tras fusionar páginas importadas. Devuelve la función que da de baja el aviso. */
+export function onPagesImported(listener: PagesListener): () => void {
+  pagesListeners.add(listener);
+  return () => {
+    pagesListeners.delete(listener);
+  };
+}
 
 function createStack(): UndoStack<AnnotationEdits> {
   return new UndoStack<AnnotationEdits>(EMPTY_EDITS, { maxDepth: MAX_UNDO_DEPTH });
@@ -295,6 +326,14 @@ function mergePages(from: number, pages: readonly ImportedPage[]): void {
 
 /** Fusiona páginas con su índice (en un único cambio de estado). */
 function mergeIndexed(entries: readonly IndexedPage[]): void {
+  mergeIndexedState(entries);
+  if (entries.length > 0) {
+    const pages = entries.map((e) => e.page);
+    for (const listener of pagesListeners) listener(pages);
+  }
+}
+
+function mergeIndexedState(entries: readonly IndexedPage[]): void {
   useAnnotations.setState((s) => {
     const baseline = new Map(s.baseline);
     const foreign = new Map<string, ForeignAnnotation>(s.foreign);
@@ -344,6 +383,25 @@ function publish(before: AnnotationEdits): void {
   if (open !== null && !getEffective().has(open)) {
     useAnnotations.setState({ openPopupId: null });
   }
+  for (const listener of editsListeners) listener(before, after);
+}
+
+/** Sube en uno la versión de cada página indicada (para redibujarla). */
+export function bumpPageVersions(pages: Iterable<number>): void {
+  const list = [...pages];
+  if (list.length === 0) return;
+  useAnnotations.setState((s) => {
+    const pageVersion = new Map(s.pageVersion);
+    for (const index of list) pageVersion.set(index, (pageVersion.get(index) ?? 0) + 1);
+    return { pageVersion };
+  });
+}
+
+/** Ejecuta un comando sobre la pila de deshacer común (valores de formulario, etc.). */
+export function executeEdit(cmd: Command<AnnotationEdits>): void {
+  apply(() => {
+    stack.execute(cmd);
+  });
 }
 
 /** Ids cuya entrada en `edits` (cambio o borrado) es distinta entre dos estados. */
@@ -549,11 +607,14 @@ const RECOVER_LABEL = 'recuperar cambios';
 /** Aplica los cambios de un borrador recuperado como una única entrada de deshacer. */
 export function recoverEdits(recovered: AnnotationEdits): void {
   const ids = new Set([...recovered.upserts.keys(), ...recovered.removed]);
-  if (ids.size === 0) return;
+  if (ids.size === 0 && recovered.fields.size === 0) return;
   apply(() => {
     stack.group(RECOVER_LABEL, () => {
       for (const id of ids) {
         stack.execute(setEntryCommand(RECOVER_LABEL, id, recovered.upserts.get(id), recovered.removed.has(id)));
+      }
+      for (const [name, value] of recovered.fields) {
+        stack.execute(setFieldCommand(name, value, RECOVER_LABEL));
       }
     });
   });
@@ -617,8 +678,49 @@ export function closePopup(): void {
   useAnnotations.setState({ openPopupId: null });
 }
 
+/** Cambiar a «ninguna» descarta la firma pendiente de colocar. */
 export function setTool(tool: AnnotationTool): void {
-  useAnnotations.setState({ tool });
+  useAnnotations.setState(tool === 'none' ? { tool, pendingSignature: null } : { tool });
+}
+
+/** Firma elegida en «Firmar» (PDF-043): la herramienta pasa a `signature` y la siguiente colocación la usa. */
+export function chooseSignature(art: SignatureArt): void {
+  useAnnotations.setState({ pendingSignature: art, tool: 'signature' });
+}
+
+/**
+ * Coloca la firma pendiente centrada en `center` (puntos PDF) de la página `pageIndex`, dentro de `pageBox`. La
+ * selecciona y devuelve la herramienta a «ninguna», como con una nota. Devuelve su id, o `null` si no hay firma pendiente.
+ */
+export function placeSignature(pageIndex: number, center: readonly [number, number], pageBox: RectPt): string | null {
+  const { pendingSignature, author } = useAnnotations.getState();
+  if (pendingSignature === null) return null;
+  const signature = newSignatureAnnotation({
+    id: newAnnotationId(),
+    pageIndex,
+    rect: signatureRectAt(pendingSignature, center, pageBox),
+    art: pendingSignature,
+    author,
+    now: nowIso(),
+  });
+  addAnnotation(signature);
+  setTool('none');
+  select(signature.id);
+  return signature.id;
+}
+
+/**
+ * Coloca la firma pendiente con teclado (PDF-043): en la página actual, centrada horizontalmente y a un tercio de lo
+ * visible desde arriba. `visibleFraction` es la parte de la página que cabe en pantalla (0..1). Devuelve su id, o `null`.
+ */
+export function placeSignatureFromKeyboard(visibleFraction: number): string | null {
+  const { dims, currentPage, currentYFraction, rotation } = useViewer.getState();
+  if (dims === null || currentPage >= dims.count) return null;
+  const i = currentPage;
+  const width = dims.width(i);
+  const height = dims.height(i);
+  const center = keyboardSignatureCenter(width, height, (dims.rotation(i) + rotation) % 360, currentYFraction, visibleFraction);
+  return placeSignature(i, center, [0, 0, width, height]);
 }
 
 /**

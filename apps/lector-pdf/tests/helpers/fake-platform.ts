@@ -20,6 +20,8 @@ export function openedFile(name: string, source: ByteSource): OpenedFile {
  * responde como una plataforma sin esa capacidad.
  */
 export function createFakePlatform(overrides: Partial<Platform> = {}): Platform {
+  let fullscreen = false;
+  const fullscreenListeners = new Set<(on: boolean) => void>();
   return {
     kind: 'web',
     isMac: false,
@@ -36,6 +38,20 @@ export function createFakePlatform(overrides: Partial<Platform> = {}): Platform 
     onCloseRequested: () => () => undefined,
     closeWindow: vi.fn(async () => undefined),
     print: vi.fn(async () => ok(undefined)),
+    recentFiles: vi.fn(async () => []),
+    openRecent: vi.fn(async () => err(platformError('unsupported'))),
+    removeRecent: vi.fn(async () => undefined),
+    clearRecents: vi.fn(async () => undefined),
+    setFullscreen: vi.fn(async (on: boolean) => {
+      fullscreen = on;
+      for (const cb of [...fullscreenListeners]) cb(on);
+      return ok(undefined);
+    }),
+    isFullscreen: () => fullscreen,
+    onFullscreenChange: (cb: (on: boolean) => void) => {
+      fullscreenListeners.add(cb);
+      return () => { fullscreenListeners.delete(cb); };
+    },
     ...overrides,
   };
 }

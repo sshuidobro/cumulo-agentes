@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
+import { settle } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 const FIXTURE = join(FIXTURES_DIR, 'basic-5.pdf');
@@ -34,8 +35,7 @@ test('Ctrl+S sin cambios no descarga nada y no deja el título con aviso de camb
   let downloads = 0;
   page.on('download', () => downloads++);
   await page.keyboard.press('Control+S');
-  // Espera negativa legítima: no existe ningún estado que esperar cuando lo correcto es que no se descargue nada.
-  await page.waitForTimeout(500);
+  await settle(page);
   expect(downloads).toBe(0);
   await expect(page).toHaveTitle('basic-5.pdf — Lector PDF');
 });

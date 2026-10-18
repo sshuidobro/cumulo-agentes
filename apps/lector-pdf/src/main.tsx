@@ -10,6 +10,7 @@ import { openRequested } from './state/document-actions';
 import { initServices } from './state/services';
 import { startPositionSync } from './state/position-sync';
 import { loadAppearance } from './state/appearance-actions';
+import { loadViewMode } from './state/view-actions';
 import { installCloseGuard } from './state/unsaved-guard';
 import { startDraftSync } from './state/draft-sync';
 
@@ -22,6 +23,7 @@ platform.onFileOpenedFromOS((file) => void openRequested(file));
 startPositionSync();
 startDraftSync(createIdbDraftStore('lector-pdf'));
 loadAppearance();
+loadViewMode();
 installCloseGuard();
 
 createRoot(container).render(
