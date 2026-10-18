@@ -1,5 +1,6 @@
 import type { Annotation, AnnotationType, RectPt } from './model';
 import type { ForeignAnnotation } from './import';
+import { SIGNATURE_STAMP_NAME } from './to-pdf';
 
 /**
  * Lista de comentarios del panel (PDF-036). Puro: sin React ni pdf.js. Las anotaciones editables y las ajenas
@@ -91,8 +92,9 @@ export function typeLabelOf(a: Annotation): string {
   return SUPPORTED_LABELS[a.type];
 }
 
-/** Etiqueta de tipo de una anotación ajena: su nombre en español si se conoce; si no, el `subtype`. */
-export function foreignTypeLabel(subtype: string): string {
+/** Etiqueta de tipo de una anotación ajena: «Firma» si es un sello de la suite; si no, su nombre en español o el `subtype`. */
+export function foreignTypeLabel(subtype: string, stampName?: string): string {
+  if (subtype === 'Stamp' && stampName === SIGNATURE_STAMP_NAME) return SUPPORTED_LABELS.signature;
   return FOREIGN_LABELS.get(subtype) ?? subtype;
 }
 
@@ -149,7 +151,7 @@ export function buildCommentRows(
       pageIndex: r.pageIndex,
       x1: r.rect[0],
       y2: r.rect[3],
-      typeLabel: foreignTypeLabel(r.subtype),
+      typeLabel: foreignTypeLabel(r.subtype, r.stampName),
       author: r.author,
       modified: r.modified,
       contents: r.contents,
@@ -198,7 +200,7 @@ export function typeLabelsOf(
 ): string[] {
   const set = new Set<string>();
   for (const a of effective.values()) set.add(typeLabelOf(a));
-  for (const r of foreign.values()) set.add(foreignTypeLabel(r.subtype));
+  for (const r of foreign.values()) set.add(foreignTypeLabel(r.subtype, r.stampName));
   return [...set].sort((a, b) => a.localeCompare(b, 'es'));
 }
 

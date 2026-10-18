@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-103
 titulo: Etiqueta «Firma» para sellos de la suite - núcleo
 app: pdf
-estado: pendiente
+estado: en-test
 depende_de: [PDF-085]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
@@ -66,3 +66,13 @@ pdf.js 6.4.299 no expone `/Name` de un `/Stamp`. Se descartan (b) objetos intern
 ### [lider] replanificación — 2026-10-18
 - Elegida la opción (a) reutilizando `ObjectReader` (sin parser nuevo); (b) y (c) descartadas. Motivo en «Decisión del líder».
 - La ficha se parte: esta queda en el núcleo (`stamp-names.ts`, tipo, etiqueta) y la conexión con la sesión pasa a [[PDF-104-etiqueta-firma-conexion]]. `estado: pendiente`, `intentos: 0`.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/import.ts` (`stampName?` en `ForeignAnnotation`, `parseRef` exportada), `comment-list.ts` (`foreignTypeLabel(subtype, stampName?)`, usa `SUPPORTED_LABELS.signature`), `stamp-names.ts` nuevo (`readStampNames`, `withStampNames`), `index.ts` (reexporta el módulo), `tests/unit/annotations/stamp-names.test.ts` nuevo, `tests/unit/annotations/comment-list.test.ts` (bloque nuevo al final).
+- Qué he hecho: implementado la lectura del `/Name` de los `/Stamp` ajenos con `ObjectReader.getDict` (solo subtipo `Stamp` con id `ref:`, errores en `try/catch`). Ida y vuelta con firma real escrita por `buildIncrementalUpdate`, más casos de `Approved`, sin `/Name`, ids no válidos, objetos rotos y espía de `getDict`. `withStampNames` devuelve el mismo objeto si no hay cambios.
+- Comandos ejecutados y resultado: `eslint` sobre mis ficheros: limpio. `pnpm typecheck`: OK. `vitest run` de los tests de anotaciones + firma: 42/42 en los dos ficheros de la ficha; cobertura en `src/core/annotations`: stamp-names 100 % líneas, comment-list 100 %, import 100 %. `pnpm lint` raíz falla por 9623 errores en `apps/lector-pdf/dist-firma/` (artefactos de build fuera de mi ficha, no tocados). `pnpm coverage` completo: 2334/2335 tests OK; único fallo `tests/ui/zoom-controls.test.tsx` («el orden es el de la barra»: foco en «Reducir»), fichero sin relación con esta ficha y que no he tocado. No he podido ejecutar `pnpm coverage` en la raíz sin conflicto porque otro proceso de vitest usaba `coverage/`; lo he ejecutado con `--coverage.reportsDirectory` propio.
+- Dudas o cosas que no he podido hacer: sin dudas de diseño. Pendientes fuera de alcance: conexión con la sesión y el panel en [[PDF-104-etiqueta-firma-conexion]].
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- eslint (anotaciones y tests), typecheck y 336 tests de anotaciones y firma en verde. Cumple los criterios: ida y vuelta, Approved/sin Name, ids inválidos, espía de getDict, `withStampNames` con `toBe`, comment-list. Sin cambios en `importPageAnnotations`.
+- Nota: el fallo de `zoom-controls.test.tsx` y el lint de `dist-firma/` que cita el programador son ajenos a esta ficha; el tester debe confirmarlos con `pnpm coverage` completo.

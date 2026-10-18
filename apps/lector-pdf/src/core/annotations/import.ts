@@ -38,6 +38,8 @@ export interface ForeignAnnotation {
   readonly contents: string;
   readonly author: string;
   readonly modified: string | null;
+  /** `/Name` de un `/Stamp` ajeno (p. ej. `SuiteFirma`), solo si se ha leído con `readStampNames`. */
+  readonly stampName?: string;
 }
 
 export interface ImportedPage {
@@ -301,7 +303,7 @@ function hiddenOf(v: unknown): boolean | undefined {
 }
 
 /** Referencia de objeto (`<num>R` o `<num>R<gen>`); `null` si no es válida. */
-function parseRef(s: string): PdfObjRef | null {
+export function parseRef(s: string): PdfObjRef | null {
   const m = REF_PATTERN.exec(s);
   if (m === null) return null;
   const num = Number(m[1] ?? '');
