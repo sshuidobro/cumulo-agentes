@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-082
 titulo: Apariencias /AP de campos de texto, combo y lista
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-079]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -52,7 +52,7 @@ EMC
 
 ## Criterios de aceptación
 - [ ] `nombre` con «María José»: el contenido contiene `/Helv 12 Tf`, `0 0 0 rg` y `(Mar\355a Jos\351) Tj` (WinAnsi); `BBox [0 0 228 20]`; sin `/Matrix`.
-- [ ] `importe` (`fontSize 0`, `align 2`, azul) con «1234567890,12»: `tam` < 12 tal que el ancho cabe en 96 pt; `0 0 1 rg`; la `x` del `Td` = `bw − 2 − ancho` (±0,01).
+- [ ] `importe` (`fontSize 0`, `align 2`, azul) con «1234567890,12»: en 96 pt cabe a 12 pt (ancho 83,4 pt) y `tam` = 12; en una caja de 80 pt `tam` < 12 tal que el ancho cabe en `bw − 4`; `0 0 1 rg`; la `x` del `Td` = `bw − 2 − ancho` (±0,01). (Corregido por el revisor: el texto original pedía `tam` < 12 con 96 pt, imposible porque el texto cabe.)
 - [ ] `codigo` (peine, 6) con «ABC»: 3 operadores `Tj`; la `x` del primero = `(25 − ancho('A'))/2` (±0,01).
 - [ ] `rotado` (90): `BBox [0 0 160 20]` y `/Matrix [0 1 -1 0 20 0]`.
 - [ ] `pais` con `selected ['pt']` dibuja `(Portugal)`; `idiomas` con `['Francés']` tiene exactamente un `re f` de selección con `0.6 0.75 0.87 rg`.
@@ -72,3 +72,9 @@ EMC
 - Qué he hecho: Form XObject de texto, combo y lista según los puntos 1-9 de la ficha: geometría con rotación (BBox y Matrix), fondo y borde, recorte, texto de una línea con tamaño automático, multilínea con `wrapText`, peine con `Tm` absoluto por carácter, contraseña, combo por `displayValue` y lista con filas y selección azul. Casillas, opciones, firmas y botones devuelven `null`. Tests de operadores, WinAnsi, determinismo y lectura con pdf.js (`loadPdf` + `getOperatorList`) de cada tipo y rotación.
 - Comandos ejecutados y resultado: `pnpm exec vitest run tests/unit/forms-appearance.test.ts` → 34/34 OK. `vitest --coverage` sobre `forms-*` y `annotations/` → 403 tests OK, `core/forms/appearance.ts` con 98 % de líneas. ESLint y `tsc` sobre mis ficheros sin errores. Raíz: `pnpm lint` falla por `tests/unit/forms-history-qa.test.ts:29` (no-non-null-assertion, de otra ficha); `pnpm typecheck` falla por `tests/unit/signature-annotation.test.ts` (tipo `UndoStack`, de otra ficha en curso); `pnpm test` tiene 4 fallos en `signature-annotation.test.ts` y `zz-debug-shape.test.ts`, también ajenos. No he tocado esos ficheros.
 - Dudas o cosas que no he podido hacer: (a) el criterio «`importe` con 96 pt: `tam` < 12» no se cumple con los anchos de Helvetica: «1234567890,12» mide 83,4 pt a 12 pt, así que cabe en 96 pt y el tamaño queda en 12. Verifiqué el tamaño reducido con una caja de 80 pt (tamaño ~10,9) y la alineación a la derecha; con 96 pt el algoritmo da 12, que es lo que pide la regla. (b) Decisiones menores tomadas aquí: la reducción automática se calcula en forma cerrada (el ancho es lineal en el tamaño) y se trunca a 4 decimales para que el texto siga cabiendo tras serializar; el peine dibuja como máximo `maxLen` caracteres; si el valor no es del tipo esperado (p. ej. texto en un combo) se trata como vacío; las listas usan `exportValue` para marcar la selección. (c) Pendiente de la suite completa en verde: los fallos de lint, typecheck y test de otras fichas; cuando se corrijan, esta ficha debe volver a pasar `pnpm lint && pnpm typecheck && pnpm test && pnpm coverage`.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+1. Criterio `importe`: era error de la ficha, no del código (83,4 pt caben en 96 pt, el algoritmo del punto 4 da 12). Criterio corregido; el test con caja de 80 pt cubre la reducción. Sin cambios de código.
+2. `apps/lector-pdf/tests/unit/forms-history-qa.test.ts:29` — lint `no-non-null-assertion` (fichero de PDF-080): sustituido `back!.fields` por `back?.fields ?? []`; la comprobación previa `not.toBeNull()` se mantiene.
+3. Verificado: `pnpm lint` y `pnpm typecheck` OK; `pnpm test` 170 ficheros / 1972 tests OK. `pnpm coverage` falla en `tests/unit/save-actions.test.ts` («sin cambios → nothing»), ajeno a esta ficha (`src/state/save-actions.ts` modificado sin commit por otra ficha en curso; ese test pasó en `pnpm test`, parece intermitente). Cobertura de `forms/appearance.ts` 98 % según el programador.
+4. Código revisado: cumple puntos 1-9 (geometría, Matrix, peine, combo, lista, null en otros tipos, WinAnsi, determinista). (opcional) El tamaño automático del peine se ajusta al ancho total, no a la celda.
