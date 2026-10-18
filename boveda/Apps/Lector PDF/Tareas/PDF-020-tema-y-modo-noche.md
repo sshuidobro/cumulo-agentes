@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-020
 titulo: Tema claro/oscuro/sistema y modo noche de las páginas
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-015]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]

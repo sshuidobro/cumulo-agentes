@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-016
 titulo: Índice (marcadores) del documento en el panel lateral
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-015, PDF-014]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -79,3 +79,9 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 ### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
 Comprobado: `pnpm lint` OK; tests de la ficha (32) OK; `pnpm perf` OK (12 ficheros); E2E `outline.spec.ts` 4/4 OK (puerto 4406, config temporal borrada). Núcleo, panel (ARIA, virtualización, teclado) y activación correctos.
 1. `apps/lector-pdf/tests/e2e/outline.spec.ts:50` — `pnpm typecheck` falla (TS2769): con `noUncheckedIndexedAccess`, `selector` desestructurado de `[selector]` es `string | undefined` y no vale para `document.querySelector`. El criterio exige `pnpm typecheck` con código 0 y el error está en un fichero de esta ficha. Pasa el selector como argumento simple (`page.evaluate((selector) => ..., '[data-page-index="2"]')`) o tipa la tupla, y confirma `pnpm typecheck` en verde.
+
+### [programador] ronda 2 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/outline.spec.ts` (solo la llamada a `page.evaluate` del segundo test: el selector pasa como argumento simple tipado `string`, sin desestructurar la tupla).
+- Qué he hecho: corregido el error TS2769 del revisor (línea 50). El comportamiento del test no cambia.
+- Comandos ejecutados y resultado: `pnpm typecheck` OK (exit 0); `pnpm lint` OK (0 avisos); E2E `outline.spec.ts` con config temporal en puerto 4407: primera ejecución 3/4 (fallo transitorio en el primer test: `getByTestId('viewer')` no apareció en 10 s tras cargar `outline.pdf`); segunda ejecución 4/4 OK. Config temporal borrada. No he hecho commit, stash ni checkout.
+- Dudas o cosas que no he podido hacer: el fallo transitorio del primer test no se ha reproducido; si reaparece conviene revisar la espera de carga inicial (`expectViewerReady`/arranque del preview tras el build), no es un fallo de lógica de marcadores. Hay un directorio `apps/lector-pdf/test-results/` de otra ejecución (no mío, propiedad de root) que no he tocado.

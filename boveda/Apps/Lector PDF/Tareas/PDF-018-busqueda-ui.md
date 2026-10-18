@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-018
 titulo: Búsqueda en la interfaz (Ctrl+F, opciones, resaltado, siguiente/anterior, progreso)
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-017, PDF-013]
-intentos: 1
+intentos: 2
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -100,3 +100,12 @@ Comprobado: `pnpm lint` 0; tests nuevos de búsqueda 23/23 en verde; `typecheck`
 1. `apps/lector-pdf/tests/e2e/search.spec.ts:108-138` — el criterio de *long tasks* > 100 ms y de interfaz que responde es vacuo: el `PerformanceObserver` se instala en el test de `pages-5000` («aguja») pero nunca se lee; el test siguiente («durante la búsqueda…») lee `window.longTasks` en otra página, donde no existe, y `?? []` hace que `worst` sea 0 siempre. Por eso la «máxima 0,0 ms» del Registro no vale. Hay que instalar el observador y comprobarlo en el mismo test (idealmente antes de abrir el fichero, con `addInitScript`, o justo antes de buscar), anotar el máximo real en el Registro y quitar el `?? []` que enmascara el fallo.
 2. `apps/lector-pdf/tests/e2e/search.spec.ts:122-134` — la ficha exige también que durante la búsqueda funcione el `scroll` del visor; solo se prueba el campo de página. Añadir una comprobación de scroll (cambia `scrollTop` del visor) mientras el estado es «Buscando…» (comprobar que sigue buscando al hacerlo, p. ej. visible el botón «Detener» antes de interactuar).
 3. Registro — «pnpm typecheck» no estará a 0 hasta que PDF-016 arregle `outline.spec.ts`; volver a pasar `typecheck`, `coverage` y e2e (puerto propio) al reenviar. (informativo)
+
+### [revisor] ronda 2 — 2026-10-18 — CAMBIOS
+Comprobado: los puntos 1 y 2 de la ronda 1 están resueltos (`search.spec.ts:120-156`: observador con `addInitScript`, comprobación de `longtask` soportado, sin `?? []`, scroll con rueda y campo de página con «Detener» visible; máxima 87 ms ≤ 100). Queda un solo problema, el de `aguja`.
+
+Medición propia (puerto 4408, `workers: 1`, load medio 3-6 en 4 núcleos por otros agentes): E2E `aguja` ×5 → 4 pasan, 1 falla por timeout de 3 s en «1 de 2». Suite `pnpm perf` (`tests/perf/search.perf.test.ts`, sin navegador, load 6,3): recorrido completo de 5 000 páginas 2 211 ms, primera coincidencia 777 ms, hueco máximo 29 ms; con caché 52 ms. Conclusión: es carga de la máquina, no un defecto del código. El núcleo ya gasta ~2,2 s con la máquina saturada y el E2E suma arranque de Chromium, render y worker, así que 3 s de reloj no tiene margen y es un assert de tiempo en un E2E, justo lo que ADR-0012 manda sacar de las suites normales. Además, 3 s no sale del Plan (presupuesto del Plan: recorrido de 5 000 páginas < 15 s; el perf actual exige < 10 s y primera coincidencia < 1 s).
+
+1. `apps/lector-pdf/tests/e2e/search.spec.ts:112-113` — assert de tiempo de reloj (3 s) inestable bajo carga — cambio exacto: (a) en el E2E, el test de `aguja` comprueba solo el comportamiento: usar el timeout por defecto de `expect` (10 s) o `15_000` explícito en las dos aserciones (`1 de 2` y página 1234 en viewport); no medir tiempo ahí. (b) El presupuesto de tiempo ya vive en `tests/perf/search.perf.test.ts` (ADR-0012): no hace falta test nuevo, solo `pnpm perf` con código 0 en el Registro. (c) El líder reescribe el criterio de la ficha (línea 57) como: «E2E `pages-5000.pdf`: buscar `aguja` desde la página 1 → aparece «1 de 2» y la página 1234 visible (timeout 15 s); F3 → página 4999; … no long tasks > 100 ms. El tiempo de búsqueda se verifica en `pnpm perf` (recorrido < 10 s, primera coincidencia < 1 s, hueco máximo < 50 ms)». Ejecutar el E2E de `aguja` ×5 en verde y anotarlo.
+2. `apps/lector-pdf/tests/e2e/search.spec.ts:194` — `waitForTimeout(1_000)` para comprobar que el estado no cambia (opcional) — es una espera fija aceptable aquí porque verifica ausencia de cambios; no bloquea.
+3. Pendiente al reenviar (informativo): `pnpm perf` en el Registro, e2e completo con puerto propio, `typecheck` (depende de PDF-016). Hay un fichero ajeno sin seguir, `apps/lector-pdf/playwright.tmp-4407.config.ts`, de otro agente; no es de esta ficha. Yo no dejé ficheros temporales.
