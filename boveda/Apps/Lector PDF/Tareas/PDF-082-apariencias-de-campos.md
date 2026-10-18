@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-082
 titulo: Apariencias /AP de campos de texto, combo y lista
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-079]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
