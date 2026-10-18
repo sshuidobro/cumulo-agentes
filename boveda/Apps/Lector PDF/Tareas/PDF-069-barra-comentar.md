@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-069
 titulo: Barra «Comentar» y botones de deshacer/rehacer en la barra principal
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-030, PDF-011, PDF-020]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones]
 ---
 
@@ -52,3 +52,13 @@ La barra principal tiene «Deshacer», «Rehacer» y el conmutador «Comentar»;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/icons.tsx`, `src/ui/kit/IconButton.tsx`, `src/ui/kit/MenuButton.tsx`, `src/ui/kit/MenuButton.module.css`, `src/ui/toolbar/MainToolbar.tsx`, `src/ui/App.tsx`, `src/ui/messages.ts`, `src/core/annotations/palette.ts` (etiquetas con mayúscula); nuevos: `src/ui/toolbar/CommentToolbar.tsx`, `src/ui/toolbar/CommentToolbar.module.css`, `tests/ui/comment-toolbar.test.tsx`, `tests/ui/main-toolbar.test.tsx`.
+- Qué he hecho: `IconButton` y `MenuButton` aceptan `tabIndex` y `ref` (y `MenuButton`, `disabled`; las entradas de menú admiten `swatch`). `MainToolbar` tiene el conmutador «Comentar» (`pressed` según `commentBarOpen`; al cerrar, `setTool('none')`) y «Deshacer»/«Rehacer» con `!ready ||` en `disabled`. `CommentToolbar` (montada en `App` solo con `status === 'ready' && commentBarOpen`) con las 6 herramientas, «Color», «Grosor» (solo con «Dibujar») y «Tamaño de letra» (solo con «Texto»), y foco itinerante (→, ←, Inicio, Fin; el control activo se ajusta con `Math.min` si desaparece).
+- Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm typecheck` OK; `pnpm test` OK (131 ficheros, 1541 tests); `pnpm coverage` OK (código 0). No hay commit, según la instrucción.
+- Dudas o cosas que no he podido hacer:
+  - El paso 2 describe botones «provisionales» en la cabecera de `App.tsx`, pero no existían: «Deshacer»/«Rehacer» ya estaban en `MainToolbar`. Solo añadí `!ready ||` a su `disabled` y dejé su posición (tras Abrir/Guardar/Guardar como).
+  - Añadido para cumplir la ficha: `disabled` y `swatch` en `MenuButton`; tres iconos para los menús (`IconColor`, `IconInkWidth`, `IconFontSize`); etiquetas de `PALETTE` con mayúscula («Verde», como pide el criterio).
+  - Los tests de deshacer están en `tests/ui/main-toolbar.test.tsx` (nuevo) en vez de en `comment-toolbar.test.tsx`. El conmutador «Comentar» se deshabilita sin documento abierto (como el resto de la barra).
+  - `apps/lector-pdf/playwright.config.ts` aparece modificado en el árbol; es del otro programador (PDF-022), no lo he tocado.
