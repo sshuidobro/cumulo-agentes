@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-035
 titulo: Dibujo a mano alzada con ratón, lápiz o dedo
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones]
 ---
 
