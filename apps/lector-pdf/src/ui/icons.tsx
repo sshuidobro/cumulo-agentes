@@ -282,3 +282,12 @@ export function IconClose() {
     </Svg>
   );
 }
+
+export function IconSignature() {
+  return (
+    <Svg>
+      <path d="M3 15c2-4 3-7 4-5s-1 5 1 4 3-4 4-3-1 3 1 3 2-2 3-1" />
+      <path d="M3 17.5h14" />
+    </Svg>
+  );
+}
