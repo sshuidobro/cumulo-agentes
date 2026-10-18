@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-037
 titulo: Guardar y Guardar como con anotaciones, recarga y aviso de cambios sin guardar
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-028, PDF-030, PDF-019, COM-007, COM-010, COM-013]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, stack-tauri]
@@ -83,3 +83,12 @@ Ctrl+S guarda las anotaciones **dentro del PDF** (anexando un incremento de form
   4. **Dos decisiones menores, para revisar**: (a) `save()` sin diferencias llama a `markAnnotationsSaved()` además de devolver `'nothing'`, para que el estado «sucio» no quede atascado; (b) el aviso de cierre trata `'nothing'` como «seguir» (no queda nada que perder). Ambas son coherentes con la ficha, pero no estaban escritas.
   5. El `tests/ui/annotation-layer.test.tsx` y `tests/e2e/annotations-layer.spec.ts` no son míos; en un momento fallaron por ediciones en curso de PDF-031 y en la última pasada pasan.
   6. No he hecho commit (instrucción de no usar git commit/stash/checkout con el árbol compartido).
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: `eslint --max-warnings 0` en la raíz → 0; `vitest run` en `apps/lector-pdf` → 95 ficheros / 1143 tests en verde; los 4 ficheros de la ficha (26 tests) en verde. `pnpm typecheck` falla solo por `tests/e2e/outline.spec.ts:50` (PDF-016, ajeno). No he ejecutado E2E.
+Revisión: `save`/`saveAs` cumplen la ficha (`openForSave` sin lanzar, errores como `Result` y aviso sin tocar la plataforma, bloqueo con `runExclusive` y `finally`, `changed-on-disk` con diálogo, reapertura con `restore`). Guardia de cierre y de apertura correctos y probados (Cancelar libera el fichero nuevo). Atajos en `ALLOW_IN_EDITABLE` con blur previo; textos en `messages.ts`; botones con tooltip y atajo, deshabilitados mientras guarda. Los tests cubren los 8 criterios (T) con asserts reales.
+Decisiones del programador aceptadas: (a) `'nothing'` marca como guardado, (b) `'nothing'` permite seguir al cerrar. Ubicación de tests en `tests/unit/` aceptada (limitación de jsdom/pdf.js y de `vitest.config`).
+Criterio E2E (resaltado + nota, descarga, reabrir y ver 2 en «Comentarios»): **procede diferirlo a PDF-039**, que ya cubre ese flujo (`annotations-flow.spec.ts`: crear con la UI, Ctrl+S, `qpdf --check`, reabrir y comprobar el panel) y depende de PDF-032/033. No es posible escribirlo antes sin UI de resaltar/notas. El smoke del programador (Guardar como descarga y avisa) cubre mientras tanto el cableado. Pido al líder reflejar en PDF-039 que incluya el caso de la nota escrita con el editor aún enfocado al pulsar Ctrl+S, y marcar aquí el criterio como trasladado.
+Sin problemas bloqueantes.
+(opcional) Discrepancia con COM-007 (Chromium con `showSaveFilePicker` abre el selector aunque el fichero venga de `<input>`, en vez de descargar): decisión del líder; el comportamiento actual es razonable y no impide guardar.
+(opcional) Ciclo de importaciones `document-actions` ↔ `unsaved-guard` ↔ `save-actions`: hoy funciona, pero conviene romperlo si se añaden más acciones.
