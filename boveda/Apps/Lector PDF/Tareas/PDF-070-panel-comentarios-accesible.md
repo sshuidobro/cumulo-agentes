@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-070
 titulo: Hacer accesible el panel de comentarios (nombre visible y Borrar fuera de la fila)
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-036]
 intentos: 0
 skills: [calidad-profesional]
