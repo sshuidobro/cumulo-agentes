@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-071
 titulo: Las flechas, Inicio y Fin de la barra «Comentar» no deben cambiar de página
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-069]
 intentos: 0
 skills: []
@@ -53,3 +53,6 @@ Con el foco en un control de la barra «Comentar», → ← Inicio Fin solo muev
   - `pnpm lint`: código 0. `pnpm typecheck`: código 0.
   - `pnpm test` (raíz): 143 ficheros, 1693 tests verde (en una pasada intermedia fallaban 2 tests de `comments-panel.test.tsx`, trabajo en curso de PDF-070, no relacionado; en la pasada final ya pasan).
 - Dudas o cosas que no he podido hacer: ninguna. No he tocado los ficheros de PDF-070 ni he hecho `git add -A`; el commit incluye solo los ficheros de esta ficha.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Lint, typecheck, `tests/ui` (265) y e2e `comment-toolbar-qa` (2/2) en verde. El arreglo es mínimo y solo afecta a las teclas tratadas; el test comprueba foco, `currentPage`, `navRequest` y un listener de `window`. Sin problemas bloqueantes.

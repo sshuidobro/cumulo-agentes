@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-070
 titulo: Hacer accesible el panel de comentarios (nombre visible y Borrar fuera de la fila)
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-036]
 intentos: 0
 skills: [calidad-profesional]
@@ -87,3 +87,18 @@ Que axe no dé violaciones `serious`/`critical` en el panel de comentarios: (a) 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/messages.ts`, `apps/lector-pdf/src/ui/sidebar/CommentsPanel.tsx`, `apps/lector-pdf/src/ui/sidebar/CommentsPanel.module.css`, `apps/lector-pdf/tests/ui/comments-panel.test.tsx`, `apps/lector-pdf/tests/e2e/comments-panel.spec.ts`, `apps/lector-pdf/tests/e2e/annotations-kit.ts` (exporta `optionName`), `apps/lector-pdf/tests/e2e/annotations-flow.spec.ts`, `apps/lector-pdf/tests/e2e/annotations-keyboard.spec.ts`. No se ha tocado nada de PDF-071 (`CommentToolbar.tsx` y sus tests). No hay commit.
+- Qué he hecho: fila `option` sin `aria-label` con nombre desde su contenido (`.name` + `.srOnly` «, página N»); icono de papelera decorativo (`aria-hidden`, `title`, `data-testid="comment-row-delete"`) que borra sin navegar; `deleteRow` (fila activa a la siguiente o anterior, `null` si no queda ninguna); Supr/Retroceso sobre la lista; botón «Borrar comentario» en la barra del panel. Tests de componente adaptados y 6 casos nuevos (18/18 en `comments-panel.test.tsx`). E2E adaptados a `optionName` y al icono por testid.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: sin errores ni avisos.
+  - `pnpm --filter lector-pdf typecheck`: sin errores.
+  - `pnpm test`: 143 ficheros, 1693 tests en verde.
+  - `pnpm exec playwright test annotations-a11y comments-panel annotations-flow annotations-keyboard annotations-foreign notes`: 14 de 15 en verde. **Falla `annotations-flow.spec.ts` («subrayar y hacer notas…»)**: en Chromium el nombre accesible es «Resaltado de Usuario , página 1 …» (con espacio antes de la coma), no «Resaltado de Usuario, página 1». Lo mismo ocurre en las seis filas.
+  - `pnpm --filter lector-pdf e2e` completo y `annotations-a11y` con el criterio de 0 violaciones: no ejecutado completo; a11y sí pasa en las 3 pruebas.
+- Dudas o cosas que no he podido hacer (**bloqueo**):
+  1. **Conflicto de nombre accesible.** Con la estructura prescrita (`.name` con `.srOnly` absoluto dentro), Chromium añade un espacio entre «Usuario» y la coma, porque el `.srOnly` con `position: absolute` se trata como bloque. jsdom no lo hace, por eso los tests de componente pasan y el E2E no. El criterio exige «Nota de Ana, página 1» exacto y no puedo cumplirlo con esa estructura sin decidir diseño. Opciones para el líder: (a) que `optionName` admita `\s*` antes de la coma (el nombre se lee igual, con una pausa); (b) mostrar la coma visible y ocultar solo «página N»; (c) otra técnica de texto oculto (no recomendable).
+  2. **Espacio añadido en el JSX.** He puesto `{' '}` entre `.name` y la fecha para que, en jsdom, el nombre tenga separación antes de la fecha (sin él, el nombre era «Nota de Ana, página 117/10/26…» y no cumplía `optionName`). No tiene efecto visual en flex. Es una desviación menor de la estructura de la ficha; avisar si no se quiere.
+  3. **Icono de papelera.** La ficha dice que «aparece al pasar el ratón o con la fila seleccionada, como hoy», pero hoy es siempre visible (no hay regla de hover en `.rowActions`). He mantenido el comportamiento actual y solo he añadido `cursor: pointer`.
+  4. **E2E adaptados** (solo localizadores, sin quitar aserciones): `annotations-kit.ts` (`optionName`), `annotations-flow.spec.ts` (nombres por `optionName`, sin `exact`), `annotations-keyboard.spec.ts` (la fila activa se lee de su `textContent`, ya no tiene `aria-label`), `comments-panel.spec.ts` (Borrar por testid). `notes.spec.ts` y `annotation-popup.test.tsx` no se tocan: su «Borrar» es el de la ventana de comentario, no el de la fila.
