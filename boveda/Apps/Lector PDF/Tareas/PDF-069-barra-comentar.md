@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-069
 titulo: Barra «Comentar» y botones de deshacer/rehacer en la barra principal
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-030, PDF-011, PDF-020]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -62,3 +62,9 @@ La barra principal tiene «Deshacer», «Rehacer» y el conmutador «Comentar»;
   - Añadido para cumplir la ficha: `disabled` y `swatch` en `MenuButton`; tres iconos para los menús (`IconColor`, `IconInkWidth`, `IconFontSize`); etiquetas de `PALETTE` con mayúscula («Verde», como pide el criterio).
   - Los tests de deshacer están en `tests/ui/main-toolbar.test.tsx` (nuevo) en vez de en `comment-toolbar.test.tsx`. El conmutador «Comentar» se deshabilita sin documento abierto (como el resto de la barra).
   - `apps/lector-pdf/playwright.config.ts` aparece modificado en el árbol; es del otro programador (PDF-022), no lo he tocado.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- `pnpm lint` (raíz, 0 avisos), `pnpm typecheck` y `pnpm test` (raíz, 1541 tests) en verde. Los 5 criterios (T) tienen test que falla si dejan de cumplirse; CSS solo con variables del tema; `aria-label` y tooltip en todos los botones.
+- Las desviaciones del programador (Deshacer/Rehacer ya estaban en `MainToolbar`; `disabled`/`swatch` en `MenuButton`; etiquetas de `PALETTE` con mayúscula) son razonables y no rompen nada.
+- (opcional) `CommentToolbar.tsx`: al cerrar «Comentar» con el foco dentro de la barra, el foco se pierde; devolverlo al conmutador.
+- Nota para el tester: `pnpm test` dentro de `apps/lector-pdf` falla con "Missing script" (solo funciona desde la raíz o con `npx vitest run`); ajeno a esta ficha.
