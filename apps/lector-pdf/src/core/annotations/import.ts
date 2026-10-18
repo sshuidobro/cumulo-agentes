@@ -216,7 +216,10 @@ function importForeign(raw: Record<string, unknown>, pageIndex: number, index: n
   };
 }
 
-function kindOf(subtype: unknown): AnnotationType | undefined {
+/** Tipos que se importan como editables. Las firmas (`/Stamp` propio) no vienen de ningún fichero: son ajenas. */
+type ImportedType = Exclude<AnnotationType, 'signature'>;
+
+function kindOf(subtype: unknown): ImportedType | undefined {
   switch (subtype) {
     case 'Highlight':
       return 'highlight';

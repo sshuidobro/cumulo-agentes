@@ -8,6 +8,7 @@ const ADD_LABEL: Readonly<Record<AnnotationType, string>> = {
   note: 'añadir nota',
   freetext: 'añadir texto',
   ink: 'añadir dibujo',
+  signature: 'añadir firma',
 };
 
 const NOUN: Readonly<Record<AnnotationType, string>> = {
@@ -17,6 +18,7 @@ const NOUN: Readonly<Record<AnnotationType, string>> = {
   note: 'nota',
   freetext: 'texto',
   ink: 'dibujo',
+  signature: 'firma',
 };
 
 /**
