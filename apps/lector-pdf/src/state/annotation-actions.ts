@@ -10,9 +10,11 @@ import { annotationsOfPage, effectiveAnnotations } from '../core/annotations/eff
 import type { ForeignAnnotation, ImportedPage } from '../core/annotations/import';
 import {
   EMPTY_EDITS,
+  rectFromPaths,
   type Annotation,
   type AnnotationEdits,
   type FreeTextAnnotation,
+  type InkAnnotation,
   type RectPt,
   type Rgb,
 } from '../core/annotations/model';
@@ -624,9 +626,35 @@ export function setToolColor(tool: ColorTool, color: Rgb): void {
   useAnnotations.setState({ colors });
 }
 
+/**
+ * Grosor de la barra «Comentar» (PDF-035): fija el de la herramienta «Dibujar» y, si hay un dibujo seleccionado, también
+ * el suyo. La caja se recalcula para que siga conteniendo el trazo.
+ */
 export function setInkWidth(width: AnnotationState['inkWidth']): void {
   prefs().set(PREF.inkWidth, width);
   useAnnotations.setState({ inkWidth: width });
+  const current = selectedInk();
+  if (current === undefined || current.width === width) return;
+  updateAnnotation({ ...current, width, rect: rectFromPaths(current.paths, width / 2 + 1) }, 'cambiar grosor');
+}
+
+/**
+ * Color de la barra «Comentar» para «Dibujar» (PDF-035): fija el de la herramienta y, si hay un dibujo seleccionado,
+ * el color de su trazo.
+ */
+export function setInkColor(rgb: Rgb): void {
+  setToolColor('ink', rgb);
+  const current = selectedInk();
+  if (current === undefined || current.color.every((v, i) => v === rgb[i])) return;
+  updateAnnotation({ ...current, color: rgb }, 'cambiar color');
+}
+
+/** Dibujo a mano seleccionado y visible, o `undefined`. */
+export function selectedInk(): InkAnnotation | undefined {
+  const id = useAnnotations.getState().selectedId;
+  if (id === null) return undefined;
+  const current = getEffective().get(id);
+  return current?.type === 'ink' ? current : undefined;
 }
 
 export function setFontSize(size: AnnotationState['fontSize']): void {

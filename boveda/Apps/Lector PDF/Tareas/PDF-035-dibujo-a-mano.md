@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-035
 titulo: Dibujo a mano alzada con ratón, lápiz o dedo
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones]
 ---
 
@@ -52,3 +52,9 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 
 ### [lider] replanificación — 2026-10-17
 - `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/simplify.ts` (nuevo), `apps/lector-pdf/src/core/annotations/ink.ts` (nuevo: `newInkAnnotation`), `apps/lector-pdf/src/ui/viewer/AnnotationLayer.tsx`, `apps/lector-pdf/src/ui/viewer/Viewer.module.css` (`touch-action: none` con «Dibujar»), `apps/lector-pdf/src/ui/toolbar/CommentToolbar.tsx`, `apps/lector-pdf/src/state/annotation-actions.ts` (`setInkWidth` y `setInkColor` tocan el dibujo seleccionado; `selectedInk`); tests `apps/lector-pdf/tests/unit/annotations/simplify.test.ts`, `apps/lector-pdf/tests/perf/simplify.perf.test.ts`, `apps/lector-pdf/tests/ui/ink.test.tsx`, `apps/lector-pdf/tests/e2e/ink.spec.ts`.
+- Qué he hecho: `simplifyPath` (RDP iterativo con pila explícita) y la herramienta «Dibujar» con Pointer Events: trazo con `setPointerCapture`, puntos coalescidos, recorte a la página, vista previa en `polyline` por frame, al soltar simplificación 0,5 pt y `addAnnotation` («añadir dibujo»); `pointercancel` descarta; segundo puntero ignorado y con dos dedos se descarta el trazo. «Grosor» y «Color» aparecen también con un dibujo seleccionado y cambian ese dibujo («cambiar grosor» / «cambiar color»).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (143 ficheros, 1684 tests); `pnpm coverage` OK (líneas 98,97 %); `pnpm perf` OK (16 ficheros, 25 tests, incluido `simplify` de 100 000 puntos); `pnpm --filter lector-pdf e2e` OK (145 tests, incluidos los 4 de `ink.spec.ts`).
+- Dudas o cosas que no he podido hacer: (1) Decisiones menores tomadas al implementar, para revisar: un clic sin arrastre no crea dibujo (una muestra repetida no se guarda y el trazo queda en un punto); con «Dibujar» activa, el trazo empieza aunque el puntero caiga sobre otra anotación (la zona no selecciona ni arrastra, igual que con «Nota»). (2) La tabla de iteración 2 del Plan sigue mostrando PDF-031 y PDF-069 como `pendiente`; sus fichas están `hecha`. (3) No he marcado las casillas de criterios: quedan para el tester.

@@ -1,7 +1,15 @@
 import { useCallback, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactElement } from 'react';
 import type { Rgb } from '../../core/annotations/model';
 import { FONT_SIZES, INK_WIDTHS, PALETTE } from '../../core/annotations/palette';
-import { getEffective, setFreeTextColor, setFreeTextFontSize, setInkWidth, setTool, setToolColor } from '../../state/annotation-actions';
+import {
+  getEffective,
+  setFreeTextColor,
+  setFreeTextFontSize,
+  setInkColor,
+  setInkWidth,
+  setTool,
+  setToolColor,
+} from '../../state/annotation-actions';
 import { useAnnotations, type AnnotationTool, type ColorTool } from '../../state/annotation-store';
 import { isMarkupTool, markupSelection } from '../../state/markup-actions';
 import { IconColor, IconFontSize, IconFreeText, IconHighlight, IconInk, IconInkWidth, IconNote, IconStrikeout, IconUnderline } from '../icons';
@@ -29,24 +37,31 @@ const TOOLS: readonly ToolSpec[] = [
 /** Controles con foco itinerante: las herramientas y los menús visibles. */
 type ControlId = ColorTool | 'color' | 'width' | 'fontSize';
 
+/** Lo que hay seleccionado y admite «Color», «Grosor» o «Tamaño de letra» aunque la herramienta activa sea otra. */
+interface Selection {
+  readonly text: boolean;
+  readonly ink: boolean;
+}
+
 /**
  * Controles que hay en la barra con esa herramienta activa, en orden de tabulación. «Color» y «Tamaño de letra» también
- * aparecen con un texto libre seleccionado (PDF-034), aunque la herramienta activa sea otra.
+ * aparecen con un texto libre seleccionado (PDF-034); «Color» y «Grosor», con un dibujo seleccionado (PDF-035).
  */
-function visibleControls(tool: AnnotationTool, textSelected: boolean): ControlId[] {
+function visibleControls(tool: AnnotationTool, selection: Selection): ControlId[] {
   const list: ControlId[] = TOOLS.map((spec) => spec.tool);
-  if (tool !== 'none' || textSelected) list.push('color');
-  if (tool === 'ink') list.push('width');
-  if (tool === 'freetext' || textSelected) list.push('fontSize');
+  if (tool !== 'none' || selection.text || selection.ink) list.push('color');
+  if (tool === 'ink' || selection.ink) list.push('width');
+  if (tool === 'freetext' || selection.text) list.push('fontSize');
   return list;
 }
 
 /**
- * Herramienta a la que se aplica «Color»: el texto libre seleccionado (PDF-034) o, si no, la herramienta activa.
- * `null` si no hay ninguna.
+ * Herramienta a la que se aplica «Color»: el texto libre o el dibujo seleccionados (PDF-034, PDF-035) o, si no, la
+ * herramienta activa. `null` si no hay ninguna.
  */
-function colorTargetOf(tool: AnnotationTool, textSelected: boolean): ColorTool | null {
-  if (textSelected) return 'freetext';
+function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTool | null {
+  if (selection.text) return 'freetext';
+  if (selection.ink) return 'ink';
   return tool === 'none' ? null : tool;
 }
 
@@ -82,9 +97,13 @@ function colorEntries(target: ColorTool | null, colors: Readonly<Record<ColorToo
   }));
 }
 
-/** El color de «Texto» llega también al texto libre seleccionado (PDF-034); el resto de herramientas, a su herramienta. */
+/**
+ * El color de «Texto» llega también al texto libre seleccionado (PDF-034) y el de «Dibujar», al dibujo seleccionado
+ * (PDF-035); el resto de herramientas, solo a su herramienta.
+ */
 function applyColor(target: ColorTool, rgb: Rgb): void {
   if (target === 'freetext') setFreeTextColor(rgb);
+  else if (target === 'ink') setInkColor(rgb);
   else setToolColor(target, rgb);
 }
 
@@ -116,16 +135,21 @@ export function CommentToolbar() {
   const colors = useAnnotations((s) => s.colors);
   const inkWidth = useAnnotations((s) => s.inkWidth);
   const fontSize = useAnnotations((s) => s.fontSize);
-  // Un texto libre seleccionado recibe «Color» y «Tamaño de letra» (PDF-034). Booleano: no re-renderiza al teclear.
+  // Un texto libre o un dibujo seleccionados reciben sus controles (PDF-034, PDF-035). Booleanos: no re-renderizan al teclear.
   const textSelected = useAnnotations((s) => {
     const id = s.selectedId;
     return id !== null && getEffective().get(id)?.type === 'freetext';
   });
-  const colorTarget = colorTargetOf(tool, textSelected);
+  const inkSelected = useAnnotations((s) => {
+    const id = s.selectedId;
+    return id !== null && getEffective().get(id)?.type === 'ink';
+  });
+  const selection: Selection = { text: textSelected, ink: inkSelected };
+  const colorTarget = colorTargetOf(tool, selection);
   const [activeIndex, setActiveIndex] = useState(0);
   const elements = useRef(new Map<ControlId, HTMLButtonElement>());
 
-  const controls = visibleControls(tool, textSelected);
+  const controls = visibleControls(tool, selection);
   // Si el control activo ya no existe (p. ej. se oculta «Grosor»), el foco itinerante pasa al último.
   const current = Math.min(activeIndex, controls.length - 1);
   const tabIndexOf = (id: ControlId): number => (controls[current] === id ? 0 : -1);
@@ -215,7 +239,7 @@ export function CommentToolbar() {
       >
         <IconColor />
       </MenuButton>
-      {tool === 'ink' && (
+      {(tool === 'ink' || inkSelected) && (
         <MenuButton
           label={msg.inkWidth}
           tabIndex={tabIndexOf('width')}
