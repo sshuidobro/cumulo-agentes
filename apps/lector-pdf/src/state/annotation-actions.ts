@@ -19,6 +19,7 @@ import {
   type Rgb,
 } from '../core/annotations/model';
 import { fitFreeTextRect, isBlankText, newFreeTextAnnotation } from '../core/annotations/freetext';
+import { keyboardNoteRect, newNoteAnnotation } from '../core/annotations/note';
 import {
   DEFAULT_AUTHOR,
   DEFAULT_FONT_SIZE,
@@ -618,6 +619,32 @@ export function closePopup(): void {
 
 export function setTool(tool: AnnotationTool): void {
   useAnnotations.setState({ tool });
+}
+
+/**
+ * Crea una nota sin ratón (PDF-072): en la página actual, arriba a la izquierda de lo visible. La selecciona, abre su
+ * ventana de comentario y devuelve la herramienta a «ninguna». Una sola entrada de deshacer. Devuelve su id, o `null`
+ * si no hay documento o no hay página actual.
+ */
+export function addNoteFromKeyboard(): string | null {
+  const { dims, currentPage, currentYFraction, rotation } = useViewer.getState();
+  if (dims === null || currentPage >= dims.count) return null;
+  const i = currentPage;
+  const rect = keyboardNoteRect(dims.width(i), dims.height(i), (dims.rotation(i) + rotation) % 360, currentYFraction);
+  const { colors, author } = useAnnotations.getState();
+  const note = newNoteAnnotation({
+    id: newAnnotationId(),
+    pageIndex: i,
+    rect,
+    color: colors.note,
+    author,
+    now: nowIso(),
+  });
+  addAnnotation(note);
+  setTool('none');
+  select(note.id);
+  openPopupWhenPageCurrent(note.id, i);
+  return note.id;
 }
 
 export function setToolColor(tool: ColorTool, color: Rgb): void {

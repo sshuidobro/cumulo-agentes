@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type FocusEvent, type KeyboardEvent, typ
 import type { Rgb } from '../../core/annotations/model';
 import { FONT_SIZES, INK_WIDTHS, PALETTE } from '../../core/annotations/palette';
 import {
+  addNoteFromKeyboard,
   getEffective,
   setFreeTextColor,
   setFreeTextFontSize,
@@ -68,8 +69,14 @@ function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTool | 
 /**
  * Botón de herramienta. Con texto seleccionado, «Resaltar», «Subrayar» o «Tachar» marcan la selección y no cambian
  * la herramienta (PDF-032); sin selección, activan la herramienta o la desactivan si ya estaba activa.
+ * «Nota» activada con teclado o lector de pantalla (`fromKeyboard`) crea la nota en la página actual (PDF-072), salvo
+ * que la herramienta «Nota» ya estuviera activa: entonces se desactiva como con el ratón.
  */
-function onToolClick(id: ColorTool, tool: AnnotationTool): void {
+function onToolClick(id: ColorTool, tool: AnnotationTool, fromKeyboard: boolean): void {
+  if (id === 'note' && fromKeyboard && tool !== 'note') {
+    addNoteFromKeyboard();
+    return;
+  }
   if (isMarkupTool(id)) {
     const sel = document.getSelection();
     if (sel !== null && !sel.isCollapsed && markupSelection(id, sel) > 0) return;
@@ -227,10 +234,14 @@ export function CommentToolbar() {
         <IconButton
           key={id}
           label={label}
+          {...(id === 'note' ? { description: msg.toolNoteKeyboardHint } : {})}
           pressed={tool === id}
           tabIndex={tabIndexOf(id)}
           ref={register(id)}
-          onClick={() => { onToolClick(id, tool); }}
+          onClick={(event) => {
+            // `detail` es 0 cuando la activación llega del teclado o de un lector de pantalla (PDF-072).
+            onToolClick(id, tool, event.detail === 0);
+          }}
         >
           <Icon />
         </IconButton>

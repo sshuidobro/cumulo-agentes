@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openFixture, pageFrame } from './helpers.ts';
+import { qpdfCheck, qpdfObjects } from '../support/qpdf.ts';
+import { commentDialog, commentField, openCommentBar, openFixtureWithDownloads, saveWithCtrlS } from './annotations-kit.ts';
 
 /** Color de la herramienta Nota por defecto (amarillo de `DEFAULT_TOOL_COLORS`), en RGB de 0 a 255. */
 const NOTE_RGB: readonly [number, number, number] = [255, 235, 59];
@@ -183,4 +185,55 @@ async function readSavedNoteText(page: Page, bytes: Buffer): Promise<string> {
   } finally {
     await fresh.close();
   }
+}
+
+test('nota solo con teclado (PDF-072): Intro crea la nota, Esc devuelve el foco a su zona, las flechas la mueven y el guardado la incluye', async ({ page }, testInfo) => {
+  await openFixtureWithDownloads(page, 'basic-5.pdf');
+  const bar = await openCommentBar(page);
+  await bar.getByRole('button', { name: 'Nota', exact: true }).focus();
+  await page.keyboard.press('Enter');
+
+  await expect(commentDialog(page)).toBeVisible();
+  await expect(commentField(page)).toBeFocused();
+  await page.keyboard.type('Hola');
+  await page.keyboard.press('Escape');
+  await expect(commentDialog(page)).toHaveCount(0);
+  await expect(noteZone(page)).toBeFocused();
+
+  // El texto escrito y la creación son entradas de deshacer distintas: Ctrl+Z quita primero el texto y luego la nota.
+  await page.keyboard.press('Control+z');
+  await expect(noteZone(page)).toHaveCount(1);
+  await page.keyboard.press('Control+z');
+  await expect(noteZone(page)).toHaveCount(0);
+  await page.keyboard.press('Control+y');
+  await expect(noteZone(page)).toHaveCount(1);
+  await page.keyboard.press('Control+y');
+  await noteZone(page).focus();
+
+  const before = await noteZone(page).boundingBox();
+  expect(before).not.toBeNull();
+  for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await noteZone(page).boundingBox())?.x ?? 0).toBeGreaterThan(before?.x ?? 0);
+
+  const saved = await saveWithCtrlS(page, testInfo, 'nota-teclado.pdf');
+  const check = qpdfCheck(saved);
+  expect(check.code, check.output).toBe(0);
+  expect(textNoteContents(saved)).toEqual(['Hola']);
+});
+
+/** Contenidos `/Contents` de los diccionarios `/Text` del fichero, según qpdf (las cadenas de texto llevan prefijo `u:`). */
+function textNoteContents(path: string): string[] {
+  const out: string[] = [];
+  for (const object of Object.values(qpdfObjects(path))) {
+    const value: unknown = object.value;
+    if (!isDict(value)) continue;
+    if (value['/Type'] !== '/Annot' || value['/Subtype'] !== '/Text') continue;
+    const contents = value['/Contents'];
+    out.push(typeof contents === 'string' ? contents.replace(/^u:/, '') : '');
+  }
+  return out;
+}
+
+function isDict(v: unknown): v is Readonly<Record<string, unknown>> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
 }

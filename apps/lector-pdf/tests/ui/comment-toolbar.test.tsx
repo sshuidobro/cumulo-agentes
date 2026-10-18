@@ -5,6 +5,7 @@ import { memorySource } from '@suite/platform';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PageDimsTable } from '../../src/core/page-dims';
 import { App } from '../../src/ui/App';
+import { msg } from '../../src/ui/messages';
 import { addAnnotation, endAnnotationSession, getEffective, select } from '../../src/state/annotation-actions';
 import { initialAnnotationState, useAnnotations } from '../../src/state/annotation-store';
 import { initServices } from '../../src/state/services';
@@ -244,3 +245,51 @@ describe('texto libre seleccionado (PDF-034)', () => {
     expect(getEffective().get('suite-t')).toMatchObject({ fontSize: 24 });
   });
 });
+
+describe('barra «Comentar» · nota con teclado (PDF-072)', () => {
+  /** Página 1 de 2, con la vista arriba: la nota por teclado cae en la página actual. */
+  function setDocument(): void {
+    useViewer.setState({ dims: PageDimsTable.uniform(2, 612, 792, 0), dimsVersion: 1, currentPage: 0, currentYFraction: 0 });
+  }
+
+  it('foco en «Nota» y Intro crea una nota en la página actual y «Nota» queda sin pulsar', async () => {
+    const user = userEvent.setup();
+    setDocument();
+    const bar = await openCommentBar(user);
+    const nota = within(bar).getByRole('button', { name: 'Nota' });
+
+    nota.focus();
+    await user.keyboard('{Enter}');
+
+    const notes = [...getEffective().values()].filter((a) => a.type === 'note');
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.pageIndex).toBe(0);
+    expect(notes[0]?.rect).toEqual([24, 748, 44, 768]);
+    expect(nota).toHaveAttribute('aria-pressed', 'false');
+    expect(useAnnotations.getState().tool).toBe('none');
+  });
+
+  it('un clic de ratón en «Nota» solo activa la herramienta: no crea nada', async () => {
+    const user = userEvent.setup();
+    setDocument();
+    const bar = await openCommentBar(user);
+    const nota = within(bar).getByRole('button', { name: 'Nota' });
+
+    await user.click(nota);
+
+    expect(getEffective().size).toBe(0);
+    expect(nota).toHaveAttribute('aria-pressed', 'true');
+    expect(useAnnotations.getState().tool).toBe('note');
+  });
+
+  it('«Nota» tiene descripción accesible y conserva su nombre exacto', async () => {
+    const user = userEvent.setup();
+    const bar = await openCommentBar(user);
+    const nota = within(bar).getByRole('button', { name: 'Nota' });
+
+    expect(nota).toHaveAccessibleName('Nota');
+    expect(nota).toHaveAccessibleDescription(msg.toolNoteKeyboardHint);
+    expect(nota).toHaveAttribute('title', `Nota\n${msg.toolNoteKeyboardHint}`);
+  });
+});
+

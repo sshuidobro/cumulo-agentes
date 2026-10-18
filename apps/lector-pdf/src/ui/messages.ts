@@ -131,6 +131,7 @@ export const msg = {
   toolUnderline: 'Subrayar',
   toolStrikeout: 'Tachar',
   toolNote: 'Nota',
+  toolNoteKeyboardHint: 'Con el teclado, Intro coloca la nota en la página actual; después, Esc y las flechas la mueven.',
   toolFreeText: 'Texto',
   toolInk: 'Dibujar',
   color: 'Color',
