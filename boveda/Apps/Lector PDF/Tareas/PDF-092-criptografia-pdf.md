@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-092
 titulo: Manejador de seguridad estándar - claves, contraseñas y cifrado por objeto
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-091]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react]
@@ -77,3 +77,9 @@ export function encryptBytes(h: SecurityHandler, kind: 'string' | 'stream', num:
   2. Los tests importan `@noble/*` (MD5 de referencia y AES para el texto de prueba). Solo el código de producción lo importa desde `crypto/`.
   3. `pnpm install` ha reescrito además entradas de `pnpm-lock.yaml` que no son mías (jsdom/vitest/whatwg-url, cambios de forma del lockfile). Conviene revisarlo antes del commit.
   4. No he hecho commit (lo pediste). PDF-090 y PDF-102 no se han tocado.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- lint, typecheck, `pnpm coverage` (global 98,65 % líneas) y `pnpm perf` (29 tests) en verde. Criterios cubiertos por tests; `openSecurity` nunca lanza; dependencias exactas y confinadas a `crypto/`.
+- Desviación de `ObjectReader` aceptada: leer `/Encrypt` con `parseIndirectObject` es inevitable hasta PDF-093 y prueba lo mismo (sin cambiar código fuera de alcance). PDF-093 debería añadir un test de integración con `ObjectReader`.
+1. `security.ts:271` (opcional) — la ficha dice `MD5(h)` completo en las 50 vueltas de la clave de propietario; el código usa `h[0..n]` (como qpdf). Solo difiere con claves < 128 bits; confirmar con un fixture RC4 de 40 bits en PDF-093/test.
+2. `pnpm-lock.yaml` (opcional) — el programador avisa de cambios ajenos en el lockfile; revisar antes del commit.
