@@ -331,3 +331,24 @@ describe('annotated.pdf (PDF-036)', () => {
     expect(typeLabelsOf(new Map(baseline), ajenas)).toContain('Rectángulo');
   }, OPEN_TIMEOUT);
 });
+
+describe('etiqueta «Firma» de sellos ajenos', () => {
+  it('un /Stamp /Name /SuiteFirma se muestra como «Firma» en la fila y en el filtro de tipos', () => {
+    const ajena = new Map([['ref:9R', foreign('ref:9R', 0, 'Stamp', { stampName: 'SuiteFirma' })]]);
+    const rows = buildCommentRows(new Map(), ajena, EMPTY_COMMENT_FILTER);
+
+    expect(rows.flatMap((r) => (r.kind === 'item' ? [r.typeLabel] : []))).toEqual(['Firma']);
+    expect(typeLabelsOf(new Map(), ajena)).toEqual(['Firma']);
+  });
+
+  it('un /Stamp sin nombre de firma, o con otro nombre, se muestra como «Sello»', () => {
+    const ajenas = new Map([
+      ['ref:9R', foreign('ref:9R', 0, 'Stamp')],
+      ['ref:10R', foreign('ref:10R', 0, 'Stamp', { stampName: 'Approved' })],
+    ]);
+    const rows = buildCommentRows(new Map(), ajenas, EMPTY_COMMENT_FILTER);
+
+    expect(rows.flatMap((r) => (r.kind === 'item' ? [r.typeLabel] : []))).toEqual(['Sello', 'Sello']);
+    expect(typeLabelsOf(new Map(), ajenas)).toEqual(['Sello']);
+  });
+});

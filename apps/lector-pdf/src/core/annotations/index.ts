@@ -4,6 +4,7 @@ export * from './commands';
 export * from './diff';
 export * from './import';
 export * from './to-pdf';
+export * from './stamp-names';
 export * from './draft';
 export * from './note';
 export * from './freetext';
