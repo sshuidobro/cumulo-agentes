@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-034
 titulo: Cuadros de texto libre sobre la página
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -34,13 +34,13 @@ Con la herramienta «Texto», un clic (o arrastrar un rectángulo) crea un cuadr
 6. Tests `tests/ui/freetext-editor.test.tsx` y `tests/e2e/freetext.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] (T) Clic con la herramienta y Esc sin escribir → ninguna anotación ni entrada de deshacer.
-- [ ] (T) Escribir «Hola» y perder el foco → 1 anotación `freetext` con `contents 'Hola'`, `fontSize` de la herramienta, y 1 entrada de deshacer.
-- [ ] (T) Editar una existente dejando el texto vacío → se borra; Ctrl+Z la recupera con su texto.
-- [ ] (T) Mayús+→ ×3 sobre un texto libre seleccionado → ancho +3 pt en una sola entrada de deshacer.
-- [ ] E2E: crear «Texto de prueba áéí €» a 14 pt en `basic-5.pdf`, confirmar → el texto se ve en la página (la capa contiene un `<text>` con ese contenido) y no queda `textarea`.
-- [ ] E2E: con zoom 200 % el editor coincide con el `rect` (bounding box del `textarea` = `rect × escala` ± 2 px).
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+- [x] (T) Clic con la herramienta y Esc sin escribir → ninguna anotación ni entrada de deshacer.
+- [x] (T) Escribir «Hola» y perder el foco → 1 anotación `freetext` con `contents 'Hola'`, `fontSize` de la herramienta, y 1 entrada de deshacer.
+- [x] (T) Editar una existente dejando el texto vacío → se borra; Ctrl+Z la recupera con su texto.
+- [x] (T) Mayús+→ ×3 sobre un texto libre seleccionado → ancho +3 pt en una sola entrada de deshacer.
+- [x] E2E: crear «Texto de prueba áéí €» a 14 pt en `basic-5.pdf`, confirmar → el texto se ve en la página (la capa contiene un `<text>` con ese contenido) y no queda `textarea`.
+- [x] E2E: con zoom 200 % el editor coincide con el `rect` (bounding box del `textarea` = `rect × escala` ± 2 px).
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Formato enriquecido (negrita, alineación), fuentes distintas de Helvetica, llamadas (*callout*).
@@ -63,3 +63,18 @@ Con la herramienta «Texto», un clic (o arrastrar un rectángulo) crea un cuadr
 1. (opcional) `src/state/annotation-actions.ts:480` — si al confirmar la edición `current` ya no es un texto libre, se sale sin llamar a `syncFileVisibility` y un texto del fichero podría quedar oculto — llamar a la sincronización antes de salir.
 2. (opcional) `src/ui/viewer/AnnotationLayer.tsx:460` — sangría incorrecta de la línea del `FreeTextEditor`.
 3. (opcional) El árbol mezcla hunks de PDF-034 y PDF-036 en ficheros compartidos; commitear juntos o separar con cuidado.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Clic + Esc sin escribir | OK | `tests/ui/freetext-editor.test.tsx:114` en verde |
+| «Hola» + blur = 1 anotación, 1 deshacer | OK | `:124` |
+| Vaciar existente borra; Ctrl+Z recupera | OK | `:178` |
+| Mayús+→ x3 = +3 pt, 1 entrada | OK | `:215` |
+| E2E texto «áéí €» a 14 pt | OK | `freetext.spec.ts:30` x3 repeticiones |
+| E2E zoom 200 % | OK | `freetext.spec.ts:49` x3 repeticiones |
+| lint / typecheck / test / coverage / e2e | OK | 0; 1665 tests; líneas 98,96 %, ramas 92,73 %; e2e 141 pasan (2,2 min) |
+
+Flakys: `performance.spec.ts:169` y `open-qa.spec.ts:59` pasan en la suite completa limpia y 3/3 repetidas en aislado. Ruido de carga, no regresión.
+Tests añadidos: ninguno (los existentes cubren todos los criterios). Rendimiento: long tasks < 100 ms en `performance.spec.ts:169`.
+Notas opcionales del revisor (syncFileVisibility en `annotation-actions.ts:480`, sangría) siguen abiertas; no bloquean.
