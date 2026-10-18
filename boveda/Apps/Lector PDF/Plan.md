@@ -149,9 +149,12 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 | [[PDF-036-panel-de-comentarios]] | Panel de comentarios | PDF-031, PDF-015 | pendiente |
 | [[PDF-037-guardar-anotaciones]] | Guardar y guardar como dentro del PDF; aviso de cambios | PDF-028, PDF-030, PDF-019, COM-007, COM-010, COM-013 | pendiente |
 | [[PDF-038-recuperar-anotaciones]] | Recuperar anotaciones tras cierre inesperado | PDF-037, COM-012 | pendiente |
-| [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069 | pendiente |
+| [[PDF-070-panel-comentarios-accesible]] | Panel de comentarios accesible (nombre visible, Borrar fuera de la fila, Supr) | PDF-036 | pendiente |
+| [[PDF-071-barra-comentar-flechas]] | ←/→/Inicio/Fin de la barra «Comentar» sin cambiar de página (test rojo previo) | PDF-069 | pendiente |
+| [[PDF-072-nota-con-teclado]] | Colocar una nota solo con teclado | PDF-033, PDF-070, PDF-071 | pendiente |
+| [[PDF-039-e2e-anotaciones]] | E2E y rendimiento de anotaciones | PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072 | pendiente (ronda 1 commiteada; espera a PDF-070/071/072) |
 
-Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. PDF-031 y PDF-069 en paralelo (ambas tras PDF-030; PDF-031 tras PDF-013, PDF-069 tras PDF-020). Tras PDF-031 y PDF-069: PDF-032 a PDF-035 en paralelo; PDF-036 solo necesita PDF-031 y PDF-015.
+Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. PDF-031 y PDF-069 en paralelo (ambas tras PDF-030; PDF-031 tras PDF-013, PDF-069 tras PDF-020). Tras PDF-031 y PDF-069: PDF-032 a PDF-035 en paralelo; PDF-036 solo necesita PDF-031 y PDF-015. Correcciones de accesibilidad y teclado salidas de PDF-039: PDF-070 ∥ PDF-071 → PDF-072 (tras ambas) → PDF-039.
 
 ### Iteraciones 3-6 (fichas por detallar)
 | Id | Título | Depende de | Estado |
@@ -188,6 +191,7 @@ Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PD
 ## Historial de iteraciones
 - 2026-10-17: plan creado. Iteraciones 1 y 2 detalladas; 3-6 con fichas de título y dependencias.
 - 2026-10-17: PDF-030 desbloqueada partiendo su UI: barra «Comentar» → [[PDF-069-barra-comentar]]; cursor e importación perezosa por página → [[PDF-031-capa-de-anotaciones]] (que corrige su `depende_de`).
+- 2026-10-18: PDF-039 desbloqueada: axe en el panel de comentarios → [[PDF-070-panel-comentarios-accesible]]; bug de flechas en la barra «Comentar» → [[PDF-071-barra-comentar-flechas]]; nota con teclado → [[PDF-072-nota-con-teclado]]. PDF-039 vuelve a `pendiente` tras ellas.
 
 ## Mejoras conocidas (no planificadas)
 - Texto libre con caracteres no latinos: incrustar una fuente en la apariencia.

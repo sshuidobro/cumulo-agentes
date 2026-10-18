@@ -1,0 +1,80 @@
+---
+tipo: tarea
+id: PDF-072
+titulo: Colocar una nota solo con el teclado
+app: pdf
+estado: pendiente
+depende_de: [PDF-033, PDF-070, PDF-071]
+intentos: 0
+skills: [calidad-profesional]
+creado: 2026-10-18
+actualizado: 2026-10-18
+tags: [tarea, pdf, anotaciones, teclado, accesibilidad]
+---
+
+# PDF-072 · Nota con teclado
+
+Plan: [[Apps/Lector PDF/Plan|Plan]] · Origen: [[PDF-039-e2e-anotaciones]] (Registro, ronda 1, punto 2) · Notas: [[PDF-033-notas-emergentes]]
+
+## Objetivo
+Crear una nota sin ratón. Hoy «Nota» activa la herramienta y la nota solo se coloca con un clic en la página (`createNoteAt` en `AnnotationLayer.tsx`).
+
+## Decisión del líder (no cambiar)
+- **Activar «Nota» con teclado o lector de pantalla** (evento `click` con `event.detail === 0`: Intro, Espacio o activación de tecnología de apoyo) y con la herramienta «Nota» **no** activa → crea la nota al momento en la **página actual**, arriba a la izquierda de la parte visible (centro a 34 pt de los bordes izquierdo y superior de lo visible), la selecciona, abre su ventana de comentario (foco en el texto, como hoy) y deja la herramienta en «ninguna». Es una sola entrada de deshacer («añadir nota»), igual que con el ratón.
+- Después, **Esc** cierra la ventana y devuelve el foco a la nota (ya existe) y las **flechas** la mueven 1 pt (Mayús: 10 pt) porque queda seleccionada (ya existe, PDF-031).
+- Con el **ratón** (`detail ≥ 1`) no cambia nada: activa la herramienta y la nota se coloca con clic. Si la herramienta ya estaba activa, cualquier activación la desactiva (como hoy).
+- El botón explica el comportamiento con una descripción accesible y en el tooltip.
+
+## Contexto
+- Leer: `apps/lector-pdf/src/core/annotations/note.ts`, `src/core/annotations/comment-list.ts` (`rectTopFraction`: convención de rotación y de `dims.width/height` sin girar, que aquí se invierte), `src/state/annotation-actions.ts` (`addAnnotation`, `select`, `openPopupWhenPageCurrent`, `setTool`, `newAnnotationId`, `nowIso`), `src/ui/viewer/AnnotationLayer.tsx` (`createNoteAt`), `src/ui/toolbar/CommentToolbar.tsx` (`onToolClick`), `src/ui/kit/IconButton.tsx`, `src/ui/viewer/Viewer.tsx` (cálculo de `currentYFraction`: fracción de la página actual en el borde superior del visor).
+- Depende de [[PDF-071-barra-comentar-flechas]] y [[PDF-070-panel-comentarios-accesible]] solo porque tocan los mismos ficheros (`CommentToolbar.tsx`, `tests/ui/comment-toolbar.test.tsx`, `messages.ts`, `tests/e2e/notes.spec.ts`). Usa `optionName()` de PDF-070 si buscas filas del panel.
+
+## Qué hay que hacer
+1. `src/core/annotations/note.ts`:
+   ```ts
+   /** Distancia del icono de una nota colocada con teclado a los bordes izquierdo y superior de lo visible, en pt. */
+   export const NOTE_KEYBOARD_INSET_PT = 24;
+   /**
+    * Rectángulo de una nota colocada con teclado: centrada a INSET + NOTE_SIZE_PT/2 pt del borde izquierdo de la
+    * vista y del borde superior visible (`yFraction` de la página). `widthPt`/`heightPt` sin girar; `rotation` total
+    * de la vista (página + visor), 0/90/180/270.
+    */
+   export function keyboardNoteRect(widthPt: number, heightPt: number, rotation: number, yFraction: number): RectPt
+   ```
+   Pseudocódigo (exacto):
+   ```
+   r = ((rotation % 360) + 360) % 360
+   c = NOTE_KEYBOARD_INSET_PT + NOTE_SIZE_PT / 2          // 34
+   viewH = (r === 90 || r === 270) ? widthPt : heightPt
+   vx = c ; vy = yFraction * viewH + c                    // punto en la vista, pt desde arriba-izquierda
+   r = 0   → x = vx,           y = heightPt - vy
+   r = 90  → x = vy,           y = vx
+   r = 180 → x = widthPt - vx, y = vy
+   r = 270 → x = widthPt - vy, y = heightPt - vx
+   return noteRectAt(x - NOTE_SIZE_PT / 2, y + NOTE_SIZE_PT / 2, [0, 0, widthPt, heightPt])
+   ```
+2. `src/state/annotation-actions.ts`: `export function addNoteFromKeyboard(): string | null`. Lee `useViewer.getState()` (`dims`, `currentPage`, `currentYFraction`, `rotation`); si `dims === null` o `currentPage >= dims.count` devuelve `null`. Si no: `rect = keyboardNoteRect(dims.width(i), dims.height(i), (dims.rotation(i) + rotation) % 360, currentYFraction)`; crea la nota con `newNoteAnnotation({ id: newAnnotationId(), pageIndex: i, rect, color: colors.note, author, now: nowIso() })`; `addAnnotation(note)`, `setTool('none')`, `select(note.id)`, `openPopupWhenPageCurrent(note.id, i)`; devuelve `note.id`.
+3. `src/ui/kit/IconButton.tsx`:
+   - `onClick?: (event: MouseEvent<HTMLButtonElement>) => void` (compatible con los usos actuales).
+   - Nueva prop opcional `description?: string`: si existe, `title` = `` `${base}\n${description}` `` (donde `base` es el título actual) y se renderiza dentro del botón `<span id={descId} hidden>{description}</span>` con `aria-describedby={descId}` en el botón (`descId` con `useId()`).
+4. `src/ui/messages.ts`: `toolNoteKeyboardHint: 'Con el teclado, Intro coloca la nota en la página actual; después, Esc y las flechas la mueven.'`
+5. `src/ui/toolbar/CommentToolbar.tsx`: `onToolClick(id, tool, fromKeyboard: boolean)`; al principio: `if (id === 'note' && fromKeyboard && tool !== 'note') { addNoteFromKeyboard(); return; }`. El botón pasa `fromKeyboard = event.detail === 0`. Solo el botón «Nota» recibe `description={msg.toolNoteKeyboardHint}`.
+6. Si algún test existente activa «Nota» con Intro y luego hace clic en la página, adáptalo para activarla con clic (es el flujo de ratón) y deja constancia en el Registro.
+
+## Criterios de aceptación
+- [ ] `tests/unit/annotations/note.test.ts`, `keyboardNoteRect(612, 792, rot, yF)`:
+  - `(0, 0)` → `[24, 748, 44, 768]`; `(90, 0)` → `[24, 24, 44, 44]`; `(180, 0)` → `[568, 24, 588, 44]`; `(270, 0)` → `[568, 748, 588, 768]`;
+  - `(0, 0.5)` → `[24, 352, 44, 372]`; `(0, 1)` → `[24, 0, 44, 20]` (se ajusta dentro de la página); `(-90, 0)` igual que `(270, 0)`.
+- [ ] `tests/unit/annotations/annotation-actions.test.ts`: con `dims` falsos y `currentPage: 1`, `addNoteFromKeyboard()` devuelve un id; `getEffective()` tiene una nota en la página 1 con el `rect` de `keyboardNoteRect`; `tool === 'none'`, `selectedId` es ese id; un `undo()` la quita. Con `dims: null` devuelve `null` y no añade nada.
+- [ ] `tests/ui/comment-toolbar.test.tsx`: foco en «Nota» + `{Enter}` → se crea una nota y `aria-pressed` de «Nota» es `false`; `user.click` en «Nota» → no se crea nada y `aria-pressed` es `true`; «Nota» tiene descripción accesible (`toHaveAccessibleDescription(msg.toolNoteKeyboardHint)`) y su nombre sigue siendo exactamente «Nota».
+- [ ] `tests/e2e/notes.spec.ts`, nueva prueba sin ratón sobre `basic-5.pdf`: abrir la barra «Comentar», foco en «Nota», Intro → la ventana de comentario tiene el foco; escribir «Hola» → Esc → el foco está en la zona «Nota de …» de la página 1; → ×10 → el `x` del icono (bounding box) ha aumentado; Ctrl+S → descarga; `qpdfAnnotations` del descargado tiene un `Text` con `Contents` «Hola».
+- [ ] Deshacer/rehacer: Ctrl+Z tras crear la nota con teclado la quita; Ctrl+Y la repone (en el test de UI o e2e).
+- [ ] `pnpm --filter lector-pdf e2e` con código 0; `pnpm lint`, `pnpm typecheck`, `pnpm test` con código 0.
+
+## Fuera de alcance
+- Texto libre y dibujo con teclado (el texto libre se crea en el sitio con ratón; el dibujo a mano es inherentemente de puntero).
+- Atajo de teclado global para «nueva nota».
+- Elegir la página o la posición con un cursor de teclado sobre la página.
+
+## Registro
+<!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
