@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-076
 titulo: Dibujar la vista previa del trazo de forma incremental en un canvas temporal (test rojo previo)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -125,3 +125,24 @@ Que dibujar a mano alzada cueste lo mismo por frame con 10 o con 2 000 puntos y 
   - Rendimiento: `uptime` antes de medir: `load average: 0.00, 0.41, 1.18` y `pgrep -fa "playwright|vitest|vite build"` vacío. `pnpm --filter lector-pdf exec playwright test --project=chromium-perf --no-deps --repeat-each=5 -g "trazo de 2 000"` (puerto 4191): 5 passed, código 0. Antes de medir había otra ejecución (PDF-074) en marcha; la espera al reposo se hizo con un bucle hasta que la carga bajó de 1.
   - `git diff`: sin `skip`, `.only`, `retries`, `waitForTimeout` ni cambios de umbrales.
 - Dudas o cosas que no he podido hacer: ninguna de la ficha. Quedan fuera de mi commit `boveda/Apps/Lector PDF/Tareas/PDF-074-presupuesto-bundle-arranque.md` y los cambios de PDF-074 (`package.json`, `vite.config.ts`, `tests/bundle/`), que son del otro agente. El `Plan.md` sigue marcando PDF-076 como `pendiente`: lo actualiza el líder.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint` y `pnpm typecheck` con código 0; `vitest run tests/ui/ink.test.tsx tests/unit/ink-preview.test.ts` 17/17. No se ha repetido la batería e2e ni perf (los pasa el programador; los verifica el tester).
+- Cumple la ficha: `ink-preview.ts` literal a lo pedido, `AnnotationLayer` sin estado por frame (sin `setState` en rAF), lienzo solo durante el trazo, CSS y tests (rojo previo documentado, unitarios con dpr 1,5, e2e a 50 % y 300 %). Sin `skip`/`.only`/`retries`/`waitForTimeout`.
+- Desviación `as unknown as CanvasRenderingContext2D` en lugar de `as never`: aceptada.
+- (opcional) Si el zoom o el viewport cambian en mitad de un trazo, el contexto ya preparado conserva el tamaño anterior; caso marginal, no bloquea.
+- (opcional) `AnnotationLayer.tsx`: la línea de `FreeTextEditor` ya estaba mal indentada antes del cambio.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Rojo previo en el Registro | OK | Registro del programador: commits = 100 vs 0 esperado; test sigue en `ink.test.tsx` y ahora pasa |
+| vitest ink.test.tsx + ink-preview.test.ts | OK | incluido en `pnpm test`: 1724/1724 |
+| e2e `-g "ink\|Dibujo\|trazo"` | OK | 15 passed (incluye `ink-preview.spec.ts` a 50 % y 300 %) |
+| Rendimiento `trazo de 2 000` x5 | OK | 5 passed (34,4 s cada uno). Carga al medir: `load average: 6.47` (venía de mi e2e anterior; sin otros procesos playwright/vitest). Pasa incluso con carga |
+| Teclado/deshacer/temas, 125 %/150 % | OK | Ctrl+Z cubierto por `ink.spec.ts` (verde); dpr 1,5 en `ink-preview.test.ts` |
+| Sin canvas extra con herramienta inactiva | OK | test de `ink.test.tsx` comprueba `ink-preview` solo durante el trazo |
+| Sin skip/.only/retries/waitForTimeout | OK | grep del diff del commit a98dc4e: solo coincide texto del Registro |
+| lint, typecheck, test, perf | OK | todos con código 0 |
+Tests añadidos: ninguno (los de la ficha cubren los criterios). Rendimiento: ver arriba.
+Nota: el caso marginal del revisor (cambio de zoom en mitad de un trazo) no se ha probado; no bloquea.
