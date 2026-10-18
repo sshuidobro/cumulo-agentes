@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-032
 titulo: Resaltar, subrayar y tachar texto seleccionado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-031, PDF-013, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
