@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-044
 titulo: Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-087, PDF-045, COM-014]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -86,3 +86,7 @@ Código revisado (print-actions, PrintDialog, PrintContainer, print.css): correc
 - Dudas o cosas que no he podido hacer:
   - **Pendiente Manual** (no cumplido, no se da por cerrado): en la máquina del usuario, `pnpm --filter lector-pdf tauri dev` → abrir `basic-5.pdf` → Ctrl+P → «Página actual» → Imprimir: debe abrirse el diálogo de impresión del sistema con la página. Riesgo a comprobar: `platform.print()` resuelve en cuanto se pide el diálogo; si el webview lee el DOM de `#print-container` después, las hojas pueden faltar (duda 6 de la ronda 1). Por eso las hojas se revocan al resolver o en `afterprint`.
   - La e2e sigue limitada a Chromium: no comprueba el contenido del PDF de impresión de Tauri.
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: `pnpm lint` y `pnpm typecheck` OK. Ronda 1 atendida: (1) orden/identidad de las hojas del rango 2-4 frente a «2», «3», «4» por separado, tres distintas y 1 imagen por página del PDF; sustitución «texto» a «imagen equivalente» documentada y aceptada. (2) Cancelar: contenedor vacío, `print` no llamado, creadas = revocadas. (3) «Pendiente Manual» con pasos y riesgo de `print()`: consta; el tester debe marcarlo como comprobación en la máquina del usuario, no cumplido aquí.
+1. (opcional) `tests/e2e/print.spec.ts` (@perf Cancelar) — `created < 20 + 5000` es una cota muy laxa; afinar si se puede.
