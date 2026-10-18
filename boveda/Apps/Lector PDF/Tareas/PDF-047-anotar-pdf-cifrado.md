@@ -1,38 +1,46 @@
 ---
 tipo: tarea
 id: PDF-047
-titulo: Guardar anotaciones en PDF cifrado
+titulo: Guardar anotaciones, firmas y formularios en PDF cifrado
 app: pdf
 estado: pendiente
-depende_de: [PDF-046, PDF-037]
+depende_de: [PDF-093, PDF-046]
 intentos: 0
-skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
+skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
-tags: [tarea, pdf, iteracion-4, seguridad, anotaciones, formato, por-detallar]
+actualizado: 2026-10-18
+tags: [tarea, pdf, iteracion-4, seguridad, anotaciones, formato]
 ---
 
-# PDF-047 · Guardar anotaciones en PDF cifrado
+# PDF-047 · Guardar anotaciones, firmas y formularios en PDF cifrado
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Paridad: [[Paridad Adobe Acrobat]]
-
-> **Ficha por detallar.** El líder la completará (firmas, ficheros, pasos y criterios exactos, y ADR si hace falta) al cerrar la iteración anterior. No empezar hasta entonces.
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0022-pdf-cifrados]] · [[ADR-0009-anotaciones-escritor-incremental]]
 
 ## Objetivo
-Extender el lector de xref y el escritor incremental (ADR-0009) para cifrar los objetos nuevos con el mismo `/Encrypt` (RC4 y AES-128/256 con la clave derivada de la contraseña), en lugar de devolver `save-encrypted`.
+En la app, Ctrl+S, Guardar como e Imprimir funcionan con PDFs cifrados (con contraseña de usuario o solo de propietario) usando la contraseña que el usuario escribió al abrir, sin volver a pedirla.
 
 ## Contexto
-- Leer cuando se detalle: [[Paridad Adobe Acrobat]], [[Librerias y arquitectura PDF]] y los ADR enlazados en el Plan.
+- Leer: `src/state/save-actions.ts` (`buildCurrentDelta`, `reopenSaved`), `src/state/print-source.ts` (abre el documento temporal: también necesita la contraseña), `src/state/document-actions.ts` (`currentPassword`, PDF-046), `src/state/fonts-actions.ts` (abre un `ObjectReader`: pásale la contraseña), `src/core/pdf/incremental.ts` (`openForSave(source, password)`, PDF-093).
 
 ## Qué hay que hacer
-Por detallar.
+1. `buildCurrentDelta` llama a `openForSave(file.source, currentPassword() ?? undefined)`.
+2. `reopenSaved` y Guardar como (reapertura del fichero nuevo) usan `openDocument(file, { restore, password: currentPassword() })` — para «Guardar como», la contraseña del original (el fichero nuevo tiene el mismo cifrado).
+3. `openPrintSource` abre el documento temporal con `password: currentPassword()`.
+4. `fonts-actions.ts` abre su lector con la contraseña.
+5. Errores `save-wrong-password` / `save-encryption-unsupported` se muestran como aviso, igual que los demás fallos de guardado.
+6. E2E `tests/e2e/encrypted-save.spec.ts`.
 
 ## Criterios de aceptación
-- [ ] Anotar y guardar los 4 fixtures cifrados; pdf.js y `qpdf --check --password=...` los leen con las anotaciones.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0; presupuestos de rendimiento del Plan sin regresiones.
+- [ ] E2E, para `encrypted-rc4-40.pdf`, `encrypted-aes-128.pdf`, `encrypted-aes-256.pdf` y `encrypted-aes-256-objstm.pdf`: abrir con «usuario», resaltar texto de la p1, añadir una nota «Cifrado ñ €», Ctrl+S (descarga en web) → el fichero descargado, abierto con pdf.js en Node y contraseña `usuario`, tiene ambas anotaciones con su texto; `qpdf --check --password=usuario` código 0; reabrirlo en la app pide contraseña y muestra las anotaciones.
+- [ ] E2E `encrypted-owner-only.pdf`: anotar y guardar sin que se pida ninguna contraseña; el resultado se abre sin contraseña y conserva sus permisos (`getPermissions()` igual que antes).
+- [ ] E2E formularios: `form-full.pdf` cifrado en el propio test con `qpdfEncrypt` (de PDF-091; `--encrypt usuario propietario 256 --`): rellenar `nombre` con «Cifrado» y marcar `acepto`, guardar → pdf.js con contraseña `usuario` lee `fieldValue` «Cifrado» y `Si`; `qpdf --check --password=usuario` 0.
+- [ ] E2E: firma dibujada en `encrypted-aes-128.pdf` → guardada y visible tras reabrir.
+- [ ] E2E: imprimir la p1 de `encrypted-aes-256.pdf` con una anotación sin guardar → el PDF de impresión (`page.pdf()`) incluye la anotación (no aparece el aviso «Los cambios sin guardar no se incluyen»).
+- [ ] La contraseña no se pide en ningún paso tras abrir (contador de apariciones del diálogo = 1 por apertura).
+- [ ] `pnpm --filter lector-pdf e2e` con código 0; `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
-- Por detallar.
+- Cambiar o quitar la contraseña (PDF-060).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
