@@ -4,6 +4,7 @@ import {
   buildAnnotated,
   buildCompressed,
   buildForm,
+  buildFormFull,
   buildIncrementalUpdates,
   buildLinks,
   buildOutline,
@@ -12,7 +13,7 @@ import {
 import { textPage } from './pdf-builder.ts';
 
 /** Subir si cambia la forma de los ficheros generados: fuerza la regeneración en todos los equipos. */
-export const GENERATOR_VERSION = 2;
+export const GENERATOR_VERSION = 3;
 
 export interface FixtureSpec {
   readonly name: string;
@@ -133,4 +134,5 @@ export const FIXTURES: readonly FixtureSpec[] = [
   { name: 'incremental-updates.pdf', build: () => buildIncrementalUpdates(buildBasic5()) },
   { name: 'annotated.pdf', build: buildAnnotated },
   { name: 'form.pdf', build: buildForm },
+  { name: 'form-full.pdf', build: buildFormFull },
 ];
