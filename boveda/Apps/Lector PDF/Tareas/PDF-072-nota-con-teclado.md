@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-072
 titulo: Colocar una nota solo con el teclado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-033, PDF-070, PDF-071]
 intentos: 0
 skills: [calidad-profesional]
