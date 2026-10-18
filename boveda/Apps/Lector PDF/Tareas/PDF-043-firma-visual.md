@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-043
 titulo: Firmar - colocar, mover y redimensionar la firma en la página
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-086]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -56,3 +56,12 @@ Botón «Firmar» en la barra: se elige una firma guardada o se crea una, se col
 - Typecheck OK; tests unitarios/UI de firma OK (único fallo: `zoom-controls`, ajeno). Cambio de `Viewer.tsx` correcto (Intro antes de `scaled`). E2E cubre teclado, Stamp/qpdf, solo lectura, PNG transparente, sin red y undo. No he podido relanzar el E2E (puerto 4173 ocupado); me fío de la ejecución 5/5 del programador.
 1. (opcional) `AnnotationLayer.tsx:316` — el tamaño de la firma no usa `mergeKey`; la ficha no lo exigía.
 2. (opcional) Ruta real `src/core/signature/signature.ts`, distinta de la de la ficha.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit signature, UI | OK | `pnpm coverage`: 2319/2320 (único fallo: zoom-controls, ajeno) |
+| E2E firma (colocar/mover/redimensionar/undo, teclado, Stamp+qpdf, PNG, sin red, axe) | OK | `pnpm --filter lector-pdf e2e`: 194 passed |
+| typecheck | OK | `pnpm typecheck` |
+| lint | OK salvo dist-firma (ajeno) | sin errores en otros ficheros |
+Tests añadidos: ninguno. Rendimiento: tests @perf del e2e completo en verde.
