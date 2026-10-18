@@ -42,3 +42,20 @@ Ninguna prueba e2e usa `page.waitForTimeout`: las que esperan a un temporizador 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `eslint.config.js`; `apps/lector-pdf/tests/e2e/helpers.ts` (`settle`, `draftCount`); `apps/lector-pdf/tests/e2e/recover-qa.spec.ts`, `search.spec.ts`, `links-qa.spec.ts`, `save-qa.spec.ts`. Retomo trabajo parcial sin commitear de una sesión anterior y lo verifico.
+- Qué he hecho: `waitForTimeout` eliminado de las 4 pruebas (0 resultados en `apps/lector-pdf/tests/e2e`); `settle` y `page.clock` según la ficha; regla `no-restricted-properties` para `apps/*/tests/e2e/**/*.ts`. En `links-qa.spec.ts` se añade `expect(internals.nth(2)).toBeAttached()` antes del `count()` para que no lea el número de enlaces antes de que la página 1 esté montada (ajuste de determinismo que no estaba en la ficha; ya estaba en el trabajo parcial).
+- Comprobación de la regla ESLint: añadido temporalmente `await page.waitForTimeout(1)` en `save-qa.spec.ts`; `eslint` falla con `no-restricted-properties` y el mensaje «Espera a una condición (expect, page.clock o settle), no a un tiempo fijo». Fichero restaurado.
+- Mutaciones (cambio temporal en `apps/lector-pdf/src`, restaurado con `git status` limpio):
+  - A · Ctrl+S sin cambios descarga: `save-actions.ts` con `if (false)` → falla `save-qa` «Ctrl+S sin cambios»: `downloads` esperado 0, recibido 1.
+  - B · borrador sin cambios: `draft-sync.ts` sin la condición `dirty` y `schedule(t)` al adjuntar → falla `recover-qa` «sin cambios no se ofrece»: `draftCount` esperado 0, recibido 1. (Una primera versión que solo quitaba la condición `dirty` pasaba: sin cambios no llegaba a programarse ningún guardado. Por eso la mutación final añade el `schedule`.)
+  - C · sigue buscando tras «Detener»: `search-actions.ts` sin `session.cancel()` → falla `search` «Detener…» en `toBeHidden` del botón Detener (la prueba falla antes de llegar a la comparación del estado congelado; detecta el fallo, pero no por la aserción exacta).
+  - D · Ctrl+clic abre la URL: `LinkLayer.tsx` abre `window.open` si hay `ctrlKey` → falla `links-qa` «clic de rueda…» en el `toBeVisible` del diálogo (de nuevo, antes de la aserción de `popups`).
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf e2e --project=chromium --repeat-each=10 links-qa.spec.ts recover-qa.spec.ts save-qa.spec.ts search.spec.ts`: 130/130 passed, código 0 (la primera ejecución falló por el puerto 4173 ocupado por otro proceso; se repitió al quedar libre).
+  - `pnpm --filter lector-pdf e2e` completo: 170 passed, código 0.
+  - `pnpm test` (raíz): 165 ficheros, 1898 tests passed, código 0.
+  - `pnpm typecheck`: código 0.
+  - `pnpm lint`: **falla**, código 1, por un único error ajeno a esta ficha: `apps/lector-pdf/tests/unit/forms-history-qa.test.ts:29` (`no-non-null-assertion`). Ese fichero no está commiteado y pertenece a otro trabajo (PDF-080). Los ficheros de esta ficha pasan `eslint --max-warnings 0` con código 0. No lo he tocado.
+- Dudas o cosas que no he podido hacer: el criterio «`pnpm lint` código 0» no se cumple hasta que se resuelva ese error en `forms-history-qa.test.ts` (y `forms-import-qa.test.ts` / `print-qa.test.ts` sin commitear, que no dan error). Hay que decidir de quién es dejar esos ficheros sin commitear. En las mutaciones C y D el fallo se produce en la primera aserción, no en la que da nombre a la prueba; cumple «hace fallar», pero conviene que el tester lo vea.
