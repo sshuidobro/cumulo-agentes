@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-075
 titulo: Cargar pdf.js con import() diferido para partir la tarea de arranque
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-074]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
