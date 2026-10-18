@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { createStorageStore, memorySource, type Platform } from '@suite/platform';
+import { Profiler } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InkAnnotation } from '../../src/core/annotations/model';
 import type { PageViewport } from '../../src/engine/pdfjs';
@@ -91,9 +92,36 @@ afterEach(() => {
   endAnnotationSession();
   useViewer.setState(initialViewerState);
   useAnnotations.setState(initialAnnotationState());
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
+/** Contexto 2D simulado: jsdom no dibuja, así que solo se registran las llamadas. */
+function makeFakeCtx() {
+  return {
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke: vi.fn(),
+    setTransform: vi.fn(),
+    clearRect: vi.fn(),
+    lineWidth: 1,
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    strokeStyle: '#000',
+  };
+}
+
 describe('AnnotationLayer · dibujo a mano alzada (PDF-035)', () => {
+  let fakeCtx: ReturnType<typeof makeFakeCtx>;
+
+  beforeEach(() => {
+    fakeCtx = makeFakeCtx();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => fakeCtx as unknown as CanvasRenderingContext2D,
+    );
+  });
+
   it('un trazo de 50 eventos crea una anotación ink con el grosor de la herramienta y una caja que contiene todos los puntos', () => {
     setInkWidth(4);
     const { container } = renderLayer();
@@ -229,18 +257,69 @@ describe('AnnotationLayer · dibujo a mano alzada (PDF-035)', () => {
     expect(inks()).toHaveLength(1);
   });
 
-  it('mientras se traza, la vista previa es una polilínea que se actualiza por frame y desaparece al soltar', async () => {
+  it('mientras se traza, la vista previa es un lienzo que dibuja y desaparece al soltar', async () => {
     const { container } = renderLayer();
     const svg = layerSvg(container);
     fireEvent.pointerDown(svg, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
     fireEvent.pointerMove(svg, { clientX: 50, clientY: 40, pointerId: 1 });
-    // La vista previa es el grupo sin eventos de puntero; el dibujo confirmado es otra polilínea, sin ese grupo.
-    const preview = 'g[pointer-events="none"] polyline';
+    const preview = '[data-testid="ink-preview"]';
     await waitFor(() => {
       expect(container.querySelector(preview)).not.toBeNull();
+      expect(fakeCtx.lineTo).toHaveBeenCalled();
     });
     fireEvent.pointerUp(svg, { clientX: 50, clientY: 40, pointerId: 1 });
     expect(container.querySelector(preview)).toBeNull();
+    expect(inks()).toHaveLength(1);
+  });
+
+  it('durante el trazo la capa no se vuelve a renderizar por frame y dibuja solo los segmentos nuevos', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      frames.push(cb);
+      return frames.length;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    let commits = 0;
+    const { container } = render(
+      <Profiler
+        id="ink"
+        onRender={() => {
+          commits += 1;
+        }}
+      >
+        <AnnotationLayer pageIndex={0} viewport={fakeViewport()} />
+      </Profiler>,
+    );
+    const svg = layerSvg(container);
+    const flushFrames = (): void => {
+      act(() => {
+        frames.splice(0).forEach((cb) => {
+          cb(0);
+        });
+      });
+    };
+
+    act(() => {
+      fireEvent.pointerDown(svg, { button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+    });
+    flushFrames();
+    const before = commits;
+    for (let i = 1; i <= 100; i += 1) {
+      act(() => {
+        fireEvent.pointerMove(svg, { clientX: 10 + 3 * i, clientY: 10 + i, pointerId: 1 });
+      });
+      flushFrames();
+    }
+
+    expect(commits - before).toBe(0);
+    // 101 puntos distintos → 100 segmentos, uno por frame.
+    expect(fakeCtx.lineTo).toHaveBeenCalledTimes(100);
+    expect(container.querySelector('[data-testid="ink-preview"]')).not.toBeNull();
+
+    act(() => {
+      fireEvent.pointerUp(svg, { button: 0, clientX: 310, clientY: 110, pointerId: 1 });
+    });
+    expect(container.querySelector('[data-testid="ink-preview"]')).toBeNull();
     expect(inks()).toHaveLength(1);
   });
 
