@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-045
 titulo: Propiedades del documento (Ctrl+D) y menú «Más acciones»
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -80,3 +80,25 @@ export function formatFileSize(bytes: number): string; // «1,7 MB (1.775.941 by
   - «Formulario» = AcroForm o XFA. La fila «Ruta» aparece en la web con «—».
   - Por debajo de 10 KB se muestra un decimal («2,0 KB»); la ficha no lo fija.
   - Durante la verificación hubo fallos de tiempo (timeouts de 5 s en tests unitarios y budgets de apertura de 1 s en E2E) por la carga de otras baterías en la máquina (load ~20 en 4 núcleos). Cada uno pasó al repetirlo solo, y la suite E2E completa terminó en 0 en la tercera ejecución. No he tocado ningún presupuesto ni test.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Comprobado: `pnpm lint` 0, `pnpm typecheck` 0, tests unit/ui de la ficha 25/25, E2E `properties.spec.ts` 8/8 (puerto alternativo por 4173 ocupado). Criterios cubiertos; núcleo sin React; textos centralizados; `readRawProperties` nunca lanza.
+1. (opcional) Criterio «tooltip con atajo en el botón»: el atajo está en la entrada del menú y su `title`, no en el botón «Más acciones» (que no tiene atajo propio); interpretación razonable.
+2. (opcional) `PropertiesDialog.tsx`: relee propiedades si cambia la página con el diálogo abierto; inocuo.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| Unit formatPageSize / formatFileSize literales | OK | `tests/unit/properties-qa.test.ts` (nuevo): A4, A4 apaisado, Carta, 70,6 × 35,3 mm, 1,7 MB, 820 KB, 512 bytes |
+| E2E basic-5 (Ctrl+D, foco, Páginas 5, versión, Cifrado No, Esc) | OK | `LECTOR_E2E_PORT=4391 playwright test properties.spec.ts --repeat-each=2` 16/16 |
+| E2E veraPDF 7.18.4-t01-pass-a | OK | mismo comando |
+| E2E incremental-updates y compressed | OK | mismo comando, sin errores de consola |
+| Teclado: pestañas ←/→, menú Intro/flechas | OK | E2E nuevo «teclado: …» + foco atrapado con Tab |
+| Ctrl+D con preventDefault | OK | E2E «el atajo Ctrl+D se consume» |
+| Axe claro/oscuro | OK | 2 tests E2E sin serious/critical |
+| lint / typecheck / test / coverage / e2e propios | OK con salvedad | typecheck 0; `pnpm test` 165 ficheros 1898/1898; `pnpm coverage` 0 (170 ficheros, 1972 tests; `core/properties.ts` 100 % líneas); eslint de los ficheros de la ficha 0. `pnpm lint` global falla solo por `tests/unit/forms-history-qa.test.ts:29` (no-non-null-assertion), fichero sin seguimiento de otra ficha (forms), no de PDF-045. |
+
+Casos límite: valores hostiles en /Info, Unicode (ñ, emojis, RTL), tamaños/bytes degenerados (NaN, 0, negativos), páginas de tamaños mixtos, documento destruido (readRawProperties no lanza), PDF truncado (el diálogo no se abre y no hay errores JS).
+Observación: una ejecución de `pnpm coverage` dio 2 fallos en otro fichero mientras el árbol cambiaba (otras fichas); repetida dos veces, 0 fallos.
+Tests añadidos: `apps/lector-pdf/tests/unit/properties-qa.test.ts`; dos E2E (teclado, corruptos) en `apps/lector-pdf/tests/e2e/properties.spec.ts`.
+Rendimiento: apertura del diálogo imperceptible (tests E2E de 1,5–2 s completos); sin presupuesto específico en la ficha. No ejecutada la batería e2e completa (indicado).

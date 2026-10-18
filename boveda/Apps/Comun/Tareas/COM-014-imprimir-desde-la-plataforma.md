@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-014
 titulo: Platform.print() - imprimir la ventana en web y en Tauri
 app: comun
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -55,3 +55,18 @@ Una sola llamada para abrir el diálogo de impresión del sistema con el conteni
   - `pnpm test`: una pasada dio 1 timeout de 5 s en `apps/lector-pdf/tests/unit/pdf/filters.test.ts`, que pasa aislado (18/18). Otra pasada de cobertura dio 2 timeouts en `annotations/commands.test.ts` y `pdf/fuzz-roundtrip.test.ts`, que pasan aislados (24/24). Son fallos de carga: varios Vitest de otros agentes corrían a la vez.
   - `pnpm coverage` con `--coverage.reportsDirectory` propio en el scratchpad: 0. 160 ficheros, 1831 tests en verde, 97,18 % de líneas. El `pnpm coverage` literal falló (código 1) porque otro proceso de Vitest (pid 4676) tenía bloqueado `coverage/`; no lo he matado.
 - Dudas o cosas que no he podido hacer: no he hecho ningún test Rust nuevo porque `window.print()` necesita un runtime de Tauri; la comprobación del diálogo nativo queda para la máquina del usuario, como indica ADR-0021. La ficha pide `Result<(), String>` mientras que los demás comandos devuelven `CommandError {code, message}`; he seguido la ficha y la skill `stack-tauri`, y el error llega a JS como cadena, que `platform-tauri` traduce a `io`.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Comprobado: vitest del paquete platform 203/203, typecheck, lint (0 avisos), cargo fmt/clippy -D warnings/test en verde. Cubre los criterios: web (una llamada, error a `io`), Tauri con mockIPC (invoca `suite_print`, error a `io`), FakePlatform y save-harness con `print`. Sin cambios de capabilities: correcto, el comando es propio y no hay manifiesto de comandos.
+1. (opcional) `packages/platform/rust/src/commands.rs` — `suite_print` devuelve `String` y los demás `CommandError`; unificar cuando se toque el módulo.
+2. (opcional) `pnpm test` y `pnpm coverage` completos no reproducidos por carga de la máquina; el programador reporta 1831 tests en verde y 97,18 %. El tester debe confirmarlos.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Tests de platform (web 1 llamada; Tauri invoca `suite_print` y traduce error) | OK | `npx vitest run tests/web/platform-web-print.test.ts tests/tauri/print.test.ts` en packages/platform: 5/5 |
+| cargo fmt/clippy -D warnings/test | OK | los tres con código 0; tests Rust todos ok |
+| FakePlatform implementa `print` | OK | `fake-platform.ts:38` `print: vi.fn(async () => ok(undefined))` (registra llamadas) |
+| lint, typecheck, test, coverage | OK | lint 0, typecheck 0; `pnpm test` 160 ficheros/1831 tests en verde (117 s); coverage con directorio propio: 1831 verdes, 97,18 % líneas, código 0 |
+
+Sin regresiones. Tests añadidos: ninguno extra (los del programador cubren web ok/error, defaultWebEnv y Tauri ok/error). Rendimiento: no aplica. Pendiente de la máquina del usuario: diálogo nativo real en Tauri (ADR-0021).

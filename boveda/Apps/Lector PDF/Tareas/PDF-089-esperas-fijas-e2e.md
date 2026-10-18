@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-089
 titulo: Quitar las esperas fijas de las pruebas e2e y prohibirlas con ESLint
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad]

@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FIXTURES_DIR } from '../fixtures/paths.ts';
-import { waitDraftSaved } from './helpers.ts';
+import { draftCount, waitDraftSaved } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 const file = join(FIXTURES_DIR, 'annotated.pdf');
@@ -49,10 +49,13 @@ test('tras «Recuperar», Ctrl+Z restaura el estado original en un solo paso', a
 });
 
 test('sin cambios no se ofrece nada al recargar', async ({ page }) => {
+  // Reloj falso: `runFor` dispara el debounce de 2 s del autoguardado de forma determinista.
+  await page.clock.install();
   await page.goto('/');
   await open(page);
-  // Espera negativa legítima: no se escribe borrador (ausencia); 2,5 s cubre el debounce de 2 s del autoguardado.
-  await page.waitForTimeout(2_500);
+  await page.clock.runFor(2_500);
+  // Un borrador sin cambios no debe escribirse; la comprobación va después del `runFor`, que ya ha disparado el debounce.
+  expect(await draftCount(page)).toBe(0);
   await page.reload();
   await open(page);
   await expect(dialogOf(page)).toHaveCount(0);
