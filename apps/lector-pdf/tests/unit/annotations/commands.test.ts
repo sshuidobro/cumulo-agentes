@@ -32,6 +32,7 @@ describe('invert de los comandos: aplicar y deshacer devuelve el estado de parti
   const start: AnnotationEdits = {
     upserts: new Map([['suite-x', newAnnotation('suite-x', 'note')]]),
     removed: new Set(),
+    fields: new Map(),
   };
 
   const cases: [string, () => ReturnType<typeof addAnnotationCommand>][] = [

@@ -40,7 +40,7 @@ export function setEntryCommand(
       const removedIds = new Set(doc.removed);
       if (removed) removedIds.add(id);
       else removedIds.delete(id);
-      return { upserts, removed: removedIds };
+      return { upserts, removed: removedIds, fields: doc.fields };
     },
     invert(before) {
       return setEntryCommand(label, id, before.upserts.get(id), before.removed.has(id));

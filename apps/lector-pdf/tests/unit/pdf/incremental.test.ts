@@ -35,6 +35,7 @@ function diffOf(
   const edits: AnnotationEdits = {
     upserts: new Map(upserts.map((a) => [a.id, a] as const)),
     removed: new Set(removed.map((a) => a.id)),
+    fields: new Map(),
   };
   return diffAnnotations(new Map(baseline.map((a) => [a.id, a] as const)), edits);
 }

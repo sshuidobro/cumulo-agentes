@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-080
 titulo: Valores de campo en el historial común y en los borradores
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-079]
 intentos: 0
 skills: [stack-typescript-react]
@@ -62,3 +62,12 @@ export function diffFields(fields: ReadonlyMap<string, FormField>, edits: Annota
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/model.ts` (campo `fields`, `EMPTY_EDITS`), `annotations/commands.ts` (conserva `fields`), `annotations/draft.ts` (v2, acepta v1), `forms/commands.ts` (nuevo, `setFieldCommand`), `forms/effective.ts` (nuevo, `effectiveValue`, `storageValue`), `forms/diff.ts` (nuevo, `diffFields`), `forms/index.ts`; tests nuevos `tests/unit/forms-commands.test.ts` y `tests/unit/forms-effective.test.ts`; ampliado `tests/unit/annotations/draft.test.ts`; añadido `fields: new Map()` en las construcciones a mano de `AnnotationEdits` de 9 ficheros de tests y `tests/support/save-annotations.ts`.
+- Qué he hecho: `AnnotationEdits` lleva `fields` (valores de formulario que difieren del fichero) y el comando primitivo lo conserva; `setFieldCommand` con deshacer/rehacer; valor efectivo, valor para `annotationStorage` y diferencia para guardar; borrador v2 con `fields` (la v1 sigue leyéndose con `fields` vacío, duplicados o valores inválidos dan `null`).
+- Comandos ejecutados y resultado: `pnpm lint` → 0; `pnpm typecheck` → 0; `pnpm coverage` (suite completa, una sola vez) → 0, 164 ficheros y 1895 tests en verde. Antes, tests dirigidos de anotaciones, borradores, formularios e incremental → en verde.
+- Dudas o cosas que no he podido hacer:
+  1. **Desviación de criterio, revisar:** la ficha pide «sin cambiar sus aserciones», pero la propia ficha hace que `toDraft` escriba la versión 2 y que la 2 sea válida. Tres aserciones que fijaban el número de versión han tenido que cambiar: `tests/unit/annotations/draft.test.ts` (`version: 1` → `2` en el ida y vuelta; la «versión distinta» usa ahora `version: 3`, porque la 2 ya es válida) y `tests/ui/draft-sync.test.tsx` (`version: 1` → `2`). No se ha tocado ninguna otra aserción.
+  2. `storageValue` para opciones de grupo: he añadido la guarda `widget.onState !== null &&` para que un widget sin estado de exportación nunca salga marcado (con la fórmula literal, `null === null` daría `true`). Solo cambia el caso mal formado.
+  3. Prettier marca ficheros existentes del proyecto (también `forms/import.ts`); no es parte de `pnpm lint`, no lo he tocado.
