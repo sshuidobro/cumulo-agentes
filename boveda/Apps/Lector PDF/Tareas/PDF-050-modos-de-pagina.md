@@ -1,38 +1,54 @@
 ---
 tipo: tarea
 id: PDF-050
-titulo: Modos de página y pantalla completa
+titulo: Modos de página en el visor y menú «Vista»
 app: pdf
 estado: pendiente
-depende_de: [PDF-022]
+depende_de: [PDF-102, PDF-049]
 intentos: 0
-skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
+skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
-tags: [tarea, pdf, iteracion-4, ui, visor, por-detallar]
+actualizado: 2026-10-18
+tags: [tarea, pdf, iteracion-4, ui, visor]
 ---
 
-# PDF-050 · Modos de página y pantalla completa
+# PDF-050 · Modos de página en el visor y menú «Vista»
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Paridad: [[Paridad Adobe Acrobat]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0024-modos-de-pagina]] · Paridad: [[Paridad Adobe Acrobat]] (área 1)
 
-> **Ficha por detallar.** El líder la completará (firmas, ficheros, pasos y criterios exactos, y ADR si hace falta) al cerrar la iteración anterior. No empezar hasta entonces.
+> 2026-10-18 (líder): detallada. El núcleo está en [[PDF-096-layout-doble-pagina]] y [[PDF-102-modo-de-vista-estado]]; la pantalla completa en [[PDF-097-pantalla-completa]]. El desplazamiento horizontal queda descartado (ADR-0024).
 
 ## Objetivo
-Una página, continuo, doble página (con y sin portada), desplazamiento horizontal y modo presentación a pantalla completa, todos virtualizados igual que el modo continuo.
+Como en Adobe («Vista › Modo de presentación de páginas»): una página a la vez o desplazamiento continuo, cada uno con una página, doble página o doble página con portada. Todo virtualizado igual que hoy.
 
 ## Contexto
-- Leer cuando se detalle: [[Paridad Adobe Acrobat]], [[Librerias y arquitectura PDF]] y los ADR enlazados en el Plan.
+- Leer: `src/ui/viewer/Viewer.tsx` (layout, `spacerWidth`, `left`, rueda, teclas Av/Re Pág, `resolveZoom`), `src/core/view-mode.ts` (PDF-102), `src/core/layout.ts` (PDF-096), `src/ui/toolbar/MainToolbar.tsx`, `src/ui/kit/MenuButton.tsx` (menú con `menuitemradio`), `src/ui/icons.tsx`.
+- Textos en `src/ui/messages-view.ts` (`viewMsg`, nuevo).
 
 ## Qué hay que hacer
-Por detallar.
+1. `Viewer.tsx`:
+   - `computeLayout(..., { ..., spread: viewMode.spread })`.
+   - Posición horizontal: `left = (spacerWidth − layout.maxWidth) / 2 + layout.lefts[i]` (con `none` da lo mismo que hoy).
+   - Zoom automático y ajustes: `referenceSize(dims, rotation, spread, currentPage)` y `margin.width + extraWidthPx` en `resolveZoom`.
+   - Modo `paged`: el contenido desplazable es solo `pagedWindow(layout, rowOf[currentPage])`: altura del espaciador = `window.height`, `contentY = scrollTop + window.top`, páginas montadas = las de esa fila. Rueda hacia abajo con el scroll al final (±1 px) → acumula `deltaY` en px (`deltaMode` 1 ×16, 2 × alto del visor) y al pasar de 100 px va a la fila siguiente arriba del todo; hacia arriba con el scroll al principio → fila anterior **abajo del todo**. Av Pág / Espacio al final y Re Pág / Mayús+Espacio al principio igual. El acumulador se vacía al cambiar de fila o tras 300 ms sin rueda.
+   - `goToPage` en `paged` cambia de fila; en `continuous` funciona como hoy.
+2. `src/ui/toolbar/ViewMenu.tsx`: `MenuButton` «Vista» (icono `IconViewMode`, nuevo en `icons.tsx`) con dos grupos `menuitemradio`: «Desplazamiento continuo» / «Una página a la vez», y «Página simple» / «Doble página» / «Doble página con portada». La entrada «Pantalla completa» la añade PDF-097. Llama a `setViewMode`.
+3. `MainToolbar.tsx`: «Vista» a la derecha de los controles de rotación.
+4. Tests UI `tests/ui/view-menu.test.tsx`, `tests/ui/viewer-modes.test.tsx` y E2E `tests/e2e/view-modes.spec.ts`; ampliar `tests/e2e/performance.spec.ts` con los modos.
 
 ## Criterios de aceptación
-- [ ] Los presupuestos de PDF-022 se cumplen en cada modo con `pages-100000.pdf`.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0; presupuestos de rendimiento del Plan sin regresiones.
+- [ ] E2E `basic-5.pdf`, «Doble página»: las páginas 1 y 2 están en la misma fila (mismo `top` del marco, ±1 px) y centradas; «Doble página con portada»: la 1 sola y centrada, la 2 y la 3 juntas.
+- [ ] E2E: en doble página, → va de la fila 1-2 a la 3-4 y el indicador muestra «3 de 5»; Ctrl+0 (ajustar página) hace que la fila completa quepa en el visor (ancho de fila ≤ ancho del visor y alto ≤ alto).
+- [ ] E2E «Una página a la vez» con `basic-5.pdf` a 200 %: la rueda dentro de la página desplaza; al llegar al final, más rueda pasa a la p2 arriba; rueda hacia arriba en el inicio de la p2 vuelve a la p1 abajo; Av Pág igual. Solo los marcos de la fila actual están en el DOM.
+- [ ] E2E: el modo elegido persiste tras recargar y al abrir otro documento; las miniaturas, el panel de comentarios y la búsqueda (F3 salta a la coincidencia aunque esté en otra fila en `paged`) funcionan en los 6 modos.
+- [ ] E2E: crear un resaltado en la página derecha de una fila doble y guardar → la anotación queda en esa página (comprobado con pdf.js en Node).
+- [ ] Rendimiento (`performance.spec.ts`, fixture de 10 000 páginas): en `pairs` continuo, recorrer 5 000 px de scroll sin *long tasks* > 50 ms y con ≤ 14 lienzos vivos; cambiar de modo en un documento de 10 000 páginas ≤ 200 ms hasta pintar la fila visible.
+- [ ] Teclado y lector de pantalla: el menú es navegable con flechas, el modo activo tiene `aria-checked="true"`; axe sin incidencias `serious`/`critical` con el menú abierto y en doble página.
+- [ ] Con `{ scroll: 'continuous', spread: 'none' }` todos los E2E anteriores pasan sin cambios.
+- [ ] `pnpm --filter lector-pdf e2e` con código 0; `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
-- Por detallar.
+- Desplazamiento horizontal, «Mostrar espacios entre páginas» (siempre con hueco), lectura de derecha a izquierda (`/Direction R2L`).
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
