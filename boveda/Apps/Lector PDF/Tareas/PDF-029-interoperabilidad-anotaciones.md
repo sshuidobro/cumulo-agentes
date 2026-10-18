@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-029
 titulo: Interoperabilidad - validar los PDFs guardados con qpdf, pdf.js y el corpus
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-028, PDF-004]
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
@@ -72,3 +72,14 @@ Demostrar con una herramienta independiente (qpdf) que lo que escribimos son **a
 - Verificado: `pnpm lint` (0), `pnpm typecheck` (0), `pnpm test` (88 ficheros, 1180 pruebas OK), `interop.test.ts` 88 pruebas en ~5 s, `interop:samples` genera los 3 ficheros y están ignorados por git. El fallo de lint por `zoom-qa.spec.ts` ya no se reproduce.
 - Cubre los criterios: 21 ficheros, `qpdf --check` sin empeorar, 6 subtipos con claves, reimportación con pdf.js, 3 guardados seguidos, conservación de Square/Link y `/AcroForm`. La desviación `--json=2` está justificada.
 1. (opcional) `apps/lector-pdf/tests/unit/pdf/interop.test.ts:221` — `importPage1` está declarada después de su uso y duplica la lógica de `importAll`; podría unificarse.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| interop.test.ts en 21 ficheros (qpdf 11.9.0) | OK | `npx vitest run tests/unit/pdf/interop.test.ts` → 88 pruebas OK, 5,0 s |
+| qpdf --check no empeora | OK | comprobado dentro del test; muestras generadas con código 0 los tres |
+| `interop:samples` genera 3 ficheros e ignorados por git | OK | `ls interop-samples` (3 PDF); `git check-ignore -v` → `.gitignore:12`; `git status` no los muestra |
+| Corrección del escritor con regresión | N/A | no se tocó `incremental.ts`/`to-pdf.ts` |
+| lint / typecheck / test / build | OK | lint 0, typecheck 0, `pnpm test` 93 ficheros 1235 pruebas OK (36 s), build web OK |
+- Sin `skip`/`only`/`expect(true)` en los tests de la ficha; el aviso «Instala qpdf: apt-get install -y qpdf» está implementado en `tests/support/qpdf.ts`.
+- Tests añadidos: ninguno adicional (cobertura suficiente). Rendimiento: conjunto de la ficha 5 s (< 60 s).
