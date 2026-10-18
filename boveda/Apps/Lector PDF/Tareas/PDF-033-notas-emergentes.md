@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-033
 titulo: Notas emergentes y comentarios sobre resaltados
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-031, PDF-069]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, anotaciones, accesibilidad]
 ---
 
@@ -52,3 +52,18 @@ Con la herramienta «Nota», un clic en la página coloca un icono de nota y abr
 
 ### [lider] replanificación — 2026-10-17
 - `depende_de` gana [[PDF-069-barra-comentar]]: la barra «Comentar» (`CommentToolbar`, menús Color/Grosor/Tamaño) ya no la crea PDF-030, sino PDF-069. Donde esta ficha dice «`CommentToolbar`», es el componente de PDF-069 (`src/ui/toolbar/CommentToolbar.tsx`).
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `src/core/annotations/note.ts` (nuevo, exportado desde `index.ts`), `src/state/annotation-store.ts` (`openPopupId`), `src/state/annotation-actions.ts` (`openPopup`, `closePopup`; la ventana se cierra si su anotación desaparece), `src/ui/viewer/AnnotationPopup.tsx` y `AnnotationPopup.module.css` (nuevos), `src/ui/viewer/popup-placement.ts` (nuevo), `src/ui/viewer/AnnotationLayer.tsx` (herramienta Nota, doble clic e Intro, `title`), `src/ui/viewer/PageView.tsx`, `src/ui/messages.ts`, `src/ui/icons.tsx` (`IconTrash`, `IconClose`); tests `tests/unit/annotations/note.test.ts`, `tests/ui/annotation-popup.test.tsx`, `tests/e2e/notes.spec.ts`. No he tocado `selection-to-pages.ts` ni `markup-actions.ts`. Sin commit.
+- Qué he hecho: herramienta Nota con clic (nota 20 × 20 pt, esquina superior izquierda en el clic, limitada a la página, `addAnnotation` «añadir nota», selecciona, abre su ventana y vuelve a «ninguna»). Ventana no modal con autor, fecha, textarea (escritura agrupada con `note-text:<id>`), Borrar y Cerrar; Esc cierra y devuelve el foco a la zona; se cierra si la página deja de ser visible, si la anotación sale de la página o si desaparece. Doble clic o Intro abren la ventana en cualquier anotación soportada; `title` con 200 caracteres.
+- Comandos ejecutados y resultado:
+  - `pnpm typecheck`: OK (código 0).
+  - `pnpm lint` (raíz): falla solo por `apps/lector-pdf/dist-e2e-pdf032/` (build de otra ejecución, no ignorado, ~9 400 errores ajenos). Con ese directorio excluido, `eslint --max-warnings 0 .`: OK.
+  - `pnpm test`: 135 ficheros, 1586 tests, OK. `pnpm coverage`: código 0.
+  - E2E con puerto 4431 y `LECTOR_E2E_OUTDIR=dist-e2e-pdf033` (directorio borrado después): `notes.spec.ts` 5/5 OK; `annotations-layer.spec.ts` + `keyboard.spec.ts` 5/5 OK.
+- Dudas o cosas que no he podido hacer:
+  1. `openPopup`/`closePopup` están en `annotation-actions.ts` (las acciones escriben el store desde ahí); `annotation-store.ts` solo guarda `openPopupId`. PDF-036 debe importarlas de `annotation-actions`.
+  2. Borrar y Cerrar van en el pie de la ventana, no en la cabecera: con la cabecera, el orden DOM no cumple Tab textarea → Borrar → Cerrar.
+  3. Cada tecla pasa por `publish` y sube `pageVersion`, así que el lienzo de la página se vuelve a dibujar. Es el comportamiento existente; no lo he tocado, pero puede notarse en páginas grandes.
+  4. Intro abre la ventana y selecciona; Espacio solo selecciona.
+  5. No he ejecutado `pnpm --filter lector-pdf e2e` completo (árbol compartido); solo los specs relacionados. No hay medición de rendimiento nueva.
