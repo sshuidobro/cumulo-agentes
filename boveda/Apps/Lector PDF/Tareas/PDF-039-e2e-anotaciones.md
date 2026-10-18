@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-039
 titulo: E2E y rendimiento de la iteración 2 (anotaciones)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-029, PDF-032, PDF-033, PDF-034, PDF-035, PDF-036, PDF-038, PDF-069, PDF-070, PDF-071, PDF-072, PDF-073]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional, formatos-ofimatica]
@@ -128,3 +128,15 @@ Los dos puntos del programador, valorados:
 1. 100 000 páginas sin `@perf` — **no bloqueante**. `@perf` (ADR-0016) es para pruebas que miden long tasks; esta solo mide el tiempo de guardado (242-352 ms frente a 3 000 ms, margen de 8x o más), así que la carga paralela no la hace inestable. Además lo acordado en PDF-073 fue no tocar este fichero aquí. (opcional) Añadirle `@perf` si se quiere medida siempre en serie.
 2. `waitForTimeout` en `save-qa`, `search` (l.197), `links-qa` y `recover-qa` — **no bloqueante para esta ficha**. Son specs de otras fichas, previas a esta; el criterio se cumple en los ficheros de PDF-039. Pero es deuda real (esperas fijas = pruebas frágiles y lentas, p. ej. 2,5 s en `recover-qa.spec.ts:55`). Recomiendo al líder crear una ficha de limpieza que las sustituya por esperas a condición (`expect.poll`/`toBeVisible`) y, si se quiere, una regla ESLint que lo prohíba en `tests/e2e`.
 Problemas bloqueantes: 0.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `e2e` código 0 | OK | `pnpm --filter lector-pdf e2e`: 160 passed, exit 0 |
+| `--repeat-each=3` | OK | anotaciones en `chromium`: 33 passed; en `chromium-perf --no-deps`: 6 passed (la batería completa x3 la dio el programador: 459 y 21) |
+| Medidas dentro de presupuesto | OK | las aserciones `toBeLessThan` (10 s, 1 s, 50 KB, 3 s) pasan en las 4 ejecuciones; valores en la ronda 3 |
+| `qpdf --check` de los guardados | OK | `qpdfCheck` exigido en cada guardado de flow, foreign y performance |
+| Axe 0 serious/critical en 3 vistas | OK | `annotations-a11y.spec.ts` pasa en todas las repeticiones |
+| Sin `waitForTimeout`/`skip`/`.only` | OK | grep en `annotations-*` sin coincidencias |
+| lint, typecheck, test | OK | lint 0, typecheck 0, 1 732 tests en verde |
+Tests añadidos: ninguno. Rendimiento: sin regresiones. Deuda no bloqueante: `waitForTimeout` en specs de otras fichas (ver revisor).
