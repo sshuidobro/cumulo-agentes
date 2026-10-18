@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-018
 titulo: Búsqueda en la interfaz (Ctrl+F, opciones, resaltado, siguiente/anterior, progreso)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-017, PDF-013]
 intentos: 2
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -109,3 +109,19 @@ Medición propia (puerto 4408, `workers: 1`, load medio 3-6 en 4 núcleos por ot
 1. `apps/lector-pdf/tests/e2e/search.spec.ts:112-113` — assert de tiempo de reloj (3 s) inestable bajo carga — cambio exacto: (a) en el E2E, el test de `aguja` comprueba solo el comportamiento: usar el timeout por defecto de `expect` (10 s) o `15_000` explícito en las dos aserciones (`1 de 2` y página 1234 en viewport); no medir tiempo ahí. (b) El presupuesto de tiempo ya vive en `tests/perf/search.perf.test.ts` (ADR-0012): no hace falta test nuevo, solo `pnpm perf` con código 0 en el Registro. (c) El líder reescribe el criterio de la ficha (línea 57) como: «E2E `pages-5000.pdf`: buscar `aguja` desde la página 1 → aparece «1 de 2» y la página 1234 visible (timeout 15 s); F3 → página 4999; … no long tasks > 100 ms. El tiempo de búsqueda se verifica en `pnpm perf` (recorrido < 10 s, primera coincidencia < 1 s, hueco máximo < 50 ms)». Ejecutar el E2E de `aguja` ×5 en verde y anotarlo.
 2. `apps/lector-pdf/tests/e2e/search.spec.ts:194` — `waitForTimeout(1_000)` para comprobar que el estado no cambia (opcional) — es una espera fija aceptable aquí porque verifica ausencia de cambios; no bloquea.
 3. Pendiente al reenviar (informativo): `pnpm perf` en el Registro, e2e completo con puerto propio, `typecheck` (depende de PDF-016). Hay un fichero ajeno sin seguir, `apps/lector-pdf/playwright.tmp-4407.config.ts`, de otro agente; no es de esta ficha. Yo no dejé ficheros temporales.
+
+### [programador] ronda 3 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/search.spec.ts` (test de `aguja`, líneas 112-113: timeouts de `1 de 2` y de la página 1234 pasan a 15 s, sin aserción de tiempo de reloj); `boveda/Apps/Lector PDF/Tareas/PDF-018-busqueda-ui.md` (criterio de `pages-5000` reescrito con el texto del revisor, estado y este Registro). Sin tocar `src/`.
+- Qué he hecho: aplicado tal cual el cambio propuesto por el revisor en la ronda 2. Decisión técnica del coordinador: el E2E comprueba solo comportamiento y el presupuesto de tiempo vive en `tests/perf/search.perf.test.ts` (ADR-0012). El fichero temporal `apps/lector-pdf/playwright.tmp-4407.config.ts` ya no existe; la config temporal de esta ronda (puerto 4411) también está borrada.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf typecheck`: código 0 (el error de `outline.spec.ts` ya no aparece).
+  - `pnpm lint`: código 0, sin avisos.
+  - `pnpm perf`: código 0 en la última ejecución (20/20). Búsqueda 5 000 páginas: total 1 693,7 ms, primera coincidencia 540,9 ms, hueco máximo 35,9 ms. Dos ejecuciones anteriores fallaron con carga de máquina de 10,8 (búsqueda 4 327 ms, primera coincidencia 1 256 ms, hueco 84,7 ms) y `annotation-layer.perf.test.ts` (montar 500 anotaciones 189 ms, ajeno).
+  - `pnpm coverage`: código 0; 124 ficheros, 1 470 tests en verde; `core/search` 96,1 % líneas.
+  - E2E `aguja` ×5 con config temporal en puerto 4411: 5/5 en verde (5,2–7,2 s cada uno).
+  - E2E completo en puerto 4411: 79/80 en verde. El único fallo es `appearance.spec.ts:125` («modo noche: las imágenes conservan sus colores», 225 > 10 por canal). Se repite al ejecutarlo aislado, no pertenece a la búsqueda y el fichero del visor tiene cambios sin commit de otras fichas (`PageView.tsx`, `AnnotationLayer.tsx`, `Viewer.tsx`). Requiere a su dueño.
+  - Captura del zoom 200 % y vista girada (ronda 2): `/tmp/claude-0/-home-claude-cumulo-agentes/409a8bbc-9d52-502a-8457-def03208983e/scratchpad/search-zoom-200-girado-ronda2.png`.
+- Dudas o cosas que no he podido hacer:
+  - El criterio «`pnpm --filter lector-pdf e2e` con código 0» **no se cumple** por el fallo ajeno de `appearance.spec.ts:125`. No lo he saltado ni tocado.
+  - `pnpm perf` no es estable con la carga actual de la máquina (ver segunda ejecución). Pasa en la última; conviene repetirlo al revisar.
+  - No he hecho commit (el usuario lo ha prohibido en el árbol compartido).
