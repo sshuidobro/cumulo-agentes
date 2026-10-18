@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-087
 titulo: Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento
 app: pdf
-estado: pendiente
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica]
@@ -74,3 +74,15 @@ export async function openPrintSource(): Promise<PrintSource | null>;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/core/print/range.ts`, `src/core/print/plan.ts` (nuevos); `src/core/pdf/concat-source.ts` (nuevo) y su export en `src/core/pdf/index.ts`; `src/engine/print-render.ts` (nuevo); `src/state/print-source.ts` (nuevo); `src/state/save-actions.ts` (extraído `buildCurrentDelta(file)`, usado por guardar y guardar como); tests `tests/unit/print-range.test.ts`, `print-plan.test.ts`, `concat-source.test.ts`, `print-render.test.ts`, `print-source.test.ts`.
+- Qué he hecho: implementado el núcleo de impresión sin interfaz: rangos de página, plan de hoja (con orientación automática y escala limitada por el lienzo), documento temporal «original + incremento» por `concatSource` y render de página a PNG con pdf.js (intent print, comentarios ocultos con `noPrint` que se deshace al terminar). `buildCurrentDelta` devuelve `null` sin cambios; guardar y guardar como conservan su comportamiento (incluido el delta vacío al guardar una copia sin cambios).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm test` OK (155 ficheros, 1797 tests; tras los últimos cambios, 7 ficheros de impresión y guardado OK, 50 tests). `pnpm coverage`: 3 de 4 ejecuciones con código 1 por *timeouts* de 5 s en tests ajenos al cambio (`qa-drafts`, `commands`, `search-actions`, `fuzz-roundtrip`, `filters`) mientras otro agente cargaba la máquina (load average 17–27); en la última, solo falla `packages/platform/tests/qa-drafts.test.ts` («50 MiB se guardan y recuperan»), que pasa al ejecutarlo solo. Cobertura de los ficheros nuevos: `range.ts` 100 % líneas, `concat-source.ts` 100 %. Pendiente: repetir `pnpm coverage` en calma.
+- Dudas o cosas que no he podido hacer: (1) La ficha pide `tests/ui/print-source.test.ts`, pero la configuración de Vitest solo recoge `tests/ui/**/*.test.tsx`, así que lo he puesto en `tests/unit/print-source.test.ts`; ¿se cambia la ruta en la ficha o la config? (2) El render de `renderPageForPrint` se prueba con dobles de página y lienzo (no hay paquete `canvas` en Node); los píxeles no se comprueban aquí. (3) `planPage` no gira las páginas cuadradas (decisión de implementación para no girar su contenido sin motivo). (4) Con cambios sin guardar y un PDF cifrado, `openPrintSource` devuelve el abierto con `unsavedIncluded: false`. (5) El test de `qa-drafts` de `packages/platform` (50 MiB) es lento bajo carga; no lo he tocado porque está fuera del alcance. Lo anoto para el líder.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- lint y typecheck OK. Los tests de impresión, `concat-source` y guardado pasan (91/92 en la selección). `pnpm test` completo dio fallos distintos en cada ejecución, todos ajenos a esta ficha: `search-actions.test.ts` y el timeout de `annotations/commands.test.ts`. Hay otro agente tocando búsqueda y la máquina estaba cargada. El tester debe repetirlos en reposo.
+- Cumple los criterios: rangos, plan, escala, `concatSource` (1 000 lecturas), `openPrintSource` y extracción de `buildCurrentDelta` sin cambios de comportamiento en guardar.
+- (opcional) La ruta `tests/unit/print-source.test.ts` en vez de `tests/ui/` es correcta por la config de Vitest; conviene corregir la ficha.
+- (opcional) Pendiente de `pnpm coverage` en reposo (el tester).
