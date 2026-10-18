@@ -137,7 +137,7 @@ for (const zoom of ['50', '300']) {
   });
 }
 
-test('dibujar un trazo de 2 000 eventos no produce long tasks', async ({ page }) => {
+test('dibujar un trazo de 2 000 eventos no produce long tasks', { tag: '@perf' }, async ({ page }) => {
   await installPerfProbes(page);
   await openFixture(page, 'basic-5.pdf');
   await waitPageRendered(page, 1);

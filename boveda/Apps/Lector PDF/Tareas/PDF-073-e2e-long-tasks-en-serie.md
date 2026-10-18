@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-073
 titulo: Ejecutar las pruebas e2e de long tasks en un proyecto Playwright en serie
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
@@ -71,3 +71,19 @@ Que `pnpm --filter lector-pdf e2e` mida las *long tasks* sin otra ventana de Chr
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/playwright.config.ts` (proyecto `chromium` con `grepInvert: /@perf/` y proyecto `chromium-perf` tal como indica la ficha); `apps/lector-pdf/tests/e2e/{search,viewer,render,ink,annotations-layer,performance,annotations-performance}.spec.ts` (solo `{ tag: '@perf' }` en la prueba listada de cada uno); esta ficha.
+- Qué he hecho: he comprobado con `grep -ln "longTasks\|longtask"` que solo esos 7 ficheros miden long tasks y que en cada uno solo la prueba de la tabla lo hace (las demás de esos ficheros no leen `longtask`). He configurado el proyecto `chromium-perf` y etiquetado las 7 pruebas. `git diff` no toca umbrales ni añade `retries`, `test.skip`, `.only`, `test.fixme` ni `waitForTimeout`.
+- Comandos ejecutados y resultado:
+  - `playwright test --list` (sin filtro): 156 tests en 39 ficheros, igual que antes del cambio (línea base: 156).
+  - `--list --project=chromium-perf --no-deps`: **7 tests** (las de la tabla, todas en `chromium-perf`).
+  - `--list --project=chromium`: 149 tests (149 + 7 = 156). Sin `@perf` en esa lista (`grep -c` = 0).
+  - `pnpm lint`, `pnpm typecheck`, `pnpm test`: código 0 (143 ficheros, 1709 tests).
+  - `pnpm --filter lector-pdf e2e`, 4 ejecuciones (código 0 en 1, 2 y 4; **código 1 en la 3**). Tarea larga máxima (`search` / `viewer`): ejecución 1 → 69,0 ms / 69 ms; ejecución 4 → 67,0 ms / 74 ms. Las ejecuciones 2 y 3 no guardaron anotaciones (reporter `list`). En la 3: **156 → 155 pasan, 1 falla**: `render.spec.ts` «images-200…» (`chromium-perf`) midió **101 ms** frente a un presupuesto de 100 ms.
+  - `pnpm --filter lector-pdf e2e --repeat-each=3`: **código 1**. 169 pasan y 1 falla: `ink.spec.ts` «dibujar un trazo de 2 000 eventos no produce long tasks» (`chromium-perf`, repetición 2), que esperaba `[]` y recibió **[79, 145] ms**. Valores de la misma ejecución: `search` 69,0 / 75,0 / 70,0 ms; `viewer` 74 / 74 / 71 ms; `images-200` 77 / 69 / 96 ms (pasa). Observación: el resultado fue 170 pruebas, es decir 149 de `chromium` una vez y 21 de `chromium-perf` (7 × 3); `--repeat-each` no repitió las de `chromium`. No lo he investigado.
+- Dudas o cosas que no he podido hacer:
+  - **Criterio no cumplido: tres ejecuciones seguidas en verde.** Según la ficha («si una prueba falla también en serie, es una regresión real»), no lo arreglo yo: anoto los valores y la ficha queda **bloqueada** para el líder. Esto va contra la indicación de pasarla a `en-revision`; prefiero no mandar al revisor una ficha con un rojo de regresión real.
+  - Regresión 1: `images-200` 101 ms (1 ms sobre el presupuesto), una vez de 4 ejecuciones completas y una de 3 repeticiones (77, 69, 96 ms).
+  - Regresión 2: `ink` «dibujar un trazo de 2 000 eventos…» con dos long tasks (79 y 145 ms) en serie. Con `workers: 2` estos valores no se medían, así que no sé si la regresión es nueva o de siempre. Hay que analizarlo; no se toca el umbral.
+  - Pendiente del líder: decidir si estas dos pruebas deben optimizarse o si el presupuesto se vuelve intermitente (ADR-0016 no lo prevé).
