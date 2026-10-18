@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-045
 titulo: Propiedades del documento (Ctrl+D) y menú «Más acciones»
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -68,3 +68,15 @@ export function formatFileSize(bytes: number): string; // «1,7 MB (1.775.941 by
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/core/properties.ts`, `src/engine/properties.ts`, `src/state/properties-store.ts`, `src/ui/properties/PropertiesDialog.tsx` (+ `.module.css`), `src/ui/toolbar/DocumentMenu.tsx`, `src/ui/messages-properties.ts`, tests `tests/unit/properties.test.ts`, `tests/ui/properties-dialog.test.tsx`, `tests/e2e/properties.spec.ts`. Modificados: `src/ui/shortcuts.ts` (`properties`, Mod+D), `src/ui/App.tsx` (VIEW_SHORTCUTS y `<PropertiesDialog />`), `src/ui/toolbar/MainToolbar.tsx` (menú al final), `src/ui/kit/MenuButton.tsx` y `.module.css` (entradas `kind: 'action'` con atajo), `src/ui/icons.tsx` (`IconMore`), `src/engine/index.ts` (exporta las funciones de propiedades).
+- Qué he hecho: motor (`/Info`, XMP, marca de etiquetado, tamaño de página con /Rotate) y núcleo puro (`buildProperties`, `formatPageSize`, `formatFileSize`); diálogo con pestañas Descripción/Avanzado (←/→, Inicio/Fin), `<dl>`, «Leyendo propiedades…», fechas `es-ES` y «—» en vacíos; Ctrl+D y «Más acciones» (deshabilitado sin documento). Dos decisiones menores, anotadas abajo.
+- Comandos ejecutados y resultado: `pnpm lint` 0 · `pnpm typecheck` 0 · `pnpm test` (159 ficheros, 1827 tests) 0 · `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>` 0 (`core/properties.ts` 100 % líneas) · `pnpm --filter lector-pdf e2e` 0 (168/168, última ejecución).
+- Dudas o cosas que no he podido hacer:
+  - `RawProperties` vive en `core/properties.ts` y `engine/properties.ts` lo re-exporta: el núcleo no puede importar del motor.
+  - La ficha dice que `getMarkInfo()` devuelve `{ Marked }`; en realidad pdf.js devuelve un `Map` (comprobado con el corpus veraPDF). Se leen las dos formas.
+  - Hacen falta dos piezas que la ficha no nombra: `src/state/properties-store.ts` (estado abierto/cerrado del diálogo) y la entrada `kind: 'action'` en `MenuButton`. El atajo se muestra en el texto de la entrada y en su `title` (el botón «Más acciones» no tiene atajo).
+  - «Formulario» = AcroForm o XFA. La fila «Ruta» aparece en la web con «—».
+  - Por debajo de 10 KB se muestra un decimal («2,0 KB»); la ficha no lo fija.
+  - Durante la verificación hubo fallos de tiempo (timeouts de 5 s en tests unitarios y budgets de apertura de 1 s en E2E) por la carga de otras baterías en la máquina (load ~20 en 4 núcleos). Cada uno pasó al repetirlo solo, y la suite E2E completa terminó en 0 en la tercera ejecución. No he tocado ningún presupuesto ni test.

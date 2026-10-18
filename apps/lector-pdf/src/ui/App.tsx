@@ -13,6 +13,7 @@ import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
+import { PropertiesDialog } from './properties/PropertiesDialog';
 import { Sidebar } from './sidebar/Sidebar';
 import { SearchBar, focusSearchField } from './search/SearchBar';
 import { toggleSidebar } from '../state/sidebar-actions';
@@ -27,6 +28,7 @@ import { firstPage, lastPage, nextPage, prevPage } from '../state/navigation';
 import { goBack, goForward } from '../state/history';
 import { dismissNotice } from '../state/notice';
 import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/view-actions';
+import { openProperties } from '../state/properties-store';
 import { useViewer } from '../state/viewer-store';
 import { focusPageField } from './toolbar/PageNavigator';
 import { selectPageText } from './viewer/text-selection';
@@ -69,6 +71,7 @@ const VIEW_SHORTCUTS = {
   // Antes de guardar se confirma el editor activo (p. ej. una nota escrita), para que su texto entre en el guardado.
   save: () => { blurActiveElement(); void save(); },
   'save-as': () => { blurActiveElement(); void saveAs(); },
+  properties: () => { openProperties(); },
 } as const;
 
 function blurActiveElement(): void {
@@ -126,6 +129,7 @@ export function App() {
       </main>
       <Notice notice={notice} onExpire={dismissNotice} />
       <ChoiceDialog />
+      <PropertiesDialog />
       {platform.kind === 'web' && (
         <>
           <input

@@ -12,7 +12,15 @@ export interface MenuItemSpec {
   readonly onSelect: () => void;
 }
 
-export type MenuEntry = MenuItemSpec | 'separator';
+/** Acción del menú (un `menuitem` normal, sin marca). `shortcut` es el atajo de teclado que se muestra junto al nombre. */
+export interface MenuActionSpec {
+  readonly kind: 'action';
+  readonly label: string;
+  readonly shortcut?: string;
+  readonly onSelect: () => void;
+}
+
+export type MenuEntry = MenuItemSpec | MenuActionSpec | 'separator';
 
 export interface MenuButtonProps {
   /** Nombre accesible del botón (es solo icono). */
@@ -33,7 +41,7 @@ function assignRef(ref: Ref<HTMLButtonElement> | undefined, node: HTMLButtonElem
   else if (ref !== undefined && ref !== null) ref.current = node;
 }
 
-const ITEM_SELECTOR = '[role="menuitemradio"], [role="menuitemcheckbox"]';
+const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]';
 
 /** Elementos del menú en orden de documento. */
 function itemsOf(menu: HTMLElement | null): HTMLElement[] {
@@ -155,21 +163,31 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, ref }
               <button
                 key={entry.label}
                 type="button"
-                role={entry.kind === 'radio' ? 'menuitemradio' : 'menuitemcheckbox'}
-                aria-checked={entry.checked}
+                role={entry.kind === 'action' ? 'menuitem' : entry.kind === 'radio' ? 'menuitemradio' : 'menuitemcheckbox'}
+                aria-checked={entry.kind === 'action' ? undefined : entry.checked}
+                title={entry.kind === 'action' && entry.shortcut !== undefined ? `${entry.label} (${entry.shortcut})` : undefined}
                 className={styles.item}
                 onClick={() => {
                   entry.onSelect();
                   close(true);
                 }}
               >
-                <span className={styles.mark} aria-hidden="true">
-                  {entry.checked ? '✓' : ''}
-                </span>
-                {entry.swatch !== undefined && (
+                {entry.kind === 'action' ? (
+                  <span className={styles.mark} aria-hidden="true" />
+                ) : (
+                  <span className={styles.mark} aria-hidden="true">
+                    {entry.checked ? '✓' : ''}
+                  </span>
+                )}
+                {entry.kind !== 'action' && entry.swatch !== undefined && (
                   <span className={styles.swatch} style={{ background: entry.swatch }} aria-hidden="true" />
                 )}
                 {entry.label}
+                {entry.kind === 'action' && entry.shortcut !== undefined && (
+                  <span className={styles.shortcut} aria-hidden="true">
+                    {entry.shortcut}
+                  </span>
+                )}
               </button>
             ),
           )}

@@ -38,6 +38,16 @@ export function IconRedo() {
   );
 }
 
+export function IconMore() {
+  return (
+    <Svg>
+      <circle cx="4.5" cy="10" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="10" cy="10" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="10" r="1.1" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
 export function IconOpen() {
   return (
     <Svg>
