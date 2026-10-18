@@ -12,6 +12,8 @@ export interface WebEnv {
   readonly download: (blob: Blob, name: string) => void;
   /** Cierra la pestaña o ventana. Por defecto `window.close()`; el navegador puede ignorarlo si no la abrió un script. */
   readonly closeWindow: () => void;
+  /** Abre el diálogo de impresión del navegador (`window.print()`). */
+  readonly print: () => void;
 }
 
 /** File System Access: solo Chromium lo expone en `window`; lib.dom no lo tipa. */
@@ -67,5 +69,6 @@ export function defaultWebEnv(): WebEnv {
     pickWithInput: createInputPicker(win),
     download: createDownloader(win),
     closeWindow: () => { win.close(); },
+    print: () => { win.print(); },
   };
 }

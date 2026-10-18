@@ -24,6 +24,7 @@ export function fakeEnv(overrides: Partial<WebEnv> = {}): WebEnv {
     pickWithInput: vi.fn(async (): Promise<File | null> => null),
     download: vi.fn(),
     closeWindow: vi.fn(),
+    print: vi.fn(),
     ...overrides,
   };
 }

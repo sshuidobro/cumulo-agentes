@@ -35,6 +35,7 @@ export function createFakePlatform(overrides: Partial<Platform> = {}): Platform 
     setTitle: vi.fn(),
     onCloseRequested: () => () => undefined,
     closeWindow: vi.fn(async () => undefined),
+    print: vi.fn(async () => ok(undefined)),
     ...overrides,
   };
 }

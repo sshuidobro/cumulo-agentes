@@ -268,6 +268,15 @@ export function createWebPlatform(
       closing = true;
       env.closeWindow();
     },
+
+    async print(): Promise<Result<void>> {
+      try {
+        env.print();
+      } catch (cause) {
+        return err(platformError('io', cause));
+      }
+      return ok(undefined);
+    },
   };
   return platform;
 }

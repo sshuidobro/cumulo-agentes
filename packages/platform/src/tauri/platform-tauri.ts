@@ -226,5 +226,14 @@ export function createTauriPlatform(
         log.error('No se ha podido cerrar la ventana.', cause);
       }
     },
+
+    async print(): Promise<Result<void>> {
+      try {
+        await api.invoke<unknown>('suite_print');
+        return ok(undefined);
+      } catch (cause) {
+        return err(platformError('io', cause));
+      }
+    },
   };
 }
