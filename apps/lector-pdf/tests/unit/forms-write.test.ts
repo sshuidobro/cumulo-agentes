@@ -15,7 +15,7 @@ import {
 } from '../../src/core/forms';
 import { decodeStreamData } from '../../src/core/pdf/filters';
 import { ObjectReader } from '../../src/core/pdf/object-reader';
-import { dictGet, PdfSyntaxError, ref, type PdfDict, type PdfRef, type PdfValue } from '../../src/core/pdf/objects';
+import { dictGet, name, PdfSyntaxError, ref, type PdfDict, type PdfRef, type PdfValue } from '../../src/core/pdf/objects';
 import { loadPdf } from '../../src/engine';
 import { FIXTURES_DIR } from '../fixtures/paths';
 import { nodeAssetBase } from '../helpers/pdfjs-node';
@@ -122,6 +122,33 @@ describe('planFieldWrites · casos sueltos', () => {
     const change = { field: fieldNamed(fields, 'nombre'), value: { kind: 'checkbox', checked: true } as const };
     await expect(planFieldWrites(reader, [change], () => ref(reader.xref.size))).rejects.toBeInstanceOf(PdfSyntaxError);
   });
+
+  it('casilla marcada cuyos widgets no tienen exportValue lanza PdfSyntaxError (no inventa un estado)', async () => {
+    const fields = await readFormFields(ORIGINAL);
+    const reader = await ObjectReader.open(memorySource(ORIGINAL));
+    const acepto = fieldNamed(fields, 'acepto');
+    const noState = { ...acepto, widgets: acepto.widgets.map((w) => ({ ...w, onState: null })) };
+    await expect(
+      planFieldWrites(reader, [{ field: noState, value: { kind: 'checkbox', checked: true } }], () =>
+        ref(reader.xref.size),
+      ),
+    ).rejects.toBeInstanceOf(PdfSyntaxError);
+  });
+
+  it('casilla desmarcada cuyos widgets no tienen exportValue escribe /AS /Off y /V /Off sin lanzar', async () => {
+    const fields = await readFormFields(ORIGINAL);
+    const reader = await ObjectReader.open(memorySource(ORIGINAL));
+    const acepto = fieldNamed(fields, 'acepto');
+    const noState = { ...acepto, widgets: acepto.widgets.map((w) => ({ ...w, onState: null })) };
+    const writes = await planFieldWrites(reader, [{ field: noState, value: { kind: 'checkbox', checked: false } }], () =>
+      ref(reader.xref.size),
+    );
+    const dicts = writes.map((w) => w.value).filter(isDict);
+    const asValues = dicts.map((d) => dictGet(d, 'AS')).filter((v) => v !== undefined);
+    const vValues = dicts.map((d) => dictGet(d, 'V')).filter((v) => v !== undefined);
+    expect(asValues).toEqual(acepto.widgets.map(() => name('Off')));
+    expect(vValues).toEqual([name('Off')]);
+  });
 });
 
 describe('forms-write · núcleo con form-full.pdf', () => {
@@ -148,6 +175,8 @@ describe('forms-write · núcleo con form-full.pdf', () => {
       expect(byName('nombre').map((a) => a.fieldValue)).toEqual(['María José', 'María José']);
       expect(byName('acepto')[0]?.fieldValue).toBe('Si');
       expect(byName('color').map((a) => a.fieldValue)).toEqual(['Azul', 'Azul', 'Azul']);
+      // pdf.js entrega las listas de selección (también la simple) como array de valores.
+      expect(byName('pais')[0]?.fieldValue).toEqual(['pt']);
       expect(byName('idiomas')[0]?.fieldValue).toEqual(['Francés', 'Alemán']);
       expect(byName('persona.apellido')[0]?.fieldValue).toBe('Núñez');
       expect(byName('rotado')[0]?.fieldValue).toBe('Hola');
@@ -255,6 +284,19 @@ describe('forms-write · núcleo con form-full.pdf', () => {
     if (typeof parent !== 'string') throw new Error('el widget de color no tiene /Parent');
     expect(dictOf(objects, Number(parent.split(' ')[0]))['/V']).toBe('/Off');
     for (const num of widgetNums(fields, 'color')) expect(dictOf(objects, num)['/AS']).toBe('/Off');
+  });
+
+  it('lista múltiple sin elegidos: /V [] y /I [] con qpdf, y pdf.js la reimporta sin selección', async () => {
+    const fields = await readFormFields(ORIGINAL);
+    const { data } = await save(changesFor(fields, { idiomas: { kind: 'choice', selected: [] } }));
+    const objects = qpdfObjects(checkWithQpdf(data));
+    const [idiomas] = widgetNums(fields, 'idiomas');
+    const field = dictOf(objects, idiomas ?? -1);
+    expect(field['/V']).toEqual([]);
+    expect(field['/I']).toEqual([]);
+
+    const reimported = await readFormFields(data);
+    expect(fieldNamed(reimported, 'idiomas').initial).toEqual({ kind: 'choice', selected: [] });
   });
 
   it('anotaciones y campos a la vez: un único incremento válido; pdf.js ve la anotación y los valores', async () => {
