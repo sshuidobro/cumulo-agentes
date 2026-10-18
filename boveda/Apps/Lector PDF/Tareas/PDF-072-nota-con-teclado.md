@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-072
 titulo: Colocar una nota solo con el teclado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-033, PDF-070, PDF-071]
 intentos: 0
 skills: [calidad-profesional]
@@ -84,4 +84,10 @@ Crear una nota sin ratón. Hoy «Nota» activa la herramienta y la nota solo se 
 - Qué he hecho: «Nota» con Intro/Espacio (`detail === 0`) crea la nota en la página actual arriba a la izquierda de lo visible, la selecciona, abre su ventana y deja la herramienta en «ninguna»; con ratón no cambia nada. Los valores de `keyboardNoteRect` de la ficha salen tal cual (la fila de rotación 90 con fracción 0,5 da `[330, 24, 350, 44]`, que sigue el pseudocódigo exacto). Una sola entrada de deshacer.
 - Comandos ejecutados y resultado: `pnpm lint` OK (código 0); `pnpm typecheck` OK; `pnpm test` OK (143 ficheros, 1709 tests); `pnpm --filter lector-pdf e2e` OK (156 passed); `pnpm coverage` OK (líneas globales 97,05 %). Antes de llegar aquí, dos errores de typecheck en mis tests (`exact` no existe en Testing Library y un estrechamiento de tipo en el helper e2e): corregidos.
 - Dudas o cosas que no he podido hacer: (1) Adapté `tests/e2e/annotations-keyboard.spec.ts`: el paso de «Nota» ahora usa `click()` (flujo de ratón) en lugar de Intro, porque con Intro la nota se crearía sola; actualicé su cabecera, que decía que colocar una nota con teclado no se podía probar. (2) Ctrl+Y/Ctrl+Z tras la nota por teclado está cubierto en test unitario (`undo`/`redo` sobre `addNoteFromKeyboard`), no en UI ni e2e. (3) `apps/lector-pdf/tests/ui/comments-panel.test.tsx` ya estaba modificado sin commitear antes de empezar; no es de esta ficha y no lo incluyo en el commit.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+Lint, typecheck y `pnpm test` (1709) con código 0. El e2e no pude relanzarlo (puerto 4173 ocupado por otro proceso); me fío del 156 passed del programador, y el test e2e nuevo cubre el flujo completo, incluidos Ctrl+Z/Ctrl+Y. `keyboardNoteRect` sigue el pseudocódigo exacto y los tests cubren los valores de la ficha.
+1. (opcional) `apps/lector-pdf/tests/ui/comment-toolbar.test.tsx` final — línea en blanco sobrante al final del fichero.
+2. (opcional) Registro del programador, duda 2 — dice que Ctrl+Z/Ctrl+Y no está en e2e, pero sí lo está en `tests/e2e/notes.spec.ts`.
+3. (opcional) Hay cambios sin commitear ajenos a la ficha (`comments-panel.test.tsx`, PDF-039/070/071 y Plan); no mezclarlos en el commit de PDF-072.
 
