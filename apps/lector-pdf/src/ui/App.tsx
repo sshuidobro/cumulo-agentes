@@ -14,6 +14,10 @@ import { SelectionActions } from './viewer/SelectionActions';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
 import { PropertiesDialog } from './properties/PropertiesDialog';
+import { PrintContainer } from './print/PrintContainer';
+import { PrintDialog } from './print/PrintDialog';
+import { PrintProgress } from './print/PrintProgress';
+import './print/print.css';
 import { Sidebar } from './sidebar/Sidebar';
 import { SearchBar, focusSearchField } from './search/SearchBar';
 import { toggleSidebar } from '../state/sidebar-actions';
@@ -29,6 +33,7 @@ import { goBack, goForward } from '../state/history';
 import { dismissNotice } from '../state/notice';
 import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/view-actions';
 import { openProperties } from '../state/properties-store';
+import { openPrintDialog } from '../state/print-actions';
 import { useViewer } from '../state/viewer-store';
 import { focusPageField } from './toolbar/PageNavigator';
 import { selectPageText } from './viewer/text-selection';
@@ -72,6 +77,7 @@ const VIEW_SHORTCUTS = {
   save: () => { blurActiveElement(); void save(); },
   'save-as': () => { blurActiveElement(); void saveAs(); },
   properties: () => { openProperties(); },
+  print: () => { openPrintDialog(); },
 } as const;
 
 function blurActiveElement(): void {
@@ -130,6 +136,9 @@ export function App() {
       <Notice notice={notice} onExpire={dismissNotice} />
       <ChoiceDialog />
       <PropertiesDialog />
+      <PrintDialog />
+      <PrintProgress />
+      <PrintContainer />
       {platform.kind === 'web' && (
         <>
           <input

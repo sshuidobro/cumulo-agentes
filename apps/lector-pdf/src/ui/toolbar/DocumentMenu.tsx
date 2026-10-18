@@ -1,7 +1,9 @@
 import { MenuButton } from '../kit/MenuButton';
 import { IconMore } from '../icons';
 import { formatShortcut } from '../shortcuts';
+import { printMsg } from '../messages-print';
 import { propertiesMsg } from '../messages-properties';
+import { openPrintDialog } from '../../state/print-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -20,6 +22,12 @@ export function DocumentMenu() {
           label: propertiesMsg.menuItem,
           shortcut: formatShortcut('properties', platform.isMac),
           onSelect: () => { openProperties(); },
+        },
+        {
+          kind: 'action',
+          label: printMsg.menuItem,
+          shortcut: formatShortcut('print', platform.isMac),
+          onSelect: () => { openPrintDialog(); },
         },
       ]}
     >
