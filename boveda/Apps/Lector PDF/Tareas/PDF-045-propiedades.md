@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-045
 titulo: Propiedades del documento (Ctrl+D) y menú «Más acciones»
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
