@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-011
 titulo: Zoom y rotación de vista en la interfaz (barra, atajos, Ctrl+rueda, anclaje)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-010]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, ui, zoom]
 ---
 
@@ -79,3 +79,18 @@ Verificado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (87 ficheros, 1092 tests)
 1. (opcional) `apps/lector-pdf/src/ui/use-shortcuts.ts` — dentro del campo de zoom los atajos Ctrl++/-/0 no hacen `preventDefault` (por `ALLOW_IN_EDITABLE`) y en navegador disparan el zoom del navegador; valorar permitir los de zoom en editables.
 2. (opcional) `tests/e2e/zoom.spec.ts` — la captura del giro solo se adjunta, no se compara con referencia; el tester debe revisarla a mano.
 3. (opcional) Estabilizar `viewer-stress.spec.ts` / `viewer.spec.ts` (tiempos de espera bajo carga) en una ficha aparte.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Acciones (zoomIn/out, rotateView) | OK | `pnpm test` 0 fallos (`tests/unit/view-actions.test.ts`) |
+| UI campo/lista (150, abc, Esc, fit-page) | OK | `tests/ui/zoom-controls.test.tsx` en `pnpm test` |
+| Atajos y no girar dentro de input | OK | tests ui + `zoom-qa.spec.ts` (Ctrl+Mayús+Flecha en campo no gira) |
+| aria-label y title con atajo | OK | `zoom-qa.spec.ts` (title con `Ctrl++`) |
+| E2E Ctrl++ x3, Ctrl+rueda, giro | OK | `pnpm --filter lector-pdf e2e`: 29/29 |
+| Captura girada revisada a mano | OK | giro a la izquierda: texto vertical legible de abajo a arriba, página apaisada |
+| lint, typecheck, test, coverage | OK | código 0; líneas 98,82 % |
+
+Tests añadidos: `apps/lector-pdf/tests/e2e/zoom-qa.spec.ts` (límites 10 %/800 %, Ctrl+Mayús+Flecha dentro del campo, tooltip con atajo, giro con atajo).
+Rendimiento: sin cambios en presupuestos; e2e de scroll sin tareas largas > 100 ms pasa.
+Observación no bloqueante: opcional del revisor (Ctrl++ dentro del campo de zoom en navegador) sin tratar.
