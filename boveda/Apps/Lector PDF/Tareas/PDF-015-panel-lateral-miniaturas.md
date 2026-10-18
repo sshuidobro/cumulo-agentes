@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-015
 titulo: Panel lateral con pestañas y miniaturas virtualizadas
 app: pdf
-estado: en-revision
+estado: en-curso
 depende_de: [PDF-012]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -60,3 +60,9 @@ Un panel lateral izquierdo que se abre/cierra (F4) con pestañas («Miniaturas»
   2. Persistencia de la última pestaña: `prefs.sidebar` guarda también `none`, así que tras cerrar el panel la pestaña recordada vive solo en memoria de sesión; al reabrir la app, «Panel lateral» abre miniaturas. Lo he interpretado como la ficha pide (guarda los 4 valores). Es decisión del líder si debe persistir la última pestaña aparte.
   3. Un PDF con `PageMode /UseOutlines` deja el store en `outline`: el panel se abre con la barra de pestañas sin ninguna seleccionada y sin contenido hasta que PDF-016 añada la pestaña «Marcadores».
   4. No he hecho `git commit`: el árbol tiene cambios de PDF-012/014/019 sin confirmar y no quería mezclarlos con este trabajo.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Comprobado: `pnpm typecheck` OK; `pnpm test` 1348 en verde. `pnpm lint` falla (ver punto 2). Código del panel, miniaturas, virtualización, prioridad 2, cancelación/liberación de lienzos y teclado: correcto, sin hallazgos bloqueantes.
+1. `apps/lector-pdf/tests/e2e/viewer.spec.ts:88` — el test «el visor es enfocable con Tab» falla porque el botón «Panel lateral» (esta ficha) eleva a 17 los controles previos al visor y el bucle solo da 12 pulsaciones. El criterio exige `pnpm --filter lector-pdf e2e` con código 0 y el test está sin tocar — hacerlo robusto, igual que se hizo con zoom-controls: sin número fijo de pulsaciones, pulsar Tab hasta que el visor tenga el foco con un límite holgado (p. ej. 40) o enfocar por rol y comprobar el orden relativo.
+2. `apps/lector-pdf/tests/e2e/text-qa.spec.ts:6,20` — `pnpm lint` falla (`consistent-type-imports` y `no-non-null-assertion`). NO atribuible al programador: es de un tester (PDF-013/014). Se señala para que el líder lo derive al tester; hasta que se arregle el criterio `pnpm lint` código 0 no puede darse por cumplido, pero no es trabajo de esta ficha.
+3. (opcional) `src/state/sidebar-actions.ts` — `lastTab` solo vive en memoria; decisión del líder si debe persistirse (duda 2 del programador).
