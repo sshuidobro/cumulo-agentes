@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-041
 titulo: Rellenar campos de texto, combos y listas en pantalla
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-081]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -90,3 +90,6 @@ Tests añadidos: `apps/lector-pdf/tests/unit/form-highlight-contrast.test.ts` (R
 - Qué he hecho: añado `.night.highlight { background: rgb(60 80 160 / 55%); }` (azul oscuro, sobre él #e6e6e6 queda a 8,75:1 frente al fondo #1f1f23 del modo noche) y reindento `--shadow-page` según la nota del revisor. El resto del resaltado (modo claro) no cambia.
 - Comandos ejecutados y resultado: `pnpm lint` OK (0 errores, 0 avisos; antes fallaban 6 `no-non-null-assertion` en el test del tester); `pnpm --filter lector-pdf typecheck` OK; `pnpm --filter lector-pdf exec vitest run tests/unit/form-highlight-contrast.test.ts tests/ui/form-layer.test.tsx` OK (16/16). No ejecutado e2e ni perf (indicado por el líder: el tester está con PDF-044).
 - Dudas o cosas que no he podido hacer: el contraste en modo noche se comprueba con el test unitario (fórmula WCAG sobre el color pintado), no con captura de pantalla. Queda pendiente que el tester repita `pnpm --filter lector-pdf e2e` completo.
+
+### [revisor] ronda 2 — 2026-10-18 — APROBADO
+Comprobado: typecheck OK, eslint del test sin avisos, `form-highlight-contrast` y `form-layer` en verde (16/16). La regla `.night.highlight` se aplica (`FormLayer.tsx` pone `styles.night` y `styles.highlight` solo sin foco, así que no pisa a `.night.editing`). Color `rgb(60 80 160 / 55%)` sobre `#1f1f23` da contraste suficiente frente a `#e6e6e6`. Sangría de `--shadow-page` corregida. Sin e2e/perf por indicación (tester ocupado); el tester debe repetir el e2e completo. Sin problemas bloqueantes (0).
