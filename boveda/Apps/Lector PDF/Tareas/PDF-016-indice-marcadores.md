@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-016
 titulo: Índice (marcadores) del documento en el panel lateral
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-015, PDF-014]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-18
@@ -75,3 +75,7 @@ Si `vitest.perf.config.ts` (raíz), el script `perf` del `package.json` raíz, s
 - Qué he hecho: núcleo puro del índice (validación de cada campo, profundidad máx. 64, ids por ruta, aplanado virtual), motor con `getOutline` que nunca lanza, pestaña «Marcadores» como `role="tree"` virtualizada (filas de 28 px) con teclado completo, activación (interno, acción, externo con confirmación, bloqueado con aviso) y estados de carga y vacío. Se extrajo el diálogo de enlace externo para reutilizarlo y `LinkLayer` lo usa ahora.
 - Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK; `pnpm test` y `pnpm coverage` OK (121 ficheros, 1455 tests); `pnpm perf` OK (incluye el de 10 000 marcadores); E2E de `outline.spec.ts` con config temporal en el puerto 4399: 4/4 OK. E2E completa de la app en 4399: 72 OK y 1 fallo en `tests/e2e/annotations-layer.spec.ts` («borrar el resaltado con Supr»: `getImageData` sobre un lienzo de tamaño 0), ajeno a esta ficha (anotaciones, PDF-031 en curso). Config temporal y `test-results-4399` borrados.
 - Dudas o cosas que no he podido hacer: (1) Decisiones menores: «recortado» = quitar caracteres de control, colapsar blancos y recortar, sin límite de longitud; el estado de despliegue va en el store (`outlineExpanded`, no estaba en la ficha) para no perderlo al cambiar de pestaña. (2) No he hecho commit ni stash: el árbol está compartido con PDF-018, PDF-031 y PDF-037 (las fichas siguen en `en-revision` sin commit propio). (3) `document-actions` importa `getOutline` desde `engine/outline` y no desde el índice de `engine`, porque tests existentes mockean `src/engine` sin esa función.
+
+### [revisor] ronda 1 — 2026-10-18 — CAMBIOS
+Comprobado: `pnpm lint` OK; tests de la ficha (32) OK; `pnpm perf` OK (12 ficheros); E2E `outline.spec.ts` 4/4 OK (puerto 4406, config temporal borrada). Núcleo, panel (ARIA, virtualización, teclado) y activación correctos.
+1. `apps/lector-pdf/tests/e2e/outline.spec.ts:50` — `pnpm typecheck` falla (TS2769): con `noUncheckedIndexedAccess`, `selector` desestructurado de `[selector]` es `string | undefined` y no vale para `document.querySelector`. El criterio exige `pnpm typecheck` con código 0 y el error está en un fichero de esta ficha. Pasa el selector como argumento simple (`page.evaluate((selector) => ..., '[data-page-index="2"]')`) o tipa la tupla, y confirma `pnpm typecheck` en verde.
