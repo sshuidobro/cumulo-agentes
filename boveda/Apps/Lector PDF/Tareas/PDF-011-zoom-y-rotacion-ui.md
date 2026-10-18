@@ -94,3 +94,4 @@ Verificado: `pnpm lint`, `pnpm typecheck`, `pnpm test` (87 ficheros, 1092 tests)
 Tests añadidos: `apps/lector-pdf/tests/e2e/zoom-qa.spec.ts` (límites 10 %/800 %, Ctrl+Mayús+Flecha dentro del campo, tooltip con atajo, giro con atajo).
 Rendimiento: sin cambios en presupuestos; e2e de scroll sin tareas largas > 100 ms pasa.
 Observación no bloqueante: opcional del revisor (Ctrl++ dentro del campo de zoom en navegador) sin tratar.
+Nota: al final, `pnpm lint` falla por `tests/unit/pdf/interop.test.ts` (imports sin usar; fichero ajeno a PDF-011, sin commit/en curso de otra ficha); lint de los ficheros de PDF-011 limpio.

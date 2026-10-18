@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-029
 titulo: Interoperabilidad - validar los PDFs guardados con qpdf, pdf.js y el corpus
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-028, PDF-004]
 intentos: 0
 skills: [formatos-ofimatica, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-18
 tags: [tarea, pdf, anotaciones, pruebas, formato]
 ---
 
@@ -47,3 +47,23 @@ Demostrar con una herramienta independiente (qpdf) que lo que escribimos son **a
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/tests/unit/pdf/interop.test.ts` (nuevo); `apps/lector-pdf/tests/support/qpdf.ts` (nuevo: `qpdfCheck`, `qpdfAnnotations`, más `qpdfObjects` y `qpdfVersion`); `apps/lector-pdf/tests/support/standard-annotations.ts` (nuevo: conjunto estándar, 6 anotaciones en la página 1); `apps/lector-pdf/tests/support/save-annotations.ts` (nuevo: guardado con el escritor real, compartido por test y muestras); `apps/lector-pdf/tests/support/interop-samples.ts` y `apps/lector-pdf/scripts/interop-samples.mjs` (nuevos: muestras); `apps/lector-pdf/package.json` (una línea: script `interop:samples`); `.gitignore` (`apps/lector-pdf/interop-samples/`).
+- Qué he hecho: `interop.test.ts` prueba 21 ficheros (11 generados no dañados de ≤ 5 000 páginas: annotated, basic-5, compressed, form, images-200, incremental-updates, links, outline, pages-5000, page-labels, sizes-mixed; y los 10 del corpus). Para cada uno: conjunto estándar en p1, `qpdf --check` sin empeorar, los 6 subtipos con sus claves y reimportación con pdf.js (tipo, geometría ±0,01, color ±1/255, contenido, autor, fechas). Ida y vuelta de `annotated.pdf` en 3 guardados seguidos (modificar 1, borrar 1, añadir 2) con `diffAnnotations` vacío. Conservación: Square y Link de p3 idénticos en qpdf JSON; `/AcroForm` de `form.pdf` igual. No se ha encontrado ningún fallo del escritor: no se ha tocado `incremental.ts` ni `to-pdf.ts`.
+- Desviación: la ficha pide `qpdf --json --json-key=objects`, pero con qpdf 11.9.0 esa clave solo vale para JSON v1 y falla. Se usa `qpdf --json=2` y se lee `qpdf[1]` (mismo formato `"obj:N G R"` con `value`). El script `interop:samples` ejecuta el TypeScript con el servidor SSR de Vite (ya es dependencia de desarrollo; el núcleo usa imports sin extensión que Node no resuelve); no se añade ninguna dependencia.
+- Comandos ejecutados y resultado:
+  - `apt`: qpdf ya instalado, versión **11.9.0**.
+  - `npx vitest run tests/unit/pdf/interop.test.ts` → 88 pruebas OK, 5,1 s (el conjunto de la ficha tarda < 60 s).
+  - `pnpm --filter lector-pdf interop:samples` → 3 ficheros; `qpdf --check` = 0 en los tres; `git status` no los muestra (ignorados).
+  - `pnpm typecheck` → sin errores.
+  - `pnpm test` → 88 ficheros, 1180 pruebas OK.
+  - `pnpm lint` → **falla fuera de esta ficha**: `apps/lector-pdf/tests/e2e/zoom-qa.spec.ts` (sin versionar, no es mío; 3 errores de `consistent-type-imports` y `no-non-null-assertion`). Mis ficheros pasan ESLint sin avisos (`eslint --max-warnings 0` sobre ellos). No lo he tocado.
+- Dudas o cosas que no he podido hacer:
+  - Lista manual para Adobe Acrobat Reader (para el Manual; abrir con Adobe y luego con la app):
+    1. Abrir `apps/lector-pdf/interop-samples/estandar-basic-5.pdf`, `estandar-annotated.pdf` y `estandar-form.pdf`.
+    2. En la página 1 se ven seis marcas: resaltado amarillo, subrayado azul, tachado rojo, nota con icono de comentario verde, texto libre y trazo cian.
+    3. El panel de comentarios lista las seis con autor «Prueba» y el texto con acentos y «€».
+    4. Responder a una nota y guardar (Ctrl+S) sin mensajes de error.
+    5. Reabrir el fichero en la app y comprobar que las anotaciones siguen ahí (la UI de anotaciones llega con PDF-031 y PDF-037). En `estandar-annotated.pdf` deben seguir también las anotaciones previas del fichero; en `estandar-form.pdf`, el formulario.
+  - Comprobación real en Adobe: la hace el usuario con esta lista. Pendiente.
