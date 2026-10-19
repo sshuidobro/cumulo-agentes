@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-056
 titulo: Crear PDF desde imágenes - núcleo
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-121, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -96,3 +96,17 @@ export function jpegDensity(bytes: Uint8Array): number | null;
 
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 - Lint, typecheck, tests del fichero (29) y perf OK; cobertura 100 % según el programador. Criterios cubiertos, op registrada, sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Original (10 imágenes, qpdf 0, JPEG byte a byte) | OK | test l.112 |
+| EXIF 6 40×20 en fit, matriz | OK | test l.142 |
+| A4 apaisada centrada | OK | test l.171 |
+| SMask solo con alfa | OK | test l.208 |
+| pdf.js numPages/dimensiones | OK | test l.112 |
+| JPEG corrupto / lista vacía | OK | l.238, l.250 |
+| Perf 200 JPEG < 1500 ms | OK | vitest.perf.config.ts images-to-pdf: 1 passed |
+| Cobertura ≥ 90 %, lint, typecheck, coverage | OK | 95,91 % stmts / 100 % líneas; 255 ficheros, 3238 tests, exit 0 |
+
+Tests añadidos: ninguno (los 21 existentes cubren todos los criterios). Rendimiento: dentro de presupuesto.
