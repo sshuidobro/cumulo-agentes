@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-018
 titulo: Platform.exportFile e importFile - exportar e importar sin tocar recientes
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-017]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -78,3 +78,15 @@ importFile(filters: readonly FileFilter[], maxBytes: number): Promise<Result<Imp
 - Revisado `types.ts`, `platform-web.ts` (exportFile/importFile), `platform-tauri.ts` (exportFile/importFile), Rust y fake. Cumple los criterios: sin `remember`, token cerrado en `finally`, `out-of-range` antes de leer, cancelar correcto.
 - Comprobado: `pnpm lint` 0; tsc de `packages/platform` OK; vitest de `packages/platform` 250/250; `cargo test` y `clippy -D warnings` OK.
 - Nota para el tester/líder: el typecheck y 2 tests de UI de `apps/lector-pdf` fallan por WIP ajeno (ver registro del programador); no atribuible a COM-018.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Web exportFile (picker/download/cancelar) | OK | `packages/platform/tests/web/platform-web-export.test.ts` en verde dentro de `pnpm coverage` |
+| Tauri exportFile (remember:false, close, error E/S) | OK | `tests/tauri/export-tauri.test.ts` en verde |
+| importFile web/Tauri (bytes, out-of-range, null, token) | OK | mismos ficheros, 250 tests de platform en verde |
+| saveAs/openFile siguen en recientes | OK | tests previos sin cambios, verdes |
+| cargo fmt/clippy -D warnings/test | OK | todos código 0 |
+| lint / typecheck platform / coverage | OK | lint 0; `tsc` de packages/platform 0; líneas 94,96 % |
+- Ajeno a COM-018: `tsc` de `apps/lector-pdf` falla (`comment-list.test.ts` sin `state`/`replyCount`, WIP de comentarios). En `pnpm coverage` 1 test de lector-pdf (`page-tree.test.ts`, pages-5000) falló bajo carga y pasa aislado (18/18): flaky por tiempo, a vigilar por el líder.
+- Tests añadidos: ninguno (cobertura existente suficiente). Rendimiento: no aplica.
