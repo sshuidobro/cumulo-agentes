@@ -28,6 +28,7 @@ Acrobat Reader tiene «Leer en voz alta» ([[PDF-067-leer-en-voz-alta|PDF-067]],
 - Un `SpeechSynthesisUtterance` por fragmento; el siguiente se encola al terminar el anterior (`onend`), así pausa, parar y cambiar de velocidad son inmediatos. Velocidad 0,5 a 2 (pasos de 0,25), guardada en preferencias.
 - Alcances: «Leer esta página» y «Leer hasta el final» (pasa de página y la lleva a la vista). Atajos de Acrobat: Ctrl+Mayús+V (página), Ctrl+Mayús+B (hasta el final), Ctrl+Mayús+C (pausa/reanudar), Ctrl+Mayús+E (parar).
 - Se para al cambiar de documento o pestaña, al cerrar y al empezar otra lectura.
+- En el navegador, algunos de esos atajos los reserva el propio navegador (Chrome: Ctrl+Mayús+C abre las herramientas de desarrollo, Ctrl+Mayús+B la barra de marcadores): se registran igual (en escritorio funcionan) y la barra de lectura ofrece siempre botones y Espacio para pausar cuando tiene el foco.
 
 ## Consecuencias
 - En Linux con WebKitGTK sin voces la función aparece deshabilitada con su explicación.
