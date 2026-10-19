@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-051
 titulo: Lienzo de detalle para zoom alto
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-098, PDF-050]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, visor, rendimiento]
 ---
 
@@ -52,3 +52,12 @@ Con zoom alto el lienzo de página entera se limita (ADR-0007) y se ve borroso. 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: ninguno en esta ronda. La implementación ya estaba en el commit `2f33d73` (WIP): `engine/render.ts` (`offset`), `ui/viewer/PageView.tsx` (lienzo de detalle, `detailHostRef`, liberación), `ui/viewer/Viewer.tsx` (`viewportRect`), `ui/viewer/Viewer.module.css` (`.detailHost`). Tests: `tests/ui/page-view-detail.test.tsx`, `tests/e2e/detail.spec.ts`.
+- Qué he hecho: he revisado el código contra cada punto de «Qué hay que hacer» y los criterios; está completo. Verificado: UI de detalle 8/8; E2E `detail.spec.ts` 7/7 (chromium) y su prueba `@perf` (20 s de scroll a 3 200 %) en `chromium-perf`, OK. El criterio de rendimiento está en `tests/e2e/detail.spec.ts` y no en `performance.spec.ts` como pedía la ficha: no lo he movido.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: OK. `pnpm typecheck`: OK.
+  - `pnpm --filter lector-pdf e2e` (todo el proyecto): 255 pasan, 1 falla: `notes.spec.ts:91` («Tab recorre comentario, Borrar, Cerrar»; PDF-033). Falla también sin los cambios de detalle (revertidos temporalmente en `PageView.tsx`/`Viewer.tsx` y restaurados), así que es anterior a esta ficha.
+  - `pnpm coverage`: 3 tests fallan y no es por esta ficha: `tests/ui/comment-toolbar.test.tsx` (2) y `tests/ui/sidebar.test.tsx` (1), los mismos que la bitácora del 19-10 marca como rojos. Mientras tanto otros agentes ejecutan vitest en el mismo repo: una ejecución de cobertura se bloqueó por el directorio `coverage/` y hubo 5 fallos transitorios que no se repiten al relanzar (`search-actions.test.ts`).
+- Dudas o cosas que no he podido hacer: (1) el E2E de `notes.spec.ts` y los 3 tests de UI rojos están fuera de esta ficha; hacen falta para que `pnpm e2e` y `pnpm coverage` den código 0. (2) La ubicación del test de rendimiento (ver arriba). (3) Como el repositorio tiene cambios de otros agentes sin confirmar, no he hecho commit de código: solo del Registro de esta ficha.
