@@ -30,18 +30,54 @@ export function diffSequences(texts: readonly string[], otherTexts: readonly str
   const b = toIds(otherTexts);
   const n = a.length;
   const m = b.length;
+
+  // Prefijo y sufijo comunes: son iguales en cualquier alineación mínima, así que no cuentan como ediciones
+  // y el núcleo de Myers trabaja solo con el tramo que de verdad cambia.
+  const shortest = Math.min(n, m);
+  let prefix = 0;
+  while (prefix < shortest && a[prefix] === b[prefix]) prefix += 1;
+  let suffix = 0;
+  while (suffix < shortest - prefix && a[n - 1 - suffix] === b[m - 1 - suffix]) suffix += 1;
+
+  const core = myersCore(a.subarray(prefix, n - suffix), b.subarray(prefix, m - suffix), maxD);
+  if (core === null) return null;
+
+  const ops: DiffOp[] = [];
+  if (prefix > 0) ops.push({ kind: 'equal', aStart: 0, aEnd: prefix, bStart: 0, bEnd: prefix });
+  for (const op of core) {
+    ops.push({
+      kind: op.kind,
+      aStart: op.aStart + prefix,
+      aEnd: op.aEnd + prefix,
+      bStart: op.bStart + prefix,
+      bEnd: op.bEnd + prefix,
+    });
+  }
+  if (suffix > 0) ops.push({ kind: 'equal', aStart: n - suffix, aEnd: n, bStart: m - suffix, bEnd: m });
+  return mergeOps(ops);
+}
+
+/** Buffer de la traza de Myers, reutilizado entre páginas (no se pone a cero: solo se leen valores escritos en la misma llamada). */
+let traceBuffer = new Int32Array(0);
+
+/** Núcleo de Myers sobre enteros ya sin prefijo ni sufijo comunes. Devuelve las operaciones en orden, sin fusionar. */
+function myersCore(a: Int32Array, b: Int32Array, maxD: number): DiffOp[] | null {
+  const n = a.length;
+  const m = b.length;
   const cap = Math.max(0, Math.min(Math.trunc(maxD), n + m));
   // v[offset + k] es el avance máximo en x de la diagonal k (x - y = k).
   const offset = cap + 1;
   const v = new Int32Array(2 * cap + 3);
-  // Traza: tras el paso d solo se guardan las diagonales k de paridad d, en steps[d][(k + d) / 2].
+  // Traza: tras el paso d solo se guardan las diagonales k de paridad d, en trace[d(d+1)/2 + (k + d) / 2].
   // La vuelta atrás necesita exactamente esos valores; así la memoria es ~D²/2 enteros.
-  const steps: Int32Array[] = [];
+  // Se reserva de una vez para todos los pasos posibles (sin crecimiento dentro del bucle).
+  const traceSize = ((cap + 1) * (cap + 2)) / 2;
+  if (traceBuffer.length < traceSize) traceBuffer = new Int32Array(traceSize);
+  const trace = traceBuffer;
 
   let foundD = -1;
   for (let d = 0; d <= cap && foundD < 0; d++) {
-    const step = new Int32Array(d + 1);
-    steps.push(step);
+    const base = (d * (d + 1)) / 2;
     for (let k = -d; k <= d; k += 2) {
       let x: number;
       if (k === -d || (k !== d && (v[offset + k - 1] ?? 0) < (v[offset + k + 1] ?? 0))) {
@@ -55,7 +91,7 @@ export function diffSequences(texts: readonly string[], otherTexts: readonly str
         y += 1;
       }
       v[offset + k] = x;
-      step[(k + d) >> 1] = x;
+      trace[base + ((k + d) >> 1)] = x;
       if (x >= n && y >= m) {
         foundD = d;
         break;
@@ -66,34 +102,36 @@ export function diffSequences(texts: readonly string[], otherTexts: readonly str
 
   // Vuelta atrás desde (n, m): en orden inverso, se construyen las operaciones.
   const reversed: DiffOp[] = [];
-  const pushOp = (kind: DiffOp['kind'], aStart: number, aEnd: number, bStart: number, bEnd: number): void => {
-    if (aEnd > aStart || bEnd > bStart) reversed.push({ kind, aStart, aEnd, bStart, bEnd });
-  };
   let x = n;
   let y = m;
   for (let d = foundD; d > 0; d--) {
     const k = x - y;
-    const prev = steps[d - 1] ?? new Int32Array(0);
-    const at = (diagonal: number): number => prev[(diagonal + d - 1) >> 1] ?? 0;
-    const fromDown = k === -d || (k !== d && at(k - 1) < at(k + 1));
+    // Valores del paso d-1 (todos escritos: el paso d-1 cubre las diagonales que se leen aquí).
+    const prevBase = ((d - 1) * d) / 2;
+    const fromDown =
+      k === -d || (k !== d && (trace[prevBase + ((k - 1 + d - 1) >> 1)] ?? 0) < (trace[prevBase + ((k + 1 + d - 1) >> 1)] ?? 0));
     const prevK = fromDown ? k + 1 : k - 1;
-    const prevX = at(prevK);
+    const prevX = trace[prevBase + ((prevK + d - 1) >> 1)] ?? 0;
     const prevY = prevX - prevK;
     const midX = fromDown ? prevX : prevX + 1;
     const midY = fromDown ? prevY + 1 : prevY;
 
-    pushOp('equal', midX, x, midY, y);
+    pushOp(reversed, 'equal', midX, x, midY, y);
     if (fromDown) {
-      pushOp('insert', prevX, prevX, prevY, midY);
+      pushOp(reversed, 'insert', prevX, prevX, prevY, midY);
     } else {
-      pushOp('delete', prevX, midX, prevY, prevY);
+      pushOp(reversed, 'delete', prevX, midX, prevY, prevY);
     }
     x = prevX;
     y = prevY;
   }
-  pushOp('equal', 0, x, 0, y);
+  pushOp(reversed, 'equal', 0, x, 0, y);
 
-  return mergeOps(reversed.reverse());
+  return reversed.reverse();
+}
+
+function pushOp(ops: DiffOp[], kind: DiffOp['kind'], aStart: number, aEnd: number, bStart: number, bEnd: number): void {
+  if (aEnd > aStart || bEnd > bStart) ops.push({ kind, aStart, aEnd, bStart, bEnd });
 }
 
 function mergeOps(ops: readonly DiffOp[]): DiffOp[] {
