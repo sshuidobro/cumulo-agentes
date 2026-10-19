@@ -82,6 +82,39 @@ describe('prepareInkCanvas (PDF-076)', () => {
     expect(ctx.strokeStyle).toBe('rgb(230 56 54)');
   });
 
+  it('con transferControlToOffscreen usa el lienzo transferido a píxeles del dpr y no toca el elemento', () => {
+    const ctx = fakeContext();
+    const off = { width: 0, height: 0, getContext: vi.fn(() => ctx) };
+    const transfer = vi.fn(() => off);
+    Object.defineProperty(HTMLCanvasElement.prototype, 'transferControlToOffscreen', {
+      value: transfer,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const canvas = document.createElement('canvas');
+      const widthBefore = canvas.width;
+      const heightBefore = canvas.height;
+      const result = prepareInkCanvas(canvas, { width: 100, height: 50, transform: [2, 0, 0, -2, 0, 100] }, 1.5, {
+        color: 'rgb(230 56 54)',
+        widthPt: 2,
+      });
+
+      expect(transfer).toHaveBeenCalledTimes(1);
+      expect(off.width).toBe(150);
+      expect(off.height).toBe(75);
+      expect(off.getContext).toHaveBeenCalledWith('2d');
+      expect(canvas.width).toBe(widthBefore);
+      expect(canvas.height).toBe(heightBefore);
+      expect(result).toBe(ctx);
+      expect(ctx.setTransform).toHaveBeenCalledWith(3, 0, 0, -3, 0, 150);
+      expect(ctx.lineWidth).toBe(2);
+      expect(ctx.strokeStyle).toBe('rgb(230 56 54)');
+    } finally {
+      Reflect.deleteProperty(HTMLCanvasElement.prototype, 'transferControlToOffscreen');
+    }
+  });
+
   it('sin contexto 2D devuelve null', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => null);
     const canvas = document.createElement('canvas');

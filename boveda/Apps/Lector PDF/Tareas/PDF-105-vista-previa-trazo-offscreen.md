@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-105
 titulo: Vista previa del trazo en OffscreenCanvas (fuera del Commit del compositor)
 app: pdf
-estado: en-curso
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -63,3 +63,17 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0018-vista-previa-del-t
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/ink-preview.ts`, `apps/lector-pdf/src/ui/viewer/AnnotationLayer.tsx` (tipo `InkDrawingContext` en ` InkStroke.ctx`), `apps/lector-pdf/tests/unit/ink-preview.test.ts` (nuevo `it` con `transferControlToOffscreen` simulado), esta ficha.
+- Qué he hecho: Paso 1 (contraste) con `return;` temporal en `requestInkPreview`: 2 tandas sin vista previa, ambas 5/5 en verde (10/10), así que la hipótesis sigue en pie y se aplicó el paso 2. Se quitó el `return;` (el diff de `AnnotationLayer.tsx` solo contiene el tipo). `prepareInkCanvas` usa `transferControlToOffscreen()` cuando existe, con fallback a `canvas.getContext` en jsdom; no se capturan excepciones de un lienzo ya transferido. `git diff -- apps/lector-pdf/tests/e2e/` vacío.
+- Comandos ejecutados y resultado:
+  - Paso 1 sin vista previa, `e2e --project=chromium-perf --no-deps --repeat-each=5 -g "2 000 eventos"`: tanda 1 → 5/5 passed (3.3 min); tanda 2 → 5/5 passed (3.3 min).
+  - Con el arreglo, misma orden, 3 tandas: 5/5, 5/5, 5/5 → **15/15** en verde.
+  - `e2e --project=chromium -g "trazo|dibujo|Dibujo|ink"` → 15 passed, 0 fallos.
+  - `pnpm lint` → 0 avisos. `pnpm --filter lector-pdf typecheck` → 0 errores. `pnpm coverage` → 197 ficheros, 2375 tests en verde. `ink-preview.ts` → 100 % de líneas (ramas 80 %, sin criterio sobre ramas).
+- Dudas o cosas que no he podido hacer: Ninguna para los criterios. Nota: el `Commit` largo de ≈ 69 ms del hilo principal no se ha medido de nuevo con trazas (`ink-trace-r*.json`); el 15/15 es la evidencia del criterio. Los cambios de `boveda/` que aparecen en `git status` (Plan, PDF-090, ADR-0016/0018/0027) son de otros agentes y no se han tocado ni commiteado.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+Lint y typecheck en 0; test unitario de `ink-preview` en verde. Diff mínimo y fiel a la ficha; el lienzo se remonta por trazo (`setInkActive` false/true), así que `transferControlToOffscreen` no se llama dos veces. Test cubre transferencia, dimensiones dpr y que el elemento no cambia. E2E 15/15 y contraste 10/10 anotados por el programador (no re-ejecutados).
+1. (opcional) `ink-preview.ts` — si `getContext('2d')` devolviera `null` tras transferir, el reintento por frame lanzaría; caso prácticamente imposible.

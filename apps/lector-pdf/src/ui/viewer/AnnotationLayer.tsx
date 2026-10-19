@@ -36,7 +36,7 @@ import { annotationOutline, cssColor } from './annotation-geometry';
 import { AnnotationShape, ZoneShape } from './annotation-shapes';
 import { FreeTextEditor } from './FreeTextEditor';
 import { toPx } from './freetext-box';
-import { drawInkSegments, prepareInkCanvas } from './ink-preview';
+import { drawInkSegments, prepareInkCanvas, type InkDrawingContext } from './ink-preview';
 import styles from './AnnotationLayer.module.css';
 import viewerStyles from './Viewer.module.css';
 
@@ -75,7 +75,7 @@ interface InkStroke {
   /** Petición de animación pendiente para la vista previa, o `null`. */
   frame: number | null;
   /** Contexto del lienzo de la vista previa; `null` hasta que el lienzo existe (PDF-076). */
-  ctx: CanvasRenderingContext2D | null;
+  ctx: InkDrawingContext | null;
   /** Coordenadas de `points` ya dibujadas en la vista previa (PDF-076). */
   drawn: number;
 }
