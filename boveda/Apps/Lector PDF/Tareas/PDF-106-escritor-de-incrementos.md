@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-106
 titulo: Separar el escritor de incrementos (delta-writer.ts) de incremental.ts
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-047, PDF-104]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -75,3 +75,9 @@ export function reserveXref(reader: ObjectReader, next: number): { readonly xref
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/tests/unit/pdf/delta-writer.test.ts` (nuevo, 9 tests). `src/core/pdf/delta-writer.ts`, `incremental.ts` y `tests/unit/pdf/delta-writer-golden.test.ts` ya estaban en HEAD con el refactor y los hashes fijados (commits 4dee6d9 y f6995dd); no los he modificado.
+- Qué he hecho: he comprobado que el golden test pasa contra el código actual (3/3) y que `delta-writer.ts` cumple la API de la ficha (no importa `core/annotations` ni `core/forms`). He añadido los tests de `startDelta`, `DeltaWriter`, `reserveXref`, `finishDelta` (tabla, flujo, `/ID`, cifrado AES-128) reabriendo el delta con `ObjectReader`. `incremental.ts` tiene 298 líneas.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (220 ficheros, 2647 tests; `delta-writer.ts` 99,13 % líneas). `pnpm perf`: `incremental.perf` y `layout.perf` OK; **falla** `compare.perf.test.ts` «se compara en ≤ 30 ms (cálculo)» (190-287 ms), también al repetirlo con la carga de la máquina bajando (load 5-7 en 4 núcleos por otros agentes). Ese código (`core/compare`) no lo toca esta ficha.
+- Dudas o cosas que no he podido hacer: el criterio `pnpm perf` con código 0 no se cumple por `compare.perf` (fallo previo, fuera de esta ficha). Hace falta revisar si el presupuesto es estable en esta máquina o si corresponde a PDF-063. No he hecho commit de otros ficheros con cambios sin confirmar (`packages/platform/tests/web/...`, `apps/lector-pdf/src/state/document-actions.ts` y similares son de otros programadores).
