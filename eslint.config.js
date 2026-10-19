@@ -13,7 +13,7 @@ export default defineConfig(
   {
     ignores: ['**/node_modules/', '**/coverage/', '**/dist/', 'boveda/', 'ejemplos/', 'target/',
       '**/src-tauri/target/', '**/src-tauri/gen/', '**/public/pdfjs/', 'fixtures/pdf/generated/',
-      '**/playwright-report/', '**/test-results/', 'apps/lector-pdf/dist-firma/'],
+      '**/playwright-report/', '**/test-results/', 'apps/lector-pdf/dist-firma/', 'apps/lector-pdf/dist-pdf090/'],
   },
   js.configs.recommended,
   tseslint.configs.strict,

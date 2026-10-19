@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-090
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089]
 intentos: 0
 skills: [pruebas-calidad, calidad-profesional]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-3, e2e, rendimiento]
 ---
 
@@ -43,3 +43,44 @@ Cerrar la iteración 3 con evidencia: un flujo completo de usuario (rellenar, fi
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `.gitignore` y `eslint.config.mjs` (ignorar `apps/lector-pdf/dist-pdf090/`); se quita del índice el `dist-pdf090/` (salida de build de una sesión anterior, 222 ficheros, que lint analizaba y daba 9 628 errores); esta ficha. Los tres specs `tests/e2e/iteration3-{flow,performance,a11y}.spec.ts` ya estaban en el repo y no se han modificado (pasan tal cual). `interop-samples/` regenerado con `interop:samples`.
+- Qué he hecho: revisado los tres specs (imports y helpers existen); lint y typecheck en verde; batería e2e completa, `iteration3-flow` y `iteration3-a11y` en verde. `interop:samples` escribe las 5 muestras y `qpdf --check` da 0 en todas; `firmado.pdf` tiene 2 `/Stamp` (dibujada + imagen). Batería repetida: chromium ×3 verde (582/582); chromium-perf ×3 con 2 fallos (ver abajo).
+- Comandos ejecutados y resultado:
+  - `pnpm lint` → 0 (tras lo de arriba). `pnpm --filter lector-pdf typecheck` → 0.
+  - `pnpm --filter lector-pdf e2e` → 0 (206 passed).
+  - `e2e --project=chromium --repeat-each=3` → 0 (582 passed).
+  - `e2e --project=chromium-perf --no-deps --repeat-each=3` → **1** (34 passed, 2 failed): `ink.spec.ts:141` «dibujar un trazo de 2 000 eventos no produce long tasks @perf» (no es de esta ficha; PDF-035) falla en 2 de 3 repeticiones con una long task de 55 ms y otra de 68 ms (su `expect` exige cero entradas del observador, que cuenta desde 50 ms). En la 1.ª repetición pasó con una de 52 ms. Los 3 iteration3 perf pasan ×3.
+  - `pnpm perf` → 0 (29 tests). `pnpm coverage` → 0 (197 ficheros, 2 374 tests; líneas 98,65 %).
+  - `pnpm --filter lector-pdf build` → **1**: `bundle:check` marca 500 004 bytes de arranque (máximo 500 000; 4 bytes de exceso). El código de la app no lo he tocado.
+  - `qpdf --check` → 0 en `impresion-pagina-1.pdf`, `form-full-iteracion-3.pdf` y `form-full-medido.pdf` (los tests lo comprueban) y en las 5 muestras de `interop-samples/`.
+- Medidas (en ms salvo indicación; 3 repeticiones):
+
+| Medida | Presupuesto | Valor ×3 |
+|---|---|---|
+| (a) long tasks al abrir y rellenar 10 campos (`form-full`) | ≤ 100 ms por tarea | 0, 0, 1 tarea de 61 ms |
+| (b) guardar formularios `form-full` (Ctrl+S → descarga) | < 1 000 | 58, 62, 64 |
+| (c) imprimir 20 páginas de `pages-5000` | < 20 000 | 993, 996, 978 |
+| (c) long tasks al imprimir 20 páginas | ≤ 100 | 0, 0, 0 |
+| Abrir `basic-5` hasta página 1 | < 1 000 | 507, 532, 494 |
+| Abrir `pages-5000` hasta página 1 | < 5 000 | 532, 521, 492 |
+| Abrir `pages-100000` hasta página 1 | < 5 000 | 1 017, 1 028, 969 |
+| Fin en `pages-5000` / `pages-100000` (página dibujada) | < 1 500 | 131/82, 105/136, 83/84 |
+| Lienzos y marcos máx. (5 000 y 100 000) | ≤ 12 | 4 y 4 |
+| Heap JS tras 30 saltos en `pages-5000` | < 400 MB | 11,3 MB |
+| Búsqueda «marcador-1» en 5 000 páginas (1.ª / completa) | — | 468/2273, 478/3265, 433/1703 |
+| Escaneo completo `pages-5000` (PDF-039) | < 10 000 | 1 669, 2 672, 2 729 |
+| Guardar 10 anotaciones en `pages-5000` (PDF-039) | < 1 000 | 117, 130, 147 |
+| Crecimiento del fichero por 10 anotaciones (PDF-039) | < 51 200 bytes | 9 077 (×3) |
+| Detener la búsqueda (PDF-039) | < 200 | 57, 59, 68 |
+
+- Accesibilidad: `iteration3-a11y` 8/8 en verde (claro y oscuro, las 4 vistas), con 0 `serious`/`critical`.
+- Dudas o cosas que no he podido hacer:
+  1. **Ficha no cumplida, bloqueo para el líder.** (a) `ink.spec.ts` @perf falla de forma intermitente (2 de 3); decisión pendiente: subir el umbral de esa prueba a 100 ms (el presupuesto de la iteración) o investigar la tarea de 55-68 ms. No la he tocado. (b) El arranque pesa 4 bytes por encima del presupuesto; hace falta recortar código o subir el máximo de `bundle:check`, decisión del líder.
+  2. Lista manual para Adobe (el líder la copia al Manual). Ficheros en `apps/lector-pdf/interop-samples/` (no versionados):
+     - `formulario-relleno.pdf`: `form-full.pdf` con nombre «María José», acepto marcado, color «Azul», país «pt». Comprobar que los campos muestran esos valores y que no aparece ninguna anotación.
+     - `firmado.pdf`: sobre `basic-5.pdf`, p1, una firma dibujada (zigzag) y una firma de imagen PNG 40×20 roja. Comprobar que se ven como sellos, sin alterar la página.
+     - `estandar-basic-5.pdf`, `estandar-annotated.pdf`, `estandar-form.pdf`: conjunto estándar de anotaciones con fechas fijas (2026-10-18). Comprobar que Adobe lista las anotaciones y que el formulario tiene sus campos.
+  3. Lo de Adobe real queda fuera de alcance, lo hace el usuario con la lista.
+- Nota: la ficha queda en `en-revision` por petición de la sesión, con el lint y la build en rojo por lo indicado arriba; no debe pasar a `hecha` sin resolver 1.a y 1.b.
