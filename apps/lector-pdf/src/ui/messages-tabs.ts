@@ -16,4 +16,8 @@ export const tabsMsg = {
   recentMenu: 'Abrir recientes',
   /** Última entrada del menú: vacía la lista de recientes. */
   recentClear: 'Borrar la lista de recientes',
+  /** Aviso al abrir un documento con ya el máximo de pestañas abiertas. */
+  tooMany: 'Puedes tener hasta 10 documentos abiertos. Cierra alguno para abrir otro.',
+  /** Aviso al abrir un documento que ya está abierto en una pestaña. */
+  alreadyOpen: (name: string): string => `“${name}” ya está abierto.`,
 } as const;

@@ -167,7 +167,7 @@ test('marcar «acepto» y Ctrl+Z con el foco en el visor la desmarca; el lienzo 
     .toBe(0);
 });
 
-test('cerrar con campos cambiados (abrir otro fichero) pregunta «¿Guardar los cambios…?»', async ({ page }) => {
+test('abrir otro fichero con campos cambiados no pregunta (PDF-094: el anterior queda en su pestaña)', async ({ page }) => {
   await openWithDownloads(page, fixture(FILE_NAME));
   const nombre = pageFrame(page, 1).getByRole('textbox', { name: 'nombre', exact: true });
   await nombre.fill('Luis');
@@ -175,11 +175,8 @@ test('cerrar con campos cambiados (abrir otro fichero) pregunta «¿Guardar los 
   await expect(page).toHaveTitle(/• /);
 
   await page.locator('[data-testid=open-input]').setInputFiles(fixture('form.pdf'));
-  const dialog = page.getByRole('dialog', { name: msg.unsavedQuestion(FILE_NAME) });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: msg.cancel, exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(nombre).toHaveValue('Luis');
+  await expect(page).toHaveTitle(/form\.pdf/);
+  await expect(page.getByRole('dialog', { name: msg.unsavedQuestion(FILE_NAME) })).toHaveCount(0);
 });
 
 test('tras cerrar sin guardar, «nombre» se recupera del borrador al abrir el mismo fichero', async ({ page }) => {

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { memorySource } from '@suite/platform';
-import { ok } from '@suite/shared';
 import { openRequested } from '../../src/state/document-actions';
 import { addAnnotation } from '../../src/state/annotation-actions';
 import { confirmDiscardOrSave, installCloseGuard } from '../../src/state/unsaved-guard';
@@ -103,43 +102,15 @@ describe('confirmDiscardOrSave y abrir otro documento', () => {
     expect(useChoice.getState().active).toBeNull();
   });
 
-  it('abrir otro documento con cambios pregunta; «Cancelar» mantiene el actual y libera el nuevo', async () => {
-    const current = await openFixture();
-    addAnnotation(newAnnotation('suite-hl-1', 'highlight', 0));
-    const other = openedFile('otro.pdf', memorySource(h.original));
-
-    const opening = openRequested(other);
-    expect(await answerChoice('Cancelar')).toBe(QUESTION);
-    await opening;
-
-    expect(useViewer.getState().file).toBe(current);
-    expect(h.closeFile).toHaveBeenCalledWith(other);
-  });
-
-  it('abrir otro documento con cambios y «No guardar» abre el nuevo', async () => {
+  it('abrir otro documento con cambios no pregunta: el nuevo se abre y el anterior queda en su pestaña', async () => {
     await openFixture();
     addAnnotation(newAnnotation('suite-hl-1', 'highlight', 0));
     const other = openedFile('otro.pdf', memorySource(h.original));
 
-    const opening = openRequested(other);
-    await answerChoice('No guardar');
-    await opening;
+    await openRequested(other);
 
+    expect(useChoice.getState().active).toBeNull();
     expect(useViewer.getState().file?.name).toBe('otro.pdf');
     expect(h.save).not.toHaveBeenCalled();
-  });
-
-  it('abrir otro documento con cambios y «Guardar» guarda antes de abrir el nuevo', async () => {
-    await openFixture();
-    addAnnotation(newAnnotation('suite-hl-1', 'highlight', 0));
-    const other = openedFile('otro.pdf', memorySource(h.original));
-    h.save.mockResolvedValueOnce(ok(openedFile(FIXTURE, memorySource(h.original))));
-
-    const opening = openRequested(other);
-    await answerChoice('Guardar');
-    await opening;
-
-    expect(h.save).toHaveBeenCalledTimes(1);
-    expect(useViewer.getState().file?.name).toBe('otro.pdf');
   });
 });
