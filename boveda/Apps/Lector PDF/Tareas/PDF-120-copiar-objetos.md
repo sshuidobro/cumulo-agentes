@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-120
 titulo: Copiar páginas y sus objetos entre PDFs (ObjectCopier)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-052]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -76,3 +76,9 @@ export class ObjectCopier {
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/object-copier.ts` (nuevo), `apps/lector-pdf/tests/unit/pdf/object-copier.test.ts` (nuevo), esta ficha (estado y Registro).
+- Qué he hecho: `ObjectCopier` con `reservePages`, `copyPage`, `drain`, `mapped`. Copia de objetos indirectos con pila explícita y memo por número de origen; páginas y `/Pages` remapeadas o `null`; atributos heredados (`Resources`, `MediaBox`, `CropBox`, `Rotate`) resueltos y copiados; anotaciones con `/P` y `/StructParent` tratados; flujos con `/Length` directo. 14 tests, todos en verde. Criterio de `pages-5000.pdf` (página 2 500) verificado con espía sobre `reader.get`.
+- Comandos ejecutados y resultado: `pnpm exec eslint` sobre los dos ficheros nuevos: limpio. `pnpm typecheck`: limpio. `pnpm exec vitest run tests/unit/pdf/object-copier.test.ts --coverage` (cobertura del módulo): 14/14 tests; `object-copier.ts` con 99,1 % de líneas. `pnpm coverage` completo: 5 tests fallan en `tests/unit/tabs-annotations.test.ts` y `tests/ui/draft-sync-tabs.test.tsx`, y `pnpm lint` falla en `tests/unit/tabs-annotations.test.ts` (`no-console`): ficheros de otro trabajo en curso, no tocados por mí.
+- Dudas o cosas que no he podido hacer: (1) El límite de profundidad de 100 lo aplica el analizador antes que el copiador, así que la guarda `demasiados niveles de anidamiento` del copiador es inalcanzable desde un PDF; la prueba comprueba el error de sintaxis que llega primero. (2) No he hecho commit, por indicación del usuario.
