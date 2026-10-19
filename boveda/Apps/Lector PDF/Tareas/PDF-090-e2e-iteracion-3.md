@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-090
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089, PDF-105]
 intentos: 1
 skills: [pruebas-calidad, calidad-profesional]
@@ -165,3 +165,45 @@ Estado → `pendiente`, depende de [[PDF-105-vista-previa-trazo-offscreen]]. `in
 - **A (bundle)**: cerrado en la replanificación 2.
 - Cuando PDF-105 esté `hecha`: hacer solo el punto 4 de la replanificación 2 desde «Luego todo el punto 5»: lint, typecheck, test, coverage, perf, build (anotar «Arranque: N»), las dos baterías ×3 con código 0 y la **tabla de medidas nueva** completa.
 - Si PDF-105 acaba `bloqueada` (la hipótesis falla), la 090 sigue esperándola; el líder decide allí.
+
+### [programador] ronda 4 — 2026-10-19
+- Ficheros cambiados: ninguno de código ni de tests (`git diff` vacío salvo esta ficha). Trazas y logs fuera del repo, en el scratchpad de la sesión.
+- Qué he hecho: comprobado que PDF-105 está `hecha` y ejecutado el punto 4 de la replanificación 2 (lint, typecheck, coverage, perf, build, baterías ×3 y tabla de medidas nueva). Las baterías **no** quedan verdes de forma estable (ver dudas).
+- Comandos ejecutados y resultado:
+  - `pnpm lint` → 0. `pnpm --filter lector-pdf typecheck` → 0. `pnpm coverage` → 0 (197 ficheros; líneas 98,65 %).
+  - `pnpm perf` → 0 (29 tests). `pnpm --filter lector-pdf build` → 0; `Arranque: 487003 bytes en 11 ficheros JS (máximo 500000)`.
+  - `e2e --project=chromium-perf --no-deps --repeat-each=3`: dos ejecuciones, ambas 36 passed y código 0. Incluye `ink.spec.ts` «2 000 eventos» en 6/6 repeticiones sin long tasks.
+  - `e2e --project=chromium --repeat-each=3`: ejecución 1 → 0 (582 passed). Ejecución 2 → **1** (581 passed, 1 failed): `render.spec.ts` «annotated: la página 1 muestra el resaltado amarillo» (repetición 1): `getImageData` con `width 0` en el primer canvas de la página, carrera del test (espera `data-rendered` y lee el canvas sin esperar a que tenga tamaño).
+  - Subconjunto `performance.spec.ts render.spec.ts search.spec.ts` ×3 (chromium): → **1** (50 passed, 1 timed out): `performance.spec.ts:94` «pages-100000.pdf: como mucho 12 lienzos…»: `openFixture` no ve el visor en 10 s y la prueba agota los 60 s. Aislada `-g` ×5 → 5/5 en verde (20,6 s).
+  - `qpdf --check` y a11y: `iteration3-flow` y `iteration3-a11y` pasaron en las dos ejecuciones de chromium; sin fallos en ellas.
+- Medidas (ms salvo indicación; valores de la repetición 1 / 2 / 3; origen: `recordMeasure` y anotaciones de las pruebas):
+
+| Medida | Presupuesto | Valor ×3 |
+|---|---|---|
+| (a) long tasks al abrir y rellenar 10 campos (`form-full`) | ≤ 100 por tarea | 0; 0; 1 de 52 |
+| (b) guardar formularios `form-full` (Ctrl+S → descarga) | < 1 000 | 58; 68; 58 |
+| (c) imprimir 20 páginas de `pages-5000` | < 20 000 | 964; 949; 960 |
+| (c) long tasks al imprimir 20 páginas | ≤ 100 | 0; 0; 0 |
+| Abrir `basic-5` hasta página 1 | < 1 000 | 534; 509; 486 |
+| Abrir `pages-5000` hasta página 1 | < 5 000 | 511; 480; 498 |
+| Abrir `pages-100000` hasta página 1 | < 5 000 | 971; 971; 1 013 |
+| Fin en `pages-5000` (página 5 000 dibujada) | < 1 500 | 203; 88; 173 |
+| Fin en `pages-100000` (página 100 000 dibujada) | < 1 500 | 119; 139; 99 |
+| Lienzos y marcos máx. `pages-5000` | ≤ 12 | 4 y 4; 4 y 4; 4 y 4 |
+| Lienzos y marcos máx. `pages-100000` | ≤ 12 | 4 y 4; 4 y 4; sin dato (tiempo agotado) |
+| Heap JS tras 30 saltos en `pages-5000` (MB) | < 400 | 11,3; 11,3; 11,3 |
+| Búsqueda «marcador-1» en 5 000 páginas: 1.ª / recorrido completo | < 1 000 / < 15 000 | 449 / 1 727; 431 / 1 695; 457 / 2 237 |
+| Escaneo completo `pages-5000` (PDF-039) | < 10 000 | 2 678; 2 708; 2 716 |
+| Guardar 10 anotaciones en `pages-5000` (PDF-039) | < 1 000 | 132; 116; 109 |
+| Crecimiento del fichero por 10 anotaciones (PDF-039, bytes) | < 51 200 | 9 077 (×3) |
+| Detener la búsqueda (PDF-039) | < 200 | 78; 69; 72 |
+| Mayor long task al hacer scroll continuo (`viewer`) | ≤ 100 | 0; 50; 0 |
+| Mayor long task al dibujar `images-200` (20 páginas) | ≤ 100 | 0; 55; 0 |
+| Trazo de 2 000 eventos (`ink`, PDF-035) | 0 long tasks > 50 ms | 0; 0; 0 |
+
+- Accesibilidad y flujo: sin fallos en `iteration3-a11y` ni `iteration3-flow` en las dos ejecuciones de chromium. Las dos ejecuciones con fallo son otras pruebas (ver dudas).
+- Bundle: 487 003 bytes ≤ 500 000 (cumple el criterio de la ficha).
+- Dudas o cosas que no he podido hacer (para el líder):
+  1. **Estabilidad (criterio «e2e ×3 con código 0» no cumplido de forma estable).** La batería chromium ×3 pasó una vez (582/582) y falló en la segunda ejecución por `render.spec.ts` «annotated» (carrera de lectura del canvas). El subconjunto de `performance`/`render`/`search` ×3 falló una vez por tiempo agotado al abrir `pages-100000` (`performance.spec.ts:94`). Ambas pruebas son anteriores a esta ficha y no las he tocado. Decidir: estabilizar esas pruebas (una ficha aparte) o aceptar el riesgo.
+  2. Ninguna medida se ha forzado ni se ha subido un umbral. La ficha queda en `en-revision`, no en `hecha`.
+  3. Las muestras de Adobe (`interop-samples/`) no se han regenerado en esta ronda; no hay cambios de código que las afecten.
