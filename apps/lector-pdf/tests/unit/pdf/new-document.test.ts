@@ -8,6 +8,10 @@ import { join } from 'node:path';
 import { memorySource } from '@suite/platform';
 import { afterAll, describe, expect, it } from 'vitest';
 import { loadPdf, type LoadedPdf, type PDFDocumentProxy } from '../../../src/engine';
+import { resolveDest } from '../../../src/engine/dest';
+import { getOutline } from '../../../src/engine/outline';
+import { getPageLinks } from '../../../src/engine/links';
+import type { OutlineNode } from '../../../src/core/outline';
 import { writeCompleteFile } from '../../../src/core/pdf/file-writer';
 import { buildNewDocument, type NewDocumentPart } from '../../../src/core/pdf/new-document';
 import { ObjectCopier } from '../../../src/core/pdf/object-copier';
@@ -393,6 +397,107 @@ describe('writeCompleteFile', () => {
     expect(text).toMatch(/\/Encrypt \d+ 0 R/);
   }, FILE_TIMEOUT);
 });
+
+describe('buildNewDocument: destinos con nombre e índice (PDF-122)', () => {
+  it('links.pdf completo: los enlaces internos (explícito, con nombre y GoTo) llevan a las páginas 3, 5 y 2', async () => {
+    const reader = await openReader(fixture('links.pdf'));
+    const result = await buildNewDocument({ parts: [{ reader, pages: allPages(await reader.pageCount()) }], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      const links = await getPageLinks(await loaded.doc.getPage(1));
+      const pageIndexes: (number | null)[] = [];
+      for (const link of links) {
+        if (link.target.kind !== 'internal') continue;
+        pageIndexes.push((await resolveDest(loaded.doc, link.target.dest))?.pageIndex ?? null);
+      }
+      // (a) página 3 → índice 2; (b) «destino-final» → página 5 → índice 4; (c) GoTo página 2 → índice 1.
+      expect(pageIndexes).toEqual([2, 4, 1]);
+    } finally {
+      await loaded.destroy();
+    }
+  }, FILE_TIMEOUT);
+
+  it('outline: branches → ramas basic-5 (índice 0) y outline con sus destinos desplazados; URI conservada', async () => {
+    const basic = await openReader(fixture('basic-5.pdf'));
+    const outline = await openReader(fixture('outline.pdf'));
+    const result = await buildNewDocument({
+      parts: [
+        { reader: basic, pages: allPages(await basic.pageCount()), title: 'basic-5' },
+        { reader: outline, pages: allPages(await outline.pageCount()), title: 'outline' },
+      ],
+      outline: 'branches',
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      const top = await getOutline(loaded.doc);
+      expect(top.map((node) => node.title)).toEqual(['basic-5', 'outline']);
+      expect(await pageOf(loaded, nodeTitled(top, 'basic-5'))).toBe(0);
+      const chapters = nodeTitled(top, 'outline').children;
+      expect(await pageOf(loaded, nodeTitled(chapters, 'Capítulo 2'))).toBe(15);
+      expect(await pageOf(loaded, nodeTitled(chapters, 'Anexo'))).toBe(34);
+      expect(nodeTitled(chapters, 'Sitio web').target).toMatchObject({ kind: 'external', url: 'https://example.org/' });
+    } finally {
+      await loaded.destroy();
+    }
+  }, FILE_TIMEOUT);
+
+  it('outline: branches sin título → «Documento 1» y «Documento 2»; una parte sin páginas no tiene rama', async () => {
+    const basic = await openReader(fixture('basic-5.pdf'));
+    const outline = await openReader(fixture('outline.pdf'));
+    const result = await buildNewDocument({
+      parts: [
+        { reader: basic, pages: allPages(await basic.pageCount()) },
+        { reader: outline, pages: [] },
+        { reader: outline, pages: [{ source: 0, rotate: 0 }] },
+      ],
+      outline: 'branches',
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      const top = await getOutline(loaded.doc);
+      expect(top.map((node) => node.title)).toEqual(['Documento 1', 'Documento 3']);
+    } finally {
+      await loaded.destroy();
+    }
+  }, FILE_TIMEOUT);
+
+  it('sin outline (por defecto) el documento no tiene índice', async () => {
+    const basic = await openReader(fixture('basic-5.pdf'));
+    const result = await buildNewDocument({ parts: [{ reader: basic, pages: allPages(5) }], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect(await getOutline(loaded.doc)).toEqual([]);
+    } finally {
+      await loaded.destroy();
+    }
+  }, FILE_TIMEOUT);
+});
+
+/** Página (base 0) de un nodo del índice, o null si no lleva a un destino interno. */
+async function pageOf(loaded: LoadedPdf, node: OutlineNode): Promise<number | null> {
+  if (node.target.kind !== 'internal') return null;
+  return (await resolveDest(loaded.doc, node.target.dest))?.pageIndex ?? null;
+}
+
+function nodeTitled(nodes: readonly OutlineNode[], title: string): OutlineNode {
+  const found = nodes.find((node) => node.title === title);
+  if (found === undefined) throw new Error(`no hay entrada «${title}»`);
+  return found;
+}
 
 /** Números nuevos a partir de `first`. */
 function counter(first: number): () => PdfRef {

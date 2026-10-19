@@ -34,6 +34,7 @@ import { newAnnotation } from './annotations/factories';
 import { organizeMsg } from '../../src/ui/messages-organize';
 import { useChoice } from '../../src/state/choice';
 import type { OrganizePlan } from '../../src/core/organize/plan';
+import { ALL_PERMISSIONS } from '../../src/core/permissions';
 
 const h = setupSaveHarness();
 
@@ -146,6 +147,23 @@ describe('organize: abrir, editar y guardar', () => {
 
     expect(useOrganize.getState().plan).toBe(before);
     expect(useViewer.getState().notice?.text).toBe(organizeMsg.cannotDeleteAll);
+  });
+});
+
+describe('organize: aviso de documento que no permite organizar', () => {
+  it('sin permiso «assemble» avisa al abrir la vista y solo una vez por documento', async () => {
+    await openFixture();
+    useViewer.setState({ permissions: { ...ALL_PERMISSIONS, assemble: false } });
+
+    await openOrganize();
+    expect(useViewer.getState().notice?.text).toBe(organizeMsg.assembleAnyway);
+    expect(useOrganize.getState().open).toBe(true);
+
+    await closeOrganize();
+    useViewer.setState({ notice: null });
+    await openOrganize();
+    expect(useOrganize.getState().open).toBe(true);
+    expect(useViewer.getState().notice).toBeNull();
   });
 });
 

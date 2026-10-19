@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-124
 titulo: Organizar - estado, acciones, guardado encadenado y escrituras de documento
 app: pdf
-estado: cambios-pedidos
+estado: hecha
 depende_de: [PDF-053, PDF-118, PDF-119, PDF-101]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -114,4 +114,22 @@ export function cancelOrganizeSave(): void;
 | Criterios funcionales (organizar, writeDocument, pendientes) | OK por tests | `organize-actions`, `save-actions`, `unsaved-guard` en verde |
 
 **Regresión introducida por 705be4a** (no son «ajenos», contra lo dicho por programador y revisor): `tests/ui/sidebar.test.tsx` («F4 abre y cierra el panel…») y `tests/ui/comment-toolbar.test.tsx` («pulsar Comentar…») pasan en 705be4a~1 (20/20, worktree limpio) y fallan en 705be4a (`Unable to find role "complementary" name "Panel lateral"` / `role "toolbar" name "Comentar"`). Reproducir: `cd apps/lector-pdf && pnpm exec vitest run tests/ui/sidebar.test.tsx tests/ui/comment-toolbar.test.tsx`. Sospecha: el cambio en `main.tsx`/`tabs.ts` (registro del participante de organize) o la importación nueva altera el montaje de la app en esos tests. `fixtures.test.ts` ya no falla.
+Tests añadidos: ninguno. Rendimiento: no aplica.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/tests/ui/sidebar.test.tsx` (test «F4 abre y cierra el panel»: espera el panel con `findByRole`); `apps/lector-pdf/tests/ui/comment-toolbar.test.tsx` (`openCommentBar` y el test del conmutador esperan la barra con `findByRole`); `apps/lector-pdf/tests/unit/organize-actions.test.ts` (test nuevo del aviso `assembleAnyway`, una vez por documento).
+- Qué he hecho: la causa de los rojos no es la lógica de organizar: `Sidebar` y `CommentToolbar` se cargan con `React.lazy` y los tests las consultaban de forma síncrona tras un clic o una tecla. Con el código de 705be4a revertido en `annotation-actions.ts` también fallaban 2-3 tests por ejecución (carrera de tiempo, no determinista). Se añade la espera explícita («findByRole»); las aserciones no cambian. Se añade también el test del aviso de permiso «assemble» que pidió el revisor.
+- Comandos ejecutados y resultado: `pnpm coverage` (raíz) código 0, 250 ficheros y 3155 tests en verde. `sidebar` + `comment-toolbar` 5 ejecuciones seguidas: 20/20 cada una. `organize-actions.test.ts`: 13/13. `eslint --max-warnings 0` sobre los 3 ficheros tocados: OK. `pnpm lint` (raíz) falla por `tests/unit/pdf/create-security.test.ts:10` (`bytesString` sin usar) y `pnpm typecheck` por `src/core/pdf/object-copier.ts:8` (no encuentra `./name-tree`); ambos ficheros son trabajo en curso de otro agente (sin tocar por mí, no están en el commit de esta ficha).
+- Dudas o cosas que no he podido hacer: (1) El criterio «`pnpm lint`, `pnpm typecheck`… sin errores» no se cumple ahora mismo por los dos ficheros ajenos citados; cuando el otro trabajo termine hay que relanzar `pnpm lint && pnpm typecheck`. (2) No he hecho commit (lo pidió el líder: otros agentes trabajan en paralelo); el código de esta ficha ya está en 705be4a y los cambios de esta ronda quedan sin commit.
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+- Los cambios de tests (`findByRole` por el `React.lazy` de Sidebar y CommentToolbar, más el test de `assembleAnyway`) mantienen las aserciones y son deterministas. Tests de sidebar, comment-toolbar, organize-actions, save-actions y unsaved-guard: 62/62. Lint y typecheck rojos solo en ficheros ajenos (`create-security.test.ts`, `object-copier.ts`).
+
+### [tester] ronda 2 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| Batería completa + cobertura | OK | `vitest run --coverage` (directorio propio, `coverage/` ocupado por otro proceso): código 0; líneas 98.6 % |
+| Regresión sidebar / comment-toolbar | Resuelta | 3 ejecuciones seguidas de los 5 ficheros afectados: 62/62 |
+| Criterios funcionales (plan, resaltado encadenado, Ctrl+S, deshacer, cancelar, error, pestañas, `writeDocument` replace) | OK | `organize-actions.test.ts` (13 casos), `save-actions.test.ts:261`, `unsaved-guard` |
 Tests añadidos: ninguno. Rendimiento: no aplica.

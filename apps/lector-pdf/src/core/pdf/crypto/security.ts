@@ -294,7 +294,7 @@ function authenticateAes256(p: EncryptParams, password: string): Authentication 
 }
 
 /** Contraseña UTF-8 (NFKC como aproximación de SASLprep), máximo 127 bytes. */
-function saslPrep(password: string): Uint8Array {
+export function saslPrep(password: string): Uint8Array {
   return new TextEncoder().encode(password.normalize('NFKC')).slice(0, 127);
 }
 
@@ -303,7 +303,7 @@ function decryptFileKey(ik: Uint8Array, encrypted: Uint8Array): Uint8Array {
 }
 
 /** Hash de R5 (SHA-256) o R6 (alg. 2.B). Devuelve 32 bytes. */
-function hashAes256(revision: 2 | 3 | 4 | 5 | 6, password: Uint8Array, salt: Uint8Array, udata: Uint8Array): Uint8Array {
+export function hashAes256(revision: 2 | 3 | 4 | 5 | 6, password: Uint8Array, salt: Uint8Array, udata: Uint8Array): Uint8Array {
   if (revision === 5) return sha256(concat(password, salt, udata));
   let k = sha256(concat(password, salt, udata));
   for (let round = 1; ; round++) {

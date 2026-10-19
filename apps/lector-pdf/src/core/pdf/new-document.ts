@@ -9,6 +9,7 @@ import { writeCompleteFile } from './file-writer';
 import { toSaveError } from './incremental';
 import { ObjectCopier } from './object-copier';
 import type { ObjectReader } from './object-reader';
+import { copyOutlineBranch, type OutlineBranch } from './outline-copy';
 import { dict, name, ref, withEntries, type PdfDict, type PdfRef, type PdfValue } from './objects';
 import { createAllocator, type PageRotation, type PageSlot } from './page-tree';
 import { planPageTree, type TreeNode } from './page-tree-layout';
@@ -17,11 +18,18 @@ import { encodeTextString, pdfDate } from './text-string';
 export interface NewDocumentPart {
   readonly reader: ObjectReader;
   readonly pages: readonly PageSlot[];
+  /** Título de la rama del índice de esta parte (con `outline: 'branches'`). Por defecto «Documento N». */
+  readonly title?: string;
 }
 
 export interface NewDocumentInput {
   /** Fuentes en este orden; las páginas de cada una van en el orden de `pages`. */
   readonly parts: readonly NewDocumentPart[];
+  /**
+   * `'branches'`: el índice tiene una rama por parte (con su índice copiado) y el visor abre con el índice visible.
+   * Por defecto `'none'`. Las partes sin páginas no tienen rama.
+   */
+  readonly outline?: 'none' | 'branches';
   /** Título para `/Info /Title` (opcional). */
   readonly title?: string;
   /** ISO 8601: fechas de `/Info` y semilla de `/ID`. */
@@ -81,16 +89,24 @@ async function writeNewDocument(input: NewDocumentInput): Promise<Result<NewDocu
   const alloc = createAllocator(FIRST_FREE_NUM);
   const objects = new Map<number, PdfValue>();
   const slots: CopiedSlot[] = [];
-  for (const part of parts) {
-    const copier = new ObjectCopier({ from: part.reader, alloc: () => alloc.next() });
+  const branches: OutlineBranch[] = [];
+  for (const [index, part] of parts.entries()) {
+    const copier = new ObjectCopier({ from: part.reader, alloc: () => alloc.next(), resolveNames: true });
     await copier.reservePages(part.pages.map((slot) => slot.source));
+    let firstRef: PdfRef | undefined;
     for (const slot of part.pages) {
       if (aborted()) return err(pdfError('cancelled'));
       const copied = await copier.copyPage(slot.source);
+      firstRef ??= copied.ref;
       slots.push({ ref: copied.ref, dict: copied.dict, rotate: slot.rotate });
       reportProgress(onProgress, slots.length, total);
     }
     for (const [objectRef, value] of copier.drain()) objects.set(objectRef.num, value);
+    if (input.outline === 'branches' && firstRef !== undefined) {
+      const branch = await copyOutlineBranch(part.reader, copier, part.title ?? `Documento ${index + 1}`, firstRef);
+      for (const [objectRef, value] of branch.objects) objects.set(objectRef.num, value);
+      branches.push(branch);
+    }
   }
 
   const rootRef = ref(PAGES_NUM);
@@ -121,7 +137,20 @@ async function writeNewDocument(input: NewDocumentInput): Promise<Result<NewDocu
     objects.set(slot.ref.num, withEntries(slot.dict, { Parent: at(parentOfSlot, i), Rotate: rotate }));
   }
 
-  objects.set(CATALOG_NUM, dict({ Type: name('Catalog'), Pages: rootRef }));
+  const catalog: Record<string, PdfValue> = { Type: name('Catalog'), Pages: rootRef };
+  if (branches.length > 0) {
+    const outlinesRef = alloc.next();
+    linkBranches(objects, branches, outlinesRef);
+    objects.set(outlinesRef.num, dict({
+      Type: name('Outlines'),
+      First: at(branches, 0).ref,
+      Last: at(branches, branches.length - 1).ref,
+      Count: branches.reduce((sum, branch) => sum + 1 + branch.visibleCount, 0),
+    }));
+    catalog.Outlines = outlinesRef;
+    catalog.PageMode = name('UseOutlines');
+  }
+  objects.set(CATALOG_NUM, dict(catalog));
   const info: Record<string, PdfValue> = {
     Producer: encodeTextString(PRODUCER),
     CreationDate: pdfDate(now),
@@ -143,6 +172,21 @@ async function writeNewDocument(input: NewDocumentInput): Promise<Result<NewDocu
     seed: `${now}|${total}`,
   });
   return ok({ bytes, pageCount: total });
+}
+
+/** Enlaza las ramas entre sí y con el nodo `/Outlines`: cada raíz de rama recibe `/Parent`, `/Prev` y `/Next`. */
+function linkBranches(objects: Map<number, PdfValue>, branches: readonly OutlineBranch[], outlinesRef: PdfRef): void {
+  for (const [i, branch] of branches.entries()) {
+    const root = objects.get(branch.ref.num);
+    if (root === undefined || typeof root !== 'object' || root === null || Array.isArray(root) || !('kind' in root) || root.kind !== 'dict') {
+      throw new RangeError(`raíz de rama ${branch.ref.num} no es un diccionario (bug)`);
+    }
+    objects.set(branch.ref.num, withEntries(root, {
+      Parent: outlinesRef,
+      Prev: branches[i - 1]?.ref,
+      Next: branches[i + 1]?.ref,
+    }));
+  }
 }
 
 /** Una parte válida: páginas en [0, n), sin repetir dentro de la parte, con giro válido. */

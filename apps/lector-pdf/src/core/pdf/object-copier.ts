@@ -4,7 +4,8 @@
  * resto del documento y nunca decodifica flujos (se copian con su `/Filter`).
  */
 import type { ObjectReader } from './object-reader';
-import { dict, dictGet, PdfSyntaxError, withEntries, type PdfDict, type PdfRef, type PdfStream, type PdfValue } from './objects';
+import { dict, dictGet, PdfSyntaxError, withEntries, type PdfDict, type PdfName, type PdfRef, type PdfStream, type PdfString, type PdfValue } from './objects';
+import { resolveNamedDest } from './name-tree';
 
 export interface CopiedPage {
   readonly ref: PdfRef;
@@ -16,6 +17,11 @@ export interface CopierOptions {
   readonly from: ObjectReader;
   /** Asigna números nuevos (p. ej. un contador desde 1). */
   readonly alloc: () => PdfRef;
+  /**
+   * Convierte los destinos con nombre en destinos explícitos (PDF-122): `/Dest` de anotaciones y `/D` de acciones
+   * `GoTo`. Por defecto `false`: los valores se copian tal cual.
+   */
+  readonly resolveNames?: boolean;
 }
 
 /** Profundidad máxima de valores directos anidados dentro de un mismo objeto. */
@@ -45,6 +51,7 @@ interface ReservedPage {
 export class ObjectCopier {
   private readonly from: ObjectReader;
   private readonly alloc: () => PdfRef;
+  private readonly resolveNames: boolean;
   /** Páginas reservadas: número de objeto de origen → ref nueva. */
   private readonly reservedNums = new Map<number, PdfRef>();
   /** Páginas reservadas por índice (base 0) del origen. */
@@ -59,6 +66,7 @@ export class ObjectCopier {
   constructor(o: CopierOptions) {
     this.from = o.from;
     this.alloc = o.alloc;
+    this.resolveNames = o.resolveNames === true;
   }
 
   /**
@@ -116,6 +124,35 @@ export class ObjectCopier {
     return this.out.splice(0);
   }
 
+  /** Número nuevo reservado con el mismo asignador que las copias (p. ej. para nodos de índice). */
+  allocRef(): PdfRef {
+    return this.alloc();
+  }
+
+  /**
+   * Copia un valor directo (con las referencias que alcance) y vacía los objetos pendientes. Lo usan el índice y
+   * otros valores que no son páginas: los objetos que salen quedan en `drain()`.
+   */
+  async copyDirect(value: PdfValue): Promise<PdfValue> {
+    const copied = await this.copyValue(value, 0);
+    await this.flush();
+    return copied;
+  }
+
+  /**
+   * Destino con nombre del origen como destino explícito con la página remapeada: `undefined` si el nombre no
+   * existe; `null` en la primera posición si la página no se copió.
+   */
+  async namedDestValue(key: PdfString | PdfName): Promise<PdfValue | undefined> {
+    const dest = await resolveNamedDest(this.from, key);
+    if (dest === null || dest.length === 0) return undefined;
+    const [page, ...rest] = dest;
+    const copied: PdfValue[] = [this.remapPage(page)];
+    for (const item of rest) copied.push(await this.copyValue(item, 0));
+    await this.flush();
+    return copied;
+  }
+
   /** Ref nueva de un objeto ya copiado del origen (por número), o undefined. */
   mapped(sourceNum: number): PdfRef | undefined {
     return this.memo.get(sourceNum) ?? undefined;
@@ -143,6 +180,15 @@ export class ObjectCopier {
       parent = dictGet(node, 'Parent');
     }
     return chain;
+  }
+
+  /** Página del destino explícito: su ref nueva si se copió; `null` si no. */
+  private remapPage(v: PdfValue | undefined): PdfValue {
+    if (isRef(v)) {
+      const mapped = this.reservedNums.get(v.num);
+      if (mapped !== undefined) return mapped;
+    }
+    return null;
   }
 
   private copyValue(v: PdfValue, depth: number): Promise<PdfValue> {
@@ -192,9 +238,35 @@ export class ObjectCopier {
           continue;
         }
       }
+      if (this.resolveNames) {
+        if (role === 'annot' && key === 'Dest' && isNamedKey(value)) {
+          const named = await this.namedDestValue(value);
+          if (named !== undefined) entries.set(key, named);
+          continue;
+        }
+        if (key === 'A') {
+          const action = await this.copyAction(value, depth);
+          if (action !== undefined) entries.set(key, action);
+          continue;
+        }
+      }
       entries.set(key, await this.copyRoleValue(value, depth + 1, 'plain'));
     }
     return dict(entries);
+  }
+
+  /**
+   * Acción `GoTo` con destino con nombre → la misma acción con destino explícito; si el nombre no existe,
+   * `undefined` (la acción se quita). El resto de acciones se copian tal cual.
+   */
+  private async copyAction(value: PdfValue, depth: number): Promise<PdfValue | undefined> {
+    const action = await this.from.resolve(value);
+    if (action === undefined || !isDict(action)) return this.copyRoleValue(value, depth + 1, 'plain');
+    const target = dictGet(action, 'D');
+    if (typeNameOf(dictGet(action, 'S')) !== 'GoTo' || !isNamedKey(target)) return this.copyRoleValue(value, depth + 1, 'plain');
+    const named = await this.namedDestValue(target);
+    if (named === undefined) return undefined;
+    return withEntries(await this.copyDict(action, depth + 1, 'plain', ['D']), { D: named });
   }
 
   /** Transforma un objeto indirecto ya leído (su `/Length` pasa a ser directo). */
@@ -231,6 +303,16 @@ function isRef(v: PdfValue | undefined): v is PdfRef {
 
 function isDict(v: PdfValue): v is PdfDict {
   return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'dict';
+}
+
+/** Cadena o nombre PDF: clave de un destino con nombre. */
+function isNamedKey(v: PdfValue | undefined): v is PdfString | PdfName {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && (v.kind === 'name' || v.kind === 'string');
+}
+
+/** Valor de un nombre PDF (`/S /GoTo`), o `null` si no es un nombre. */
+function typeNameOf(v: PdfValue | undefined): string | null {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'name' ? v.value : null;
 }
 
 function isStream(v: PdfValue): v is PdfStream {
