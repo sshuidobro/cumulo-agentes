@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-122
 titulo: Destinos con nombre e índice al copiar páginas
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-121]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -64,3 +64,13 @@ export interface OutlineBranch { readonly ref: PdfRef; readonly objects: readonl
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/object-copier.ts` (opción `resolveNames`; métodos públicos `allocRef`, `copyDirect`, `namedDestValue`), `apps/lector-pdf/src/core/pdf/new-document.ts` (`outline`, `NewDocumentPart.title`, rama por parte y `/Outlines` con `/PageMode /UseOutlines`), nuevos `apps/lector-pdf/src/core/pdf/name-tree.ts` y `apps/lector-pdf/src/core/pdf/outline-copy.ts`; tests nuevos `apps/lector-pdf/tests/unit/pdf/name-tree.test.ts`, `outline-copy.test.ts`, `object-copier-names.test.ts`; casos nuevos en `new-document.test.ts`.
+- Qué he hecho: árboles de nombres con `/Kids`/`/Limits` (32 niveles, ciclos cortados) y `resolveNamedDest` (`/Names /Dests`, si no `/Dests`); el copier convierte `/Dest` de anotaciones y `/D` de `GoTo` con nombre en destinos explícitos (nombre inexistente → se quita); `copyOutlineBranch` copia el índice en recorrido iterativo con visitados y con tope de 10 000 entradas; `buildNewDocument` añade una rama por parte.
+- Comandos ejecutados y resultado: `pnpm lint` (0, tras quitar una variable sin usar en `name-tree.test.ts`); `pnpm typecheck` (0); `pnpm coverage` (código 0, todo el suite en verde). Cobertura: `name-tree.ts` 96,6 % líneas, `outline-copy.ts` 99,3 %, `object-copier.ts` 99,3 %, `new-document.ts` 98,9 %. `qpdf --check` = 0 en los documentos de salida de `new-document.test.ts` (`links.pdf` completo y `basic-5.pdf`+`outline.pdf` con ramas). Los tests de copia de índice y de anotaciones no pasan por qpdf.
+- Dudas o cosas que no he podido hacer:
+  - Decisiones menores tomadas (no fijadas en la ficha): el nodo de cada rama apunta a la primera página con `/Fit`; el título por defecto «Documento N» usa la posición en `parts` (cuenta las partes vacías); una parte sin páginas no tiene rama; el tope de 10 000 entradas por fuente corta el recorrido en silencio.
+  - Añadidos fuera de la lista de la ficha: `ObjectCopier.allocRef()`, `copyDirect()` y `namedDestValue()` son públicos porque `copyOutlineBranch` los necesita para reservar números y remapear destinos.
+  - Los objetos de rama se numeran desde el mismo asignador que las páginas; los ficheros se validan con qpdf en cada test de salida.
+  - No he hecho commit (lo pediste así; hay cambios ajenos en `crypto/` y en tests de UI en el árbol de trabajo).
