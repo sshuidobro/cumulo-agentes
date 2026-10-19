@@ -45,9 +45,10 @@ export function qpdfVersion(): string {
   return match?.[1] ?? stdout.trim();
 }
 
-/** `qpdf --check`: código de salida y salida combinada. */
-export function qpdfCheck(path: string): { code: number; output: string } {
-  const { status, stdout, stderr } = run(['--check', path]);
+/** `qpdf --check`: código de salida y salida combinada. `password` abre un PDF con contraseña de usuario (PDF-047). */
+export function qpdfCheck(path: string, password?: string): { code: number; output: string } {
+  const args = password === undefined ? [] : [`--password=${password}`];
+  const { status, stdout, stderr } = run(['--check', ...args, path]);
   return { code: status ?? -1, output: `${stdout}${stderr}` };
 }
 

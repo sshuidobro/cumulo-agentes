@@ -1,7 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { fixture, pageField, pageFrame, waitDraftSaved } from './helpers.ts';
-import { createNoteWithText } from './annotations-kit.ts';
+import { createNoteWithText, disableFileSystemAccess, saveWithCtrlS } from './annotations-kit.ts';
+import { qpdfCheck } from '../support/qpdf.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 /**
@@ -123,14 +124,14 @@ async function openWithPassword(page: Page, name: string, password: string): Pro
   await expectViewerReady(page);
 }
 
-test('tras abrir con contraseña, una nota y Ctrl+S avisan del guardado sin pedir la contraseña otra vez', async ({ page }) => {
+test('tras abrir con contraseña, una nota y Ctrl+S guardan sin pedir la contraseña otra vez', async ({ page }, testInfo) => {
+  await disableFileSystemAccess(page);
   await openWithPassword(page, AES128, USER);
 
   await createNoteWithText(page, 'Nota cifrada');
-  await page.keyboard.press('Control+s');
-
-  // Hasta PDF-047 el guardado no usa la contraseña abierta: el aviso es el de contraseña incorrecta, sin diálogo.
-  await expect(page.getByRole('status').getByText('No se pueden guardar los cambios: la contraseña no es correcta.')).toBeVisible();
+  // Guardar reutiliza la contraseña con la que se abrió (PDF-047): hay descarga y no aparece el diálogo.
+  const saved = await saveWithCtrlS(page, testInfo, 'nota-cifrada.pdf');
+  expect(qpdfCheck(saved, USER).code).toBe(0);
   await expect(passwordDialog(page)).toHaveCount(0);
 });
 

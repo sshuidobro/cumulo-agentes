@@ -100,7 +100,8 @@ function hasChanges(changes: PendingChanges): boolean {
  */
 export async function buildCurrentDelta(file: OpenedFile): Promise<Result<Uint8Array | null, AppError>> {
   const changes = currentDiff();
-  const reader = await openForSave(file.source);
+  // La contraseña con la que se abrió el documento (PDF-046) evita volver a pedirla al guardar (PDF-047).
+  const reader = await openForSave(file.source, currentPassword() ?? undefined);
   if (!reader.ok) return err(reader.error);
   const built = await buildIncrementalUpdate({
     source: file.source,
