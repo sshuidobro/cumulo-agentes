@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-097
 titulo: Modo pantalla completa (lectura y presentación)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-050, COM-017]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -55,3 +55,8 @@ Como el «Modo de pantalla completa» de Adobe (Ctrl+L): la ventana ocupa la pan
 - Comandos ejecutados y resultado: `pnpm lint` sin errores ni avisos; `pnpm typecheck` sin errores; `pnpm --filter lector-pdf exec vitest run` de los ficheros tocados (fullscreen-actions, fullscreen-viewer, view-menu, view-actions, app): 5 ficheros OK; `pnpm --filter lector-pdf e2e -- tests/e2e/fullscreen.spec.ts --project=chromium`: 6/6 OK (incluye axe sin incidencias graves). `pnpm coverage`: **falla** por 3 pruebas de `tests/ui/open.test.tsx` («No "readPermissions" export is defined on the "../../src/engine" mock»); ese fallo viene de cambios sin commit de otro programador en `src/engine/index.ts` y `src/state/document-actions.ts`, que no he tocado. Hay que relanzar `pnpm coverage` cuando esté resuelto.
 - Dudas o cosas que no he podido hacer: (1) La prueba manual en `tauri dev` (Ctrl+L a pantalla completa sin bordes y Esc con el tamaño anterior) no la he podido hacer: solo hay entorno web. (2) La barra de búsqueda (`SearchBar`) no se oculta en pantalla completa, porque la ficha solo nombra barra principal, barra de comentarios y panel; si debe ocultarse, dímelo. (3) El `data-current-page` es 1-based. (4) Las teclas de página (Espacio, Intro, Re/Av Pág, Retroceso) se resuelven como atajos del registro: no pasan por el visor, para evitar avanzar dos veces.
 
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Lint y typecheck sin errores; tests de la ficha (17) y E2E `fullscreen.spec.ts` (6/6, con axe) en verde. El fallo de `tests/ui/open.test.tsx` viene de cambios sin commit de otras fichas (PDF-048/052), no de esta.
+2. (opcional) `SearchBar` sigue visible en pantalla completa; decisión del líder si debe ocultarse.
+3. Pendiente para el tester: `pnpm coverage` completo cuando las otras fichas estén cerradas, y la prueba manual en `tauri dev`.
