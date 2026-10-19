@@ -10,23 +10,39 @@ interface PrintableAnnotation {
   readonly annotationType?: unknown;
 }
 
-export interface PrintRenderOptions {
+export interface PageImageOptions {
   readonly dpi: number;
   /** `false`: las anotaciones que no son campos de formulario no se imprimen. */
   readonly withComments: boolean;
   readonly signal: AbortSignal;
+  readonly type: 'image/png' | 'image/jpeg';
+  /** Solo JPEG; por defecto 0.92. */
+  readonly quality?: number;
 }
 
+export interface PageImage {
+  readonly blob: Blob;
+  readonly width: number;
+  readonly height: number;
+  /** dpi real (menor que el pedido si `printScale` recortó la escala). */
+  readonly dpi: number;
+}
+
+export type PrintRenderOptions = Pick<PageImageOptions, 'dpi' | 'withComments' | 'signal'>;
+
+const DEFAULT_JPEG_QUALITY = 0.92;
+
 /**
- * Dibuja la página `index` (0-based) para imprimir y devuelve un PNG. Libera el lienzo antes de resolver.
+ * Dibuja la página `index` (0-based) y la codifica como PNG o JPEG. Libera el lienzo antes de resolver.
  * Con `withComments: false` marca `noPrint` en el `annotationStorage` del documento y deshace esas marcas al terminar.
+ * JPEG no tiene transparencia: el lienzo se rellena de blanco antes de dibujar.
  * Devuelve `'cancelled'` si `signal` aborta antes o durante el dibujo; otros errores se relanzan.
  */
-export async function renderPageForPrint(
+export async function renderPageImage(
   doc: PDFDocumentProxy,
   index: number,
-  o: PrintRenderOptions,
-): Promise<Blob | 'cancelled'> {
+  o: PageImageOptions,
+): Promise<PageImage | 'cancelled'> {
   if (o.signal.aborted) return 'cancelled';
   const page = await doc.getPage(index + 1);
   const canvas = document.createElement('canvas');
@@ -42,6 +58,12 @@ export async function renderPageForPrint(
 
     // Una cancelación llegada mientras se preparaba la página no tiene tarea a la que avisar.
     if (o.signal.aborted) return 'cancelled';
+    if (o.type === 'image/jpeg') {
+      const context = canvas.getContext('2d');
+      if (context === null) throw new Error('el lienzo no da contexto 2D');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+    }
     const task = page.render({
       intent: 'print',
       annotationMode: pdfjs().AnnotationMode.ENABLE_STORAGE,
@@ -62,13 +84,24 @@ export async function renderPageForPrint(
     }
     if (o.signal.aborted) return 'cancelled';
 
-    return await canvasToPng(canvas);
+    const blob = await canvasToBlob(canvas, o.type, o.quality ?? DEFAULT_JPEG_QUALITY);
+    return { blob, width: canvas.width, height: canvas.height, dpi: Math.round(scale * 72) };
   } finally {
     restoreStorage(doc, touched);
     canvas.width = 0;
     canvas.height = 0;
     page.cleanup();
   }
+}
+
+/** Imprimir: la página como PNG. Ver `renderPageImage`. */
+export async function renderPageForPrint(
+  doc: PDFDocumentProxy,
+  index: number,
+  o: PrintRenderOptions,
+): Promise<Blob | 'cancelled'> {
+  const image = await renderPageImage(doc, index, { ...o, type: 'image/png' });
+  return image === 'cancelled' ? 'cancelled' : image.blob;
 }
 
 /** Marca `noPrint` en cada anotación de la página que no sea un campo de formulario. Guarda lo que había antes. */
@@ -101,11 +134,13 @@ function restoreStorage(
   }
 }
 
-function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
+function canvasToBlob(canvas: HTMLCanvasElement, type: 'image/png' | 'image/jpeg', quality: number): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob === null) reject(new Error('el lienzo no se ha podido codificar como PNG'));
+    const callback = (blob: Blob | null): void => {
+      if (blob === null) reject(new Error(`el lienzo no se ha podido codificar como ${type}`));
       else resolve(blob);
-    }, 'image/png');
+    };
+    if (type === 'image/jpeg') canvas.toBlob(callback, type, quality);
+    else canvas.toBlob(callback, type);
   });
 }
