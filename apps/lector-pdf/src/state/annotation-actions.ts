@@ -38,6 +38,7 @@ import {
   MAX_AUTHOR_LENGTH,
 } from '../core/annotations/palette';
 import { windowTitle } from '../core/title';
+import { organizeDirty } from './organize-store';
 import { openForSave } from '../core/pdf/incremental';
 import type { ObjectReader } from '../core/pdf/object-reader';
 import { readPageAnnotations, scanAnnotations, type LoadedPdf } from '../engine';
@@ -136,7 +137,7 @@ useAnnotations.subscribe((next, prev) => {
   if (next.undo.isDirty === prev.undo.isDirty) return;
   const file = useViewer.getState().file;
   if (file === null) return;
-  services().platform.setTitle(windowTitle(file.name, next.undo.isDirty));
+  services().platform.setTitle(windowTitle(file.name, next.undo.isDirty || organizeDirty()));
 });
 
 /** Lee las preferencias de anotación de la app. Lo que no sea válido toma su valor por defecto. */
@@ -351,7 +352,7 @@ const annotationsParticipant: TabParticipant<AnnotationsSnapshot> = {
       scanFrom(current, snapshot.importedPages);
     }
     const file = useViewer.getState().file;
-    if (file !== null) services().platform.setTitle(windowTitle(file.name, useAnnotations.getState().undo.isDirty));
+    if (file !== null) services().platform.setTitle(windowTitle(file.name, useAnnotations.getState().undo.isDirty || organizeDirty()));
   },
   dispose: () => Promise.resolve(),
 };

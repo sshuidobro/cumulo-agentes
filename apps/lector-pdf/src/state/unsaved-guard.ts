@@ -2,7 +2,7 @@ import { msg } from '../ui/messages';
 import { useAnnotations } from './annotation-store';
 import { askChoice } from './choice';
 import { discardCurrentDraft } from './draft-sync';
-import { save } from './save-actions';
+import { pendingChanges, save } from './save-actions';
 import { services } from './services';
 import { activateTab, hasAnyUnsavedChanges, useTabs } from './tabs';
 import { useViewer } from './viewer-store';
@@ -26,6 +26,7 @@ export async function confirmDiscardOrSave(): Promise<'proceed' | 'cancel'> {
   });
   if (choice === 'discard') {
     await discardCurrentDraft();
+    pendingChanges()?.discard();
     return 'proceed';
   }
   if (choice === 'save') {
@@ -72,7 +73,7 @@ export function installCloseGuard(): () => void {
   });
 }
 
-/** Hay anotaciones cambiadas desde la última vez que se guardaron (o se abrió el fichero). */
+/** Hay anotaciones cambiadas desde la última vez que se guardaron (o se abrió el fichero), o cambios pendientes sucios. */
 export function hasUnsavedChanges(): boolean {
-  return useAnnotations.getState().undo.isDirty;
+  return useAnnotations.getState().undo.isDirty || (pendingChanges()?.isDirty() ?? false);
 }
