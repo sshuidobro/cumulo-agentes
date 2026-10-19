@@ -54,3 +54,7 @@ Medidas de PDF-052 (`pnpm perf`, calentamiento + mejor de 3, `ObjectReader.open`
 - Borrar páginas no reduce el tamaño del fichero hasta que exista «Guardar optimizado» (opción 2). Se dirá en el Manual.
 - Reescribir el árbol toca todas las páginas conservadas: con 100 000 páginas el incremento es de varios MB y tarda segundos (ver Medidas); si supera el presupuesto, revisar este ADR (reutilizar nodos intermedios sin cambios).
 - Formularios: los widgets de páginas borradas siguen en `/AcroForm /Fields`; quitarlos es parte de PDF-053.
+
+## Revisión 2026-10-19 (líder, al detallar la iteración 5)
+- La interfaz, el Worker, los documentos nuevos (opción 2) y los formularios de páginas borradas se deciden en [[ADR-0035-organizar-en-la-app]] y [[ADR-0034-operaciones-en-worker]].
+- Las entradas del índice que apuntan a páginas borradas **no** se limpian en PDF-053 (siguen sin hacer nada al pulsarlas); queda en «Mejoras conocidas» del Plan. Los widgets de páginas borradas sí se quitan de `/AcroForm` ([[PDF-119-organizar-escritura]]).

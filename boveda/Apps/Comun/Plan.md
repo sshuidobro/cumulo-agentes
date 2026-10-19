@@ -128,6 +128,7 @@ Van en serie porque las cuatro amplían la interfaz `Platform` (`types.ts`) y la
 | Id | Título | Depende de | Estado |
 |---|---|---|---|
 | [[COM-018-exportar-fichero]] | `Platform.exportFile` (web y Tauri) | COM-017 | pendiente |
+| [[COM-019-importar-varios-ficheros]] | `Platform.importFiles` (varios ficheros, web y Tauri) | COM-018 | pendiente |
 
 ## Siguiente iteración
 Sin planificar: se decidirá con la segunda app (mover componentes comunes a `packages/ui-kit`, resolver las mejoras pendientes de `UndoStack`).
