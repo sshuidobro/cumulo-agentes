@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-091, PDF-090]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -67,3 +67,14 @@ El código de `document-actions.ts`, el diálogo y los tests existentes (10/10 E
 - Qué he hecho: atiendo los 4 puntos del revisor. Los E2E de nota+Ctrl+S, posición (p3) y borrador cifrado existen y pasan; el espía del logger ya cubre `log.*`; lint queda en 0. No toco `document-actions.ts` (el cambio `file.source` de `startAnnotationSession` es del trabajo de anotaciones) ni los demás cambios sin commitear de otras fichas.
 - Comandos ejecutados y resultado: `pnpm lint` → 0 errores, 0 avisos (tras el ajuste de `eslint.config.js`). `pnpm typecheck` → sin errores. `pnpm coverage` → exit 0, cobertura global 96,6 % sentencias / 98,7 % líneas. `pnpm --filter lector-pdf e2e -- tests/e2e/password.spec.ts` → 13/13 en Chromium (incluye los 5 cifrados, mal/propietario, Cancelar/Esc, owner-only, axe, nota+Ctrl+S, posición p3 y borrador).
 - Dudas o cosas que no he podido hacer: (1) El aviso de guardado cifrado usado en el E2E es `save-wrong-password` («No se pueden guardar los cambios: la contraseña no es correcta.»), que es el que hay hoy en `errors.ts`; PDF-047 lo cambiará. (2) Los borradores se comprueban con un E2E sobre el flujo real (no con FakePlatform). (3) Queda sin commitear el trabajo de otras fichas (anotaciones, PDF-052, `dist-qa049/`, `document-actions.ts`).
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+Los 4 puntos de la ronda 1 están resueltos: E2E de nota + Ctrl+S, E2E de posición p3 y de borrador cifrado, espía del logger común (todos los niveles) y lint en 0. Verificado: `pnpm lint` 0, `pnpm typecheck` 0, E2E `password.spec.ts` 13/13, tests unitarios y UI del diálogo 22/22. Sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 5 cifrados + Intro, mal/propietario, Cancelar/Esc, owner-only, nota+Ctrl+S, p3 y borrador, axe | OK | `tests/e2e/password.spec.ts` 13/13 dentro de `pnpm --filter lector-pdf e2e` (225 passed) |
+| Sin contraseña en `log.*` ni prefs | OK | `tests/unit/document-password.test.ts` en verde |
+| lint / typecheck / coverage | OK | lint 0; typecheck 0; 204 ficheros, 2462 tests; líneas 98,67 % |
+Tests añadidos: ninguno (cobertura de criterios suficiente). Rendimiento: los @perf del e2e pasan.
