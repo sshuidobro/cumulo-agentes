@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-063
 titulo: Comparar dos PDFs - núcleo de diferencias de texto
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-022]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -104,3 +104,9 @@ export function describeChange(c: PageChange): string;
 Reproducir: `cd /home/claude/cumulo-agentes && pnpm exec vitest run --config vitest.perf.config.ts compare.perf` (repetir 3 veces).
 Petición: dar margen real a `diffSequences`/`comparePageWords` (objetivo ≤ 15 ms en reposo, p. ej. recortar prefijo/sufijo común, reutilizar arrays Int32Array, evitar copias en la fusión de operaciones) para que el presupuesto de 30 ms se cumpla de forma estable con carga moderada. No se relaja el umbral.
 Tests añadidos: ninguno. Rendimiento: arriba.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/compare/diff.ts`.
+- Qué he hecho: `diffSequences` recorta el prefijo y sufijo comunes antes de Myers (no cuentan como ediciones, misma salida); el núcleo usa un buffer de traza reutilizado entre páginas, pre-dimensionado (sin crecimiento dentro del bucle) en lugar de un array por paso, sin closures en el bucle ni en la vuelta atrás, y sin `Map` ni arrays nuevos por operación. Resultado idéntico: los 30 tests de `tests/unit/compare` (incluido el aleatorio de distancia mínima) pasan.
+- Comandos ejecutados y resultado: `pnpm lint` → limpio; `pnpm typecheck` → OK; `pnpm coverage` → código 0, 2583 tests en verde; `core/compare`: `compare.ts` 97,95 %, `diff.ts` 100 %, `words.ts` 100 %. `pnpm exec vitest run --config vitest.perf.config.ts -t 'una página' compare.perf` (8 ejecuciones, peor de 5 en cada una, load 2,5–4,3 en 4 núcleos): 22,8 / 31,2 (FALLA) / 19,9 / 19,3 / 31,9 (FALLA) / 15,5 / 24,5 / 20,2 ms. Medición aislada de `diffSequences` en Node (40 ejecuciones, load 2,5): mediana 12,7 ms, p90 14,0 ms, máximo 14,8 ms. Antes del cambio, con el mismo método: 20–28 ms peor de 5.
+- Dudas o cosas que no he podido hacer: el presupuesto de ≤ 30 ms por página NO se cumple de forma estable con la máquina compartida (carga 2,5–4): hay ejecuciones de 31–32 ms. El coste restante es inherente a Myers con D = 1 500 ediciones: unas 1,1 M iteraciones de diagonal (≈ 11–15 ms por página en estado estable, en JS). Bajarlo más exige cambiar el algoritmo (p. ej. anclar primero en palabras únicas comunes, tipo patience/histogram, lo que cambia el resultado en casos raros y es una decisión de diseño que no tomo yo) o revisar el presupuesto; no he relajado el umbral. Pendiente de decisión del líder. Nota: `pnpm perf` se ha ejecutado con el resto del equipo corriendo tests, así que el resultado depende de la carga.
