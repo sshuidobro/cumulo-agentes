@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-105
 titulo: Vista previa del trazo en OffscreenCanvas (fuera del Commit del compositor)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, calidad-profesional]
