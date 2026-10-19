@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-100
 titulo: Pestañas - historial, búsqueda, posición y panel lateral por documento
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-094]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -50,3 +50,8 @@ Al volver a una pestaña, «Atrás/Adelante», la búsqueda abierta y la pestañ
 - Qué he hecho: participantes `history`, `search`, `sidebar` y `view` (orden 30), cada uno con `registerXParticipant()` llamado desde `main.tsx` como `registerDocumentParticipant`. Las suscripciones de historial y búsqueda no actúan si `isSwitchingTab()`; la de posición tampoco. En `search` la suspensión incrementa el `token` antes de cancelar, para que el `onDone` cancelado no publique nada en el store. Las opciones de búsqueda se restauran siempre (también con la barra cerrada), porque `closeSearch` ya las conserva. `sidebar` vuelve a «miniaturas» al suspender, según el contrato de `TabParticipant` (sin documento).
 - Comandos ejecutados y resultado: `pnpm exec vitest run tests/unit/tabs-modules.test.ts` → 6/6 OK. `pnpm lint` → código 0 (tras quitar una variable sin uso en el test). `pnpm coverage` → código 0, cobertura global 96,56 % líneas 98,77 %. `pnpm typecheck` no está limpio por ficheros de anotaciones de otros programadores (`src/core/annotations/*`, `src/ui/viewer/AnnotationLayer.tsx`, `annotation-shapes.tsx`, `tests/unit/annotations/*`, `tests/support/standard-annotations.ts`); no hay ningún error en los ficheros tocados por esta ficha.
 - Dudas o cosas que no he podido hacer: (1) el criterio cita «lorem», pero no hay fixture con esa palabra; he usado «marcador» sobre `basic-5.pdf` (5 coincidencias, con «Coincidir mayúsculas» activado). (2) El criterio de 200+ páginas usa `images-200.pdf`. (3) La prueba del criterio de búsqueda sustituye el backend (`setSearchBackend`) por uno que se queda parado en la página 3, para poder observar la señal abortada. (4) No he hecho commit, como se pidió.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- lint y typecheck limpios (0 errores), `tabs-modules.test.ts` 6/6. Participantes y guardas `isSwitchingTab()` según la ficha; `token += 1` antes de `cancelSearch()` evita resultados de A en B.
+1. (opcional) `tests/unit/tabs-modules.test.ts` posición — `toBeLessThanOrEqual(10)` es laxo; afinar a una escritura por pestaña suspendida.
+2. (opcional) panel lateral — el test cierra el panel antes de alternar; no cubre A con «Índice» abierto y B con «Miniaturas» abierto.
