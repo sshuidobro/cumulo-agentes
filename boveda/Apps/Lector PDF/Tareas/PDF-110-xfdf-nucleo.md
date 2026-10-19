@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-110
 titulo: XFDF - parser XML seguro, exportar e importar comentarios (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-058]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -99,3 +99,14 @@ export function importXfdf(xml: string, o: XfdfImportOptions): Result<XfdfImport
 - Parser sin recursión, rechaza DOCTYPE/entidades/cruzadas/límites. Ida y vuelta, duplicados, Acrobat, skipped y empty cubiertos.
 1. (opcional) `xfdf.ts:109` — `<popup open="yes"/>` solo si la nota está abierta contradice «sin popup» de la ficha, pero es necesario para la ida y vuelta de `open`; decisión aceptada.
 2. (opcional) `xfdf.ts:169` — el `throw RangeError` es inalcanzable; correcto como guarda de bug.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Ida y vuelta 13 tipos, duplicados=13, Acrobat, parseXml (DOCTYPE, `&foo;`, cruzadas, 20M, 100 000 niveles), skipped/empty, firmas | OK | `vitest run tests/unit/xfdf` 56/56 |
+| Cobertura `core/xfdf/` | OK: xfdf.ts 99,54 %, xml.ts 99,25 % líneas | vitest --coverage acotado |
+| lint | OK, 0 avisos | `pnpm lint` |
+| typecheck | Fallo solo en ficheros ajenos (`tab-bar.test.tsx`, `tab-close-guard.test.ts`, PDF-109/119); 0 errores en xfdf | `pnpm typecheck` |
+| Batería completa | 2993/2997; 4 caídas por carga (otro vitest concurrente: timeouts en `fixtures-encrypted`, `search-actions`); pasan aisladas | rerun aislado 92/92 |
+
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: no aplica.
