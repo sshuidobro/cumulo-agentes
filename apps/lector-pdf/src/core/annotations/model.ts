@@ -53,11 +53,15 @@ export interface NoteAnnotation extends Base {
   readonly open: boolean;
 }
 
-/** El texto de la anotación es `contents`. */
+/**
+ * El texto de la anotación es `contents`. Con `flatten` (ADR-0036), al guardar se dibuja como contenido de la
+ * página en lugar de como anotación.
+ */
 export interface FreeTextAnnotation extends Base {
   readonly type: 'freetext';
   readonly fontSize: number;
   readonly textColor: Rgb;
+  readonly flatten?: true;
 }
 
 /** Cada trazo es `[x0, y0, x1, y1, ...]`. */
@@ -88,10 +92,14 @@ export type SignatureArt =
       readonly pixelHeight: number;
     };
 
-/** Firma visual: se escribe como `/Stamp` con `/Name /SuiteFirma` (ADR-0020). */
+/**
+ * Firma visual: se escribe como `/Stamp` con `/Name /SuiteFirma` (ADR-0020). Con `flatten` (ADR-0036), se aplana
+ * como contenido de la página al guardar.
+ */
 export interface SignatureAnnotation extends Base {
   readonly type: 'signature';
   readonly art: SignatureArt;
+  readonly flatten?: true;
 }
 
 export type ShapeLineEnding = 'None' | 'OpenArrow' | 'ClosedArrow';
@@ -236,9 +244,14 @@ export function resizeSignature(a: SignatureAnnotation, rect: RectPt): Signature
   return { ...a, rect };
 }
 
+/** Anotación que se aplana como contenido de la página al guardar (ADR-0036). */
+export function isFlattened(a: Annotation): boolean {
+  return (a.type === 'freetext' || a.type === 'signature') && a.flatten === true;
+}
+
 /** Validación completa de una anotación (para borradores y datos externos). */
 export function isAnnotation(v: unknown): v is Annotation {
-  if (!isRecord(v) || !isBaseValid(v)) return false;
+  if (!isRecord(v) || !isBaseValid(v) || !isFlattenValid(v)) return false;
   switch (v.type) {
     case 'highlight':
     case 'underline':
@@ -265,6 +278,12 @@ export function isAnnotation(v: unknown): v is Annotation {
     default:
       return false;
   }
+}
+
+/** `flatten` solo puede ser `true` (o estar ausente) en texto libre y firmas. */
+function isFlattenValid(v: Record<string, unknown>): boolean {
+  if (v.flatten === undefined) return true;
+  return v.flatten === true && (v.type === 'freetext' || v.type === 'signature');
 }
 
 const SIGNATURE_FORMATS: readonly unknown[] = ['rgba-deflate', 'jpeg'];

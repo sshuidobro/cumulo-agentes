@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-131
 titulo: Reescribir el documento completo (con o sin cifrado nuevo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-060, PDF-121]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -83,3 +83,13 @@ export async function rewriteDocument(input: RewriteInput): Promise<Result<{ rea
 - Lint raíz, tsc y los 33 tests de la ficha pasan; el código cumple los criterios. `keepEncryption` es una extensión aceptable (necesaria para distinguir `rewrite` de `unprotect`).
 - (opcional) `rewrite.ts`: un `/Info` directo se descarta; documentado, sin impacto en los criterios.
 - Pendiente para el tester: `pnpm perf` y `pnpm coverage` completos (hay fallos ajenos a la ficha en fixtures.test.ts, search-actions y annotation-layer.perf).
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Fixtures (incremental, borrar página, protect, unprotect, rewrite AES-128, annotated/form/outline/compressed) con pdf.js y qpdf | OK | `rewrite.test.ts` + `protect-ops.test.ts`: 33/33 |
+| Perf `pages-100000.pdf` < 20 s / < 25 s | OK | `pnpm perf`: 26 ficheros, 43/43 (antes ~8 s por pasada) |
+| Cobertura `rewrite.ts` ≥ 90 % | OK | líneas 100 %, sentencias 90,9 %, ramas 84 % |
+| lint, typecheck, coverage | OK | los tres con código 0; global líneas 98,62 % |
+
+Sin fallos. Tests añadidos: ninguno (la cobertura existente basta).
