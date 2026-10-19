@@ -14,4 +14,8 @@ export const viewMsg = {
   spreadPairs: 'Doble página',
   /** Dos páginas por fila, con la portada sola (1, 2-3, 4-5…). */
   spreadCover: 'Doble página con portada',
+  /** Entrada del menú «Vista» que entra en la pantalla completa (Ctrl+L). */
+  fullscreen: 'Pantalla completa',
+  /** Aviso que aparece al entrar en la pantalla completa. */
+  fullscreenHint: 'Pulsa Esc para salir de la pantalla completa.',
 } as const;

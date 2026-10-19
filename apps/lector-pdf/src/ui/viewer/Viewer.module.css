@@ -18,6 +18,15 @@
   cursor: grabbing;
 }
 
+/* Pantalla completa (PDF-097): fondo negro; el cursor se oculta cuando el ratón está quieto (use-idle-cursor). */
+.viewer.fullscreen {
+  background: #000;
+}
+
+.viewer.fullscreen[data-idle='true'] {
+  cursor: none;
+}
+
 .viewer:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: -2px;

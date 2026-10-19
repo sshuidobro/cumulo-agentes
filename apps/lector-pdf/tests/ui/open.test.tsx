@@ -19,6 +19,7 @@ vi.mock('../../src/engine', () => ({
   loadPdf: engine.loadPdf,
   readPageDims: async () => ({ index: 0, width: 595, height: 842, rotation: 0 }),
   scanPageDims: async () => 'done',
+  readPermissions: async () => null,
   scanAnnotations: async () => 'done',
 }));
 

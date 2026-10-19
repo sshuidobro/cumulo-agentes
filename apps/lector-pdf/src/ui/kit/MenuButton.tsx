@@ -19,6 +19,8 @@ export interface MenuActionSpec {
   readonly shortcut?: string;
   /** Miniatura (URL de imagen) que sustituye al texto: el nombre accesible sigue siendo `label`. */
   readonly thumbnail?: string;
+  /** Entrada deshabilitada: se ve, pero no se puede elegir (PDF-048). */
+  readonly disabled?: boolean;
   readonly onSelect: () => void;
 }
 
@@ -169,6 +171,7 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, ref }
                 aria-checked={entry.kind === 'action' ? undefined : entry.checked}
                 title={entry.kind === 'action' && entry.shortcut !== undefined ? `${entry.label} (${entry.shortcut})` : undefined}
                 className={styles.item}
+                disabled={entry.kind === 'action' && entry.disabled === true}
                 onClick={() => {
                   entry.onSelect();
                   close(true);

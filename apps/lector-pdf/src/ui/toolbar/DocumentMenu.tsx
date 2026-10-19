@@ -12,6 +12,7 @@ import { useViewer } from '../../state/viewer-store';
 export function DocumentMenu() {
   const { platform } = services();
   const ready = useViewer((s) => s.status === 'ready');
+  const printAllowed = useViewer((s) => s.permissions.print);
   return (
     <MenuButton
       label={propertiesMsg.moreActions}
@@ -27,6 +28,7 @@ export function DocumentMenu() {
           kind: 'action',
           label: printMsg.menuItem,
           shortcut: formatShortcut('print', platform.isMac),
+          disabled: !printAllowed,
           onSelect: () => { openPrintDialog(); },
         },
       ]}

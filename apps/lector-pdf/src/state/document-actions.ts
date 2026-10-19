@@ -2,7 +2,8 @@ import { createLogger, type AppError, type Result } from '@suite/shared';
 import { platformError, type FileFilter, type OpenedFile } from '@suite/platform';
 import { initialExpanded } from '../core/outline';
 import { getOutline } from '../engine/outline';
-import { loadPdf, readPageDims, scanPageDims, type LoadedPdf, type PageDimsEntry } from '../engine';
+import { loadPdf, readPageDims, readPermissions, scanPageDims, type LoadedPdf, type PageDimsEntry } from '../engine';
+import { permissionsFrom } from '../core/permissions';
 import type { ReadingPosition } from '../core/reading-positions';
 import { pdfError } from '../core/errors';
 import { PageDimsTable } from '../core/page-dims';
@@ -258,6 +259,7 @@ async function runOpen(
   }
 
   const pageMode = await readPageMode(loaded);
+  const permissions = permissionsFrom(await readPermissions(loaded.doc));
 
   if (seq !== openSeq) {
     await loaded.destroy();
@@ -299,6 +301,7 @@ async function runOpen(
     dims,
     dimsVersion: useViewer.getState().dimsVersion + 1,
     sidebar: sidebarForOpenedDocument(pageMode),
+    permissions,
   });
   platform.setTitle(windowTitle(file.name, false));
   startAnnotationSession(loaded, scan.signal, file.source);

@@ -8,6 +8,7 @@ import type { Rotation } from '../core/rotation';
 import type { SidebarState } from '../core/sidebar';
 import type { OutlineNode } from '../core/outline';
 import { DEFAULT_VIEW_MODE, type ViewMode } from '../core/view-mode';
+import { ALL_PERMISSIONS, type DocPermissions } from '../core/permissions';
 
 export type DocStatus = 'empty' | 'loading' | 'ready' | 'error';
 
@@ -83,6 +84,8 @@ export interface ViewerState {
   readonly outline: readonly OutlineNode[] | null;
   /** Ids de los marcadores del índice que están desplegados (PDF-016). */
   readonly outlineExpanded: ReadonlySet<string>;
+  /** Permisos del documento abierto (PDF-048). Sin documento o sin restricciones, todo permitido. */
+  readonly permissions: DocPermissions;
 }
 
 export const initialViewerState: ViewerState = {
@@ -111,6 +114,7 @@ export const initialViewerState: ViewerState = {
   sidebar: 'none',
   outline: null,
   outlineExpanded: new Set<string>(),
+  permissions: ALL_PERMISSIONS,
 };
 
 export const useViewer: UseBoundStore<StoreApi<ViewerState>> = create<ViewerState>()(() => initialViewerState);

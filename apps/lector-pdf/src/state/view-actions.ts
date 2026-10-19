@@ -79,9 +79,17 @@ export function loadViewMode(): void {
  * primera página de la fila de la página actual para no perder la posición.
  */
 export function setViewMode(mode: ViewMode): void {
+  applyViewMode(mode, { persist: true });
+}
+
+/**
+ * Cambia el modo de vista. Con `persist: false` no toca la preferencia guardada (la pantalla completa lo usa
+ * para cambiar temporalmente el modo, PDF-097).
+ */
+export function applyViewMode(mode: ViewMode, opts: { readonly persist: boolean }): void {
   const { currentPage, dims, viewMode } = useViewer.getState();
   useViewer.setState({ viewMode: mode });
-  services().platform.prefs.set(VIEW_MODE_PREF, mode);
+  if (opts.persist) services().platform.prefs.set(VIEW_MODE_PREF, mode);
   if (viewMode.spread === mode.spread || dims === null) return;
   const page = rowFirstPage(currentPage, mode.spread);
   useViewer.setState({ currentPage: page });

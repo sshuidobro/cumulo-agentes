@@ -6,3 +6,4 @@ export { createRangeTransport } from './range-transport';
 export type { PDFDocumentProxy, PDFPageProxy } from './pdfjs';
 export { readPageAnnotations, scanAnnotations } from './annotations-import';
 export { readDocumentProperties, readRawProperties } from './properties';
+export { readCipher, readPermissions } from './permissions';

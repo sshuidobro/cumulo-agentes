@@ -1,5 +1,8 @@
 // Adaptado de pdf.js, web/text_layer_builder.js, Apache-2.0 (comportamiento de selección de la capa de texto).
 import { normalizeUnicode } from '../../engine/text';
+import { showNotice } from '../../state/notice';
+import { useViewer } from '../../state/viewer-store';
+import { securityMsg } from '../messages-security';
 import * as registry from './text-layer-registry';
 
 const END_CLASS = 'endOfContent';
@@ -151,6 +154,12 @@ export function attachSelectionBehavior(textLayerDiv: HTMLElement): () => void {
     textLayerDiv.classList.add(SELECTING_CLASS);
   };
   const onCopy = (event: ClipboardEvent): void => {
+    // Sin permiso de copia (PDF-048): no se escribe nada en el portapapeles y se avisa. La selección sigue igual.
+    if (!useViewer.getState().permissions.copy) {
+      event.preventDefault();
+      showNotice(securityMsg.copyBlocked);
+      return;
+    }
     const text = document.getSelection()?.toString() ?? '';
     event.clipboardData?.setData('text/plain', normalizeUnicode(text).replace(/\0/g, ''));
     event.preventDefault();

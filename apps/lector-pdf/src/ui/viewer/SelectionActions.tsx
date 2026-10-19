@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { createLogger } from '@suite/shared';
 import { useAnnotations } from '../../state/annotation-store';
+import { useViewer } from '../../state/viewer-store';
 import { markupSelection, type MarkupType } from '../../state/markup-actions';
 import { normalizeUnicode } from '../../engine/text';
 import { IconCopy, IconHighlight, IconStrikeout, IconUnderline } from '../icons';
 import { IconButton } from '../kit/IconButton';
 import { msg } from '../messages';
+import { securityMsg } from '../messages-security';
 import { selectionPageRects } from './selection-to-pages';
 import styles from './SelectionActions.module.css';
 
@@ -66,6 +68,7 @@ function copySelection(): void {
  */
 export function SelectionActions() {
   const tool = useAnnotations((s) => s.tool);
+  const copyAllowed = useViewer((s) => s.permissions.copy);
   const [placement, setPlacement] = useState<Placement | null>(null);
 
   useEffect(() => {
@@ -122,7 +125,12 @@ export function SelectionActions() {
       <IconButton label={msg.toolStrikeout} onClick={() => { mark('strikeout'); }}>
         <IconStrikeout />
       </IconButton>
-      <IconButton label={msg.copy} onClick={copySelection}>
+      <IconButton
+        label={msg.copy}
+        disabled={!copyAllowed}
+        {...(copyAllowed ? {} : { description: securityMsg.copyBlocked })}
+        onClick={copySelection}
+      >
         <IconCopy />
       </IconButton>
     </div>

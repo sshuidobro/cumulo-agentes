@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ViewMenu } from '../../src/ui/toolbar/ViewMenu';
 import { initServices } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
+import { useFullscreen } from '../../src/state/fullscreen-actions';
 import { createFakePlatform } from '../helpers/fake-platform';
 
 beforeEach(() => {
@@ -47,5 +48,16 @@ describe('menú «Vista»', () => {
       useViewer.setState({ viewMode: { scroll: 'paged', spread: 'none' } });
     });
     expect(screen.getByRole('menuitemradio', { name: 'Una página a la vez' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('«Pantalla completa» entra en la pantalla completa (Ctrl+L) y lo indica en el menú', async () => {
+    const user = userEvent.setup();
+    useFullscreen.setState({ on: false });
+    render(<ViewMenu />);
+    await user.click(screen.getByRole('button', { name: 'Vista' }));
+    expect(screen.getByRole('menuitem', { name: /Pantalla completa/ })).toHaveTextContent('Ctrl+L');
+    await user.click(screen.getByRole('menuitem', { name: /Pantalla completa/ }));
+    expect(useFullscreen.getState().on).toBe(true);
+    useFullscreen.setState({ on: false });
   });
 });
