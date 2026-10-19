@@ -296,6 +296,7 @@ Detalladas el 2026-10-19 ([[ADR-0028-reescribir-pdfs]] a [[ADR-0040-firma-digita
 | [[PDF-139-firma-digital-interfaz]] | Firma digital - firmar con certificado y panel de firmas | PDF-138, PDF-137, COM-018 | pendiente |
 | [[PDF-067-leer-en-voz-alta]] | Leer en voz alta - frases, voces y motor de lectura | PDF-022 | hecha |
 | [[PDF-114-leer-en-voz-alta-interfaz]] | Leer en voz alta - menú, barra de lectura, atajos y resaltado de la frase | PDF-067, PDF-050, PDF-051, PDF-112 | pendiente |
+| [[PDF-141-e2e-rojos-en-head]] | Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD (prioritaria, accionable ya) | — | pendiente |
 
 **Orden y paralelo.** Ya accionables en paralelo (sin choques de ficheros): **PDF-053**, **PDF-118**, **PDF-120**, **PDF-060**, **PDF-133** (además de las de formas, comparar, exportar y voz ya detalladas). Cadenas del núcleo: PDF-053 → PDF-119 → PDF-121 (con PDF-120) → PDF-122 → PDF-123 → PDF-054/PDF-055; PDF-060 + PDF-121 → PDF-131; PDF-059 → PDF-061 y PDF-062 → PDF-135 → PDF-136; PDF-066 → PDF-138. Las fichas de interfaz van **en serie** porque tocan `App.tsx`, `DocumentMenu.tsx` y `organizeMsg`: PDF-114 → PDF-125 → PDF-126 → PDF-127 → PDF-128 → PDF-129 → PDF-130 → PDF-132 → PDF-134 → PDF-137 → PDF-139. Todas las operaciones pesadas van en el Worker de [[PDF-118-worker-operaciones]] ([[ADR-0034-operaciones-en-worker]]).
 

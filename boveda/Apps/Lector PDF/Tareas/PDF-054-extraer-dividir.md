@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-054
 titulo: Extraer y dividir - planes y operaciones del núcleo
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-123, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -88,3 +88,9 @@ export function splitZipName(base: string): string;   // «informe-partes.zip»
 - `split-too-big`: se prueba con la función pura `checkZipBudget`, sin generar 1 GB.
 - Se aceptan: `parts` como número; índice sin destinos → `split-no-bookmarks`; test de cancelación llamando a `DOC_OPS.split` directamente.
 - Los fallos de `pnpm lint` en `incremental.ts` y `annotation-actions.ts` no son de esta ficha; no bloquean su revisión si los ficheros propios pasan lint.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/organize/split.ts` (base 2 048 B, `PAGE_TREE_OVERHEAD` = 64 B por página, `checkZipBudget`), `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (op `split`: red de seguridad en modo `size`, `split-too-big` con `checkZipBudget`, `oversized` contado sobre las partes escritas), `apps/lector-pdf/tests/unit/organize/split.test.ts` (tests de `checkZipBudget`), `apps/lector-pdf/tests/unit/doc-ops/split-ops.test.ts` (tamaños ≤ 100 000 B con `pages-5000.pdf` y test de la red de seguridad con espía sobre `buildNewDocument`).
+- Qué he hecho: aplicado el desbloqueo del líder. La estimación de tamaño incluye 64 B por página; si una parte escrita supera el máximo y tiene más de una página, se parte en mitades recursivamente. `oversized` en modo `size` cuenta las partes de una página que superan el máximo al escribirlas (sustituye al recuento del planificador, que solo estima).
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK; `pnpm coverage` con el resumen sin fallos, `split.ts` al 100 % de líneas y ramas; `pnpm perf` 25 ficheros y 41 tests OK (incluye `split.perf.test.ts`); `eslint` sobre los 4 ficheros tocados sin errores. No he ejecutado el `pnpm lint` completo (los fallos de `incremental.ts` y `annotation-actions.ts` vienen de antes).
+- Dudas o cosas que no he podido hacer: no he medido con `qpdf --check` las partes de la red de seguridad (solo el test de recuento y páginas). `split-too-big` se prueba con `checkZipBudget`, como pide el desbloqueo. No he hecho commit.
