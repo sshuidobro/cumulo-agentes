@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-059
 titulo: Añadir texto e imagen al contenido de la página - núcleo (aplanar)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-052, PDF-058, PDF-110]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -68,3 +68,15 @@ export function wrappedContents(page: PdfDict, open: PdfRef, close: PdfRef): rea
 
 ### [líder] detalle — 2026-10-19
 - Ficha detallada con [[ADR-0036-anadir-contenido-aplanando]]: núcleo aquí, interfaz en [[PDF-130-anadir-texto-imagen-interfaz]]. Dependencias añadidas PDF-058 y PDF-110 solo para no chocar en `model.ts`, `incremental.ts` y `xfdf.ts`.
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/model.ts` (`flatten` en texto libre y firma, `isFlattened`, validación en `isAnnotation`), `apps/lector-pdf/src/core/annotations/comment-list.ts`, `apps/lector-pdf/src/core/xfdf/xfdf.ts`, `apps/lector-pdf/src/core/pdf/incremental.ts`; nuevos `apps/lector-pdf/src/core/pdf/page-content.ts`, `apps/lector-pdf/tests/unit/pdf/page-content.test.ts`, `apps/lector-pdf/tests/unit/pdf/flatten.test.ts`.
+- Qué he hecho: las anotaciones `flatten` nuevas no crean objeto de anotación: su apariencia va como Form XObject `/SuiteFlatN` y la página recibe `/Contents` (`q`, original, `Q` + `Do`) y `/Resources` propios en el mismo objeto de página que `/Annots`. Numeración sin cambios cuando no hay aplanados (los tests golden siguen verdes). Comentarios y XFDF excluyen los aplanados.
+- Decisiones menores tomadas (revisar si no encajan): `flatten` solo se admite en `freetext` y `signature` (si no, borrador inválido); el flujo `open` («q») va sin filtro y el `close` con Flate, según la ficha; una respuesta cuyo padre es un aplanado se descarta; las anotaciones aplanadas no entran en `written`. Un aplanado que viene del fichero produce `save-unreadable` con `cause` un `RangeError` (así envuelve `buildIncrementalUpdate` todos los errores).
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf typecheck`: sin errores.
+  - `pnpm exec vitest run tests/unit/pdf/page-content.test.ts tests/unit/pdf/flatten.test.ts`: 28/28 pasan. `page-content.ts` con 100 % líneas y ramas.
+  - ESLint sobre `apps/lector-pdf/src/core` y `tests/unit/pdf`: sin errores.
+  - `pnpm coverage`: 3333 pasan, 2 fallan, ninguno en código de esta ficha. `tests/unit/fixtures.test.ts` espera 28 fixtures y hay 29 (`tests/fixtures/catalog.ts` lo modifica otro cambio en curso). `tests/unit/search-actions.test.ts` (debounce) falla con carga y pasa solo (7/7).
+  - `pnpm lint` en la raíz falla con ~11.700 errores de `no-undef` en `apps/lector-pdf/dist-pdf095/` (carpeta sin seguimiento de otro programador, no está en `ignores`); no he tocado esa carpeta.
+- Dudas o cosas que no he podido hacer: no hay commit (pedido por el coordinador). La cobertura global no sale porque `pnpm coverage` no imprime tabla cuando falla algún test; la medí solo para los ficheros de esta ficha. Interfaz fuera de alcance (PDF-130).
