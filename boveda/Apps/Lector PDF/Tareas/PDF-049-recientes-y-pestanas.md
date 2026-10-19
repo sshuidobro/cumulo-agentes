@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-049
 titulo: Documentos recientes en la pantalla de inicio y en «Abrir recientes»
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [COM-015, COM-016, PDF-090]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, ui, recientes]
 ---
 
@@ -46,3 +46,14 @@ La pantalla de inicio lista los documentos recientes (nombre, carpeta en escrito
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/recent.ts` (nuevo), `src/state/recent-actions.ts` (nuevo), `src/ui/messages-tabs.ts` (nuevo), `src/ui/open/RecentList.tsx` (nuevo), `src/ui/toolbar/RecentMenu.tsx` (nuevo), `src/ui/open/EmptyState.tsx`, `src/ui/open/open.module.css`, `src/ui/icons.tsx` (`IconRecent`), `src/ui/toolbar/MainToolbar.tsx` (menú junto a «Abrir»), `src/main.tsx` (`startRecentSync()`); tests `tests/unit/recent.test.ts`, `tests/unit/recent-actions.test.ts`, `tests/ui/recent.test.tsx`, `tests/e2e/recent.spec.ts`.
+- Qué he hecho: store `useRecent` con `refreshRecent`, `openRecentFile`, `forgetRecent`, `forgetAllRecent` y `startRecentSync` (carga al arrancar y cada vez que cambia el fichero abierto, o sea tras abrir o guardar). Pantalla de inicio con la sección «Recientes» (nombre, carpeta en Tauri, fecha relativa, «No disponible» + «Quitar de la lista»), menú «Abrir recientes» con los 10 últimos y «Borrar la lista de recientes». Web sin File System Access muestra el aviso de no poder reabrir.
+- Comandos ejecutados y resultado: `pnpm exec vitest run` de los tests nuevos: 31 pasan. `pnpm typecheck`: sin errores. `pnpm coverage` (con `--coverage.reportsDirectory=coverage-recientes`, porque el directorio por defecto lo usaba otro proceso): 204 ficheros, 2454 tests, todos pasan; `core/recent.ts` 100 % líneas. `pnpm --filter lector-pdf e2e` (con `LECTOR_E2E_PORT=4322 LECTOR_E2E_OUTDIR=dist-recientes`): 222 pasan, código 0; los 6 de `recent.spec.ts` pasan. `pnpm lint`: solo falla `tests/unit/pdf/incremental.test.ts` (tres variables sin usar, fichero de otro programador que no toco). Mis ficheros no dan avisos.
+- Dudas o cosas que no he podido hacer:
+  1. No hay en la app un botón para cerrar el documento; el E2E «cerrar» recarga la página (pagehide guarda la posición). Si el líder quiere un cierre explícito, es otra ficha.
+  2. Decisión menor: los textos van en `src/ui/messages-tabs.ts` (`tabsMsg`), como indica la ficha. Para otros errores al reabrir (no «not-found») se usa «No se ha podido abrir «nombre»».
+  3. `MenuButton` usa el nombre como clave de React: dos recientes con el mismo nombre en carpetas distintas darían un aviso de clave duplicada. No he tocado el componente compartido.
+  4. Manual (`tauri dev`, dos PDF, cerrar y reabrir la app, reabrir desde inicio): pendiente en la máquina del usuario. No se ha podido ejecutar aquí.
+  5. Contraste: la lista va sobre fondo blanco (`--color-surface`) porque el texto gris sobre el fondo del visor no cumplía axe.
