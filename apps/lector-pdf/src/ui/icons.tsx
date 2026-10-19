@@ -320,3 +320,12 @@ export function IconFormFields() {
     </Svg>
   );
 }
+
+export function IconViewMode() {
+  return (
+    <Svg>
+      <rect x="3.5" y="3.5" width="13" height="13" rx="1.5" />
+      <path d="M10 3.5v13" />
+    </Svg>
+  );
+}

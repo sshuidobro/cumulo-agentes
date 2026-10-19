@@ -9,6 +9,7 @@ import { formatOpenShortcut, formatShortcut } from '../shortcuts';
 import { ZoomControls } from './ZoomControls';
 import { DocumentMenu } from './DocumentMenu';
 import { RecentMenu } from './RecentMenu';
+import { ViewMenu } from './ViewMenu';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
@@ -188,6 +189,7 @@ export function MainToolbar() {
       >
         <IconRotateRight />
       </IconButton>
+      <ViewMenu />
       <div role="separator" aria-orientation="vertical" className={styles.separator} />
       <MenuButton
         label={msg.appearance}
