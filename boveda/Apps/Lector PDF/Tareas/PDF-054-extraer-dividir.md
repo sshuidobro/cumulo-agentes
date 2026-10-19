@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-054
 titulo: Extraer y dividir - planes y operaciones del núcleo
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-123, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -94,3 +94,7 @@ export function splitZipName(base: string): string;   // «informe-partes.zip»
 - Qué he hecho: aplicado el desbloqueo del líder. La estimación de tamaño incluye 64 B por página; si una parte escrita supera el máximo y tiene más de una página, se parte en mitades recursivamente. `oversized` en modo `size` cuenta las partes de una página que superan el máximo al escribirlas (sustituye al recuento del planificador, que solo estima).
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK; `pnpm coverage` con el resumen sin fallos, `split.ts` al 100 % de líneas y ramas; `pnpm perf` 25 ficheros y 41 tests OK (incluye `split.perf.test.ts`); `eslint` sobre los 4 ficheros tocados sin errores. No he ejecutado el `pnpm lint` completo (los fallos de `incremental.ts` y `annotation-actions.ts` vienen de antes).
 - Dudas o cosas que no he podido hacer: no he medido con `qpdf --check` las partes de la red de seguridad (solo el test de recuento y páginas). `split-too-big` se prueba con `checkZipBudget`, como pide el desbloqueo. No he hecho commit.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- lint, typecheck y `pnpm coverage` con código 0; criterios cubiertos por tests (marcadores 10/10/9/1 con qpdf, size 5000 págs, red de seguridad, cancelación, checkZipBudget, extract AES-256).
+1. `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (buildGroup) — (opcional) tras la red de seguridad `done` cuenta las páginas dos veces; el progreso se limita con `Math.min` y no falla, pero no es exacto.
