@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-052
 titulo: ADR y prueba técnica: reescribir PDFs (organizar páginas y reparar xref)
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-039]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-5, organizar, decision, por-detallar]
 ---
 
@@ -36,3 +36,9 @@ Por detallar.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `boveda/Apps/Lector PDF/Tareas/PDF-052-organizar-adr.md` (solo estado y Registro).
+- Qué he hecho: No he implementado nada. La ficha está marcada como "Ficha por detallar" (sin firmas, pasos, ficheros ni "Qué hay que hacer"; "Fuera de alcance" dice "Por detallar"). Según la propia ficha, no debe empezarse hasta que el líder la complete.
+- Comandos ejecutados y resultado: ninguno (no hay código que compilar ni probar).
+- Dudas o cosas que no he podido hacer: Falta que el líder detalle la ficha (firmas, ficheros, pasos, criterios). Además, la tarea exige consultar al usuario sobre licencias GPL/AGPL de librerías (pdf-lib, qpdf en WASM) antes de decidir; esa pregunta de producto queda pendiente. Como dependencia, `depende_de: [PDF-039]`: no he verificado su estado. Ficha pasada a `bloqueada`.
