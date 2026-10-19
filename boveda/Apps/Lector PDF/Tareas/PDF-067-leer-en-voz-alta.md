@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-067
 titulo: Leer en voz alta - frases, voces y motor de lectura
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-022]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -139,3 +139,12 @@ Nota: el fallo de `fixtures.test.ts` y el lint de `diff.test.ts` son de otras fi
 
 ### [revisor] ronda 2 — 2026-10-19 — APROBADO
 ESLint y typecheck limpios; 57 tests de la ficha OK. `speech-port.test.ts` cubre privacidad (voz no local sin hablar), `voiceschanged` y tope de 1 500 ms, mapeo y `onend`/`onerror`. La pausa durante la lectura adelantada (`advancing`) es correcta y está probada. Sin problemas pendientes.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Fragmentos, voces, motor, pausa, documento, privacidad, cambio de documento | OK | 57 tests (`read-aloud*`, `speech-port`) en verde |
+| Cobertura `core/read-aloud` ≥ 95 % / actions ≥ 90 % | OK | 100 % líneas; actions 94 % (informe del programador, no reverificado en aislado) |
+| lint, typecheck, coverage | OK | código 0; 212 ficheros, 2583 tests; líneas 98,72 % |
+
+Tests añadidos: ninguno. Rendimiento: no aplica (sin interfaz).
