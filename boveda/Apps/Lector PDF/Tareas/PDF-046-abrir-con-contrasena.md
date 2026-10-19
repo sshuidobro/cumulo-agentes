@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-091, PDF-090]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
