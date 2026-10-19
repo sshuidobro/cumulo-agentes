@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-049
 titulo: Documentos recientes en la pantalla de inicio y en «Abrir recientes»
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [COM-015, COM-016, PDF-090]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
