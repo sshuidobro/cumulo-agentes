@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-104
 titulo: Etiqueta «Firma» al reabrir - conexión con la sesión de anotaciones
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-103]
 intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
@@ -72,3 +72,17 @@ Lint, typecheck y tests de annotations + comments-panel en verde. El código (pa
 - Qué he hecho: añadidos los tests de los puntos 1-3 del revisor. (a) `openDocument` sobre un PDF con firma de la suite → fila «Firma» y filtro «Firma»; (b) mismo PDF con `/Name /Approved` (mismo número de bytes, la xref no cambia) → «Sello»; (c) modo «lazy» con el documento real y `numPages` 25 000 → `ensurePageAnnotations(0)` deja la fila «Firma»; (d) `openForSave` falla (fuente que rechaza la lectura) → `scan: 'done'` y fila «Sello». Comprobado con mutación: sin `file.source` en `document-actions.ts` falla el test (a); restaurado.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` exit 0: 212 ficheros y 2587 tests en verde (antes 2583), líneas 98.72 %.
 - Dudas o cosas que no he podido hacer: (1) El punto 4 (contraseña en `openForSave`) no lo he hecho: `annotation-actions.ts` tendría que importar `currentPassword` de `document-actions.ts`, que ya importa de `annotation-actions.ts`; no es trivial sin un ciclo de módulos. Queda para una ficha de seguimiento. (2) El PDF de los tests es un mínimo escrito a mano: en jsdom no se pueden leer `tests/fixtures/` (`import.meta.url` no es `file:`). (3) No he vuelto a correr `pnpm perf` en esta ronda: no cambia código de producción; la ronda 1 lo dio en verde.
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+Lint, typecheck y tests de annotations + comments-panel en verde (349). Los 4 tests nuevos de `comments-panel.test.tsx` cubren «Firma» + filtro, «Sello», modo lazy y fallo de `openForSave`. 0 problemas bloqueantes. Pendiente (no bloquea): ficha de seguimiento para pasar la contraseña a `openForSave` en PDF cifrados.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit engine-import (reader / null / sin getDict) | OK | `pnpm coverage` exit 0 |
+| UI openDocument Firma + filtro, Sello | OK | `comments-panel.test.tsx` bloque PDF-104 (l. 433) |
+| Modo lazy, fallo de openForSave (Sello, scan done) | OK | mismos tests, en verde |
+| Solo lectura, firmas existentes compilan | OK | typecheck exit 0, suite verde |
+| Rendimiento | OK | `pnpm perf`: 19 ficheros, 31 tests verdes |
+| lint / typecheck / coverage | OK | exit 0, líneas 98.72 % |
+Tests añadidos: ninguno (los del programador cubren los criterios). Pendiente no bloqueante: contraseña en `openForSave` (PDF cifrados) en ficha de seguimiento.

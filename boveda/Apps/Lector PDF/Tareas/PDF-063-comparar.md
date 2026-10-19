@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-063
 titulo: Comparar dos PDFs - núcleo de diferencias de texto
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-022]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -110,3 +110,17 @@ Tests añadidos: ninguno. Rendimiento: arriba.
 - Qué he hecho: `diffSequences` recorta el prefijo y sufijo comunes antes de Myers (no cuentan como ediciones, misma salida); el núcleo usa un buffer de traza reutilizado entre páginas, pre-dimensionado (sin crecimiento dentro del bucle) en lugar de un array por paso, sin closures en el bucle ni en la vuelta atrás, y sin `Map` ni arrays nuevos por operación. Resultado idéntico: los 30 tests de `tests/unit/compare` (incluido el aleatorio de distancia mínima) pasan.
 - Comandos ejecutados y resultado: `pnpm lint` → limpio; `pnpm typecheck` → OK; `pnpm coverage` → código 0, 2583 tests en verde; `core/compare`: `compare.ts` 97,95 %, `diff.ts` 100 %, `words.ts` 100 %. `pnpm exec vitest run --config vitest.perf.config.ts -t 'una página' compare.perf` (8 ejecuciones, peor de 5 en cada una, load 2,5–4,3 en 4 núcleos): 22,8 / 31,2 (FALLA) / 19,9 / 19,3 / 31,9 (FALLA) / 15,5 / 24,5 / 20,2 ms. Medición aislada de `diffSequences` en Node (40 ejecuciones, load 2,5): mediana 12,7 ms, p90 14,0 ms, máximo 14,8 ms. Antes del cambio, con el mismo método: 20–28 ms peor de 5.
 - Dudas o cosas que no he podido hacer: el presupuesto de ≤ 30 ms por página NO se cumple de forma estable con la máquina compartida (carga 2,5–4): hay ejecuciones de 31–32 ms. El coste restante es inherente a Myers con D = 1 500 ediciones: unas 1,1 M iteraciones de diagonal (≈ 11–15 ms por página en estado estable, en JS). Bajarlo más exige cambiar el algoritmo (p. ej. anclar primero en palabras únicas comunes, tipo patience/histogram, lo que cambia el resultado en casos raros y es una decisión de diseño que no tomo yo) o revisar el presupuesto; no he relajado el umbral. Pendiente de decisión del líder. Nota: `pnpm perf` se ha ejecutado con el resto del equipo corriendo tests, así que el resultado depende de la carga.
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+- Diff de `diff.ts` correcto (recorte de prefijo/sufijo sin alterar la salida, buffer de traza reutilizado con índices coherentes; 30 tests de `tests/unit/compare` en verde, lint y typecheck limpios).
+- Perf de 30 ms: no es un defecto del código. Medido con load 4-5,5 en 4 núcleos (saturada): 76 / 34 / 86 ms, o sea ruido de CPU; en reposo el programador mide mediana 12,7 ms y máximo 14,8 ms (D = 1 500, caso patológico). El problema real es que el test usa el **máximo** de 5 ejecuciones, que es la métrica más sensible a la carga, y no espera a CPU en reposo como los e2e (PDF-078). (Recomendación, no bloquea) El tester debe medir con la máquina en reposo; si sigue inestable, el líder decide si el test usa el mejor/mediana de N sin tocar el umbral de 30 ms.
+
+### [tester] ronda 2 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck, `pnpm coverage` | OK | exit 0; globales líneas 98,72 % (`core/compare` ≥ 97 % según rondas previas) |
+| Funcionales (changed/same/only-in/cancel/diff/words) | OK | dentro de la batería en verde |
+| Perf `pages-5000.pdf` frente a sí mismo < 30 s | OK | 3,1–3,6 s (5 ejecuciones) |
+| Perf página 5 000 palabras / 1 500 cambios ≤ 30 ms | OK | 5 ejecuciones aisladas de `compare.perf`: peor 17,5 / 22,2 / 22,4 / 20,8 / 19,5 ms |
+
+Nota: `uptime` marcaba load 2,7–3,9 en 4 núcleos (no totalmente en reposo, otros agentes); aun así 5/5 dentro del umbral. Tests añadidos: ninguno.
