@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-052
 titulo: Reorganizar páginas por actualización incremental (núcleo y medidas)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-039, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -109,3 +109,12 @@ export async function buildPageTreeUpdate(input: PageTreeInput): Promise<Result<
 1. Lint y typecheck sin avisos; `tests/unit/pdf` 22 ficheros / 450 tests en verde (incluye page-tree). `pnpm coverage` no se pudo lanzar (otro Vitest ocupa `coverage/`); se acepta el 93,08 % medido por el programador.
 2. `page-tree.ts` cumple las reglas de la ficha (validación, giro heredado, raíz reutilizada, orden de escritura, cancelación y progreso). Cambios en `serialize.ts` e `incremental.ts` (`toSaveError`) justificados y sin cambio de comportamiento.
 3. (opcional) El margen del giro en 100 000 páginas (2,5 s de 3 s) es estrecho: que el tester lo mida con la CPU en reposo.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint, typecheck | OK | `pnpm lint`, `pnpm typecheck` sin avisos |
+| Batería completa y cobertura | OK | `pnpm coverage`: 225 ficheros, 2 695 tests; `page-tree.ts` 93,08 % líneas |
+| Criterios funcionales (pdf.js y qpdf, cifrado, compressed, 5000 págs, entradas inválidas, cancelación, progreso) | OK | `page-tree.test.ts` 18/18 dentro de la batería |
+| Rendimiento (límites 1 000 / 15 000 / 3 000 ms) | OK | `pnpm perf` 20 ficheros/34 tests verdes y `page-tree.perf.test.ts` 3/3 con carga 0,43 (reposo); tiempos medidos por el programador en el ADR-0028 (giro 100 000 págs ~2,5 s) |
+Tests añadidos: ninguno. Rendimiento: medido en reposo, dentro de presupuesto (el test no imprime tiempos; el margen del giro de 100 000 páginas es estrecho pero pasó).

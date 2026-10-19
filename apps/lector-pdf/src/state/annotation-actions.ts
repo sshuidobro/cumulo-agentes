@@ -50,7 +50,9 @@ import {
   type ColorTool,
 } from './annotation-store';
 import { services } from './services';
+import { showNotice } from './notice';
 import { useViewer } from './viewer-store';
+import { securityMsg } from '../ui/messages-security';
 
 const log = createLogger('annotation-actions');
 
@@ -160,6 +162,7 @@ function prefs(): KeyValueStore {
  */
 export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal, source?: ByteSource): void {
   endAnnotationSession();
+  restrictedNoticeShown = false;
   const stop = new AbortController();
   if (signal.aborted) {
     stop.abort();
@@ -369,11 +372,31 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Ejecuta un cambio sobre la pila y publica el resultado en el store. */
-function apply(change: () => void): void {
+/** Ejecuta un cambio sobre la pila y publica el resultado en el store. `kind`: qué permiso exige el cambio (PDF-048). */
+function apply(change: () => void, kind: ChangeKind = 'annotate'): void {
   const before = stack.doc;
   change();
   publish(before);
+  if (stack.doc !== before) warnIfRestricted(kind);
+}
+
+/** Qué hace un cambio: anotar (comentarios, marcas, dibujos) o rellenar un campo de formulario. */
+type ChangeKind = 'annotate' | 'fill';
+
+/** Si ya se ha avisado de que el PDF no permite el cambio en este documento (PDF-048). */
+let restrictedNoticeShown = false;
+
+/**
+ * Aviso una sola vez por documento cuando el PDF no permite comentar (o rellenar). No bloquea nada: el cambio
+ * se hace y se guardará en la copia.
+ */
+function warnIfRestricted(kind: ChangeKind): void {
+  if (restrictedNoticeShown) return;
+  const permissions = useViewer.getState().permissions;
+  const allowed = kind === 'annotate' ? permissions.annotate : permissions.fillForms;
+  if (allowed) return;
+  restrictedNoticeShown = true;
+  showNotice(securityMsg.annotateAnyway);
 }
 
 /** Publica en el store el documento de la pila y sube la versión de las páginas que han cambiado. */
@@ -411,7 +434,7 @@ export function bumpPageVersions(pages: Iterable<number>): void {
 export function executeEdit(cmd: Command<AnnotationEdits>): void {
   apply(() => {
     stack.execute(cmd);
-  });
+  }, 'fill');
 }
 
 /** Ids cuya entrada en `edits` (cambio o borrado) es distinta entre dos estados. */

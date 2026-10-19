@@ -9,6 +9,7 @@ import {
   usePrintDialog,
 } from '../../state/print-actions';
 import { useViewer } from '../../state/viewer-store';
+import { securityMsg } from '../messages-security';
 import styles from './PrintDialog.module.css';
 
 /** Diálogo «Imprimir» (PDF-044): páginas, comentarios, orientación y calidad. Se abre con Ctrl+P. */
@@ -19,6 +20,9 @@ export function PrintDialog() {
   const currentPage = useViewer((s) => s.currentPage);
   const pageGroup = useId();
   const rangeHintId = useId();
+  const highQualityHintId = useId();
+  // Alta calidad solo si el PDF lo permite (PDF-048); si no, se explica y se imprime a 150 ppp.
+  const highQualityAllowed = useViewer((s) => s.permissions.printHighQuality);
 
   const indices = useMemo(
     () => pageIndicesFor(form, numPages, currentPage),
@@ -124,11 +128,18 @@ export function PrintDialog() {
         <label className={styles.option}>
           <input
             type="checkbox"
-            checked={form.highQuality}
+            checked={highQualityAllowed && form.highQuality}
+            disabled={!highQualityAllowed}
+            aria-describedby={highQualityAllowed ? undefined : highQualityHintId}
             onChange={(event) => { setPrintForm({ highQuality: event.currentTarget.checked }); }}
           />
           {printMsg.highQuality}
         </label>
+        {highQualityAllowed ? null : (
+          <p id={highQualityHintId} className={styles.hint}>
+            {securityMsg.highQualityBlocked}
+          </p>
+        )}
       </div>
 
       <p className={styles.count} aria-live="polite">

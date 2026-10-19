@@ -5,6 +5,7 @@ import { planPage, PRINT_DPI, sheetFor, type PagePrintPlan } from '../core/print
 import { parsePageRange } from '../core/print/range';
 import { renderPageForPrint } from '../engine/print-render';
 import { printMsg } from '../ui/messages-print';
+import { securityMsg } from '../ui/messages-security';
 import { askChoice } from './choice';
 import { showNotice } from './notice';
 import { services } from './services';
@@ -81,6 +82,11 @@ export const usePrintDialog = create<{ readonly open: boolean; readonly form: Pr
 /** Abre el diálogo con las opciones recordadas. No hace nada sin documento o con una impresión en curso. */
 export function openPrintDialog(): void {
   if (useViewer.getState().status !== 'ready') return;
+  // Sin permiso de impresión (PDF-048) no se abre el diálogo: se explica por qué.
+  if (!useViewer.getState().permissions.print) {
+    showNotice(securityMsg.printBlocked);
+    return;
+  }
   if (usePrintDialog.getState().open || usePrintJob.getState().job.status !== 'idle') return;
   const saved = services().platform.prefs.get(PRINT_OPTIONS_PREF, isRememberedOptions);
   usePrintDialog.setState({ open: true, form: { ...(saved ?? DEFAULT_OPTIONS), range: '' } });
@@ -135,8 +141,9 @@ let activeRun: Run | null = null;
  * cambios sin guardar, si se puede). Con más de MANY_PAGES páginas pide confirmación antes.
  */
 export async function startPrint(o: PrintOptions): Promise<PrintOutcome> {
-  const { pdf, file, status, currentPage } = useViewer.getState();
+  const { pdf, file, status, currentPage, permissions } = useViewer.getState();
   if (status !== 'ready' || pdf === null || file === null || activeRun !== null) return 'failed';
+  if (!permissions.print) return 'failed';
   if (usePrintJob.getState().job.status !== 'idle') return 'failed';
 
   const indices = pageIndicesFor(o, pdf.numPages, currentPage);
@@ -202,7 +209,9 @@ async function prepareAndPrint(o: PrintOptions, indices: readonly number[], run:
   if (first === undefined) return 'failed';
   const sheet = sheetFor(await pageSize(doc, first));
   const pageRule = `@page { size: ${String(sheet.sheetWidthPt)}pt ${String(sheet.sheetHeightPt)}pt; margin: 0 }`;
-  const dpi = o.highQuality ? PRINT_DPI.high : PRINT_DPI.normal;
+  // Sin permiso de alta calidad (PDF-048) se imprime a la resolución normal aunque se haya pedido la alta.
+  const allowsHighQuality = useViewer.getState().permissions.printHighQuality;
+  const dpi = o.highQuality && allowsHighQuality ? PRINT_DPI.high : PRINT_DPI.normal;
 
   const sheets: PrintSheet[] = [];
   for (const [k, index] of indices.entries()) {

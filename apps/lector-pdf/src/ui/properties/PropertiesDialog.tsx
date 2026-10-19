@@ -1,22 +1,26 @@
 import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { OpenedFile } from '@suite/platform';
-import { readDocumentProperties, type LoadedPdf } from '../../engine';
+import { readCipher, readDocumentProperties, type LoadedPdf } from '../../engine';
+import type { CipherKind } from '../../core/permissions';
 import { formatFileSize, formatPageSize, type DocumentProperties } from '../../core/properties';
 import { Dialog } from '../kit/Dialog';
 import { propertiesMsg } from '../messages-properties';
+import { securityMsg } from '../messages-security';
 import { closeProperties, usePropertiesDialog } from '../../state/properties-store';
+import { currentPassword } from '../../state/document-actions';
 import { cancelFontScan, resetFontScan, startFontScan } from '../../state/fonts-actions';
 import { useFontScan } from '../../state/fonts-store';
 import { useViewer } from '../../state/viewer-store';
 import type { FontInfo } from '../../core/pdf';
 import styles from './PropertiesDialog.module.css';
 
-type TabId = 'description' | 'advanced' | 'fonts';
+type TabId = 'description' | 'advanced' | 'fonts' | 'security';
 
 const TABS: readonly { readonly id: TabId; readonly label: string }[] = [
   { id: 'description', label: propertiesMsg.tabDescription },
   { id: 'advanced', label: propertiesMsg.tabAdvanced },
   { id: 'fonts', label: propertiesMsg.tabFonts },
+  { id: 'security', label: securityMsg.tabSecurity },
 ];
 
 /** Formato de fechas del diálogo: día, mes y año en español, con la hora local. */
@@ -36,7 +40,7 @@ function formatDate(iso: string | null): string {
 }
 
 /** Filas (etiqueta, valor) de cada pestaña. Los valores vacíos se muestran como «—». */
-function rowsFor(tab: Exclude<TabId, 'fonts'>, p: DocumentProperties): readonly (readonly [string, string])[] {
+function rowsFor(tab: Exclude<TabId, 'fonts' | 'security'>, p: DocumentProperties): readonly (readonly [string, string])[] {
   const rows = propertiesMsg.rows;
   if (tab === 'description') {
     return [
@@ -108,6 +112,8 @@ function PropertiesContent({ pdf, file, pageIndex }: { readonly pdf: LoadedPdf; 
   let body: ReactNode;
   if (tab === 'fonts') {
     body = <FontsPanel />;
+  } else if (tab === 'security') {
+    body = <SecurityPanel file={file} />;
   } else if (props === null) {
     body = <p className={styles.reading}>{propertiesMsg.reading}</p>;
   } else {
@@ -146,6 +152,47 @@ function PropertiesContent({ pdf, file, pageIndex }: { readonly pdf: LoadedPdf; 
         {body}
       </div>
     </div>
+  );
+}
+
+/** Pestaña «Seguridad» (PDF-048): cifrado del fichero y lista de permisos (Permitido / No permitido). */
+function SecurityPanel({ file }: { readonly file: OpenedFile }) {
+  const permissions = useViewer((s) => s.permissions);
+  // `undefined`: leyendo; `null`: no se ha podido leer el cifrado.
+  const [cipher, setCipher] = useState<CipherKind | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    void readCipher(file.source, currentPassword() ?? '').then((kind) => {
+      if (!cancelled) setCipher(kind);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
+
+  if (cipher === undefined) return <p className={styles.reading}>{propertiesMsg.reading}</p>;
+
+  const allowed = (value: boolean): string => (value ? securityMsg.allowed : securityMsg.notAllowed);
+  const rows: readonly (readonly [string, string])[] = [
+    [securityMsg.cipherLabel, cipher === null ? propertiesMsg.empty : securityMsg.ciphers[cipher]],
+    [securityMsg.permissionRows.print, allowed(permissions.print)],
+    [securityMsg.permissionRows.printHighQuality, allowed(permissions.printHighQuality)],
+    [securityMsg.permissionRows.copy, allowed(permissions.copy)],
+    [securityMsg.permissionRows.annotate, allowed(permissions.annotate)],
+    [securityMsg.permissionRows.fillForms, allowed(permissions.fillForms)],
+    [securityMsg.permissionRows.assemble, allowed(permissions.assemble)],
+    [securityMsg.permissionRows.modify, allowed(permissions.modify)],
+  ];
+  return (
+    <dl className={styles.list} aria-label={securityMsg.permissionsLabel}>
+      {rows.map(([label, value]) => (
+        <div key={label} className={styles.row}>
+          <dt className={styles.term}>{label}</dt>
+          <dd className={styles.value}>{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

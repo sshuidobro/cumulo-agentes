@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
   type ReactElement,
 } from 'react';
@@ -32,10 +33,12 @@ import type { Rotation } from '../../core/rotation';
 import { msg } from '../messages';
 import { placeSignatureFromKeyboard, select } from '../../state/annotation-actions';
 import { useAnnotations } from '../../state/annotation-store';
-import { goToPage, setCurrentPage, setCurrentYFraction, setHorizontalOverflow } from '../../state/navigation';
+import { goToPage, nextPage, setCurrentPage, setCurrentYFraction, setHorizontalOverflow } from '../../state/navigation';
+import { useFullscreen } from '../../state/fullscreen-actions';
 import { zoomWithWheel } from '../../state/view-actions';
 import { useViewer } from '../../state/viewer-store';
 import { PageView } from './PageView';
+import { useIdleCursor } from './use-idle-cursor';
 import { useViewportSize } from './use-viewport-size';
 import styles from './Viewer.module.css';
 
@@ -107,10 +110,12 @@ export function Viewer() {
   const currentPage = useViewer((s) => s.currentPage);
   const spread = viewMode.spread;
   const paged = viewMode.scroll === 'paged';
+  const fullscreen = useFullscreen((s) => s.on);
 
   const ref = useRef<HTMLDivElement>(null);
   const viewport = useViewportSize(ref);
   const vh = viewport.height;
+  useIdleCursor(ref, fullscreen);
 
   // La tabla de dimensiones se muta en sitio: el par (tabla, versión) cambia de identidad con cada cambio.
   const snapshot = useMemo(
@@ -177,6 +182,8 @@ export function Viewer() {
     if (layout === null) return { scrollHeight: 0, factor: 1 };
     return paged ? { scrollHeight: winHeight, factor: 1 } : scrollMap(layout, vh);
   }, [layout, vh, paged, winHeight]);
+  // En pantalla completa la fila se centra verticalmente en el visor: desplazamiento de los marcos (PDF-097).
+  const fullscreenPad = fullscreen && paged ? Math.max(0, (vh - winHeight) / 2) : 0;
   // Origen del scroll en px de contenido: 0 en continuo, el techo de la ventana en modo por páginas.
   const originY = paged ? winTop : 0;
   const maxY = layout === null ? 0 : maxContentY(layout, vh);
@@ -403,6 +410,8 @@ export function Viewer() {
       placeSignatureFromKeyboard(pagePx > 0 ? Math.min(1, vh / pagePx) : 1);
       return;
     }
+    // En pantalla completa, Espacio y Re/Av Pág son atajos de página (PDF-097): los resuelve useShortcuts.
+    if (fullscreen && (event.key === ' ' || event.key === 'PageDown' || event.key === 'PageUp')) return;
     if (!scaled && !paged) return;
     const pageStep = vh - ARROW_STEP;
     let delta: number;
@@ -456,6 +465,15 @@ export function Viewer() {
     setPanning(false);
   };
 
+  // En pantalla completa, un clic izquierdo sobre una página pasa a la fila siguiente. Los enlaces y las
+  // anotaciones conservan su clic.
+  const onClick = (event: MouseEvent<HTMLDivElement>): void => {
+    if (!fullscreen || event.button !== 0 || !(event.target instanceof Element)) return;
+    if (event.target.closest('a, [data-annot-id]') !== null) return;
+    if (event.target.closest('[data-page-index]') === null) return;
+    nextPage();
+  };
+
   // Tras abrir un documento, el visor recibe el foco para que el teclado funcione de inmediato.
   useEffect(() => {
     if (dims !== null) ref.current?.focus();
@@ -486,7 +504,7 @@ export function Viewer() {
           key={i}
           index={i}
           numPages={layout.count}
-          top={(layout.tops[i] ?? 0) - contentY + scrollTop}
+          top={(layout.tops[i] ?? 0) - contentY + scrollTop + fullscreenPad}
           left={(spacerWidth - layout.maxWidth) / 2 + (layout.lefts[i] ?? 0)}
           width={layout.widths[i] ?? 0}
           height={layout.heights[i] ?? 0}
@@ -501,14 +519,16 @@ export function Viewer() {
   return (
     <div
       ref={ref}
-      className={panning ? `${styles.viewer} ${styles.panning}` : styles.viewer}
+      className={[styles.viewer, panning ? styles.panning : '', fullscreen ? styles.fullscreen : ''].filter(Boolean).join(' ')}
       role="region"
       aria-label={msg.documentRegion(name)}
       data-testid="viewer"
       data-tool={annotationTool === 'none' ? tool : annotationTool}
+      data-current-page={shownPage + 1}
       tabIndex={0}
       onScroll={onScroll}
       onKeyDown={onKeyDown}
+      onClick={onClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endPan}

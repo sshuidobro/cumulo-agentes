@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ChangeEvent } from 'react';
+import { lazy, Suspense, useEffect, type ChangeEvent } from 'react';
 import { msg } from './messages';
 import { useShortcuts } from './use-shortcuts';
 import { useTheme } from './use-theme';
@@ -31,6 +31,7 @@ import { firstPage, lastPage, nextPage, prevPage } from '../state/navigation';
 import { goBack, goForward } from '../state/history';
 import { dismissNotice } from '../state/notice';
 import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/view-actions';
+import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen } from '../state/fullscreen-actions';
 import { openProperties, usePropertiesDialog } from '../state/properties-store';
 import { openPrintDialog, usePrintDialog } from '../state/print-actions';
 import { useViewer } from '../state/viewer-store';
@@ -81,6 +82,14 @@ const VIEW_SHORTCUTS = {
   'save-as': () => { blurActiveElement(); void saveAs(); },
   properties: () => { openProperties(); },
   print: () => { openPrintDialog(); },
+  fullscreen: () => { toggleFullscreen(); },
+} as const;
+
+/** Atajos con la pantalla completa activa (PDF-097). Escape sale antes que «cancelar herramienta». */
+const FULLSCREEN_SHORTCUTS = {
+  'cancel-tool': () => { exitFullscreen(); },
+  'fullscreen-next': () => { nextPage(); },
+  'fullscreen-prev': () => { prevPage(); },
 } as const;
 
 function blurActiveElement(): void {
@@ -99,15 +108,19 @@ export function App() {
   const sidebar = useViewer((s) => s.sidebar);
   const propertiesOpen = usePropertiesDialog((s) => s.open);
   const printOpen = usePrintDialog((s) => s.open);
+  const fullscreen = useFullscreen((s) => s.on);
 
-  // Escape solo se consume si hay una herramienta de anotación activa.
+  // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
   useShortcuts({
     open: () => void pickAndOpen(),
     undo,
     redo,
-    ...(tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
+    ...(fullscreen ? FULLSCREEN_SHORTCUTS : tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
     ...(status === 'ready' ? VIEW_SHORTCUTS : {}),
   });
+
+  // Si el sistema sale de la pantalla completa (F11, SO), la vista vuelve a su estado anterior.
+  useEffect(() => watchSystemFullscreen(), []);
 
   const onBrowserFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.currentTarget.files?.[0];
@@ -115,10 +128,12 @@ export function App() {
     if (file !== undefined) openBrowserFile(file);
   };
 
+  // En pantalla completa no se muestran barras ni panel: solo el visor (PDF-097).
+  const chrome = !fullscreen;
   return (
-    <div className={styles.app}>
-      <MainToolbar />
-      {status === 'ready' && commentBarOpen && <CommentToolbar />}
+    <div className={fullscreen ? `${styles.app} ${styles.appFullscreen}` : styles.app}>
+      {chrome && <MainToolbar />}
+      {chrome && status === 'ready' && commentBarOpen && <CommentToolbar />}
       <IoErrorBanner />
       <main className={status === 'ready' ? styles.mainReady : styles.main}>
         {status === 'empty' && <EmptyState />}
@@ -130,7 +145,7 @@ export function App() {
               {msg.pageCount(numPages)}
             </div>
             <div className={styles.body}>
-              {sidebar !== 'none' && <Sidebar />}
+              {chrome && sidebar !== 'none' && <Sidebar />}
               <Viewer />
             </div>
             <SelectionActions />

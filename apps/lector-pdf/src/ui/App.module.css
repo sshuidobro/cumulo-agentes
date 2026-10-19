@@ -4,6 +4,12 @@
   height: 100%;
 }
 
+/* Pantalla completa (PDF-097): fondo negro también en el tema claro. */
+.appFullscreen,
+.appFullscreen .mainReady {
+  background: #000;
+}
+
 .main {
   flex: 1;
   display: flex;

@@ -2,6 +2,7 @@ import { ShortcutRegistry } from '@suite/shared';
 import { msg } from './messages';
 import { propertiesMsg } from './messages-properties';
 import { printMsg } from './messages-print';
+import { viewMsg } from './messages-view';
 
 /** Acciones de la app que tienen atajo. Cada ficha añade las suyas aquí. */
 export type ShortcutId =
@@ -33,7 +34,10 @@ export type ShortcutId =
   | 'find-next'
   | 'find-prev'
   | 'properties'
-  | 'print';
+  | 'print'
+  | 'fullscreen'
+  | 'fullscreen-next'
+  | 'fullscreen-prev';
 
 /** Registro único de atajos de la app (COM-011). */
 export const shortcuts = new ShortcutRegistry<ShortcutId>([
@@ -66,6 +70,10 @@ export const shortcuts = new ShortcutRegistry<ShortcutId>([
   { id: 'find-prev', chords: ['Shift+F3'], description: msg.prevMatch },
   { id: 'properties', chords: ['Mod+D'], description: propertiesMsg.title },
   { id: 'print', chords: ['Mod+P'], description: printMsg.title },
+  // En pantalla completa (PDF-097): Espacio, Intro y Re Pág/Av Pág, además de las flechas de página.
+  { id: 'fullscreen', chords: ['Mod+L'], description: viewMsg.fullscreen },
+  { id: 'fullscreen-next', chords: ['Space', 'Enter', 'PageDown'], description: msg.nextPage },
+  { id: 'fullscreen-prev', chords: ['Backspace', 'PageUp'], description: msg.prevPage },
 ]);
 
 /** Atajo de una acción formateado para mostrar (p. ej. «Ctrl+O»); vacío si no tiene. */

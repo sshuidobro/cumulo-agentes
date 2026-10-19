@@ -54,6 +54,12 @@
   margin-bottom: 0.75rem;
 }
 
+.hint {
+  margin: 0 0 0 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 .count {
   margin: 0;
   color: var(--color-text-muted);
