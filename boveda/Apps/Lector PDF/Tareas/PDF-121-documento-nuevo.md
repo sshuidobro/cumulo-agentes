@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-121
 titulo: Escribir un PDF nuevo con páginas de uno o varios PDFs
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-119, PDF-120]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -99,3 +99,7 @@ export async function buildNewDocument(input: NewDocumentInput): Promise<Result<
   - Semilla de `/ID` de `buildNewDocument`: `` `${now}|${total}` `` (la ficha no la fija).
   - Árbol de cambios ajenos sin commit (`render.ts`, `Viewer.tsx`, `Viewer.module.css`, `PageView.tsx`, `engine-render.test.ts`, `tests/e2e/detail.spec.ts`, `tests/e2e/zz-debug.spec.ts`, `tests/ui/page-view-detail.test.tsx`): no son míos ni los he tocado.
   - Los tiempos en ms de `pnpm perf` no se imprimen; solo consta que pasan los umbrales.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+Lint y typecheck con código 0; los 18 tests de la ficha pasan. `pnpm coverage` solo falla por 2 tests de UI ajenos (`tests/ui/sidebar.test.tsx` y otro de UI), ya recogidos en la bitácora. Código correcto: validación, cancelación, numeración sin huecos, camino cifrado.
+1. (opcional) `new-document.ts` — la semilla de `/ID` `now|total` repite ID para dos documentos distintos creados en el mismo instante con el mismo número de páginas.
