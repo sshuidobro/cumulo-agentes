@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-051
 titulo: Lienzo de detalle para zoom alto
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-098, PDF-050]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -61,3 +61,8 @@ Con zoom alto el lienzo de página entera se limita (ADR-0007) y se ve borroso. 
   - `pnpm --filter lector-pdf e2e` (todo el proyecto): 255 pasan, 1 falla: `notes.spec.ts:91` («Tab recorre comentario, Borrar, Cerrar»; PDF-033). Falla también sin los cambios de detalle (revertidos temporalmente en `PageView.tsx`/`Viewer.tsx` y restaurados), así que es anterior a esta ficha.
   - `pnpm coverage`: 3 tests fallan y no es por esta ficha: `tests/ui/comment-toolbar.test.tsx` (2) y `tests/ui/sidebar.test.tsx` (1), los mismos que la bitácora del 19-10 marca como rojos. Mientras tanto otros agentes ejecutan vitest en el mismo repo: una ejecución de cobertura se bloqueó por el directorio `coverage/` y hubo 5 fallos transitorios que no se repiten al relanzar (`search-actions.test.ts`).
 - Dudas o cosas que no he podido hacer: (1) el E2E de `notes.spec.ts` y los 3 tests de UI rojos están fuera de esta ficha; hacen falta para que `pnpm e2e` y `pnpm coverage` den código 0. (2) La ubicación del test de rendimiento (ver arriba). (3) Como el repositorio tiene cambios de otros agentes sin confirmar, no he hecho commit de código: solo del Registro de esta ficha.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Lint y typecheck OK; `page-view-detail.test.tsx` pasa. Implementación coherente con la ficha (offset, `detailHostRef`, liberación al desmontar/cancelar, `needsRedraw`).
+- Rojos en `comment-toolbar.test.tsx` y `sidebar.test.tsx` (y `notes.spec.ts:91`): ajenos a esta ficha, ya registrados en bitácora; bloquean "código 0" global, no el detalle.
+- (opcional) El test de rendimiento está en `detail.spec.ts` y no en `performance.spec.ts`; aceptable.
