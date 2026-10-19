@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-051
 titulo: Lienzo de detalle para zoom alto
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-098, PDF-050]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -66,3 +66,13 @@ Con zoom alto el lienzo de página entera se limita (ADR-0007) y se ve borroso. 
 - Lint y typecheck OK; `page-view-detail.test.tsx` pasa. Implementación coherente con la ficha (offset, `detailHostRef`, liberación al desmontar/cancelar, `needsRedraw`).
 - Rojos en `comment-toolbar.test.tsx` y `sidebar.test.tsx` (y `notes.spec.ts:91`): ajenos a esta ficha, ya registrados en bitácora; bloquean "código 0" global, no el detalle.
 - (opcional) El test de rendimiento está en `detail.spec.ts` y no en `performance.spec.ts`; aceptable.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E detalle (1 lienzo, nitidez, instantánea, scroll, 100 %, noche, 6 400 %) | OK | `playwright test detail.spec.ts --project=chromium`: 7/7 |
+| UI detalle | OK | `page-view-detail.test.tsx` 8/8 |
+| Lint / typecheck | OK | código 0 |
+| Cobertura / suite | 2 ficheros rojos ajenos (`sidebar.test.tsx` F4, `comment-toolbar.test.tsx`), 3044/3046 OK | `pnpm coverage` |
+Rendimiento @perf: no relanzado; verificado por el programador en `chromium-perf`.
+Nota: los rojos de sidebar/comment-toolbar y `notes.spec.ts:91` ya constan en la bitácora y no tocan el detalle; siguen bloqueando el «código 0» global y deben tener ficha propia.

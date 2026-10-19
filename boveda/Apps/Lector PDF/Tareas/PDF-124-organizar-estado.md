@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-124
 titulo: Organizar - estado, acciones, guardado encadenado y escrituras de documento
 app: pdf
-estado: en-test
+estado: cambios-pedidos
 depende_de: [PDF-053, PDF-118, PDF-119, PDF-101]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
 actualizado: 2026-10-19
@@ -105,3 +105,13 @@ export function cancelOrganizeSave(): void;
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 - Lint y typecheck OK; tests de organize-actions, save-actions, unsaved-guard y tabs: 56/56. Los 3 tests rojos de `pnpm coverage` (`comment-toolbar`, `sidebar`, `fixtures`) están en ficheros que este commit no toca; no bloquean.
 - (opcional) `organize-actions.test.ts` — falta test del aviso `assembleAnyway` una vez por documento; añadirlo en PDF-125 o al tocar el fichero.
+
+### [tester] ronda 1 — 2026-10-19 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| Batería completa | FALLA | `vitest run --coverage`: 2 rojos, 3044 OK (3046) |
+| Criterios funcionales (organizar, writeDocument, pendientes) | OK por tests | `organize-actions`, `save-actions`, `unsaved-guard` en verde |
+
+**Regresión introducida por 705be4a** (no son «ajenos», contra lo dicho por programador y revisor): `tests/ui/sidebar.test.tsx` («F4 abre y cierra el panel…») y `tests/ui/comment-toolbar.test.tsx` («pulsar Comentar…») pasan en 705be4a~1 (20/20, worktree limpio) y fallan en 705be4a (`Unable to find role "complementary" name "Panel lateral"` / `role "toolbar" name "Comentar"`). Reproducir: `cd apps/lector-pdf && pnpm exec vitest run tests/ui/sidebar.test.tsx tests/ui/comment-toolbar.test.tsx`. Sospecha: el cambio en `main.tsx`/`tabs.ts` (registro del participante de organize) o la importación nueva altera el montaje de la app en esos tests. `fixtures.test.ts` ya no falla.
+Tests añadidos: ninguno. Rendimiento: no aplica.
