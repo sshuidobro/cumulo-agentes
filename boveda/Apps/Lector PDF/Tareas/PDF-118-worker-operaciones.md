@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-118
 titulo: Worker de operaciones de documento con lectura por mensajes
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -108,3 +108,17 @@ export function inProcessDocOps(): DocOpsClient;   // MessageChannel + serveDocO
   - Criterio «el build genera un chunk separado para el Worker»: hoy nada importa `state/doc-ops.ts`, así que el Worker no entra en el grafo y no se emite. Comprobado con un build de sonda (temporal, borrado): Vite emite `doc-ops.worker-*.js` (~61 kB) cuando se importa `runDocOp`. Se cumplirá al llegar el primer consumidor (PDF-124).
   - El fallo de `bundle:check` no viene de estos ficheros (no están en el arranque). Revisar el arranque con los cambios en curso de otras fichas (`core/pdf/incremental.ts` modificado, `core/pdf/object-copier.ts` nuevo).
   - No he hecho commit (pedido explícito).
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Tests doc-ops (protocolo, page-rotations) | OK | `vitest run` completo: 238 ficheros, 2868 tests OK |
+| Perf `page-rotations` en pages-100000.pdf < 4000 ms | OK | `vitest --config vitest.perf.config.ts doc-ops.perf.test.ts` pasa (9 s totales) |
+| Lecturas dentro de `[0,size)`, read-error como err en español | OK | cubierto en `protocol.test.ts` |
+| Chunk del Worker + bundle:check | Parcial, aceptado | Nada importa aún `state/doc-ops.ts` (llegará con PDF-124). `bundle:check`: arranque 546 367 > 500 000, ajeno (PDF-140); los ficheros de doc-ops no están en el arranque |
+| core/doc-ops sin React/pdfjs/tauri | OK | `pnpm lint` código 0 |
+| lint / typecheck / coverage | OK | lint y typecheck 0; coverage: con `--coverage` 7 timeouts de 5 s (pages-5000, carga de la máquina, con coverage de otro proceso concurrente pid 619); sin coverage, todo verde |
+
+- `compare.perf.test.ts`: pasa en aislamiento (4275 ms en comparar pages-5000; comparar una página 19 ms). Su fallo previo fue por carga de CPU, ajeno a esta ficha.
+- Los 5 rojos de `tabs-annotations`/`draft-sync-tabs` citados por el programador ya no se reproducen.
+- Tests añadidos: ninguno nuevo. Rendimiento: ver arriba.
