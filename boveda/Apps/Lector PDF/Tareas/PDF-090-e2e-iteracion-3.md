@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-090
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089]
 intentos: 1
 skills: [pruebas-calidad, calidad-profesional]
