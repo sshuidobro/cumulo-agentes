@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-133
 titulo: OCR - motor local tesseract.js, recursos empaquetados y escaneado de prueba
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -64,3 +64,9 @@ export async function createOcrEngine(lang: OcrLanguage, assetBaseUrl: string): 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/package.json` (deps exactas y script `assets`), `apps/lector-pdf/scripts/copy-ocr-assets.mjs` (nuevo), `apps/lector-pdf/src/engine/ocr.ts` (nuevo), `apps/lector-pdf/tests/helpers/ocr-node.ts` (nuevo), `apps/lector-pdf/tests/fixtures/scanned.ts` (nuevo), `apps/lector-pdf/tests/fixtures/catalog.ts`, `apps/lector-pdf/tests/unit/ocr-engine.test.ts` (nuevo), `apps/lector-pdf/tests/unit/fixtures.test.ts` (27 → 28 fixtures), `eslint.config.js` (regla `no-restricted-imports` para tesseract.js; `public/ocr/` ignorado), `.gitignore`, `fixtures/FUENTES.md`, `pnpm-lock.yaml`.
+- Qué he hecho: motor `createOcrEngine` con worker local (`${assetBaseUrl}ocr/`), reconocimiento por bloques→palabras con filtro de confianza < 30 y cancelación que termina y recrea el worker. Script de copia de 6 ficheros a `public/ocr/` y fixture `scanned-es-3.pdf` (JPEG 1654×2339 por página, generado con `@napi-rs/canvas`). Añadido `createOcrEngineWithOptions` (export extra de `ocr.ts`) para que el helper de Node reutilice la misma lógica. Las imágenes son JPEG RGB con gris (`/DeviceRGB`), no JPEG de 1 componente: `@napi-rs/canvas` no codifica escala de grises.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf assets` OK (6 ficheros en `public/ocr/`); `pnpm lint` OK; `pnpm typecheck` 0 errores; `pnpm --filter lector-pdf build` OK (arranque 541 837 bytes de 600 000; `dist/ocr/` con los 6 ficheros); `vitest run tests/unit/ocr-engine.test.ts` 3/3 OK; `grep cdn.jsdelivr apps/lector-pdf/src` vacío. `pnpm coverage`: 3 fallos, ninguno de esta ficha. Dos son de UI que ya estaban rojos antes del commit (`comment-toolbar.test.tsx` y `sidebar.test.tsx`, según la bitácora del 2026-10-19). El tercero (`fixtures.test.ts`, recuento de fixtures) lo causaba esta ficha y ya está corregido a 28. El resto de la suite pasa (3043 tests). Por eso `pnpm coverage` no sale con código 0 todavía.
+- Dudas o cosas que no he podido hacer: (1) Los 3 fallos de UI no son de esta ficha; no los he tocado. (2) La CSP no cambia: no la he tocado y el build no requiere nada extra, pero el worker/WASM aún no se ha probado en navegador (eso es PDF-134/e2e). (3) No he medido la cobertura de `ocr.ts` por separado.

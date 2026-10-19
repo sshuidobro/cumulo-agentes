@@ -12,6 +12,7 @@ import {
 } from './structure.ts';
 import { textPage } from './pdf-builder.ts';
 import { qpdfEncrypt } from './encrypted.ts';
+import { buildScannedDocument } from './scanned.ts';
 
 /** Subir si cambia la forma de los ficheros generados: fuerza la regeneración en todos los equipos. */
 export const GENERATOR_VERSION = 5;
@@ -131,6 +132,7 @@ export const FIXTURES: readonly FixtureSpec[] = [
     build: () => buildDocument(SIZES_PAGES.length, (page) => pageSpecAt(SIZES_PAGES, page)),
   },
   { name: 'images-200.pdf', build: buildImages200 },
+  { name: 'scanned-es-3.pdf', build: buildScannedDocument },
   { name: 'corrupt-empty.pdf', build: () => new Uint8Array(0) },
   { name: 'corrupt-not-pdf.pdf', build: () => Buffer.from('Esto no es un PDF.\n'.repeat(20), 'latin1') },
   {
