@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-058
 titulo: Respuestas y estados de revisión - modelo, lectura y escritura
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-036, PDF-057, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -89,3 +89,7 @@ export function dependentIds(all: ReadonlyMap<string, Annotation>, id: string): 
   - `pnpm coverage` y `pnpm perf`: no ejecutados completos (fallan por lo anterior).
 - Dudas o cosas que no he podido hacer: falta decidir quién arregla `tabs-annotations.test.ts` (DBG y timeouts). No he hecho commit (lo pediste así: otros programadores trabajan en paralelo y hay cambios sin commit de otras fichas).
 
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Typecheck y eslint de src y tests/unit/annotations limpios; vitest annotations + ui: 813/815, solo fallan 2 de `draft-sync-tabs` (WIP ajeno de PDF-101). Modelo, `replies.ts`, import, to-pdf, `writableAdded`/`irtOf` y UI cubren los criterios.
+- (opcional) El tester debe ejecutar `pnpm coverage` y `pnpm perf` completos cuando PDF-101 esté arreglado.
