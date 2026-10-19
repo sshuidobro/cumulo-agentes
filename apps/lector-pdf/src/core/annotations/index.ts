@@ -11,3 +11,4 @@ export * from './note';
 export * from './freetext';
 export * from './comment-list';
 export * from './shapes';
+export * from './import-shapes';
