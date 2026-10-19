@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-048
 titulo: Respetar los permisos del documento (copiar, imprimir) y avisar al anotar
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-046, PDF-044, PDF-045]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -72,3 +72,17 @@ export function permissionsFrom(flags: ReadonlySet<number> | null): DocPermissio
 2. Duda bandera 512: decisión de revisión, se mantiene solo la bandera 16 para copiar. Es lo que hace Adobe Reader (512 solo habilita la extracción para lectores de pantalla, no el portapapeles). Sin cambios.
 3. (opcional) `cipherKindOf` distingue RC4 40/128 por la longitud de la clave (<= 5 bytes); correcto para los fixtures, vigilar R3 con `/Length` 40.
 4. Cambios ajenos en el árbol (PDF-097, PDF-050: Viewer, ViewMenu, view-actions) no pertenecen a esta ficha; deben ir en sus propios commits.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E copiar bloqueado (portapapeles intacto, aviso, botón deshabilitado) | OK | `permissions.spec.ts:78` |
+| E2E imprimir deshabilitado, Ctrl+P avisa | OK | `permissions.spec.ts:92` |
+| E2E resaltado avisa una vez; Ctrl+S válido (qpdf) | OK | `permissions.spec.ts:115` |
+| E2E basic-5 sin cambios ni avisos | OK | `permissions.spec.ts:166` |
+| Propiedades › Seguridad (AES 256 / RC4 40) | OK | `permissions.spec.ts:136,154` |
+| Unit `permissionsFrom(Set([4]))` | OK | `tests/unit/document-permissions.test.ts` |
+| Axe pestaña Seguridad | OK | incluido en permissions.spec |
+| lint, typecheck, coverage, e2e | OK | `pnpm lint`/`typecheck`/`coverage` código 0 (stmts 96,54 %, líneas 98,76 %); `pnpm --filter lector-pdf e2e` 261/261 |
+
+Tests añadidos: ninguno (los del programador cubren los criterios). Rendimiento: tests @perf del e2e en verde.
