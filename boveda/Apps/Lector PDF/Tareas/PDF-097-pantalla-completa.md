@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-097
 titulo: Modo pantalla completa (lectura y presentación)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-050, COM-017]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -60,3 +60,5 @@ Como el «Modo de pantalla completa» de Adobe (Ctrl+L): la ventana ocupa la pan
 1. Lint y typecheck sin errores; tests de la ficha (17) y E2E `fullscreen.spec.ts` (6/6, con axe) en verde. El fallo de `tests/ui/open.test.tsx` viene de cambios sin commit de otras fichas (PDF-048/052), no de esta.
 2. (opcional) `SearchBar` sigue visible en pantalla completa; decisión del líder si debe ocultarse.
 3. Pendiente para el tester: `pnpm coverage` completo cuando las otras fichas estén cerradas, y la prueba manual en `tauri dev`.
+
+- 2026-10-19 coordinador: tester PASA en automático (lint, typecheck, coverage 98,76 %, E2E 261/261). Prueba manual en `tauri dev` pendiente del usuario; SearchBar sigue visible en pantalla completa (decisión técnica del líder: se deja así).
