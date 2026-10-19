@@ -45,7 +45,9 @@ function DialogPanel({ title, children, actions, onClose }: Omit<DialogProps, 'o
   useEffect(() => {
     const panel = panelRef.current;
     const returnTo = returnFocusTo.current;
-    panel?.querySelector<HTMLElement>('button')?.focus();
+    // Foco inicial: el elemento marcado con `data-initial-focus` o, si no hay, el primer botón.
+    const initial = panel?.querySelector<HTMLElement>('[data-initial-focus]') ?? panel?.querySelector<HTMLElement>('button');
+    initial?.focus();
     return () => {
       if (returnTo !== null && returnTo.isConnected) returnTo.focus();
     };

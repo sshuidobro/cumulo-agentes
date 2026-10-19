@@ -13,6 +13,7 @@ import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
+import { PasswordDialog } from './security/PasswordDialog';
 import { PrintContainer } from './print/PrintContainer';
 import { PrintProgress } from './print/PrintProgress';
 import './print/print.css';
@@ -139,6 +140,7 @@ export function App() {
       </main>
       <Notice notice={notice} onExpire={dismissNotice} />
       <ChoiceDialog />
+      <PasswordDialog />
       {propertiesOpen && (
         <Suspense fallback={null}>
           <PropertiesDialog />

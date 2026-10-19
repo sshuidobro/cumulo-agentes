@@ -8,7 +8,7 @@ import { msg } from '../ui/messages';
 import { markAnnotationsSaved, nowIso } from './annotation-actions';
 import { useAnnotations } from './annotation-store';
 import { askChoice } from './choice';
-import { openDocument, PDF_FILTERS } from './document-actions';
+import { currentPassword, openDocument, PDF_FILTERS } from './document-actions';
 import { useForms } from './form-store';
 import { readCurrentPosition } from './position-sync';
 import { showNotice } from './notice';
@@ -139,7 +139,12 @@ async function writeCopy(file: OpenedFile): Promise<SaveResult> {
 /** Tras escribir en disco: reabre el fichero en la misma posición; las anotaciones pasan a ser la línea base. */
 async function reopenSaved(file: OpenedFile): Promise<SaveResult> {
   const position = readCurrentPosition();
-  await openDocument(file, position === null ? undefined : { restore: position });
+  // La contraseña (si el PDF la tenía) se reutiliza para no volver a pedirla (PDF-046).
+  const password = currentPassword();
+  await openDocument(file, {
+    ...(position === null ? {} : { restore: position }),
+    ...(password === null ? {} : { password }),
+  });
   showNotice(msg.saved);
   return 'saved';
 }

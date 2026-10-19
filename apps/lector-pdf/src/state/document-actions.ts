@@ -10,6 +10,7 @@ import { normalizeRotation } from '../core/rotation';
 import { windowTitle } from '../core/title';
 import { endAnnotationSession, startAnnotationSession } from './annotation-actions';
 import { endFormSession, startFormSession } from './form-actions';
+import { askPassword, cancelPassword } from './password-prompt';
 import { expectRestore, flushPosition } from './position-sync';
 import { sidebarForOpenedDocument } from './sidebar-actions';
 import { services } from './services';
@@ -29,6 +30,8 @@ interface Session {
   readonly pdf: LoadedPdf;
   readonly stopListening: () => void;
   readonly scan: AbortController;
+  /** Contraseña con la que se abrió (solo en memoria). Null si el documento no la necesita. */
+  readonly password: string | null;
 }
 
 let session: Session | null = null;
@@ -69,7 +72,17 @@ function beginReplacement(): Session | null {
   openSeq += 1;
   opening?.abort();
   opening = null;
+  cancelPassword();
   return takeSession();
+}
+
+/** Contraseña con la que se abrió el documento actual, o null. Solo vive en memoria mientras está abierto. */
+export function currentPassword(): string | null {
+  return session?.password ?? null;
+}
+
+function isPasswordError(code: string): boolean {
+  return code === 'password-required' || code === 'password-incorrect';
 }
 
 function showError(error: AppError, name: string | null): void {
@@ -80,25 +93,49 @@ function showError(error: AppError, name: string | null): void {
 /**
  * Abre un documento. Si ya hay otro abierto, lo cierra; si llega otra apertura antes de terminar, esta se descarta.
  * `restore`: posición a aplicar en lugar de la recordada (PDF-037, tras guardar).
+ * `password`: contraseña que se prueba primero (tras guardar). Si falta o no sirve, se pide con un diálogo (PDF-046).
  */
-export async function openDocument(file: OpenedFile, opts?: { readonly restore?: ReadingPosition }): Promise<void> {
+export async function openDocument(file: OpenedFile, opts?: { readonly restore?: ReadingPosition; readonly password?: string }): Promise<void> {
   const { assetBaseUrl, platform } = services();
   flushPosition();
   const seq = ++openSeq;
   const controller = new AbortController();
   opening = controller;
   void releaseSession(takeSession());
+  // Si había una apertura esperando la contraseña, esta la reemplaza: su bucle ve que ya no es la más reciente.
+  cancelPassword();
 
   useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, status: 'loading', loadingName: file.name, dimsVersion: useViewer.getState().dimsVersion });
 
-  const result = await loadPdf(file.source, {
+  const onProgress = (loaded: number, total: number): void => {
+    if (seq !== openSeq) return;
+    useViewer.setState({ loadProgress: total > 0 ? Math.min(1, loaded / total) : null });
+  };
+  let password: string | undefined = opts?.password;
+  let result = await loadPdf(file.source, {
     assetBaseUrl,
     signal: controller.signal,
-    onProgress: (loaded, total) => {
-      if (seq !== openSeq) return;
-      useViewer.setState({ loadProgress: total > 0 ? Math.min(1, loaded / total) : null });
-    },
+    onProgress,
+    ...(password === undefined ? {} : { password }),
   });
+
+  while (!result.ok && isPasswordError(result.error.code)) {
+    const entered = await askPassword(file.name, result.error.code === 'password-incorrect');
+    if (seq !== openSeq) {
+      // Otra apertura o cierre ha tomado el relevo mientras se pedía la contraseña.
+      await closeOpened(file);
+      return;
+    }
+    if (entered === null) {
+      // Cancelado por el usuario: estado vacío, sin mensaje de error (igual que cancelar una apertura).
+      if (opening === controller) opening = null;
+      useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, dimsVersion: useViewer.getState().dimsVersion });
+      await closeOpened(file);
+      return;
+    }
+    password = entered;
+    result = await loadPdf(file.source, { assetBaseUrl, signal: controller.signal, onProgress, password });
+  }
 
   if (seq !== openSeq) {
     // Una apertura posterior ha tomado el relevo: este resultado se descarta sin tocar el store.
@@ -149,7 +186,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
   const stopListening = loaded.onIoError((error) => {
     if (seq === openSeq) useViewer.setState({ ioError: error });
   });
-  session = { file, pdf: loaded, stopListening, scan };
+  session = { file, pdf: loaded, stopListening, scan, password: password ?? null };
 
   expectRestore(opts?.restore ?? null);
   useViewer.setState({
@@ -183,6 +220,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
 
 /** Cancela la apertura en curso (si la hay). El store vuelve a estado vacío. */
 export function cancelOpening(): void {
+  cancelPassword();
   opening?.abort();
 }
 
