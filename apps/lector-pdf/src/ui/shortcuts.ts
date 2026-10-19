@@ -3,6 +3,7 @@ import { msg } from './messages';
 import { propertiesMsg } from './messages-properties';
 import { printMsg } from './messages-print';
 import { viewMsg } from './messages-view';
+import { tabsMsg } from './messages-tabs';
 
 /** Acciones de la app que tienen atajo. Cada ficha añade las suyas aquí. */
 export type ShortcutId =
@@ -37,7 +38,10 @@ export type ShortcutId =
   | 'print'
   | 'fullscreen'
   | 'fullscreen-next'
-  | 'fullscreen-prev';
+  | 'fullscreen-prev'
+  | 'next-tab'
+  | 'prev-tab'
+  | 'close-tab';
 
 /** Registro único de atajos de la app (COM-011). */
 export const shortcuts = new ShortcutRegistry<ShortcutId>([
@@ -74,6 +78,10 @@ export const shortcuts = new ShortcutRegistry<ShortcutId>([
   { id: 'fullscreen', chords: ['Mod+L'], description: viewMsg.fullscreen },
   { id: 'fullscreen-next', chords: ['Space', 'Enter', 'PageDown'], description: msg.nextPage },
   { id: 'fullscreen-prev', chords: ['Backspace', 'PageUp'], description: msg.prevPage },
+  // Pestañas (PDF-095). Chrome no deja a una página capturar Ctrl+Tab ni Ctrl+W: en el navegador usa la barra.
+  { id: 'next-tab', chords: ['Mod+Tab'], description: tabsMsg.nextTab },
+  { id: 'prev-tab', chords: ['Mod+Shift+Tab'], description: tabsMsg.prevTab },
+  { id: 'close-tab', chords: ['Mod+W', 'Mod+F4'], description: tabsMsg.closeTab },
 ]);
 
 /** Atajo de una acción formateado para mostrar (p. ej. «Ctrl+O»); vacío si no tiene. */

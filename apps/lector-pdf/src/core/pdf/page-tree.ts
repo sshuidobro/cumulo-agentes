@@ -3,15 +3,22 @@
  * (orden y giro de cada una), escribe un incremento que reescribe el árbol `/Pages`: borrar, reordenar y girar
  * conservando anotaciones, enlaces, índice y cifrado. Solo se reescriben los objetos de página y los nodos
  * `/Pages` nuevos; el resto del fichero no se toca. Nunca lanza: los errores vuelven como `Result`.
+ *
+ * `writePageTree` escribe en un `DeltaWriter` que pone quien llama (PDF-119: la vista Organizar lo usa junto
+ * con páginas en blanco y limpieza de formularios en un solo incremento). `buildPageTreeUpdate` es el envoltorio
+ * de PDF-052: abre y cierra el incremento.
  */
 import type { ByteSource } from '@suite/platform';
 import { err, ok, type Result } from '@suite/shared';
 import { pdfError } from '../errors';
 import type { RandomBytes } from './crypt-rules';
-import { finishDelta, reserveXref, startDelta } from './delta-writer';
+import { finishDelta, reserveXref, startDelta, type DeltaWriter } from './delta-writer';
 import { toSaveError } from './incremental';
 import type { ObjectReader } from './object-reader';
+import { planPageTree, type TreeNode } from './page-tree-layout';
 import { dict, dictGet, name, PdfSyntaxError, ref, withEntries, type PdfDict, type PdfRef, type PdfValue } from './objects';
+
+export { PAGE_TREE_FANOUT } from './page-tree-layout';
 
 export type PageRotation = 0 | 90 | 180 | 270;
 
@@ -45,8 +52,44 @@ export interface PageTreeOutput {
   readonly rewrittenPages: number;
 }
 
-/** Hijos por nodo `/Pages` (árbol equilibrado). */
-export const PAGE_TREE_FANOUT = 32;
+/** Siguiente número de objeto libre. Los números reservados por `next` no se repiten. */
+export interface ObjectAllocator {
+  next(): PdfRef;
+  /** Primer número que aún no se ha dado. */
+  readonly nextNum: number;
+}
+
+export function createAllocator(first: number): ObjectAllocator {
+  let current = first;
+  return {
+    next(): PdfRef {
+      const r = ref(current);
+      current += 1;
+      return r;
+    },
+    get nextNum(): number {
+      return current;
+    },
+  };
+}
+
+/** Página que no está en el fichero abierto. `dict` sin `/Parent`, con `/MediaBox` y `/Resources` propios. */
+export interface AddedPage {
+  readonly ref: PdfRef;
+  readonly dict: PdfDict;
+}
+
+export interface PageTreeWrite {
+  readonly reader: ObjectReader;
+  readonly writer: DeltaWriter;
+  readonly alloc: ObjectAllocator;
+  /** `source` en [0, n) = página original; en [n, n + added.length) = `added[source - n]`. */
+  readonly pages: readonly PageSlot[];
+  readonly added?: readonly AddedPage[];
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (done: number, total: number) => void;
+}
+
 const VALID_ROTATIONS: readonly PageRotation[] = [0, 90, 180, 270];
 const INHERITED_KEYS = ['Resources', 'MediaBox', 'CropBox'] as const;
 const MAX_ANCESTORS = 64;
@@ -68,44 +111,74 @@ export async function readPageRotations(reader: ObjectReader): Promise<Result<re
 }
 
 /**
- * Escribe la actualización que deja las páginas en el orden y con el giro de `pages`. Solo giros (mismo orden,
- * mismo número de páginas): reescribe solo las páginas cuyo giro cambia. En otro caso, reconstruye el árbol
- * `/Pages` con nodos de hasta 32 hijos y reescribe cada página conservada.
+ * Escribe la actualización que deja las páginas en el orden y con el giro de `pages`, en `w.writer`. No abre ni
+ * cierra el incremento. Solo giros (mismo orden, mismo número de páginas): reescribe solo las páginas cuyo giro
+ * cambia. En otro caso, reconstruye el árbol `/Pages` con nodos de hasta 32 hijos y reescribe cada página.
+ * Devuelve las páginas escritas (0 si solo giros y ninguno cambia).
  */
-export async function buildPageTreeUpdate(input: PageTreeInput): Promise<Result<PageTreeOutput>> {
+export async function writePageTree(w: PageTreeWrite): Promise<Result<number>> {
   try {
-    return await writeUpdate(input);
+    return await writeTree(w);
   } catch (error: unknown) {
     return err(toSaveError(error));
   }
 }
 
-async function writeUpdate(input: PageTreeInput): Promise<Result<PageTreeOutput>> {
-  const { reader, pages, signal } = input;
+/**
+ * Envoltorio de PDF-052: abre el incremento, escribe el árbol con `writePageTree` y lo cierra. Sin cambios
+ * devuelve delta vacío.
+ */
+export async function buildPageTreeUpdate(input: PageTreeInput): Promise<Result<PageTreeOutput>> {
+  try {
+    const { source, reader, pages, now, signal, onProgress } = input;
+    const writer = await startDelta(source, reader, input.random);
+    const alloc = createAllocator(reader.xref.size);
+    const written = await writePageTree({
+      reader,
+      writer,
+      alloc,
+      pages,
+      ...(signal === undefined ? {} : { signal }),
+      ...(onProgress === undefined ? {} : { onProgress }),
+    });
+    if (!written.ok) return err(written.error);
+    if (written.value === 0) return ok({ delta: new Uint8Array(0), expectedSize: source.size, rewrittenPages: 0 });
+
+    const root = await catalogRef(reader);
+    const { xrefNum, size } = reserveXref(reader, alloc.nextNum);
+    const delta = finishDelta(writer, { reader, root, size, xrefNum, now, sourceSize: source.size });
+    return ok({ delta, expectedSize: source.size + delta.length, rewrittenPages: written.value });
+  } catch (error: unknown) {
+    return err(toSaveError(error));
+  }
+}
+
+async function writeTree(w: PageTreeWrite): Promise<Result<number>> {
+  const { reader, pages, signal } = w;
   const n = await reader.pageCount();
-  if (!isValidList(pages, n)) return err(pdfError('organize-invalid'));
+  const total = n + (w.added?.length ?? 0);
+  if (!isValidList(pages, total)) return err(pdfError('organize-invalid'));
   if (signal?.aborted === true) return err(pdfError('cancelled'));
 
   const identity = pages.length === n && pages.every((slot, i) => slot.source === i);
-  return identity ? writeRotationsOnly(input) : writeReordered(input, await reader.pageRefs());
+  return identity ? writeRotationsOnly(w) : writeReordered(w, n);
 }
 
-/** `pages` no vacío, `source` entero sin repetir en [0, n) y `rotate` ∈ {0, 90, 180, 270}. */
-function isValidList(pages: readonly PageSlot[], n: number): boolean {
+/** `pages` no vacío, `source` entero sin repetir en [0, total) y `rotate` ∈ {0, 90, 180, 270}. */
+function isValidList(pages: readonly PageSlot[], total: number): boolean {
   if (pages.length < 1) return false;
   const seen = new Set<number>();
   for (const slot of pages) {
-    if (!Number.isInteger(slot.source) || slot.source < 0 || slot.source >= n || seen.has(slot.source)) return false;
+    if (!Number.isInteger(slot.source) || slot.source < 0 || slot.source >= total || seen.has(slot.source)) return false;
     seen.add(slot.source);
     if (!VALID_ROTATIONS.includes(slot.rotate)) return false;
   }
   return true;
 }
 
-/** Solo giros: reescribe las páginas cuyo giro efectivo cambia. Sin cambios → delta vacío. */
-async function writeRotationsOnly(input: PageTreeInput): Promise<Result<PageTreeOutput>> {
-  const { source, reader, pages, signal, onProgress, now } = input;
-  const writer = await startDelta(source, reader, input.random);
+/** Solo giros: reescribe las páginas cuyo giro efectivo cambia. Devuelve cuántas reescribió. */
+async function writeRotationsOnly(w: PageTreeWrite): Promise<Result<number>> {
+  const { reader, writer, pages, signal, onProgress } = w;
   const memo: AncestorMemo = new Map();
   let rewritten = 0;
   let index = 0;
@@ -123,24 +196,20 @@ async function writeRotationsOnly(input: PageTreeInput): Promise<Result<PageTree
     reportProgress(onProgress, index, pages.length);
   }
   if (index !== pages.length) throw unreadable('menos páginas que /Count');
-  if (rewritten === 0) return ok({ delta: new Uint8Array(0), expectedSize: source.size, rewrittenPages: 0 });
-
-  const root = await catalogRef(reader);
-  const { xrefNum, size } = reserveXref(reader, reader.xref.size);
-  const delta = finishDelta(writer, { reader, root, size, xrefNum, now, sourceSize: source.size });
-  return ok({ delta, expectedSize: source.size + delta.length, rewrittenPages: rewritten });
+  return ok(rewritten);
 }
 
-/** Caso general: árbol nuevo bajo la raíz original y cada página conservada reescrita con su número. */
-async function writeReordered(input: PageTreeInput, refs: readonly PdfRef[]): Promise<Result<PageTreeOutput>> {
-  const { source, reader, pages, signal, onProgress, now } = input;
-  const root = await catalogRef(reader);
-  const rootPages = await rootPagesRef(reader, root);
-  const tree = buildTree(pages.length);
+/** Caso general: árbol nuevo bajo la raíz original y cada página escrita con su número. */
+async function writeReordered(w: PageTreeWrite, n: number): Promise<Result<number>> {
+  const { reader, writer, alloc, pages, signal, onProgress } = w;
+  const added = w.added ?? [];
+  const refs = await reader.pageRefs();
+  const rootPages = await rootPagesRef(reader, await catalogRef(reader));
+  const tree = planPageTree(pages.length);
   const memo: AncestorMemo = new Map();
+  const pageRefOf = (source: number): PdfRef => (source < n ? itemAt(refs, source) : itemAt(added, source - n).ref);
 
-  // BFS: de arriba abajo y de izquierda a derecha. Los nodos nuevos toman números desde `/Size` original.
-  let nextNum = reader.xref.size;
+  // BFS: de arriba abajo y de izquierda a derecha. Los nodos nuevos toman números de `alloc`.
   const nodes: NodeEntry[] = [{ node: tree, ref: rootPages, parent: null, kids: [] }];
   const parentOfSlot: PdfRef[] = [];
   for (let at = 0; at < nodes.length; at++) {
@@ -148,16 +217,15 @@ async function writeReordered(input: PageTreeInput, refs: readonly PdfRef[]): Pr
     for (const kid of entry.node.kids) {
       if ('slot' in kid) {
         parentOfSlot[kid.slot] = entry.ref;
-        entry.kids.push(refAt(refs, itemAt(pages, kid.slot).source));
+        entry.kids.push(pageRefOf(itemAt(pages, kid.slot).source));
       } else {
-        const childRef = ref(nextNum++);
+        const childRef = alloc.next();
         entry.kids.push(childRef);
         nodes.push({ node: kid.node, ref: childRef, parent: entry.ref, kids: [] });
       }
     }
   }
 
-  const writer = await startDelta(source, reader, input.random);
   for (const entry of nodes) {
     if (signal?.aborted === true) return err(pdfError('cancelled'));
     const d: Record<string, PdfValue> = { Type: name('Pages'), Kids: entry.kids, Count: entry.node.count };
@@ -167,33 +235,25 @@ async function writeReordered(input: PageTreeInput, refs: readonly PdfRef[]): Pr
 
   for (const [i, slot] of pages.entries()) {
     if (signal?.aborted === true) return err(pdfError('cancelled'));
-    const pageRef = refAt(refs, slot.source);
-    const page = await pageDict(reader, pageRef);
-    const ancestors = await ancestorsOf(reader, page, memo);
-    const changes: Record<string, PdfValue | undefined> = {
-      Parent: itemAt(parentOfSlot, i),
-      Rotate: slot.rotate === 0 ? undefined : slot.rotate,
-    };
-    for (const key of INHERITED_KEYS) {
-      if (dictGet(page, key) !== undefined) continue;
-      const value = inheritedValue(ancestors, key);
-      if (value !== undefined) changes[key] = value;
+    const rotate = slot.rotate === 0 ? undefined : slot.rotate;
+    if (slot.source >= n) {
+      const page = itemAt(added, slot.source - n);
+      writer.object(page.ref.num, page.ref.gen, withEntries(page.dict, { Parent: itemAt(parentOfSlot, i), Rotate: rotate }));
+    } else {
+      const pageRef = itemAt(refs, slot.source);
+      const page = await pageDict(reader, pageRef);
+      const ancestors = await ancestorsOf(reader, page, memo);
+      const changes: Record<string, PdfValue | undefined> = { Parent: itemAt(parentOfSlot, i), Rotate: rotate };
+      for (const key of INHERITED_KEYS) {
+        if (dictGet(page, key) !== undefined) continue;
+        const value = inheritedValue(ancestors, key);
+        if (value !== undefined) changes[key] = value;
+      }
+      writer.object(pageRef.num, pageRef.gen, withEntries(page, changes));
     }
-    writer.object(pageRef.num, pageRef.gen, withEntries(page, changes));
     reportProgress(onProgress, i + 1, pages.length);
   }
-
-  const { xrefNum, size } = reserveXref(reader, nextNum);
-  const delta = finishDelta(writer, { reader, root, size, xrefNum, now, sourceSize: source.size });
-  return ok({ delta, expectedSize: source.size + delta.length, rewrittenPages: pages.length });
-}
-
-/** Nodo del árbol nuevo. Los hijos son posiciones de `pages` (`slot`) o nodos (`node`). */
-type TreeChild = { readonly slot: number } | { readonly node: TreeNode };
-interface TreeNode {
-  readonly kids: readonly TreeChild[];
-  /** Número de páginas bajo este nodo. */
-  readonly count: number;
+  return ok(pages.length);
 }
 
 interface NodeEntry {
@@ -204,29 +264,7 @@ interface NodeEntry {
   readonly kids: PdfRef[];
 }
 
-/** Árbol de abajo arriba: cada nivel agrupa de 32 en 32 hasta que cabe en la raíz. */
-function buildTree(slotCount: number): TreeNode {
-  let layer: readonly TreeChild[] = Array.from({ length: slotCount }, (_, slot) => ({ slot }));
-  while (layer.length > PAGE_TREE_FANOUT) {
-    const upper: TreeChild[] = [];
-    for (let at = 0; at < layer.length; at += PAGE_TREE_FANOUT) {
-      const kids = layer.slice(at, at + PAGE_TREE_FANOUT);
-      upper.push({ node: { kids, count: kids.reduce((n, kid) => n + countOf(kid), 0) } });
-    }
-    layer = upper;
-  }
-  return { kids: layer, count: slotCount };
-}
-
-function countOf(child: TreeChild): number {
-  return 'node' in child ? child.node.count : 1;
-}
-
-/** Referencia de la página `index` del fichero original. Fuera de rango es un bug de quien llama. */
-function refAt(refs: readonly PdfRef[], index: number): PdfRef {
-  return itemAt(refs, index);
-}
-
+/** Elemento de `items` que existe: lanza si el índice está fuera de rango (bug de quien llama). */
 function itemAt<T>(items: readonly T[], index: number): T {
   const item = items[index];
   if (item === undefined) throw new RangeError(`índice ${index} fuera de rango`);
@@ -322,7 +360,7 @@ async function pageDict(reader: ObjectReader, r: PdfRef): Promise<PdfDict> {
 }
 
 /** Referencia del catálogo (`/Root` del trailer). */
-async function catalogRef(reader: ObjectReader): Promise<PdfRef> {
+export async function catalogRef(reader: ObjectReader): Promise<PdfRef> {
   const root = dictGet(reader.xref.trailer, 'Root');
   if (!isRef(root)) throw unreadable('Root');
   return root;

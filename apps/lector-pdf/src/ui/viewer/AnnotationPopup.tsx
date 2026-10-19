@@ -1,5 +1,11 @@
 import { useEffect, useRef, type ChangeEvent, type KeyboardEvent } from 'react';
-import type { Annotation } from '../../core/annotations/model';
+import {
+  REVIEW_STATES,
+  REVIEW_STATE_LABELS,
+  reviewStateOf,
+  type Annotation,
+  type ReviewState,
+} from '../../core/annotations';
 import type { PageViewport } from '../../engine/pdfjs';
 import {
   closePopup,
@@ -10,14 +16,17 @@ import {
   updateAnnotation,
 } from '../../state/annotation-actions';
 import { useAnnotations } from '../../state/annotation-store';
+import { setReviewState } from '../../state/reply-actions';
 import { IconClose, IconTrash } from '../icons';
 import { IconButton } from '../kit/IconButton';
+import { MenuButton, type MenuEntry } from '../kit/MenuButton';
 import { msg } from '../messages';
+import { commentsMsg } from '../messages-comments';
+import { formatCommentDate } from './comment-date';
 import { isBoxOnPage, pageBox, popupPlacement, type PageSizePx, type PxBox } from './popup-placement';
+import { ReplyThread } from './ReplyThread';
 import styles from './AnnotationPopup.module.css';
 
-/** Formato de fecha de los comentarios (PDF-033). */
-const DATE_FORMAT = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' });
 /** Marcador del visor (región con foco): se lleva el foco aquí al borrar el comentario. */
 const VIEWER_REGION = '[role="region"]';
 
@@ -63,6 +72,8 @@ function CommentDialog({ annotation, box, page }: CommentDialogProps) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const { id, author, modified } = annotation;
   const placement = popupPlacement(box, page);
+  // Estado vigente de revisión (PDF-109); `None` si no hay ninguno.
+  const review: ReviewState = reviewStateOf(getEffective(), id)?.state ?? 'None';
 
   // Al abrir, el foco va al comentario para escribir de inmediato.
   useEffect(() => {
@@ -108,7 +119,10 @@ function CommentDialog({ annotation, box, page }: CommentDialogProps) {
     >
       <header className={styles.header}>
         <span className={styles.author}>{author}</span>
-        <time dateTime={modified}>{formatDate(modified)}</time>
+        <span className={styles.status} aria-live="polite">
+          {review === 'None' ? '' : commentsMsg.stateLabel(review)}
+        </span>
+        <time dateTime={modified}>{formatCommentDate(modified)}</time>
       </header>
       <textarea
         ref={textRef}
@@ -118,7 +132,13 @@ function CommentDialog({ annotation, box, page }: CommentDialogProps) {
         onChange={onChange}
         onKeyDown={onKeyDown}
       />
+      <ReplyThread parentId={id} onEscape={closeAndFocusZone} />
       <footer className={styles.footer}>
+        <div className={styles.stateWrap}>
+          <MenuButton label={commentsMsg.stateMenu} entries={stateEntries(id, review)}>
+            <span className={styles.stateText}>{commentsMsg.stateMenu}</span>
+          </MenuButton>
+        </div>
         <IconButton label={msg.popupDelete} onClick={onDelete}>
           <IconTrash />
         </IconButton>
@@ -143,7 +163,12 @@ function findZone(dialog: HTMLElement | null, id: string): HTMLElement | null {
   return null;
 }
 
-function formatDate(iso: string): string {
-  const time = Date.parse(iso);
-  return Number.isNaN(time) ? '' : DATE_FORMAT.format(time);
+/** Opciones del menú «Estado» (PDF-109): las cinco, con la vigente marcada. */
+function stateEntries(parentId: string, current: ReviewState): readonly MenuEntry[] {
+  return REVIEW_STATES.map((state): MenuEntry => ({
+    kind: 'radio',
+    label: state === 'None' ? commentsMsg.stateNone : REVIEW_STATE_LABELS[state],
+    checked: state === current,
+    onSelect: () => setReviewState(parentId, state),
+  }));
 }

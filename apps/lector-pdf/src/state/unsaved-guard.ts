@@ -4,6 +4,7 @@ import { askChoice } from './choice';
 import { discardCurrentDraft } from './draft-sync';
 import { save } from './save-actions';
 import { services } from './services';
+import { activateTab, hasAnyUnsavedChanges, useTabs } from './tabs';
 import { useViewer } from './viewer-store';
 
 /**
@@ -35,15 +36,37 @@ export async function confirmDiscardOrSave(): Promise<'proceed' | 'cancel'> {
 }
 
 /**
- * Registra el aviso de cierre de ventana. Sin cambios permite cerrar; con cambios cancela el cierre, pregunta
- * con `confirmDiscardOrSave` y, si se puede seguir, cierra la ventana. Devuelve la función que lo deshace.
+ * Confirma los cambios de todas las pestañas con cambios, de izquierda a derecha: cada una se activa y se pregunta.
+ * Un «Cancelar» detiene el proceso y deja la app en esa pestaña. Devuelve true si todas pueden cerrarse.
+ */
+export async function confirmAllTabs(): Promise<boolean> {
+  // Sin pestañas registradas, la pregunta es una sola para el documento abierto.
+  if (useTabs.getState().tabs.length === 0) return (await confirmDiscardOrSave()) === 'proceed';
+  const order = useTabs.getState().tabs.map((t) => t.id);
+  for (const id of order) {
+    // El estado se lee en cada vuelta: al activar otra pestaña cambia qué es «la activa» y sus cambios.
+    const { tabs, activeId } = useTabs.getState();
+    const tab = tabs.find((t) => t.id === id);
+    if (tab === undefined) continue;
+    const dirty = id === activeId ? hasUnsavedChanges() : tab.dirty;
+    if (!dirty) continue;
+    activateTab(id);
+    if ((await confirmDiscardOrSave()) === 'cancel') return false;
+  }
+  return true;
+}
+
+/**
+ * Registra el aviso de cierre de ventana. Sin cambios en ninguna pestaña permite cerrar; si las hay, cancela el cierre,
+ * confirma pestaña a pestaña (`confirmAllTabs`) y, si se puede seguir, cierra la ventana.
+ * Devuelve la función que lo deshace.
  */
 export function installCloseGuard(): () => void {
   const { platform } = services();
   return platform.onCloseRequested(() => {
-    if (!hasUnsavedChanges()) return true;
-    void confirmDiscardOrSave().then(async (decision) => {
-      if (decision === 'proceed') await platform.closeWindow();
+    if (!hasAnyUnsavedChanges()) return true;
+    void confirmAllTabs().then(async (proceed) => {
+      if (proceed) await platform.closeWindow();
     });
     return false;
   });

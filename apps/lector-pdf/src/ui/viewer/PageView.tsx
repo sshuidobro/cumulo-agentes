@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createLogger } from '@suite/shared';
 import { planCanvas } from '../../core/canvas-size';
 import { normalizeRotation, type Rotation } from '../../core/rotation';
@@ -10,18 +10,21 @@ import type { PDFPageProxy } from '../../engine/pdfjs';
 import { ensurePageAnnotations } from '../../state/annotation-actions';
 import { useAppearance } from '../../state/appearance-store';
 import { useAnnotations } from '../../state/annotation-store';
+import { useForms } from '../../state/form-store';
 import { reportPageDims } from '../../state/document-actions';
 import { renderQueue, releaseCanvas } from '../../state/render-service';
 import { useViewer } from '../../state/viewer-store';
 import { msg } from '../messages';
 import { AnnotationLayer } from './AnnotationLayer';
-import { AnnotationPopup } from './AnnotationPopup';
-import { FormLayer } from './FormLayer';
 import { LinkLayer } from './LinkLayer';
 import { PageFrame } from './PageFrame';
 import { SearchHighlights } from './SearchHighlights';
 import { TextLayerView } from './TextLayerView';
 import styles from './Viewer.module.css';
+
+// Capas que solo hacen falta con campos de formulario o con un comentario abierto (PDF-140): se cargan bajo demanda.
+const FormLayer = lazy(() => import('./FormLayer').then((m) => ({ default: m.FormLayer })));
+const AnnotationPopup = lazy(() => import('./AnnotationPopup').then((m) => ({ default: m.AnnotationPopup })));
 
 const log = createLogger('viewer');
 
@@ -69,6 +72,9 @@ export const PageView = memo(function PageView({
   /** Versión de las anotaciones de esta página: al cambiar, el lienzo se vuelve a dibujar. */
   const version = useAnnotations((s) => s.pageVersion.get(index) ?? 0);
   const scan = useAnnotations((s) => s.scan);
+  // Con campos de formulario en el documento, o con un comentario abierto, se montan las capas diferidas.
+  const hasForms = useForms((s) => s.fields.size > 0);
+  const popupOpen = useAnnotations((s) => s.openPopupId !== null);
   /** Modo noche: al cambiar, la página se vuelve a dibujar con los colores de noche. */
   const nightMode = useAppearance((s) => s.nightMode);
 
@@ -178,8 +184,16 @@ export const PageView = memo(function PageView({
       <SearchHighlights index={index} zoom={zoom} rotation={rotation} />
       <TextLayerView index={index} zoom={zoom} rotation={rotation} />
       {viewport !== null && <AnnotationLayer pageIndex={index} viewport={viewport} />}
-      {viewport !== null && <FormLayer pageIndex={index} viewport={viewport} />}
-      {viewport !== null && <AnnotationPopup pageIndex={index} viewport={viewport} visible={visible} />}
+      {viewport !== null && hasForms && (
+        <Suspense fallback={null}>
+          <FormLayer pageIndex={index} viewport={viewport} />
+        </Suspense>
+      )}
+      {viewport !== null && popupOpen && (
+        <Suspense fallback={null}>
+          <AnnotationPopup pageIndex={index} viewport={viewport} visible={visible} />
+        </Suspense>
+      )}
       <LinkLayer index={index} zoom={zoom} rotation={rotation} />
       {failed && (
         <span className={styles.renderError} role="status">

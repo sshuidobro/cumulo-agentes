@@ -24,6 +24,13 @@ export interface SignatureState {
 /** Firmas guardadas. Lo escriben solo las acciones de este fichero. */
 export const useSignatures = create<SignatureState>(() => ({ list: [] }));
 
+/** «Crear firma…» abierto (diálogo de dibujo). Mientras está abierto, las pestañas no cambian (PDF-095). */
+export const useSignatureCreation = create<{ readonly open: boolean }>()(() => ({ open: false }));
+
+export function setSignatureCreating(open: boolean): void {
+  useSignatureCreation.setState({ open });
+}
+
 /** Almacén del que se leyó la lista; si cambia (otros servicios), se vuelve a leer. */
 let loadedFrom: KeyValueStore | null = null;
 

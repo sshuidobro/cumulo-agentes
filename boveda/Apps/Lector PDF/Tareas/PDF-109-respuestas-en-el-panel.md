@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-109
 titulo: Responder y cambiar el estado desde la ventana del comentario
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-058, PDF-101]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -79,3 +79,19 @@ export function setReviewState(parentId: string, state: ReviewState): void;
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 1. `annotations-flow.spec.ts:129` (duda 4 del programador) — no es regresión de esta ficha: falla en `openCommentsPanel` (no existe la pestaña «Comentarios» en la página reabierta, ni con F4), antes de abrir ninguna ventana de comentario. PDF-109 no toca sidebar, panel ni `App.tsx`; coincide con los cambios ajenos en curso de atajos/pestañas (`shortcuts.ts`, `App.tsx`, tab-bar), igual que el fallo de `sidebar.test.tsx` (F4). El líder/tester debe vigilarlo al cerrar esas fichas.
 2. (opcional) Duda 1 (ventana y lista a 240 px): decisión de diseño, no bloquea.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit reply-actions (addReply, setReviewState idempotente, borrado en una entrada de deshacer) | OK | programador 14/14; coverage sin fallos en reply-actions |
+| UI ventana con respuestas (responder, editar, borrar, Esc) | OK | `annotation-popup.test.tsx` 23/23 |
+| E2E replies (2 respuestas, Aceptado, Ctrl+S, recarga, qpdf /IRT y /F 30, sin iconos extra) | OK | `e2e tests/e2e/replies.spec.ts --project=chromium`: 1/1 |
+| axe con respuestas | OK | `annotations-a11y.spec.ts`: 4/4 |
+| `pnpm lint` | OK | sin avisos |
+| `pnpm typecheck` | AJENO | solo `tests/ui/tab-bar.test.tsx(26)` y `tests/unit/tab-close-guard.test.ts(97,118)` (ficha de pestañas PDF-095, sin tocar por PDF-109) |
+
+Causa de los fallos ajenos (por `git diff`, sin stash):
+- `sidebar.test.tsx` (F4), `comment-toolbar.test.tsx` y `annotations-flow.spec.ts:129`: regresión del árbol actual en `src/ui/App.tsx`: `Sidebar` y `CommentToolbar` pasan a `lazy()` con `Suspense fallback={null}` (PDF-140). Los tests síncronos (`getByRole('complementary')`, `toolbar «Comentar»`) no esperan al chunk. En el E2E, `openCommentsPanel` (`annotations-kit.ts:125-126`) comprueba `tab.isVisible()` sin esperar; el panel aún no se ha montado, pulsa F4 y lo cierra (la preferencia lo tenía abierto), y `tab.click()` espera en vano. Arreglo pequeño: en los tests, `await findBy…`/`expect(...).toBeVisible()` antes de decidir; en el kit, no pulsar F4 si la preferencia ya lo abre.
+- Typecheck: tests de pestañas incompletos (`AppServices` sin `platform`/`assetBaseUrl`, mock tipado `never`); ficha de pestañas.
+No afecta a PDF-109: ninguno de sus ficheros interviene.
+Tests añadidos: ninguno nuevo (cobertura suficiente). Rendimiento: no aplica.

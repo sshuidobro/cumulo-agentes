@@ -3,7 +3,7 @@ import { msg } from './messages';
 import { useShortcuts } from './use-shortcuts';
 import { useTheme } from './use-theme';
 import { MainToolbar } from './toolbar/MainToolbar';
-import { CommentToolbar } from './toolbar/CommentToolbar';
+import { TabBar, TAB_PANEL_ID } from './tabs/TabBar';
 import { DropOverlay } from './open/DropOverlay';
 import { EmptyState } from './open/EmptyState';
 import { ErrorState } from './open/ErrorState';
@@ -11,13 +11,12 @@ import { IoErrorBanner } from './open/IoErrorBanner';
 import { LoadingState } from './open/LoadingState';
 import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
-import { Notice } from './kit/Notice';
-import { ChoiceDialog } from './kit/ChoiceDialog';
-import { PasswordDialog } from './security/PasswordDialog';
 import { PrintContainer } from './print/PrintContainer';
 import { PrintProgress } from './print/PrintProgress';
 import './print/print.css';
-import { Sidebar } from './sidebar/Sidebar';
+import { Notice } from './kit/Notice';
+import { ChoiceDialog } from './kit/ChoiceDialog';
+import { PasswordDialog } from './security/PasswordDialog';
 import { SearchBar, focusSearchField } from './search/SearchBar';
 import { toggleSidebar } from '../state/sidebar-actions';
 import { nextMatch, openSearch, prevMatch } from '../state/search-actions';
@@ -35,6 +34,8 @@ import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen 
 import { openProperties, usePropertiesDialog } from '../state/properties-store';
 import { openPrintDialog, usePrintDialog } from '../state/print-actions';
 import { useViewer } from '../state/viewer-store';
+import { useTabs } from '../state/tabs';
+import { closeActiveTab, stepTab } from '../state/tab-actions';
 import { focusPageField } from './toolbar/PageNavigator';
 import { selectPageText } from './viewer/text-selection';
 import styles from './App.module.css';
@@ -42,6 +43,9 @@ import styles from './App.module.css';
 // Diálogos diferidos (ADR-0027): su código no entra en el arranque y se carga al abrirlos.
 const PropertiesDialog = lazy(() => import('./properties/PropertiesDialog').then((m) => ({ default: m.PropertiesDialog })));
 const PrintDialog = lazy(() => import('./print/PrintDialog').then((m) => ({ default: m.PrintDialog })));
+// Barra de comentarios y panel lateral (PDF-140): no se muestran al arrancar, se cargan al abrirlos.
+const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) => ({ default: m.CommentToolbar })));
+const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m.Sidebar })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -92,6 +96,16 @@ const FULLSCREEN_SHORTCUTS = {
   'fullscreen-prev': () => { prevPage(); },
 } as const;
 
+/** Atajos de pestañas (PDF-095). Con una sola pestaña, Ctrl+W cierra el documento. Sin pestañas no se consumen. */
+const TAB_SHORTCUTS = {
+  'next-tab': () => { stepTab(1); },
+  'prev-tab': () => { stepTab(-1); },
+  'close-tab': () => {
+    if (useTabs.getState().activeId === null) return false;
+    void closeActiveTab();
+  },
+} as const;
+
 function blurActiveElement(): void {
   const active = document.activeElement;
   if (active instanceof HTMLElement) active.blur();
@@ -117,6 +131,7 @@ export function App() {
     redo,
     ...(fullscreen ? FULLSCREEN_SHORTCUTS : tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
     ...(status === 'ready' ? VIEW_SHORTCUTS : {}),
+    ...TAB_SHORTCUTS,
   });
 
   // Si el sistema sale de la pantalla completa (F11, SO), la vista vuelve a su estado anterior.
@@ -132,10 +147,15 @@ export function App() {
   const chrome = !fullscreen;
   return (
     <div className={fullscreen ? `${styles.app} ${styles.appFullscreen}` : styles.app}>
+      {chrome && <TabBar />}
       {chrome && <MainToolbar />}
-      {chrome && status === 'ready' && commentBarOpen && <CommentToolbar />}
+      {chrome && status === 'ready' && commentBarOpen && (
+        <Suspense fallback={null}>
+          <CommentToolbar />
+        </Suspense>
+      )}
       <IoErrorBanner />
-      <main className={status === 'ready' ? styles.mainReady : styles.main}>
+      <main id={TAB_PANEL_ID} className={status === 'ready' ? styles.mainReady : styles.main}>
         {status === 'empty' && <EmptyState />}
         {status === 'loading' && <LoadingState />}
         {status === 'error' && <ErrorState />}
@@ -145,7 +165,11 @@ export function App() {
               {msg.pageCount(numPages)}
             </div>
             <div className={styles.body}>
-              {chrome && sidebar !== 'none' && <Sidebar />}
+              {chrome && sidebar !== 'none' && (
+                <Suspense fallback={null}>
+                  <Sidebar />
+                </Suspense>
+              )}
               <Viewer />
             </div>
             <SelectionActions />
