@@ -122,6 +122,8 @@ export const FIXTURES: readonly FixtureSpec[] = [
   { name: 'basic-5-changed.pdf', build: buildBasic5Changed },
   { name: 'pages-5000.pdf', build: () => buildNumbered(5000, NEEDLES_5000) },
   { name: 'pages-100000.pdf', build: () => buildNumbered(100000, new Set([99999])) },
+  // Presupuesto de los modos de página (PDF-050): doble página continua con 10 000 páginas.
+  { name: 'pages-10000.pdf', build: () => buildNumbered(10000, NEEDLES_5000) },
   // Caso degenerado: todas las páginas como hijos directos de un único /Pages.
   { name: 'pages-20000-flat.pdf', build: () => buildNumbered(20000, NEEDLES_5000, 20000) },
   {

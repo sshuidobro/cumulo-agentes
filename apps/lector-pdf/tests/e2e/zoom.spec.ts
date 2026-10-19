@@ -83,11 +83,8 @@ test('Ctrl+rueda sobre la mitad inferior de la página 2 mantiene el punto bajo 
   const frame = pageFrame(page, 1);
   const box = await frame.boundingBox();
   if (box === null) throw new Error('La página 2 no está montada');
-  const viewer = await page.getByTestId('viewer').boundingBox();
-  if (viewer === null) throw new Error('El visor no tiene caja');
   const x = box.x + box.width / 2;
-  // Dentro del visor: la barra puede ocupar dos filas en anchos pequeños (PDF-050) y encoger el visor.
-  const y = Math.min(box.y + box.height * 0.75, viewer.y + viewer.height - 20);
+  const y = box.y + box.height * 0.75;
   const pageUnderCursor = (): Promise<string | null> =>
     page.evaluate(
       ([px, py]) => document.elementFromPoint(px, py)?.closest('[data-page-index]')?.getAttribute('data-page-index') ?? null,
