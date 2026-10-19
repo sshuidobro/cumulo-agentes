@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-107
 titulo: Importar formas y sellos del fichero como editables
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-057, PDF-101, PDF-104]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -62,3 +62,13 @@ export async function promoteShapes(reader: ObjectReader, page: ImportedPage, fa
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/import-shapes.ts` (nuevo), `apps/lector-pdf/src/core/annotations/index.ts`, `apps/lector-pdf/src/engine/annotations-import.ts`, `apps/lector-pdf/tests/unit/annotations/import-shapes.test.ts` (nuevo), `apps/lector-pdf/tests/unit/annotations/shapes-interop.test.ts` (tests nuevos al final; ningún test existente cambiado).
+- Qué he hecho: `shapeFromDict` y `promoteShapes` pasan a editables `/Square`, `/Circle`, `/Line`, `/Polygon` y `/Stamp` con `/NM suite-…` según la ficha. `readPageAnnotations` las promueve antes de `readStampNames` (sin lector no cambia). Tests unitarios y de ida y vuelta (5 formas con `buildIncrementalUpdate`, `annotated.pdf` y mover el `/Square` con `qpdf --check` 0).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` 262 ficheros y 3389 tests OK (`import-shapes.ts` 99 % líneas); `pnpm perf` 43/43 OK; `pnpm --filter lector-pdf e2e` 259 OK y 6 fallidos. Cinco de ellos (`annotations-flow` «subrayar…», `annotations-foreign` veraPDF, `notes` «diálogo no modal», `outline` «índice como árbol», `tabs` axe) fallan igual en el código base (813a19b, revertido temporalmente para comprobarlo): no están relacionados. El sexto (`recover-qa` «Ctrl+Z…») pasó al repetirlo: inestable.
+- Dudas o cosas que no he podido hacer:
+  - Ningún test existente esperaba el `/Square` de `annotated.pdf` como ajeno, así que no ha hecho falta cambiar ninguno.
+  - Decisiones de implementación que sigo del ADR-0029 y que el revisor puede querer confirmar: `/Border` con cuarto elemento (patrón de trazo) sigue ajena; `/BE` que no es diccionario sigue ajena; `/CA` fuera de [0, 1] se acota (igual que `import.ts`); `/CreationDate` no válida da `created: null` sin dejar la forma ajena.
+  - Worktree: la ficha vivía solo en `813a19b` (rama `pdf-028-escritor-incremental`), no en el commit del worktree. Por eso el trabajo está en la rama `pdf-107-importar-formas-y-sellos` creada desde `813a19b`.
+  - Los E2E fallidos de arriba (base) quedan para quien mantenga la iteración 6.

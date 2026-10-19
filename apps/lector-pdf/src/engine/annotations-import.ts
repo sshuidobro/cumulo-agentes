@@ -1,11 +1,13 @@
 import { importPageAnnotations, type ImportedPage } from '../core/annotations/import';
+import { promoteShapes, SHAPE_SUBTYPES } from '../core/annotations/import-shapes';
 import { readStampNames, withStampNames } from '../core/annotations/stamp-names';
 import type { ObjectReader } from '../core/pdf/object-reader';
 import type { PDFDocumentProxy, PDFPageProxy } from './pdfjs';
 
 /**
- * Anotaciones de una página, importadas al modelo (o como ajenas). Con `reader`, los `/Stamp` ajenos llevan su
- * `/Name` (PDF-103): solo se lee el diccionario de los sellos, nunca el resto de anotaciones.
+ * Anotaciones de una página, importadas al modelo (o como ajenas). Con `reader`, las formas y sellos ajenos que
+ * encajan pasan a editables (PDF-107) y los `/Stamp` que siguen ajenos llevan su `/Name` (PDF-103): solo se lee el
+ * diccionario de formas y sellos, nunca el resto de anotaciones.
  */
 export async function readPageAnnotations(
   page: PDFPageProxy,
@@ -14,8 +16,12 @@ export async function readPageAnnotations(
 ): Promise<ImportedPage> {
   const raws = await page.getAnnotations({ intent: 'display' });
   const imported = importPageAnnotations(page.pageNumber - 1, raws, fallbackDate);
-  if (reader === null || !imported.foreign.some((a) => a.subtype === 'Stamp')) return imported;
-  return withStampNames(imported, await readStampNames(reader, imported.foreign));
+  if (reader === null) return imported;
+  const shapes = imported.foreign.some((a) => SHAPE_SUBTYPES.has(a.subtype))
+    ? await promoteShapes(reader, imported, fallbackDate)
+    : imported;
+  if (!shapes.foreign.some((a) => a.subtype === 'Stamp')) return shapes;
+  return withStampNames(shapes, await readStampNames(reader, shapes.foreign));
 }
 
 /**
