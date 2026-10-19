@@ -40,7 +40,7 @@ export async function rewriteDocument(input: RewriteInput): Promise<Result<{ rea
    - Recorrido en anchura desde las refs de `/Root` e `/Info` del trailer, con pila explícita y conjunto de visitados por número; refs a objetos libres o inexistentes → `null`; el objeto `/Encrypt` original nunca se copia.
    - Numeración nueva 1..N en orden de descubrimiento; todas las refs internas se reescriben con el mapa (función `remap(value)` recursiva para valores directos, profundidad ≤ 100).
    - Flujos: datos tal cual leídos (descifrados, sin decodificar), `/Length` directo = `data.length`.
-   - Se quitan del catálogo `/Perms` solo si contiene firmas `DocMDP` (las firmas dejan de ser válidas al reescribir); el resto se copia.
+   - Se quita `/Perms` del catálogo (permisos de uso `UR3` y certificación `DocMDP` dejan de ser válidos al reescribir); el resto se copia.
    - `/ID`: `id0` el original si existe (16 bytes o el que haya); si no, nuevo.
    - Con `encryption` → `createAes256Security(…)` y `writeCompleteFile({ …, encryption: { handler, encrypt, random } })`; sin él, fichero sin cifrar.
    - Progreso cada 1 000 objetos; `signal` → `cancelled`; excepciones → `toSaveError`.
@@ -55,7 +55,7 @@ export async function rewriteDocument(input: RewriteInput): Promise<Result<{ rea
 - [ ] `incremental-updates.pdf` reescrito → una sola sección xref (`qpdf --show-xref` sin `/Prev`), mismas páginas y texto en pdf.js, y los objetos de revisiones antiguas no están (busca en el resultado una cadena que solo existía en la revisión antigua del fixture).
 - [ ] `basic-5.pdf` tras borrar la página 2 con `buildPageTreeUpdate` + reescritura → el fichero es más pequeño que el concatenado y no contiene el contenido de la página borrada.
 - [ ] `'protect'` de `basic-5.pdf` con `abc`/`propietario` y sin copiar → pdf.js pide contraseña y abre con `abc`; `qpdf --show-encryption --password=abc` muestra `R = 6`, `AESv3` y «extract for any purpose: not allowed»; `qpdf --check --password=abc` 0.
-- [ ] `'unprotect'` de `encrypted-aes-256.pdf` abierto con la contraseña de propietario → sin cifrar y legible; abierto como usuario con restricciones (`encrypted-owner-only.pdf` si aplica, o uno creado en el test) → `owner-password-required`; de `basic-5.pdf` → `not-protected`.
+- [ ] `'unprotect'` de `encrypted-aes-256.pdf` abierto con `propietario` → sin cifrar y legible; `encrypted-owner-only.pdf` abierto con la contraseña vacía (usuario, con restricciones) → `owner-password-required`; abierto con `propietario` → sin cifrar; de `basic-5.pdf` → `not-protected`.
 - [ ] `'rewrite'` de `encrypted-aes-128.pdf` (`usuario`) → sigue cifrado y abre con `usuario` y `propietario`.
 - [ ] `annotated.pdf`, `form-full.pdf`, `outline.pdf`, `compressed.pdf` → anotaciones, campos e índice intactos tras reescribir (pdf.js) y `qpdf --check` 0.
 - [ ] `pnpm perf`: reescribir `pages-100000.pdf` < 20 000 ms; con cifrado < 25 000 ms.
