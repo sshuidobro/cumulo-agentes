@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-059
 titulo: Añadir texto e imagen al contenido de la página - núcleo (aplanar)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-052, PDF-058, PDF-110]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
