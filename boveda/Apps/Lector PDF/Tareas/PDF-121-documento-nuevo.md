@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-121
 titulo: Escribir un PDF nuevo con páginas de uno o varios PDFs
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-119, PDF-120]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
