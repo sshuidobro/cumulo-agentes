@@ -9,6 +9,7 @@ import {
 } from '../core/reading-positions';
 import { goToPage } from './navigation';
 import { services } from './services';
+import { isSwitchingTab } from './tabs';
 import { setZoomMode } from './view-actions';
 import { useViewer } from './viewer-store';
 
@@ -92,6 +93,8 @@ function restorePosition(): void {
  */
 export function startPositionSync(): () => void {
   const unsubscribe = useViewer.subscribe((state, prev) => {
+    // Al cambiar de pestaña no se restaura la posición recordada ni se programa guardado: lo hace el cambio.
+    if (isSwitchingTab()) return;
     if (state.status !== 'ready') return;
     if (prev.status !== 'ready') {
       restorePosition();

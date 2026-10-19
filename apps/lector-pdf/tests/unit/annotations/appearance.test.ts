@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { memorySource } from '@suite/platform';
 import { buildAppearance, type Appearance } from '../../../src/core/annotations/appearance';
+import {
+  newBoxShape,
+  newLineShape,
+  newPolygonShape,
+  newStamp,
+  stampRectAt,
+} from '../../../src/core/annotations/shapes';
 import type { Annotation, AnnotationType, Quad } from '../../../src/core/annotations';
 import { decodeStreamData } from '../../../src/core/pdf/filters';
 import { dict, name, type PdfValue } from '../../../src/core/pdf/objects';
@@ -246,6 +253,11 @@ const SUBTYPE: Readonly<Record<AnnotationType, string>> = {
   freetext: 'FreeText',
   ink: 'Ink',
   signature: 'Stamp',
+  square: 'Square',
+  circle: 'Circle',
+  line: 'Line',
+  polygon: 'Polygon',
+  stamp: 'Stamp',
 };
 
 /** Extras de la anotación que pdf.js lee además de `/AP` (QuadPoints para marcados, InkList para trazos). */
@@ -316,4 +328,172 @@ describe('apariencias leídas por pdf.js', () => {
       }
     },
   );
+});
+
+describe('buildAppearance · formas y sellos (PDF-057)', () => {
+  const PAINT = { color: [1, 0, 0] as const };
+
+  it('rectángulo 100×50 con w=2 sin relleno: operadores exactos', () => {
+    const a = {
+      ...newAnnotation('s', 'square'),
+      ...PAINT,
+      rect: [10, 20, 110, 70] as const,
+      width: 2,
+      interior: null,
+    } as Annotation;
+    expect(contentOf(buildAppearance(a)).trim().split('\n')).toEqual(['2 w', '1 0 0 RG', '11 21 98 48 re', 'S']);
+  });
+
+  it('rectángulo con relleno usa rg y B', () => {
+    const a = {
+      ...newAnnotation('s', 'square'),
+      ...PAINT,
+      rect: [10, 20, 110, 70] as const,
+      width: 2,
+      interior: [0, 1, 0] as const,
+    } as Annotation;
+    expect(contentOf(buildAppearance(a)).trim().split('\n')).toEqual([
+      '2 w',
+      '1 0 0 RG',
+      '0 1 0 rg',
+      '11 21 98 48 re',
+      'B',
+    ]);
+  });
+
+  it('flecha horizontal con punta abierta al final: operadores exactos', () => {
+    const a = {
+      ...newAnnotation('l', 'line'),
+      ...PAINT,
+      points: [10, 20, 110, 20] as const,
+      width: 2,
+      endings: ['None', 'OpenArrow'] as const,
+      interior: null,
+    } as Annotation;
+    expect(contentOf(buildAppearance(a)).trim().split('\n')).toEqual([
+      '1 J 1 j',
+      '2 w',
+      '1 0 0 RG',
+      '10 20 m 110 20 l S',
+      '104.8038 17 m 110 20 l 104.8038 23 l S',
+    ]);
+  });
+
+  it('flecha cerrada rellena: triángulo con h B', () => {
+    const a = {
+      ...newAnnotation('l', 'line'),
+      ...PAINT,
+      points: [10, 20, 110, 20] as const,
+      width: 2,
+      endings: ['None', 'ClosedArrow'] as const,
+      interior: [0, 0, 1] as const,
+    } as Annotation;
+    const ops = contentOf(buildAppearance(a)).trim().split('\n');
+    expect(ops).toContain('0 0 1 rg');
+    expect(ops.at(-1)).toBe('104.8038 17 m 110 20 l 104.8038 23 l h B');
+  });
+
+  it('polígono de tres vértices sin relleno: m, l, h y S con uniones redondeadas', () => {
+    const a = {
+      ...newAnnotation('p', 'polygon'),
+      ...PAINT,
+      vertices: [0, 0, 10, 0, 5, 8],
+      width: 1,
+      interior: null,
+    } as Annotation;
+    expect(contentOf(buildAppearance(a)).trim().split('\n')).toEqual([
+      '1 w',
+      '1 j',
+      '1 0 0 RG',
+      '0 0 m',
+      '10 0 l',
+      '5 8 l',
+      'h',
+      'S',
+    ]);
+  });
+
+  it('elipse: cuatro curvas de Bézier con k = 0.5523 dentro de la caja reducida', () => {
+    const a = {
+      ...newAnnotation('c', 'circle'),
+      ...PAINT,
+      rect: [0, 0, 100, 50] as const,
+      width: 2,
+      interior: null,
+    } as Annotation;
+    const ops = contentOf(buildAppearance(a)).trim().split('\n');
+    expect(ops.filter((o) => o.endsWith(' c'))).toHaveLength(4);
+    expect(ops.at(-2)).toBe('h');
+    expect(ops.at(-1)).toBe('S');
+    // Primer punto: borde derecho de la elipse inscrita en 1 pt de margen.
+    expect(ops[2]).toBe('99 25 m');
+  });
+
+  it('sello Approved: color verde, contorno redondeado y texto APROBADO en Helv a 18 pt', () => {
+    const rect = stampRectAt('Approved', 100, 100);
+    const a = { ...newAnnotation('s', 'stamp'), rect, name: 'Approved', color: [0.13, 0.55, 0.13] } as Annotation;
+    const ap = buildAppearance(a);
+    const ops = contentOf(ap).trim().split('\n');
+    expect(ops.slice(0, 2)).toEqual(['0.13 0.55 0.13 RG', '0.13 0.55 0.13 rg']);
+    expect(ops).toContain('2 w');
+    expect(ops.filter((o) => o.endsWith(' c'))).toHaveLength(4);
+    expect(ops.at(-2)).toBe('S');
+    expect(ops.at(-1)).toMatch(/^BT \/Helv 18 Tf \S+ \S+ Td \(APROBADO\) Tj ET$/);
+    expect(ap.resources.entries.has('Font')).toBe(true);
+  });
+});
+
+describe('buildAppearance · formas: coordenadas dentro de /BBox y determinismo (PDF-057)', () => {
+  const base = { id: 'suite-b', pageIndex: 0, color: [0.2, 0.4, 0.6] as const, author: 'Ana', now: '2026-10-18T09:30:00.000Z' };
+  const shapes: readonly Annotation[] = [
+    { ...newBoxShape({ ...base, kind: 'square', rect: [72, 600, 172, 650], width: 4 }), interior: [1, 1, 0] },
+    newBoxShape({ ...base, kind: 'circle', rect: [200, 600, 300, 650], width: 8 }),
+    newLineShape({ ...base, points: [72, 500, 200, 520], arrow: true, width: 2 }),
+    { ...newLineShape({ ...base, points: [72, 480, 200, 480], arrow: true, width: 3 }), endings: ['ClosedArrow', 'ClosedArrow'], interior: [0, 1, 0] },
+    newPolygonShape({ ...base, vertices: [320, 600, 380, 610, 400, 650, 350, 670, 310, 640], width: 2 }),
+    newStamp({ ...base, name: 'Draft', center: [300, 400] }),
+    newStamp({ ...base, name: 'NotForPublicRelease', center: [300, 300] }),
+  ];
+
+  /**
+   * Puntos de los operadores de trazado `m`, `l`, `c` y `re` del contenido (tokens separados por espacios,
+   * operandos antes de cada operador). Un `re` da sus dos esquinas.
+   */
+  function pathPoints(content: string): [number, number][] {
+    const points: [number, number][] = [];
+    let operands: number[] = [];
+    for (const token of content.split(/\s+/)) {
+      if (token === '') continue;
+      if (/^-?[\d.]+$/.test(token)) {
+        operands.push(Number(token));
+        continue;
+      }
+      const v = operands;
+      if (token === 'm' || token === 'l') for (let i = 0; i + 1 < v.length; i += 2) points.push([v[i] ?? NaN, v[i + 1] ?? NaN]);
+      if (token === 'c') for (let i = 0; i + 1 < v.length; i += 2) points.push([v[i] ?? NaN, v[i + 1] ?? NaN]);
+      if (token === 're') {
+        const [x = NaN, y = NaN, w = NaN, h = NaN] = v;
+        points.push([x, y], [x + w, y + h]);
+      }
+      operands = [];
+    }
+    return points;
+  }
+
+  it.each(shapes.map((a) => [a.type, a] as const))('%s: todos los puntos de trazado caen en su /BBox', (_type, a) => {
+    const [x1, y1, x2, y2] = a.rect;
+    const points = pathPoints(contentOf(buildAppearance(a)));
+    expect(points.length).toBeGreaterThan(0);
+    for (const [x, y] of points) {
+      expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
+      expect(x).toBeGreaterThanOrEqual(x1 - 1e-6);
+      expect(x).toBeLessThanOrEqual(x2 + 1e-6);
+      expect(y).toBeGreaterThanOrEqual(y1 - 1e-6);
+      expect(y).toBeLessThanOrEqual(y2 + 1e-6);
+    }
+  });
+
+  it.each(shapes.map((a) => [a.type, a] as const))('%s: dos llamadas dan la misma apariencia', (_type, a) => {
+    expect(buildAppearance(a).stream).toEqual(buildAppearance(a).stream);
+  });
 });

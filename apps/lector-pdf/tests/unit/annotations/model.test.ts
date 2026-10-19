@@ -161,3 +161,35 @@ describe('isAnnotation', () => {
     expect(isAnnotation(a)).toBe(true);
   });
 });
+
+describe('formas y sellos (PDF-057)', () => {
+  it('translateAnnotation mueve los puntos de una línea y los vértices de un polígono', () => {
+    const line = { ...newAnnotation('l', 'line'), points: [10, 20, 30, 40] as const };
+    const moved = translateAnnotation(line, 5, -5);
+    expect(moved).toMatchObject({ type: 'line', points: [15, 15, 35, 35], rect: [15, 15, 115, 35] });
+
+    const poly = { ...newAnnotation('p', 'polygon'), vertices: [0, 0, 10, 0, 5, 8] };
+    expect(translateAnnotation(poly, 1, 2)).toMatchObject({ type: 'polygon', vertices: [1, 2, 11, 2, 6, 10] });
+  });
+
+  it('translateAnnotation de un cuadrado, círculo o sello solo mueve el rect', () => {
+    const square = newAnnotation('s', 'square');
+    expect(translateAnnotation(square, 3, 4)).toEqual({ ...square, rect: [13, 24, 113, 44] });
+    const stamp = newAnnotation('t', 'stamp');
+    expect(translateAnnotation(stamp, 1, 0)).toEqual({ ...stamp, rect: [11, 20, 111, 40] });
+  });
+
+  it('isAnnotation acepta las formas y sellos válidos, nuevos o del fichero', () => {
+    for (const type of ['square', 'circle', 'line', 'polygon', 'stamp'] as const) {
+      expect(isAnnotation(newAnnotation('x', type))).toBe(true);
+      expect(isAnnotation(fileAnnotation(7, type))).toBe(true);
+    }
+  });
+
+  it('isAnnotation rechaza polígonos de 2 vértices, extremos desconocidos y sellos inventados', () => {
+    expect(isAnnotation({ ...newAnnotation('p', 'polygon'), vertices: [0, 0, 1, 1] })).toBe(false);
+    expect(isAnnotation({ ...newAnnotation('l', 'line'), endings: ['None', 'Diamond'] })).toBe(false);
+    expect(isAnnotation({ ...newAnnotation('t', 'stamp'), name: 'Foo' })).toBe(false);
+    expect(isAnnotation({ ...newAnnotation('s', 'square'), width: 0 })).toBe(false);
+  });
+});

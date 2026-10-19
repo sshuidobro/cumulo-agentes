@@ -5,7 +5,8 @@ import { PageTextCache, SearchSession, type PageTextSource } from '../core/searc
 import { createPageTextSource } from '../engine/search-source';
 import * as registry from '../ui/viewer/text-layer-registry';
 import { goToPage } from './navigation';
-import { useSearch, type SearchOptionName, type SearchState } from './search-store';
+import { initialSearchState, useSearch, type SearchOptionName, type SearchOptions, type SearchState } from './search-store';
+import { isSwitchingTab, registerTabParticipant, type TabParticipant } from './tabs';
 import { useViewer } from './viewer-store';
 
 /** Espera tras el último cambio del texto antes de buscar. */
@@ -205,7 +206,43 @@ function moveCurrent(direction: 1 | -1): void {
   if (registry.get(next.page) === undefined) goToPage(next.page);
 }
 
-/** Al cambiar de documento, la búsqueda anterior no tiene sentido: se cierra. */
+/** Al cambiar de documento, la búsqueda anterior no tiene sentido: se cierra. Al cambiar de pestaña, no (lo guarda el participante). */
 useViewer.subscribe((state, previous) => {
-  if (state.pdf !== previous.pdf) closeSearch();
+  if (state.pdf !== previous.pdf && !isSwitchingTab()) closeSearch();
 });
+
+/** Lo que se recuerda de la búsqueda de una pestaña suspendida: la barra, la consulta y las opciones. */
+interface SearchSnapshot {
+  readonly open: boolean;
+  readonly query: string;
+  readonly options: SearchOptions;
+}
+
+const searchParticipant: TabParticipant<SearchSnapshot> = {
+  id: 'search',
+  order: 30,
+  suspend(): SearchSnapshot {
+    const { open, query, options } = useSearch.getState();
+    // Invalida la búsqueda vigente: lo que llegue de ella después de suspender no debe tocar el store.
+    token += 1;
+    cancelSearch();
+    // Vacía resultados y estado, pero conserva el contador de revelado (no vuelve a 0).
+    useSearch.setState({ ...initialSearchState, revealSeq: useSearch.getState().revealSeq });
+    return { open, query, options };
+  },
+  resume(snapshot: SearchSnapshot): void {
+    useSearch.setState({ options: snapshot.options });
+    if (!snapshot.open) return;
+    openSearch();
+    // La búsqueda se repite desde la página actual; el resultado es el de una búsqueda nueva.
+    setQuery(snapshot.query);
+  },
+  dispose(): Promise<void> {
+    return Promise.resolve();
+  },
+};
+
+/** Da de alta la búsqueda en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerSearchParticipant(): void {
+  registerTabParticipant(searchParticipant);
+}

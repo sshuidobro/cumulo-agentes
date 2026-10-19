@@ -3,6 +3,7 @@ import { resolveDest } from '../engine/dest';
 import { msg } from '../ui/messages';
 import { firstPage, goToPage, lastPage, nextPage, prevPage } from './navigation';
 import { showNotice } from './notice';
+import { isSwitchingTab, registerTabParticipant, type TabParticipant } from './tabs';
 import { setZoomMode } from './view-actions';
 import { useViewer, type HistoryFlags } from './viewer-store';
 
@@ -18,10 +19,41 @@ export const MAX_HISTORY = 50;
 let backStack: readonly ViewPosition[] = [];
 let forwardStack: readonly ViewPosition[] = [];
 
-// Al abrir otro documento, las posiciones del anterior no tienen sentido.
+// Al abrir otro documento, las posiciones del anterior no tienen sentido. Al cambiar de pestaña no: lo guarda el participante.
 useViewer.subscribe((state, previous) => {
-  if (state.pdf !== previous.pdf) clearHistory();
+  if (state.pdf !== previous.pdf && !isSwitchingTab()) clearHistory();
 });
+
+/** Pilas de un documento en una pestaña suspendida. */
+interface HistorySnapshot {
+  readonly back: readonly ViewPosition[];
+  readonly forward: readonly ViewPosition[];
+}
+
+const historyParticipant: TabParticipant<HistorySnapshot> = {
+  id: 'history',
+  order: 30,
+  suspend(): HistorySnapshot {
+    const snapshot = { back: backStack, forward: forwardStack };
+    backStack = [];
+    forwardStack = [];
+    syncFlags();
+    return snapshot;
+  },
+  resume(snapshot: HistorySnapshot): void {
+    backStack = snapshot.back;
+    forwardStack = snapshot.forward;
+    syncFlags();
+  },
+  dispose(): Promise<void> {
+    return Promise.resolve();
+  },
+};
+
+/** Da de alta el historial en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerHistoryParticipant(): void {
+  registerTabParticipant(historyParticipant);
+}
 
 /**
  * Sigue un enlace interno: guarda la posición actual en «atrás», vacía «adelante», aplica el zoom del

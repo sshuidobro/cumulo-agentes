@@ -3,6 +3,7 @@ import { normalizeRotation } from '../core/rotation';
 import { DEFAULT_VIEW_MODE, isViewMode, rowFirstPage, type ViewMode } from '../core/view-mode';
 import { goToPage } from './navigation';
 import { services } from './services';
+import { registerTabParticipant, type TabParticipant } from './tabs';
 import { useViewer, type ViewTool } from './viewer-store';
 
 /** Clave de preferencia del modo de vista (la app ya añade su prefijo). */
@@ -45,6 +46,29 @@ export function zoomWithWheel(deltaY: number, deltaMode: 0 | 1 | 2, focusY: numb
   pendingFocusY = focusY;
   if (wheelFrame !== null) return;
   wheelFrame = requestAnimationFrame(flushWheel);
+}
+
+/** Sin estado: al cambiar de pestaña solo se cancela la rueda pendiente de la pestaña que se deja. */
+const viewParticipant: TabParticipant<undefined> = {
+  id: 'view',
+  order: 30,
+  suspend(): undefined {
+    if (wheelFrame !== null) cancelAnimationFrame(wheelFrame);
+    wheelFrame = null;
+    pendingSteps = [];
+    return undefined;
+  },
+  resume(): void {
+    // Sin estado que restaurar.
+  },
+  dispose(): Promise<void> {
+    return Promise.resolve();
+  },
+};
+
+/** Da de alta la vista en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerViewParticipant(): void {
+  registerTabParticipant(viewParticipant);
 }
 
 function flushWheel(): void {

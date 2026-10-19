@@ -34,6 +34,15 @@ export function newAnnotation(id: string, type: AnnotationType = 'highlight', pa
       return { ...base, type, paths: [[10, 20, 30, 40, 50, 20]], width: 2 };
     case 'signature':
       return { ...base, type, art: { kind: 'ink', paths: [[0, 0, 50, 25]], width: 2, box: [100, 50] } };
+    case 'square':
+    case 'circle':
+      return { ...base, type, width: 2, interior: null };
+    case 'line':
+      return { ...base, type, points: [10, 20, 110, 40], width: 2, endings: ['None', 'OpenArrow'], interior: null };
+    case 'polygon':
+      return { ...base, type, vertices: [10, 20, 110, 20, 60, 50], width: 2, interior: null };
+    case 'stamp':
+      return { ...base, type, name: 'Draft' };
   }
 }
 

@@ -9,3 +9,4 @@ export * from './draft';
 export * from './note';
 export * from './freetext';
 export * from './comment-list';
+export * from './shapes';

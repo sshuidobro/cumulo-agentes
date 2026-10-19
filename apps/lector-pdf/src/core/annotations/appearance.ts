@@ -8,13 +8,18 @@ import { bytesString, dict, name, stream, type PdfDict, type PdfRef, type PdfStr
 import { serializeValue } from '../pdf/serialize';
 import type {
   Annotation,
+  BoxShapeAnnotation,
   FreeTextAnnotation,
   InkAnnotation,
+  LineShapeAnnotation,
   NoteAnnotation,
+  PolygonAnnotation,
   Rgb,
   SignatureAnnotation,
+  StampAnnotation,
   TextMarkupAnnotation,
 } from './model';
+import { arrowWings, stampTextBox, STAMP_LABELS } from './shapes';
 import { wrapText } from './wrap';
 import { toWinAnsi } from './winansi';
 
@@ -30,6 +35,12 @@ const NOTE_SIZE = 20;
 const FREETEXT_MARGIN = 2;
 /** Interlineado del texto libre, en múltiplos del tamaño de fuente. */
 const FREETEXT_LEADING = 1.15;
+/** Constante de Bézier para aproximar un cuarto de elipse o de círculo (ISO 32000-1 §8.5.2.2). */
+const BEZIER_K = 0.5523;
+/** Radio de las esquinas redondeadas del sello, en puntos. */
+const STAMP_RADIUS = 4;
+/** Distancia del borde del sello a su contorno, en puntos. */
+const STAMP_INSET = 1;
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
@@ -210,6 +221,138 @@ function signatureDrawing(a: SignatureAnnotation, imageRef: PdfRef | undefined):
   return { ...withOpacity(a, ops), xobject: dict({ Im0: imageRef }) };
 }
 
+/** Operador de pintado de una forma: relleno y trazo si hay relleno (`B`), solo trazo si no (`S`). */
+function paintOp(interior: Rgb | null): string {
+  return interior === null ? 'S' : 'B';
+}
+
+/** Operadores del relleno, si lo hay. */
+function fillOps(interior: Rgb | null): string[] {
+  return interior === null ? [] : [colorOp(interior, 'rg')];
+}
+
+/** Rectángulo: el trazo de `width` va por dentro de `rect`. */
+function squareDrawing(a: BoxShapeAnnotation): Drawing {
+  const [x1, y1, x2, y2] = a.rect;
+  const w = a.width;
+  const ops = [
+    `${num(w)} w`,
+    colorOp(a.color, 'RG'),
+    ...fillOps(a.interior),
+    `${nums([x1 + w / 2, y1 + w / 2, x2 - x1 - w, y2 - y1 - w])} re`,
+    paintOp(a.interior),
+  ];
+  return withOpacity(a, ops);
+}
+
+/** Elipse inscrita en `rect` reducido `width / 2` a cada lado: cuatro curvas de Bézier. */
+function circleDrawing(a: BoxShapeAnnotation): Drawing {
+  const [x1, y1, x2, y2] = a.rect;
+  const w = a.width;
+  const cx = (x1 + x2) / 2;
+  const cy = (y1 + y2) / 2;
+  const rx = (x2 - x1 - w) / 2;
+  const ry = (y2 - y1 - w) / 2;
+  const kx = BEZIER_K * rx;
+  const ky = BEZIER_K * ry;
+  const ops = [
+    `${num(w)} w`,
+    colorOp(a.color, 'RG'),
+    ...fillOps(a.interior),
+    `${nums([cx + rx, cy])} m`,
+    `${nums([cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry])} c`,
+    `${nums([cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy])} c`,
+    `${nums([cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry])} c`,
+    `${nums([cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy])} c`,
+    'h',
+    paintOp(a.interior),
+  ];
+  return withOpacity(a, ops);
+}
+
+/**
+ * Punta de flecha en `tip`, con las alas a ±30° hacia atrás (hacia `other`). Abierta: dos segmentos.
+ * Cerrada: triángulo que se rellena si hay `interior`. Un segmento de longitud 0 no tiene dirección: sin punta.
+ */
+function arrowHeadOps(
+  tip: readonly [number, number],
+  other: readonly [number, number],
+  width: number,
+  closed: boolean,
+  interior: Rgb | null,
+): string[] {
+  const wings = arrowWings(tip, other, width);
+  if (wings === null) return [];
+  const path = `${nums(wings[0])} m ${nums(tip)} l ${nums(wings[1])} l`;
+  if (!closed) return [`${path} S`];
+  return [interior === null ? `${path} s` : `${path} h B`];
+}
+
+/** Línea o flecha: trazo de `width` con uniones y extremos redondeados; puntas según `endings`. */
+function lineShapeDrawing(a: LineShapeAnnotation): Drawing {
+  const [x1, y1, x2, y2] = a.points;
+  const [start, end] = a.endings;
+  const ops = [
+    '1 J 1 j',
+    `${num(a.width)} w`,
+    colorOp(a.color, 'RG'),
+    ...fillOps(a.interior),
+    `${nums([x1, y1])} m ${nums([x2, y2])} l S`,
+  ];
+  if (start !== 'None') {
+    ops.push(...arrowHeadOps([x1, y1], [x2, y2], a.width, start === 'ClosedArrow', a.interior));
+  }
+  if (end !== 'None') {
+    ops.push(...arrowHeadOps([x2, y2], [x1, y1], a.width, end === 'ClosedArrow', a.interior));
+  }
+  return withOpacity(a, ops);
+}
+
+/** Polígono cerrado: `m`, `l`… y `h` con uniones redondeadas. */
+function polygonDrawing(a: PolygonAnnotation): Drawing {
+  const v = a.vertices;
+  const ops = [`${num(a.width)} w`, '1 j', colorOp(a.color, 'RG'), ...fillOps(a.interior), `${nums(pointAt(v, 0))} m`];
+  for (let i = 2; i + 1 < v.length; i += 2) ops.push(`${nums(pointAt(v, i))} l`);
+  ops.push('h', paintOp(a.interior));
+  return withOpacity(a, ops);
+}
+
+/** Rectángulo de esquinas redondeadas (radio `r`) con cuatro curvas de Bézier; sin pintar. */
+function roundedRectOps(x1: number, y1: number, x2: number, y2: number, r: number): string[] {
+  const k = BEZIER_K * r;
+  return [
+    `${nums([x1 + r, y1])} m`,
+    `${nums([x2 - r, y1])} l`,
+    `${nums([x2 - r + k, y1, x2, y1 + r - k, x2, y1 + r])} c`,
+    `${nums([x2, y2 - r])} l`,
+    `${nums([x2, y2 - r + k, x2 - r + k, y2, x2 - r, y2])} c`,
+    `${nums([x1 + r, y2])} l`,
+    `${nums([x1 + r - k, y2, x1, y2 - r + k, x1, y2 - r])} c`,
+    `${nums([x1, y1 + r])} l`,
+    `${nums([x1, y1 + r - k, x1 + r - k, y1, x1 + r, y1])} c`,
+    'h',
+  ];
+}
+
+/**
+ * Sello: contorno redondeado del color del sello (a 1 pt del borde) y su texto en Helvetica, reducido si no cabe
+ * y centrado en la caja.
+ */
+function stampDrawing(a: StampAnnotation): Drawing {
+  const [x1, y1, x2, y2] = a.rect;
+  const { x, y, fontSize } = stampTextBox(a.name, a.rect);
+  const label = STAMP_LABELS[a.name];
+  const ops = [
+    colorOp(a.color, 'RG'),
+    colorOp(a.color, 'rg'),
+    '2 w',
+    ...roundedRectOps(x1 + STAMP_INSET, y1 + STAMP_INSET, x2 - STAMP_INSET, y2 - STAMP_INSET, STAMP_RADIUS),
+    'S',
+    `BT /Helv ${num(fontSize)} Tf ${nums([x, y])} Td ${pdfText(label)} Tj ET`,
+  ];
+  return { ...withOpacity(a, ops), font: true };
+}
+
 function drawingOf(a: Annotation, imageRef: PdfRef | undefined): Drawing {
   switch (a.type) {
     case 'highlight':
@@ -226,6 +369,15 @@ function drawingOf(a: Annotation, imageRef: PdfRef | undefined): Drawing {
       return inkDrawing(a);
     case 'signature':
       return signatureDrawing(a, imageRef);
+    case 'square':
+    case 'circle':
+      return a.type === 'square' ? squareDrawing(a) : circleDrawing(a);
+    case 'line':
+      return lineShapeDrawing(a);
+    case 'polygon':
+      return polygonDrawing(a);
+    case 'stamp':
+      return stampDrawing(a);
   }
 }
 

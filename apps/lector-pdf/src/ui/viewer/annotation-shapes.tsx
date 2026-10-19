@@ -2,11 +2,18 @@ import type { ReactElement } from 'react';
 import { FREETEXT_LEADING, FREETEXT_MARGIN_PT } from '../../core/annotations/freetext';
 import type {
   Annotation,
+  BoxShapeAnnotation,
   FreeTextAnnotation,
+  LineShapeAnnotation,
   NoteAnnotation,
+  PolygonAnnotation,
+  Rgb,
+  ShapeLineEnding,
   SignatureAnnotation,
+  StampAnnotation,
   TextMarkupAnnotation,
 } from '../../core/annotations/model';
+import { arrowWings, STAMP_LABELS, stampTextBox } from '../../core/annotations/shapes';
 import { wrapText } from '../../core/annotations/wrap';
 import { cssColor, svgPathForQuads, svgPointsForPath } from './annotation-geometry';
 import styles from './AnnotationLayer.module.css';
@@ -45,6 +52,15 @@ export function AnnotationShape({ a }: { readonly a: Annotation }): ReactElement
       );
     case 'signature':
       return <SignatureShape a={a} />;
+    case 'square':
+    case 'circle':
+      return <BoxShape a={a} />;
+    case 'line':
+      return <LineShape a={a} />;
+    case 'polygon':
+      return <PolygonShape a={a} />;
+    case 'stamp':
+      return <StampShape a={a} />;
   }
 }
 
@@ -58,6 +74,9 @@ export function ZoneShape({ a }: { readonly a: Annotation }): ReactElement {
     case 'note':
     case 'freetext':
     case 'signature':
+    case 'square':
+    case 'circle':
+    case 'stamp':
       return <rect x={a.rect[0]} y={a.rect[1]} width={a.rect[2] - a.rect[0]} height={a.rect[3] - a.rect[1]} className={styles.zone} />;
     case 'ink':
       return (
@@ -67,6 +86,10 @@ export function ZoneShape({ a }: { readonly a: Annotation }): ReactElement {
           ))}
         </>
       );
+    case 'line':
+      return <line x1={a.points[0]} y1={a.points[1]} x2={a.points[2]} y2={a.points[3]} className={styles.zoneLine} />;
+    case 'polygon':
+      return <polygon points={svgPointsForPath(a.vertices)} className={styles.zoneLine} />;
   }
 }
 
@@ -99,6 +122,90 @@ function SignatureShape({ a }: { readonly a: SignatureAnnotation }): ReactElemen
   return (
     <g transform={`translate(${x1} ${y2}) scale(1 -1)`} opacity={a.opacity}>
       <image x={0} y={0} width={x2 - x1} height={y2 - y1} href={url} preserveAspectRatio="none" />
+    </g>
+  );
+}
+
+/** Rectángulo o elipse: el trazo va por dentro de `rect` (como en la apariencia). Sin relleno si `interior` es `null`. */
+function BoxShape({ a }: { readonly a: BoxShapeAnnotation }): ReactElement {
+  const [x1, y1, x2, y2] = a.rect;
+  const w = a.width;
+  const style = {
+    fill: a.interior === null ? 'none' : cssColor(a.interior),
+    stroke: cssColor(a.color),
+    strokeWidth: w,
+    opacity: a.opacity,
+  };
+  if (a.type === 'square') {
+    return <rect x={x1 + w / 2} y={y1 + w / 2} width={x2 - x1 - w} height={y2 - y1 - w} {...style} />;
+  }
+  return (
+    <ellipse cx={(x1 + x2) / 2} cy={(y1 + y2) / 2} rx={(x2 - x1 - w) / 2} ry={(y2 - y1 - w) / 2} {...style} />
+  );
+}
+
+/** Línea o flecha: el segmento y, en cada extremo con punta, las alas de la misma geometría que la apariencia. */
+function LineShape({ a }: { readonly a: LineShapeAnnotation }): ReactElement {
+  const [x1, y1, x2, y2] = a.points;
+  return (
+    <g stroke={cssColor(a.color)} strokeWidth={a.width} strokeLinecap="round" strokeLinejoin="round" opacity={a.opacity}>
+      <line x1={x1} y1={y1} x2={x2} y2={y2} />
+      <ArrowHead tip={[x1, y1]} other={[x2, y2]} ending={a.endings[0]} width={a.width} interior={a.interior} />
+      <ArrowHead tip={[x2, y2]} other={[x1, y1]} ending={a.endings[1]} width={a.width} interior={a.interior} />
+    </g>
+  );
+}
+
+function ArrowHead({
+  tip,
+  other,
+  ending,
+  width,
+  interior,
+}: {
+  readonly tip: readonly [number, number];
+  readonly other: readonly [number, number];
+  readonly ending: ShapeLineEnding;
+  readonly width: number;
+  readonly interior: Rgb | null;
+}): ReactElement | null {
+  const wings = ending === 'None' ? null : arrowWings(tip, other, width);
+  if (wings === null) return null;
+  const points = `${wings[0][0]},${wings[0][1]} ${tip[0]},${tip[1]} ${wings[1][0]},${wings[1][1]}`;
+  if (ending === 'OpenArrow') return <polyline points={points} fill="none" />;
+  return <polygon points={points} fill={interior === null ? 'none' : cssColor(interior)} />;
+}
+
+/** Polígono cerrado con uniones redondeadas, como en la apariencia. */
+function PolygonShape({ a }: { readonly a: PolygonAnnotation }): ReactElement {
+  return (
+    <polygon
+      points={svgPointsForPath(a.vertices)}
+      fill={a.interior === null ? 'none' : cssColor(a.interior)}
+      stroke={cssColor(a.color)}
+      strokeWidth={a.width}
+      strokeLinejoin="round"
+      opacity={a.opacity}
+    />
+  );
+}
+
+/** Sello: contorno redondeado de 2 pt a 1 pt del borde y texto en Helvetica volteado como el texto libre. */
+function StampShape({ a }: { readonly a: StampAnnotation }): ReactElement {
+  const [x1, y1, x2, y2] = a.rect;
+  const color = cssColor(a.color);
+  const text = stampTextBox(a.name, a.rect);
+  return (
+    <g opacity={a.opacity}>
+      <rect x={x1 + 1} y={y1 + 1} width={x2 - x1 - 2} height={y2 - y1 - 2} rx={4} fill="none" stroke={color} strokeWidth={2} />
+      <text
+        transform={`translate(${text.x} ${text.y}) scale(1 -1)`}
+        fontFamily={HELVETICA}
+        fontSize={text.fontSize}
+        fill={color}
+      >
+        {STAMP_LABELS[a.name]}
+      </text>
     </g>
   );
 }

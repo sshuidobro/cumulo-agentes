@@ -4,7 +4,8 @@ import { createStorageStore, memorySource, type Platform } from '@suite/platform
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LoadedPdf } from '../../src/engine';
 import type { PageViewport } from '../../src/engine/pdfjs';
-import { newAnnotation, fileAnnotation } from '../unit/annotations/factories';
+import { newAnnotation, fileAnnotation, T0 } from '../unit/annotations/factories';
+import { newBoxShape, newLineShape, newPolygonShape, newStamp } from '../../src/core/annotations/shapes';
 import { AnnotationLayer } from '../../src/ui/viewer/AnnotationLayer';
 import {
   addAnnotation,
@@ -249,5 +250,46 @@ describe('AnnotationLayer · tipos y herramienta', () => {
     renderLayer();
 
     expect(document.querySelector('[data-annot-id="ref:7R"]')?.previousElementSibling).not.toBeNull();
+  });
+});
+
+describe('AnnotationLayer · formas y sellos (PDF-057)', () => {
+  it('una forma nueva de cada tipo se dibuja y su zona tiene su nombre accesible', () => {
+    const shape = { pageIndex: 0, color: [1, 0, 0] as const, author: 'Ana', now: T0 };
+    addAnnotation({
+      ...newBoxShape({ ...shape, id: 'suite-sq', kind: 'square', rect: [72, 600, 172, 650], width: 2 }),
+      interior: [1, 1, 0],
+    });
+    addAnnotation(newBoxShape({ ...shape, id: 'suite-ci', kind: 'circle', rect: [200, 600, 300, 650], width: 2 }));
+    addAnnotation(newLineShape({ ...shape, id: 'suite-ln', points: [72, 500, 200, 520], arrow: true, width: 2 }));
+    addAnnotation(newLineShape({ ...shape, id: 'suite-pl', points: [72, 480, 200, 480], arrow: false, width: 2 }));
+    addAnnotation(
+      newPolygonShape({
+        ...shape,
+        id: 'suite-pg',
+        vertices: [320, 600, 380, 610, 400, 650, 350, 670, 310, 640],
+        width: 2,
+      }),
+    );
+    addAnnotation(newStamp({ ...shape, id: 'suite-st', name: 'Draft', center: [300, 398] }));
+    renderLayer();
+
+    const shapeOf = (id: string): Element | null => zone(id).previousElementSibling;
+
+    expect(shapeOf('suite-sq')?.tagName).toBe('rect');
+    expect(shapeOf('suite-sq')?.getAttribute('fill')).toBe('rgb(255 255 0)');
+    expect(shapeOf('suite-ci')?.tagName).toBe('ellipse');
+    expect(shapeOf('suite-ln')?.querySelector('line')).not.toBeNull();
+    expect(shapeOf('suite-ln')?.querySelector('polyline')).not.toBeNull();
+    expect(shapeOf('suite-pl')?.querySelector('polyline')).toBeNull();
+    expect(shapeOf('suite-pg')?.tagName).toBe('polygon');
+    expect(shapeOf('suite-st')?.querySelector('text')?.textContent).toBe('BORRADOR');
+
+    expect(zone('suite-sq').getAttribute('aria-label')).toBe('Rectángulo de Ana');
+    expect(zone('suite-ci').getAttribute('aria-label')).toBe('Elipse de Ana');
+    expect(zone('suite-ln').getAttribute('aria-label')).toBe('Flecha de Ana');
+    expect(zone('suite-pl').getAttribute('aria-label')).toBe('Línea de Ana');
+    expect(zone('suite-pg').getAttribute('aria-label')).toBe('Polígono de Ana');
+    expect(zone('suite-st').getAttribute('aria-label')).toBe('Sello de Ana');
   });
 });

@@ -48,6 +48,11 @@ const SUPPORTED_LABELS: Readonly<Record<AnnotationType, string>> = {
   freetext: 'Texto',
   ink: 'Dibujo',
   signature: 'Firma',
+  square: 'Rectángulo',
+  circle: 'Elipse',
+  line: 'Línea',
+  polygon: 'Polígono',
+  stamp: 'Sello',
 };
 
 /** Subtipos ajenos con nombre en español; el resto se muestra con su `subtype` tal cual. */
@@ -89,6 +94,7 @@ interface Candidate {
 
 /** Etiqueta de tipo de una anotación editable. */
 export function typeLabelOf(a: Annotation): string {
+  if (a.type === 'line' && a.endings.some((e) => e !== 'None')) return 'Flecha';
   return SUPPORTED_LABELS[a.type];
 }
 
