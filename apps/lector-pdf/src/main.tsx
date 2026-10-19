@@ -13,6 +13,7 @@ import { loadAppearance } from './state/appearance-actions';
 import { loadViewMode } from './state/view-actions';
 import { installCloseGuard } from './state/unsaved-guard';
 import { startDraftSync } from './state/draft-sync';
+import { startRecentSync } from './state/recent-actions';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Falta el elemento #root en index.html');
@@ -21,6 +22,7 @@ const platform = await loadPlatform({ prefsPrefix: 'lector-pdf.' });
 initServices({ platform, assetBaseUrl: new URL('pdfjs/', document.baseURI).href });
 platform.onFileOpenedFromOS((file) => void openRequested(file));
 startPositionSync();
+startRecentSync();
 startDraftSync(createIdbDraftStore('lector-pdf'));
 loadAppearance();
 loadViewMode();

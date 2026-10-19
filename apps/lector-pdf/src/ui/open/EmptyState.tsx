@@ -1,12 +1,23 @@
 import { pickAndOpen } from '../../state/document-actions';
+import { useRecent } from '../../state/recent-actions';
 import { services } from '../../state/services';
 import { formatOpenShortcut } from '../shortcuts';
 import { msg } from '../messages';
+import { tabsMsg } from '../messages-tabs';
+import { RecentList } from './RecentList';
 import styles from './open.module.css';
 
-/** Estado sin documento: invita a abrir uno. */
+/** Sin File System Access no se pueden guardar recientes que se puedan reabrir (PDF-049). */
+function hasFileSystemAccess(): boolean {
+  return typeof (window as { showOpenFilePicker?: unknown }).showOpenFilePicker === 'function';
+}
+
+/** Estado sin documento: invita a abrir uno y lista los recientes. */
 export function EmptyState() {
-  const shortcut = formatOpenShortcut(services().platform.isMac);
+  const { platform } = services();
+  const shortcut = formatOpenShortcut(platform.isMac);
+  const recent = useRecent((s) => s.list);
+  const unsupported = platform.kind === 'web' && !hasFileSystemAccess();
   return (
     <>
       <h1 className={styles.title}>{msg.emptyTitle}</h1>
@@ -15,6 +26,8 @@ export function EmptyState() {
       <button type="button" className={styles.primary} onClick={() => void pickAndOpen()}>
         {msg.open}
       </button>
+      {unsupported && <p className={styles.hint}>{tabsMsg.recentUnsupported}</p>}
+      {!unsupported && recent.length > 0 && <RecentList entries={recent} />}
     </>
   );
 }
