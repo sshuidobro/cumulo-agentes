@@ -8,6 +8,7 @@ import { formMsg } from '../messages-forms';
 import { formatOpenShortcut, formatShortcut } from '../shortcuts';
 import { ZoomControls } from './ZoomControls';
 import { DocumentMenu } from './DocumentMenu';
+import { RecentMenu } from './RecentMenu';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
@@ -60,6 +61,7 @@ export function MainToolbar() {
       >
         <IconOpen />
       </IconButton>
+      <RecentMenu />
       <IconButton
         label={msg.save}
         shortcut={formatShortcut('save', platform.isMac)}

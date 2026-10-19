@@ -56,6 +56,16 @@ export function IconOpen() {
   );
 }
 
+/** Reloj con flecha: documentos recientes (PDF-049). */
+export function IconRecent() {
+  return (
+    <Svg>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6.5V10l2.5 1.5" />
+    </Svg>
+  );
+}
+
 export function IconZoomIn() {
   return (
     <Svg>
