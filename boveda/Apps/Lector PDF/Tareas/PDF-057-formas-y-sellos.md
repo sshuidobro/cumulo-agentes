@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-057
 titulo: Formas y sellos - modelo, apariencias y escritura
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-039]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
