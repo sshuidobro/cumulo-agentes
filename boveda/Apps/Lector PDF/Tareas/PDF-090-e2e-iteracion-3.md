@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-090
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089]
 intentos: 1
 skills: [pruebas-calidad, calidad-profesional]
@@ -141,3 +141,20 @@ Estado → `pendiente`. `intentos` se mantiene (escalado correcto, no es fallo d
      - `InkStroke` gana `bounds: readonly [number, number, number, number]` (= `pageBoundsPt()` en `beginInk`) e `inv` (= `invertTransform(viewport.transform)` en `beginInk`). `addInkSample` calcula `u = clientX − box.left`, `v = clientY − box.top`, `x = inv[0]·u + inv[2]·v + inv[4]`, `y = inv[1]·u + inv[3]·v + inv[5]` y recorta con `stroke.bounds`, sin crear arrays. Mismo resultado que `convertToPdfPoint` (lo cubren las pruebas de posición de `ink.spec.ts`).
    - **Cualquier otro** (render de React, `Paint`/`Layout`/raster, pdf.js, tarea sin código de la app) → no cambiar código: escalar al líder con lo del paso 2 y la ruta de la traza.
 4. Tras el arreglo: 3 lanzamientos de `--repeat-each=5 -g "2 000 eventos"` → 15/15 en verde. Luego todo el punto 5 de la ficha y los criterios: lint, typecheck, test, coverage, perf, build, las dos baterías ×3 con código 0, y **rehacer la tabla de medidas** (la de la ronda 1 es de un código anterior).
+
+### [programador] ronda 3 — 2026-10-19
+- Ficheros cambiados: ninguno de código ni de tests (`git diff -- apps/lector-pdf/tests/` vacío tras restaurar la prueba de diagnóstico). Solo esta ficha. Trazas guardadas fuera del repo: `/tmp/claude-0/-home-claude-cumulo-agentes/409a8bbc-9d52-502a-8457-def03208983e/scratchpad/ink-trace-r3.json` y `.../scratchpad/ink-trace-r2.json`; logs de las 4 tandas en `/tmp/claude-0/ink-run-1.log` a `ink-run-4.log`.
+- Qué he hecho: paso B.1 (trazado con `startTracing` solo entre `mouse.down` y `mouse.up`, sin cambiar aserciones) y B.2 (análisis del `RunTask` ≥ 50 ms del `CrRendererMain`). Paso B.4 de la traza: cae **durante el trazo**, así que según la replanificación 2 no toco código y escalo.
+- Comandos ejecutados y resultado:
+  - `e2e --project=chromium-perf --no-deps --repeat-each=5 -g "2 000 eventos"` ×4 tandas (con el trazado activo): 3/5, 5/5, 3/5, 2/5 → **7 fallos de 20**. Las long tasks falladas: 60, 73, 74 ms (ver abajo).
+  - Análisis de trazas con script propio (no versionado) en el scratchpad.
+- Traza (la misma en las dos trazas analizadas):
+  - Ventana del trazo según `EventDispatch`: `pointerdown` a 90,0 ms y `pointerup` a 33 636 ms (2 001 `pointermove`).
+  - Fallo en tanda 4, repetición 3: `RunTask` de **74,1 ms** a 30 212 ms; hijo dominante `Commit` **68,8 ms** (frameSeqId 2044, layerTreeId 1); resto: `EventDispatch` 2,9 ms, `PrePaint` 0,7 ms. Sin GC dentro de la tarea.
+  - Fallo en tanda 4, repetición 2: `RunTask` de **74,1 ms** a 32 925 ms; hijo dominante `Commit` **69,5 ms** (frameSeqId 2207); resto: `EventDispatch` 2,6 ms, `PrePaint` 0,3 ms. Hay un GC menor (`MC_EVACUATE` 17 ms) a 32 881 ms, fuera de la tarea.
+  - Las tareas de 71–82 ms a ~3 ms (`EvaluateScript`) ocurren antes de `pointerdown`, fuera de la ventana medida.
+  - Conclusión del paso 2: el coste dominante es el `Commit` del compositor (no es GC ni `AnnotationLayer` al soltar). La causa concreta (raster/paint de alguna capa durante el trazo) **no está verificada**; es una hipótesis.
+- Dudas o cosas que no he podido hacer (para el líder):
+  1. **Escalado (paso 4 de la replanificación 2).** La long task es un `Commit` de ~70 ms durante el trazo. No es GC (paso 3, primera rama) y no es una tarea de la app al soltar (paso 3, segunda rama). Según la regla, es «cualquier otro»: no cambio código. Decidir si se investiga la capa que se repinta durante el trazo (¿ADR-0018 vista previa en canvas?, ¿capa de anotaciones?) o si se aísla el trazo con una ficha nueva.
+  2. Las 20 repeticiones no cumplen el criterio «15/15» del punto 4: no se ha hecho el arreglo ni se han repetido las baterías ×3, ni el lint, build y medidas, porque el paso 4 no se ejecuta sin decisión del líder.
+  3. Ficha en `en-revision`, sin cambios de código ni de tests.
