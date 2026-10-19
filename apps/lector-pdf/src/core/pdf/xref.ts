@@ -372,7 +372,7 @@ async function readSection(src: ByteSource, offset: number): Promise<Section> {
 /**
  * Lee la cadena de secciones xref de un PDF sin leer sus objetos. La sección más nueva
  * gana en la vista fusionada. Lanza `PdfSyntaxError('xref-unreadable')` si la cadena es
- * ilegible y `PdfSyntaxError('encrypted')` si el trailer final tiene `/Encrypt`.
+ * ilegible. El `/Encrypt` del trailer no se trata aquí: lo abre `ObjectReader.open`.
  */
 export async function readXref(src: ByteSource): Promise<XrefInfo> {
   const lastXrefOffset = await findStartxref(src);
@@ -388,7 +388,6 @@ export async function readXref(src: ByteSource): Promise<XrefInfo> {
     visited.add(offset);
     const section = await readSection(src, offset);
     if (first === null) {
-      if (dictGet(section.trailer, 'Encrypt') !== undefined) throw new PdfSyntaxError('encrypted', 0);
       first = section;
     }
     for (const [num, entry] of section.entries) {

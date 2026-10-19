@@ -324,10 +324,10 @@ describe('readXref · errores', () => {
     expect((await readError(fixture('corrupt-not-pdf.pdf'))).message).toBe('xref-unreadable');
   });
 
-  it('un trailer con /Encrypt → encrypted', async () => {
+  it('un trailer con /Encrypt se lee como una referencia (lo abre ObjectReader)', async () => {
     const updated = appendIncrementalUpdate(fixture('basic-5.pdf'), new Map([[1, '<< /Type /Catalog /Pages 2 0 R >>']]), '/Encrypt 9 0 R');
-    const error = await readError(updated);
-    expect(error.message).toBe('encrypted');
+    const info = await readXref(memorySource(updated));
+    expect(dictGet(info.trailer, 'Encrypt')).toEqual({ kind: 'ref', num: 9, gen: 0 });
   });
 
   it('una sección que no es xref ni /Type /XRef → xref-unreadable', async () => {
