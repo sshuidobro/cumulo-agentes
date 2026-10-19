@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-047
 titulo: Guardar anotaciones, firmas y formularios en PDF cifrado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-093, PDF-046]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -55,3 +55,6 @@ En la app, Ctrl+S, Guardar como e Imprimir funcionan con PDFs cifrados (con cont
   3. «Firma visible tras reabrir»: se comprueba como sello de solo lectura (sin zona editable) en el panel de comentarios, con etiqueta «Firma» o «Sello» mientras PDF-104 esté pendiente.
   4. «Ambas anotaciones con su texto»: la nota tiene su texto en `contents`; el resaltado no guarda texto, así que se comprueba con sus `quads`.
   5. «Guardar como» no tiene E2E propio: usa la misma reapertura (`reopenSaved`) y no estaba en los criterios.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+Commit 343600b revisado. Los 3 cambios de `src` son mínimos y correctos (`openForSave`, temporal de impresión y fuentes con `currentPassword()`); sin cambios de seguridad. Lint, typecheck y tests de unidad verdes; E2E no ejecutado por mí (los pasará el tester: `encrypted-save.spec.ts` 8 casos, owner-only sin diálogo, formularios con qpdfEncrypt, firma, impresión, contador de diálogo = 1). (opcional) El E2E de firma acepta `Firma|Sello` mientras PDF-104 siga abierto: endurecerlo a «Firma» cuando PDF-104 esté hecha (y haga falta pasar la contraseña, ver PDF-104 punto 4).
