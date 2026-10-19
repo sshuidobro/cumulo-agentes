@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-052
 titulo: Reorganizar páginas por actualización incremental (núcleo y medidas)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-039, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
