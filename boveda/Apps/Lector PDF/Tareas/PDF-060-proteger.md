@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-060
 titulo: Proteger - crear el cifrado AES-256 (R6) y los permisos (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-052, PDF-047]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -87,3 +87,13 @@ export function createAes256Security(input: NewSecurityInput): NewSecurity;
 - Lint, typecheck y 108 tests en verde; cobertura de `create-security.ts` 100 %. Criterios cubiertos (ida y vuelta, golden, qpdf/pdf.js, saslPrep, permisos).
 - Contradicción fillForms/annotate: aceptable. `permissionsFrom` sigue ISO 32000 (el bit 6 permite también rellenar formularios), así que no se debe cambiar el lector; `permissionsValue` respeta la ficha y el test documenta la excepción. (opcional) En la interfaz PDF-132, al marcar `annotate` forzar `fillForms` a verdadero para no mostrar una opción irreal.
 - Orden de las llamadas a `random` documentado en el código; aceptado.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Ida y vuelta usuario/propietario/incorrecta | OK | `create-security.test.ts` 108 tests en verde dentro de `pnpm coverage` (exit 0) |
+| Usuario vacío, permisos (-4, banderas), golden, qpdf + pdf.js, saslPrep | OK | mismos tests (incluye `qpdf --show-encryption` R = 6 / AESv3) |
+| Cobertura `create-security.ts` ≥ 95 % | 100 % líneas (49/49) | `coverage/coverage-summary.json` |
+| lint, typecheck, coverage | exit 0; global líneas 98,6 % | `pnpm lint`, `pnpm typecheck`, `pnpm coverage` |
+- Tests añadidos: `apps/lector-pdf/tests/unit/pdf/create-security-qa.test.ts` (emoji, árabe RTL, espacios, 300 caracteres truncados a 127 bytes, rechazo de otra contraseña): 4/4.
+- Rendimiento: no aplica. Nota: la primera ejecución de coverage chocó con otro proceso vitest concurrente; se repitió en serie.
