@@ -181,7 +181,7 @@ describe('PageView · lienzo de detalle (ADR-0025)', () => {
     await act(async () => {
       second.finish('done');
     });
-    await waitFor(() => expect(container.querySelector('[data-detail]')?.style.top).toBe('4800px'));
+    await waitFor(() => expect(container.querySelector<HTMLElement>('[data-detail]')?.style.top).toBe('4800px'));
     expect(container.querySelector('[data-detail]')?.querySelector('canvas')).toBe(second.canvas);
     expect(first.canvas.width).toBe(0);
   });

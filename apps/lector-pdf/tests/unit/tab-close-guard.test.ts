@@ -82,7 +82,7 @@ describe('confirmAllTabs', () => {
 
 describe('installCloseGuard con varias pestañas', () => {
   it('cancela el cierre, confirma cada pestaña y cierra la ventana al terminar', async () => {
-    let closeRequested: (() => boolean) | null = null;
+    let closeRequested = null as (() => boolean) | null;
     const platform = createFakePlatform({
       onCloseRequested: (cb: () => boolean) => {
         closeRequested = cb;
@@ -104,7 +104,7 @@ describe('installCloseGuard con varias pestañas', () => {
   });
 
   it('sin cambios en ninguna pestaña permite cerrar sin preguntar', () => {
-    let closeRequested: (() => boolean) | null = null;
+    let closeRequested = null as (() => boolean) | null;
     const platform = createFakePlatform({
       onCloseRequested: (cb: () => boolean) => {
         closeRequested = cb;

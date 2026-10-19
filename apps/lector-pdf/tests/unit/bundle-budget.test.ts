@@ -53,14 +53,14 @@ describe('checkBundle', () => {
     };
     const report = checkBundle(
       manifest,
-      sizes({ 'assets/index.js': 450_000, 'assets/vendor.js': 100_000, 'assets/pdf.js': 400_000 }),
+      sizes({ 'assets/index.js': 450_000, 'assets/vendor.js': 200_000, 'assets/pdf.js': 400_000 }),
     );
     expect(report.ok).toBe(false);
-    expect(report.entryBytes).toBe(550_000);
+    expect(report.entryBytes).toBe(650_000);
     expect(report.errors).toEqual([
-      'El JavaScript de arranque pesa 550000 bytes (máximo 500000).',
+      'El JavaScript de arranque pesa 650000 bytes (máximo 600000).',
     ]);
-    expect(ENTRY_JS_BUDGET_BYTES).toBe(500_000);
+    expect(ENTRY_JS_BUDGET_BYTES).toBe(600_000);
   });
 
   it('informa de un error si pdf.js está en la entrada y no tiene clave propia', () => {

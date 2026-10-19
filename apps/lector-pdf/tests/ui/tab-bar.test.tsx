@@ -23,7 +23,7 @@ function tabEl(name: string): HTMLElement {
 }
 
 beforeEach(() => {
-  initServices(createFakePlatform());
+  initServices({ platform: createFakePlatform(), assetBaseUrl: 'http://localhost/' });
   resetTabsForTests();
 });
 
