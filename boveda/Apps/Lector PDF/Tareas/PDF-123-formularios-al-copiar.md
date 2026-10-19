@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-123
 titulo: Formularios al copiar páginas a un PDF nuevo
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-122]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -59,3 +59,16 @@ Los campos de formulario de las páginas copiadas siguen siendo campos rellenabl
 - Lint, typecheck y coverage con código 0. Los 7 tests nuevos cubren los criterios (pdf.js `getFieldObjects`, qpdf, firma sin `/V`, sin `/AcroForm`).
 - Duda `/DA` con `Helv_2`: es lo que pide literalmente la ficha y los widgets llevan su propia apariencia (`/AP`) con recursos propios, así que el render no cambia. No bloquea. (opcional) Si al editar un campo de la segunda parte se ve una fuente distinta, planificar una ficha para reescribir `/DA` con el nombre renombrado.
 - (opcional) `/DA` solo de la primera parte con formulario: si esa no lo tiene y otra sí, se pierde.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Extraer una página de `form-full.pdf` (campos y valores; qpdf) | OK | test «form-full.pdf, página 1…» verde |
+| Todas las páginas → mismos campos y valores | OK | test «form-full.pdf completo…» verde |
+| Campo con widgets en dos páginas, extraer una | OK | test «campo con widgets en dos páginas…» verde |
+| Combinar `form.pdf` + `form-full.pdf` | OK | tests «combinar…» (`/Fields` y `/DR` Helv_2) verdes |
+| Campo de firma firmado → sin `/V` | OK | test «campo de firma firmado…» verde |
+| Sin formulario → sin `/AcroForm` | OK | test «documentos sin formulario…» verde |
+| lint, typecheck, coverage | OK | lint y typecheck 0; `vitest run --coverage` (directorio propio porque otro proceso usaba `coverage/`) código 0, líneas 98,59 % |
+
+Tests añadidos: ninguno (los 7 del programador cubren todos los criterios). Rendimiento: no aplica.
