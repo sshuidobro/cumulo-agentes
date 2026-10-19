@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-122
 titulo: Destinos con nombre e índice al copiar páginas
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-121]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -74,3 +74,8 @@ export interface OutlineBranch { readonly ref: PdfRef; readonly objects: readonl
   - Añadidos fuera de la lista de la ficha: `ObjectCopier.allocRef()`, `copyDirect()` y `namedDestValue()` son públicos porque `copyOutlineBranch` los necesita para reservar números y remapear destinos.
   - Los objetos de rama se numeran desde el mismo asignador que las páginas; los ficheros se validan con qpdf en cada test de salida.
   - No he hecho commit (lo pediste así; hay cambios ajenos en `crypto/` y en tests de UI en el árbol de trabajo).
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- `pnpm lint`, `pnpm typecheck` y `pnpm coverage` con código 0 (253 ficheros, 3184 tests). Cobertura `name-tree.ts` 93,2 %, `outline-copy.ts` 95,6 %.
+- Criterios cubiertos por tests (árbol con `/Kids`/`/Limits`, `readTopLevelOutline`, ramas `basic-5`+`outline`, ciclo `/Next`, `links.pdf`); `qpdf --check` en las salidas de `new-document.test.ts`. Sin commit aún (el programador lo indicó).
+- (opcional) El tope de 10 000 entradas corta en silencio; valorar un aviso más adelante.
