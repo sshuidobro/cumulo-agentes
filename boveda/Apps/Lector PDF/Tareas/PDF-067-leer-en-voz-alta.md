@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-067
 titulo: Leer en voz alta - frases, voces y motor de lectura
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-022]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-19
@@ -119,3 +119,9 @@ export function setVoice(id: string): void;                   // igual que setRa
   - Lo cambiado en esta ficha antes de mi trabajo (línea «> 2026-10-19 (líder)…») no lo he tocado.
   - Queda pendiente la interfaz (PDF-114). No he creado `index.ts` porque la ficha no lo pide.
   - Pendiente de decidir por el líder: que `pnpm lint` y `pnpm coverage` pasen requiere que se arregle `diff.test.ts` y se estabilice `fixtures.test.ts`.
+
+### [revisor] ronda 1 — 2026-10-19 — CAMBIOS
+Typecheck y ESLint de los ficheros de la ficha limpios; 45 tests OK; cobertura `core/read-aloud` 100 % líneas y `read-aloud-actions.ts` 93,8 %. Lógica del motor correcta (secuencia, pausa, lectura adelantada, parada al cambiar `file`).
+1. `apps/lector-pdf/src/state/speech-port.ts:27-60` — `browserSpeechPort` tiene 16 % de cobertura y ningún test, y ahí vive la garantía de privacidad «nunca usa voces no locales» (`find(... && v.localService)`), además de la espera de `voiceschanged` (1 500 ms), el mapeo `voiceURI`→`id` y `onend`/`onerror` — añadir `tests/unit/speech-port.test.ts` con un `window.speechSynthesis` y `SpeechSynthesisUtterance` falsos (y timers falsos) que compruebe: `voices()` espera `voiceschanged` y también termina a los 1 500 ms; `speak` con una voz `localService:false` llama a `onError('voice-unavailable')` y no a `synth.speak`; con voz local fija `voice`, `lang`, `rate` y propaga `onend`/`onerror`; `available()` sin API es `false`; `cancel()` sin API no lanza.
+2. `apps/lector-pdf/src/state/read-aloud-actions.ts:235-256` (opcional) — si se pausa y se reanuda mientras `advancePage` espera la página siguiente, `togglePause` vuelve a decir el último fragmento y luego `advancePage` llama a `speakCurrent` otra vez (voz duplicada). Basta con comprobar `r.seq`/un indicador «avanzando» antes de reanudar.
+Nota: el fallo de `fixtures.test.ts` y el lint de `diff.test.ts` son de otras fichas, no bloquean esta.

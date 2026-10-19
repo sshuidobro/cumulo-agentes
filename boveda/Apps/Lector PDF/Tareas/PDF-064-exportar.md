@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-064
 titulo: Exportar a imágenes y texto - núcleo y render
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-022]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -70,7 +70,7 @@ export function buildZip(entries: readonly { readonly name: string; readonly byt
 
 ## Criterios de aceptación
 - [ ] Unit (jsdom, página falsa de 612×792 pt): `renderPageImage` a 150 ppp deja el lienzo en 1275×1650 y devuelve `width`/`height`/`dpi` = 1275/1650/150; a 72 ppp en JPEG llama a `toBlob(cb, 'image/jpeg', 0.92)` tras un `fillRect` blanco; `withComments: false` marca `noPrint` y lo restaura al terminar (como imprimir); `signal` abortado → `'cancelled'` y el lienzo liberado (`width === 0`).
-- [ ] Unit: `imagePixelSize(612, 792, 600)` = 5100×6600 sin recortar si cabe en `MAX_CANVAS_PIXELS`; si no, `reduced: true` y el producto ≤ `MAX_CANVAS_PIXELS`.
+- [ ] Unit: `imagePixelSize(612, 792, 600)` devuelve `reduced: true` y un producto ≤ `MAX_CANVAS_PIXELS` (5100×6600 = 33 660 000 > 33 554 432); un caso que cabe (300×300 pt a 600 ppp = 2500×2500) no se recorta. (Criterio corregido por el revisor: el original suponía que 5100×6600 cabía.)
 - [ ] Unit: `exportBaseName('a:b?.PDF')` = `a_b_`; `exportBaseName('...pdf')` = `documento`; `imageFileName('x', 7, 120, 'png', true)` = `x-p0007.png`; con 12 000 páginas `x-p00007.png`.
 - [ ] Unit: `buildTxt(['Hola\nmundo', 'Adiós'])` = BOM + `Hola\r\nmundo\r\n\f\r\nAdiós\r\n` en UTF-8; el texto de `basic-5.pdf` (pdf.js en Node) contiene las 5 líneas «Página N de 5» en orden.
 - [ ] Unit: `buildZip` de 3 entradas se descomprime con `unzipSync` de `fflate` en las mismas entradas y bytes.
@@ -99,3 +99,9 @@ export function buildZip(entries: readonly { readonly name: string; readonly byt
   - `buildZip` lanza `RangeError` si se repite un nombre de entrada, en vez de perder una entrada en silencio. No estaba en la ficha; es una guarda y se puede quitar si no la quieres.
   - Los tests de render están en `tests/unit/print-render.test.ts` (como pide la ficha); el test del TXT con `basic-5.pdf` está en `export-plan.test.ts`.
   - Pendiente de la ficha: que `pnpm lint` y `pnpm coverage` pasen en limpio depende de que PDF-063 y PDF-067 terminen sus ficheros.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Lint, typecheck y 45 tests de mis ficheros (export-plan, print-render) en verde; impresión sin cambios; `plan.ts` bien (nombres, TXT, ZIP, tope compartido con `printScale`).
+- Sobre 600 ppp: el código es correcto y el criterio tenía un error aritmético (5100×6600 supera `MAX_CANVAS_PIXELS`). Se recorta, como imprimir; he corregido el criterio en la ficha. PDF-113 debe avisar en la interfaz usando `reduced`/`dpi` real.
+- (opcional) La guarda `RangeError` de `buildZip` con nombres repetidos es razonable; se queda.
+- `pnpm lint`/`coverage` globales siguen rojos por ficheros ajenos (063/067/fixtures), no de esta ficha.
