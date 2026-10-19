@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-058
 titulo: Respuestas y estados de revisión - modelo, lectura y escritura
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-036, PDF-057, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -77,3 +77,15 @@ export function dependentIds(all: ReadonlyMap<string, Annotation>, id: string): 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/incremental.ts` (una respuesta o estado sin padre escribible ya no genera un incremento vacío roto: `writeUpdate` decide con `writableAdded`), `apps/lector-pdf/tests/unit/annotations/replies-interop.test.ts` (filtro de respuestas: pdf.js da `state: null` en las respuestas), `apps/lector-pdf/tests/unit/annotations/draft.test.ts` (error de tipo `unknown` en `JSON.parse`).
+- Qué he hecho: la implementación de la ficha ya estaba en el commit de pausa `5518a78` (modelo, `replies.ts`, import, to-pdf, incremental, UI). He arreglado los fallos de `replies-interop` (2 tests) y el error de typecheck. `replies.ts` tiene 100 % de líneas; `replies-interop` pasa 5/5 con `qpdf --check` 0.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf typecheck`: OK.
+  - `npx vitest run tests/unit/annotations tests/unit/organize` (+ cobertura de `replies.ts`): 452/452 OK.
+  - `pnpm lint`: **falla** solo por `apps/lector-pdf/tests/unit/tabs-annotations.test.ts` (líneas 94 y 217: `console.log('DBG …')` de depuración, `no-console`). No es de esta ficha: no lo he tocado.
+  - `tests/ui/draft-sync-tabs.test.tsx` (2 tests) y `tests/unit/tabs-annotations.test.ts` (3 tests): fallan por timeout de 5-10 s, no por las respuestas. Mismo origen (WIP de pestañas/borradores del commit `5518a78`). Revisar antes de `pnpm coverage`.
+  - `pnpm coverage` y `pnpm perf`: no ejecutados completos (fallan por lo anterior).
+- Dudas o cosas que no he podido hacer: falta decidir quién arregla `tabs-annotations.test.ts` (DBG y timeouts). No he hecho commit (lo pediste así: otros programadores trabajan en paralelo y hay cambios sin commit de otras fichas).
+
