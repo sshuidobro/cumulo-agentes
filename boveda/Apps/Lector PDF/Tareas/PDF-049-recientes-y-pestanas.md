@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-049
 titulo: Documentos recientes en la pantalla de inicio y en «Abrir recientes»
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [COM-015, COM-016, PDF-090]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -57,3 +57,15 @@ La pantalla de inicio lista los documentos recientes (nombre, carpeta en escrito
   3. `MenuButton` usa el nombre como clave de React: dos recientes con el mismo nombre en carpetas distintas darían un aviso de clave duplicada. No he tocado el componente compartido.
   4. Manual (`tauri dev`, dos PDF, cerrar y reabrir la app, reabrir desde inicio): pendiente en la máquina del usuario. No se ha podido ejecutar aquí.
   5. Contraste: la lista va sobre fondo blanco (`--color-surface`) porque el texto gris sobre el fondo del visor no cumplía axe.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. (opcional) `src/ui/kit/MenuButton.tsx` — clave de React por nombre; recientes con igual nombre darían aviso de clave duplicada — usar el id como clave.
+2. Lint, typecheck y tests nuevos (31) en verde; criterios cubiertos por tests UI y E2E.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E recientes (orden, recarga, p3), teclado, no disponible/quitar, borrar lista, cambios sin guardar, axe | OK | `pnpm --filter lector-pdf e2e`: 222 pasan (6 de `recent.spec.ts` + axe) |
+| lint, typecheck, coverage | OK | `pnpm lint` 0 avisos, `pnpm typecheck` OK, `pnpm coverage` OK (líneas 98,67 %) |
+| Manual `tauri dev` | Pendiente en máquina del usuario | No ejecutable aquí |
+Tests añadidos: ninguno (cobertura suficiente). Rendimiento: tests @perf del e2e en verde.

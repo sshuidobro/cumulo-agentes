@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-091, PDF-090]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-19
@@ -54,3 +54,10 @@ Al abrir un PDF protegido aparece un diálogo propio que pide la contraseña; si
 - Decisiones menores tomadas (avisar si no son válidas): la ficha cita `messages-security.ts` como existente, pero no existía, así que lo creé. La petición lleva un `id` además de `name` e `incorrect`, para que el diálogo se remonte con el campo vacío en cada intento. `Dialog` acepta `data-initial-focus` para que el foco inicial vaya al campo y no al primer botón (cambio aditivo en el kit).
 - Comandos ejecutados y resultado: `pnpm coverage` → 204 ficheros, 2454 tests en verde, cobertura global 96,6 % líneas. `pnpm typecheck` → sin errores. `playwright test tests/e2e/password.spec.ts --project=chromium` → 10/10. `pnpm lint` → falla por errores en ficheros ajenos a esta ficha (`src/ui/open/RecentList.tsx`, `tests/ui/recent.test.tsx`, `tests/unit/pdf/incremental.test.ts`); mis ficheros no tienen avisos.
 - Dudas o cosas que no he podido hacer: (1) El criterio «tras abrir con contraseña, añadir una nota y Ctrl+S → aviso sin pedir la contraseña» no tiene E2E: falta añadir la nota en el test. (2) Los criterios de «recordar posición y borradores con PDF cifrado» no tienen test. (3) El `errors.ts` del árbol está modificado por otro programador (`save-encrypted` → `save-wrong-password`, `save-encryption-unsupported`): no he tocado esas líneas. Solo he commiteado mi cambio de `password-required`.
+
+### [revisor] ronda 1 — 2026-10-19 — CAMBIOS
+1. `apps/lector-pdf/tests/e2e/password.spec.ts` — falta el E2E del criterio «abrir con contraseña, añadir una nota y Ctrl+S → aviso de guardado cifrado sin pedir de nuevo la contraseña» (el programador lo admite) — añadirlo (el aviso concreto es el que haya en `errors.ts` tras los cambios del otro programador).
+2. `apps/lector-pdf/tests/` — falta test del criterio «recordar posición (PDF-019) y borradores con PDF cifrado: abrir, ir a p3, cerrar, reabrir con contraseña → p3» — añadirlo (E2E o integración con FakePlatform). Si los borradores no aplican hoy, justificar en el Registro.
+3. Criterio «ninguna `log.*` (espía del logger)»: `tests/unit/document-password.test.ts:136` espía `console.*`, no el logger común; comprobar que el logger se espía de verdad (o que equivale a console) y ajustar.
+4. Lint: el programador dice que falla por ficheros ajenos; confirmar que `pnpm lint` queda en 0 antes de reenviar (criterio de la ficha).
+El código de `document-actions.ts`, el diálogo y los tests existentes (10/10 E2E, unit y UI) están correctos; solo faltan estos criterios.
