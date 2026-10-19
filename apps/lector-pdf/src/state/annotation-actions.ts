@@ -1,5 +1,5 @@
 import { createLogger, UndoStack, type Command } from '@suite/shared';
-import type { KeyValueStore } from '@suite/platform';
+import type { ByteSource, KeyValueStore } from '@suite/platform';
 import {
   addAnnotationCommand,
   deleteAnnotationCommand,
@@ -37,6 +37,8 @@ import {
   MAX_AUTHOR_LENGTH,
 } from '../core/annotations/palette';
 import { windowTitle } from '../core/title';
+import { openForSave } from '../core/pdf/incremental';
+import type { ObjectReader } from '../core/pdf/object-reader';
 import { readPageAnnotations, scanAnnotations, type LoadedPdf } from '../engine';
 import { setFileAnnotationHidden } from '../engine/annotation-visibility';
 import {
@@ -82,6 +84,8 @@ interface Session {
   readonly stop: AbortController;
   /** Importaciones en curso, por índice de página, para no importar dos veces la misma. */
   readonly pending: Map<number, Promise<void>>;
+  /** Lector del fichero para leer el `/Name` de los sellos ajenos (PDF-104). `null` si no hay fuente o falla al abrir. */
+  readonly reader: Promise<ObjectReader | null>;
 }
 
 let session: Session | null = null;
@@ -151,9 +155,10 @@ function prefs(): KeyValueStore {
 /**
  * Arranca la sesión de anotaciones de un documento recién abierto. Reinicia estado y pila.
  * Hasta 20 000 páginas se importan todas en segundo plano; más, se importa cada página al verla
- * (`ensurePageAnnotations`). `signal` aborta la sesión (cierre del documento).
+ * (`ensurePageAnnotations`). `signal` aborta la sesión (cierre del documento). `source` (el fichero abierto) permite
+ * leer el nombre de los sellos ajenos («Firma» frente a «Sello»); sin él, o si falla, sale «Sello».
  */
-export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal): void {
+export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal, source?: ByteSource): void {
   endAnnotationSession();
   const stop = new AbortController();
   if (signal.aborted) {
@@ -161,7 +166,10 @@ export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal): voi
   } else {
     signal.addEventListener('abort', () => { stop.abort(); }, { once: true });
   }
-  const current: Session = { pdf, stop, pending: new Map() };
+  const reader: Promise<ObjectReader | null> = source === undefined
+    ? Promise.resolve(null)
+    : openForSave(source).then((r) => (r.ok ? r.value : null), () => null);
+  const current: Session = { pdf, stop, pending: new Map(), reader };
   session = current;
   stack = createStack();
   memo = null;
@@ -176,15 +184,17 @@ export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal): voi
   if (lazy) return;
 
   let nextPage = 0;
-  scanAnnotations(pdf.doc, {
-    signal: stop.signal,
-    fallbackDate: nowIso(),
-    onBatch: (pages) => {
-      if (session !== current || stop.signal.aborted) return;
-      mergePages(nextPage, pages);
-      nextPage += pages.length;
-    },
-  })
+  current.reader
+    .then((opened) => scanAnnotations(pdf.doc, {
+      signal: stop.signal,
+      fallbackDate: nowIso(),
+      reader: opened,
+      onBatch: (pages) => {
+        if (session !== current || stop.signal.aborted) return;
+        mergePages(nextPage, pages);
+        nextPage += pages.length;
+      },
+    }))
     .then((outcome) => {
       if (session !== current || outcome !== 'done') return;
       useAnnotations.setState({ scan: 'done' });
@@ -244,7 +254,7 @@ async function importLazyPage(current: Session, pageIndex: number): Promise<void
 async function readLazyPage(current: Session, pageIndex: number): Promise<ImportedPage | null> {
   try {
     const page = await current.pdf.doc.getPage(pageIndex + 1);
-    const imported = await readPageAnnotations(page, nowIso());
+    const imported = await readPageAnnotations(page, nowIso(), await current.reader);
     if (session !== current || current.stop.signal.aborted) return null;
     return imported;
   } catch (cause) {
