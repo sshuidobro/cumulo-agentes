@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-104
 titulo: Etiqueta «Firma» al reabrir - conexión con la sesión de anotaciones
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-103]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-3, firma, anotaciones, state]
 ---
 
@@ -52,3 +52,9 @@ Al abrir un PDF guardado con firmas de la suite, el panel de comentarios las lis
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: ninguno nuevo por mi parte. La implementación de PDF-104 ya está en el árbol de trabajo sin commitear, en `apps/lector-pdf/src/engine/annotations-import.ts`, `apps/lector-pdf/src/state/annotation-actions.ts`, `apps/lector-pdf/src/state/document-actions.ts` (1 línea: `startAnnotationSession(loaded, scan.signal, file.source)`) y en los tests `tests/unit/annotations/engine-import.test.ts`, `tests/unit/annotations/annotation-actions.test.ts`, `tests/ui/comments-panel.test.tsx`.
+- Qué he hecho: he revisado el diff pendiente y comprobado que cubre los pasos 1-3 de la ficha (`readPageAnnotations` con `reader`, `Session.reader`, `startAnnotationSession(..., source)`, `readLazyPage` con `await current.reader`) y los tests de los criterios. No he modificado ningún fichero de código. Según tu instrucción no he tocado ni commiteado esos ficheros.
+- Comandos ejecutados y resultado: `pnpm lint` OK (exit 0, `--max-warnings 0`); `pnpm typecheck` OK; `pnpm coverage` exit 0, 212 ficheros y 2583 tests en verde, cobertura líneas 98.72 %; `pnpm perf -- apps/lector-pdf/tests/perf/annotations-import.perf.test.ts` (ejecuta toda la suite de perf) 19 ficheros y 31 tests en verde, `scanAnnotations` 5000 páginas 572 ms.
+- Dudas o cosas que no he podido hacer: (1) **No he hecho commit.** Los cambios de PDF-104 están mezclados en los mismos ficheros que tienes marcados como PDF-047 (sin commitear). Para commitear solo lo mío haría falta separar hunks, y el contenido del diff es de PDF-104 (los tests se llaman «PDF-104»), no de PDF-047: conviene que quien tenga el árbol aclare de quién es el diff antes de commitear. (2) No he podido verificar el criterio de solo lectura y «Firma» en lazy con criterio propio más allá de lo que cubren los tests existentes; los tests pasan.
