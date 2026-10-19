@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-064
 titulo: Exportar a imágenes y texto - núcleo y render
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-022]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -105,3 +105,12 @@ export function buildZip(entries: readonly { readonly name: string; readonly byt
 - Sobre 600 ppp: el código es correcto y el criterio tenía un error aritmético (5100×6600 supera `MAX_CANVAS_PIXELS`). Se recorta, como imprimir; he corregido el criterio en la ficha. PDF-113 debe avisar en la interfaz usando `reduced`/`dpi` real.
 - (opcional) La guarda `RangeError` de `buildZip` con nombres repetidos es razonable; se queda.
 - `pnpm lint`/`coverage` globales siguen rojos por ficheros ajenos (063/067/fixtures), no de esta ficha.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit renderPageImage, imagePixelSize, nombres, TXT, ZIP | OK | `pnpm coverage`: 212 ficheros, 2583 tests pasan (incluye export-plan 27 y print-render) |
+| Imprimir no cambia | OK | tests de impresión existentes dentro de la batería, en verde |
+| Cobertura plan.ts >= 95 % | OK | 100 % líneas, 100 % ramas |
+| lint, typecheck, coverage, e2e | OK | `pnpm lint`, `pnpm typecheck`, `pnpm coverage` y `pnpm --filter lector-pdf e2e` (225 pasan) con código 0 |
+Tests añadidos: ninguno (los del programador cubren cada criterio). Rendimiento: sin presupuesto propio; e2e @perf en verde.
