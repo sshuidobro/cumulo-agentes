@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-091, PDF-090]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -61,3 +61,9 @@ Al abrir un PDF protegido aparece un diálogo propio que pide la contraseña; si
 3. Criterio «ninguna `log.*` (espía del logger)»: `tests/unit/document-password.test.ts:136` espía `console.*`, no el logger común; comprobar que el logger se espía de verdad (o que equivale a console) y ajustar.
 4. Lint: el programador dice que falla por ficheros ajenos; confirmar que `pnpm lint` queda en 0 antes de reenviar (criterio de la ficha).
 El código de `document-actions.ts`, el diálogo y los tests existentes (10/10 E2E, unit y UI) están correctos; solo faltan estos criterios.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/password.spec.ts` (E2E de nota + Ctrl+S y de posición p3 y borrador tras recargar), `apps/lector-pdf/tests/unit/document-password.test.ts` (el espía ahora es el logger común de `@suite/shared`, todos los niveles), `eslint.config.js` (ignora `apps/lector-pdf/dist-qa049/`, salida de build sin commitear de otro agente, igual que `dist-firma` y `dist-pdf090`; sin ella lint daba 9705 errores), esta ficha.
+- Qué he hecho: atiendo los 4 puntos del revisor. Los E2E de nota+Ctrl+S, posición (p3) y borrador cifrado existen y pasan; el espía del logger ya cubre `log.*`; lint queda en 0. No toco `document-actions.ts` (el cambio `file.source` de `startAnnotationSession` es del trabajo de anotaciones) ni los demás cambios sin commitear de otras fichas.
+- Comandos ejecutados y resultado: `pnpm lint` → 0 errores, 0 avisos (tras el ajuste de `eslint.config.js`). `pnpm typecheck` → sin errores. `pnpm coverage` → exit 0, cobertura global 96,6 % sentencias / 98,7 % líneas. `pnpm --filter lector-pdf e2e -- tests/e2e/password.spec.ts` → 13/13 en Chromium (incluye los 5 cifrados, mal/propietario, Cancelar/Esc, owner-only, axe, nota+Ctrl+S, posición p3 y borrador).
+- Dudas o cosas que no he podido hacer: (1) El aviso de guardado cifrado usado en el E2E es `save-wrong-password` («No se pueden guardar los cambios: la contraseña no es correcta.»), que es el que hay hoy en `errors.ts`; PDF-047 lo cambiará. (2) Los borradores se comprueban con un E2E sobre el flujo real (no con FakePlatform). (3) Queda sin commitear el trabajo de otras fichas (anotaciones, PDF-052, `dist-qa049/`, `document-actions.ts`).

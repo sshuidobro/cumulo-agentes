@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Platform } from '@suite/platform';
+import { configureLogging, consoleSink, type LogSink } from '@suite/shared';
 import {
   cancelOpening,
   closeDocument,
@@ -133,18 +134,25 @@ describe('openDocument con contraseña (PDF-046)', () => {
     expect(useViewer.getState().status).toBe('empty');
   });
 
-  it('la contraseña nunca se escribe en la consola ni en las preferencias de la plataforma', async () => {
-    const consoleSpies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((method) => vi.spyOn(console, method));
+  it('la contraseña nunca llega al logger común (todos los niveles) ni a las preferencias de la plataforma', async () => {
+    const logged: unknown[] = [];
+    const captureSink: LogSink = (level, scope, message, data) => {
+      logged.push(level, scope, message, data);
+    };
     const prefsSet = vi.spyOn(platform.prefs, 'set');
-    const opening = openDocument(openedFile(AES128, fixtureSource(AES128)));
+    configureLogging({ sink: captureSink, minLevel: 'debug' });
+    try {
+      const opening = openDocument(openedFile(AES128, fixtureSource(AES128)));
 
-    await waitForPrompt();
-    submitPassword(USER);
-    await opening;
+      await waitForPrompt();
+      submitPassword(USER);
+      await opening;
+    } finally {
+      configureLogging({ sink: consoleSink, minLevel: 'warn' });
+    }
 
-    const written = consoleSpies.flatMap((spy) => spy.mock.calls.flat()).map((part) => String(part));
+    const written = logged.map((part) => (part instanceof Error ? `${part.name}: ${part.message}` : JSON.stringify(part) ?? ''));
     expect(written.some((text) => text.includes(USER))).toBe(false);
     expect(JSON.stringify(prefsSet.mock.calls)).not.toContain(USER);
-    consoleSpies.forEach((spy) => { spy.mockRestore(); });
   });
 });
