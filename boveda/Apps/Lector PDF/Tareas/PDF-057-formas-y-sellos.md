@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-057
 titulo: Formas y sellos - modelo, apariencias y escritura
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-039]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -104,3 +104,7 @@ export interface StampAnnotation extends Base { readonly type: 'stamp'; readonly
 - Qué he hecho: modelo `square`/`circle`/`line`/`polygon`/`stamp` con validación (`isShapeValid`), fábricas y cajas; apariencias con los operadores de la ficha (la punta se calcula con `arrowWings`, compartida por apariencia y UI); claves PDF (`/BS`, `/IC`, `/L`, `/LE`, `/IT`, `/Vertices`, `/Name`) y etiquetas; dibujo SVG y zonas. Tests de operadores exactos, caja `/BBox`, determinismo, interoperabilidad qpdf + pdf.js.
 - Comandos ejecutados y resultado: `pnpm lint` sin errores; `pnpm typecheck` sin errores; `pnpm coverage` código 0, 228 ficheros y 2761 tests en verde, `shapes.ts` 100 % líneas (96,8 % ramas); `pnpm perf`: en la primera pasada fallaron `compare.perf` (46 ms frente a 30 ms) y `search.perf` (1066 ms frente a 1000 ms) con la carga de la máquina a 5,3 por otros agentes; repetidos en aislado pasan (34/34 de perf en la segunda pasada).
 - Dudas o cosas que no he podido hacer: no he hecho commit (lo pide el usuario: hay otros programadores con cambios sin confirmar en el árbol). Para importar las formas (PDF-107) `ImportedType` queda excluido de forma explícita; PDF-107 deberá quitar esa exclusión. El sello de `shapes.ts` expone `stampTextBox` (posición del texto) además de lo que pide la ficha, usado por la apariencia y la UI.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- `pnpm lint`, `pnpm typecheck` y `pnpm coverage` en verde (líneas 98,77 %). Criterios cubiertos: interop qpdf + pdf.js, `/BBox`, determinismo, borrador, capa SVG, etiquetas. Sin cambios pedidos.
+- (opcional) No se ha hecho commit: el coordinador debe confirmarlo junto con el resto de cambios del árbol.
