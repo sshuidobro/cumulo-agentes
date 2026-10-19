@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-060
 titulo: Proteger - crear el cifrado AES-256 (R6) y los permisos (núcleo)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-052, PDF-047]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
