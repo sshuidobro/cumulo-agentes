@@ -16,8 +16,10 @@ import { writeCompleteFile } from '../../../src/core/pdf/file-writer';
 import { buildNewDocument, type NewDocumentPart } from '../../../src/core/pdf/new-document';
 import { ObjectCopier } from '../../../src/core/pdf/object-copier';
 import { ObjectReader } from '../../../src/core/pdf/object-reader';
-import { dict, name, PdfSyntaxError, ref, withEntries, type PdfRef, type PdfValue } from '../../../src/core/pdf/objects';
+import { dict, dictGet, name, PdfSyntaxError, ref, withEntries, type PdfDict, type PdfRef, type PdfValue } from '../../../src/core/pdf/objects';
 import type { PageSlot } from '../../../src/core/pdf/page-tree';
+import { buildDocument } from '../../fixtures/document';
+import { textPage } from '../../fixtures/pdf-builder';
 import { FIXTURES_DIR } from '../../fixtures/paths';
 import { nodeAssetBase } from '../../helpers/pdfjs-node';
 import { qpdfCheck, run } from '../../support/qpdf';
@@ -517,3 +519,233 @@ function deterministicRandom(): (n: number) => Uint8Array {
     return out;
   };
 }
+
+// ---------------------------------------------------------------- Formularios (PDF-123)
+
+type FieldSummary = { readonly type: unknown; readonly value: unknown };
+
+/**
+ * Widgets que lista pdf.js: nombre → un resumen (tipo y valor) por widget. pdf.js también lista los nodos
+ * intermedios (con `kidIds`); se descartan porque no son widgets.
+ */
+async function fieldSummaries(doc: PDFDocumentProxy): Promise<Map<string, FieldSummary[]>> {
+  const raw: unknown = await doc.getFieldObjects();
+  if (!(raw instanceof Map)) throw new Error('getFieldObjects no devolvió un Map');
+  const out = new Map<string, FieldSummary[]>();
+  for (const [key, list] of raw) {
+    if (!Array.isArray(list)) throw new Error(`campo ${String(key)} sin lista`);
+    const widgets = list.flatMap((item: unknown): FieldSummary[] => {
+      const field = item as { type?: unknown; value?: unknown; kidIds?: unknown };
+      return field.kidIds === undefined ? [{ type: field.type, value: field.value }] : [];
+    });
+    if (widgets.length > 0) out.set(String(key), widgets);
+  }
+  return out;
+}
+
+/** Nombres (completos) de los widgets de una página, uno por widget, según pdf.js. */
+async function widgetFieldNames(doc: PDFDocumentProxy, pageNumber: number): Promise<string[]> {
+  const page = await doc.getPage(pageNumber);
+  const list: unknown = await page.getAnnotations();
+  if (!Array.isArray(list)) throw new Error('getAnnotations no devolvió una lista');
+  return list.flatMap((item: unknown) => {
+    const annotation = item as { subtype?: unknown; fieldName?: unknown };
+    return annotation.subtype === 'Widget' && typeof annotation.fieldName === 'string' ? [annotation.fieldName] : [];
+  });
+}
+
+/** Resumen comparable: por campo, los widgets como cadenas ordenadas (sin depender del orden de pdf.js). */
+function normalized(map: Map<string, FieldSummary[]>): Map<string, string[]> {
+  return new Map([...map].map(([key, list]) => [key, list.map((f) => JSON.stringify(f)).sort()]));
+}
+
+/** Número de widgets por nombre de campo. */
+function countByName(names: readonly string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+  return counts;
+}
+
+function isDictValue(v: PdfValue | undefined): v is PdfDict {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'dict';
+}
+
+/** `/AcroForm` del catálogo del fichero (leído con el lector de objetos), o `undefined`. */
+async function acroFormOf(data: Uint8Array): Promise<PdfDict | undefined> {
+  const reader = await openReader(data);
+  const catalog = await reader.resolve(dictGet(reader.xref.trailer, 'Root'));
+  if (!isDictValue(catalog)) throw new Error('catálogo no legible');
+  const acro = await reader.resolve(dictGet(catalog, 'AcroForm'));
+  return isDictValue(acro) ? acro : undefined;
+}
+
+/** Entradas de `/AcroForm /Fields` del fichero, resueltas (diccionarios de campo). */
+async function rootFieldsOf(data: Uint8Array): Promise<PdfDict[]> {
+  const reader = await openReader(data);
+  const acro = await acroFormOf(data);
+  const fields = await reader.resolve(acro === undefined ? undefined : dictGet(acro, 'Fields'));
+  if (!Array.isArray(fields)) throw new Error('/Fields no es un array');
+  const out: PdfDict[] = [];
+  for (const item of fields) {
+    const field = await reader.resolve(item);
+    if (isDictValue(field)) out.push(field);
+  }
+  return out;
+}
+
+describe('buildNewDocument: formularios al copiar (PDF-123)', () => {
+  it('form-full.pdf, página 1 → pdf.js lista los campos de esa página con sus valores; qpdf valida', async () => {
+    const source = await openPdf(fixture('form-full.pdf'));
+    const result = await buildNewDocument({ parts: [await part('form-full.pdf', [{ source: 0, rotate: 0 }])], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      const onPage1 = countByName(await widgetFieldNames(source.doc, 1));
+      const original = await fieldSummaries(source.doc);
+      const copied = await fieldSummaries(loaded.doc);
+      expect([...copied.keys()].sort()).toEqual([...onPage1.keys()].sort());
+      for (const [name, count] of onPage1) {
+        expect(copied.get(name)?.length).toBe(count);
+        expect(normalized(copied).get(name), name).toEqual(normalized(original).get(name)?.slice(0, count) ?? []);
+      }
+      expect(copied.get('nombre')?.map((f) => f.value)).toEqual(['Ana']);
+    } finally {
+      await loaded.destroy();
+      await source.destroy();
+    }
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+  }, FILE_TIMEOUT);
+
+  it('form-full.pdf completo → mismos nombres de campo, tipos y valores que el original', async () => {
+    const source = await openPdf(fixture('form-full.pdf'));
+    const pages = await openReader(fixture('form-full.pdf'));
+    const result = await buildNewDocument({ parts: [{ reader: pages, pages: allPages(await pages.pageCount()) }], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect(normalized(await fieldSummaries(loaded.doc))).toEqual(normalized(await fieldSummaries(source.doc)));
+    } finally {
+      await loaded.destroy();
+      await source.destroy();
+    }
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+  }, FILE_TIMEOUT);
+
+  it('campo con widgets en dos páginas: extraer solo la 2 → el campo aparece una vez, con un único widget', async () => {
+    const result = await buildNewDocument({ parts: [await part('form-full.pdf', [{ source: 1, rotate: 0 }])], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect((await fieldSummaries(loaded.doc)).get('nombre')?.length).toBe(1);
+    } finally {
+      await loaded.destroy();
+    }
+    // Raíces: «nombre» (con un único hijo) y «pagina2» (widget suelto, sin hijos).
+    const reader = await openReader(result.value.bytes);
+    const kidCounts: number[] = [];
+    for (const root of await rootFieldsOf(result.value.bytes)) {
+      const kids = await reader.resolve(dictGet(root, 'Kids'));
+      kidCounts.push(Array.isArray(kids) ? kids.length : 0);
+    }
+    expect(kidCounts.sort()).toEqual([0, 1]);
+  }, FILE_TIMEOUT);
+
+  it('combinar form.pdf + form-full.pdf → /Fields contiene las raíces de ambos y se leen en pdf.js', async () => {
+    const formOnly = await buildNewDocument({ parts: [await part('form.pdf', allPages(1))], now: NOW });
+    const formFull = await buildNewDocument({ parts: [await part('form-full.pdf', allPages(2))], now: NOW });
+    expect(formOnly.ok && formFull.ok).toBe(true);
+    if (!formOnly.ok || !formFull.ok) return;
+    const result = await buildNewDocument({
+      parts: [await part('form.pdf', allPages(1)), await part('form-full.pdf', allPages(2))],
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const rootsA = await rootFieldsOf(formOnly.value.bytes);
+    const rootsB = await rootFieldsOf(formFull.value.bytes);
+    expect((await rootFieldsOf(result.value.bytes)).length).toBe(rootsA.length + rootsB.length);
+
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      const fields = await fieldSummaries(loaded.doc);
+      expect(fields.has('acepto')).toBe(true);
+      expect(fields.has('comentarios')).toBe(true);
+      expect(fields.has('pagina2')).toBe(true);
+    } finally {
+      await loaded.destroy();
+    }
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+  }, FILE_TIMEOUT);
+
+  it('combinar: /DR de la primera parte; las fuentes de la segunda con nombre libre (Helv_2), /DA y /SigFlags según la regla', async () => {
+    const result = await buildNewDocument({
+      parts: [await part('form.pdf', allPages(1)), await part('form-full.pdf', allPages(2))],
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const acro = await acroFormOf(result.value.bytes);
+    const original = await acroFormOf(fixture('form.pdf'));
+    expect(acro).toBeDefined();
+    if (acro === undefined || original === undefined) return;
+    expect(dictGet(acro, 'DA')).toEqual(dictGet(original, 'DA'));
+    const reader = await openReader(result.value.bytes);
+    const dr = await reader.resolve(dictGet(acro, 'DR'));
+    if (!isDictValue(dr)) throw new Error('/DR no es un diccionario');
+    const fonts = await reader.resolve(dictGet(dr, 'Font'));
+    if (!isDictValue(fonts)) throw new Error('/DR /Font no es un diccionario');
+    expect([...fonts.entries.keys()].sort()).toEqual(['Helv', 'Helv_2']);
+    expect(dictGet(acro, 'SigFlags')).toBeUndefined();
+    expect(dictGet(acro, 'CO')).toBeUndefined();
+  }, FILE_TIMEOUT);
+
+  it('campo de firma firmado: el campo existe en el resultado y no tiene /V', async () => {
+    const signed = buildDocument(1, () => ({ content: textPage(['Firmado']) }), {
+      setup: ({ b, tree }) => {
+        const page = tree.pageRefs[0];
+        if (page === undefined) throw new Error('sin página');
+        const sig = b.addObject(
+          `<< /Type /Annot /Subtype /Widget /FT /Sig /T (firma) /Rect [72 100 300 150] /F 4 /P ${page} 0 R ` +
+            '/V << /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached /Contents <00> >> >>',
+        );
+        return {
+          catalog: `/AcroForm << /Fields [${sig} 0 R] /SigFlags 3 >>`,
+          pageAnnots: new Map([[1, `/Annots [${sig} 0 R]`]]),
+        };
+      },
+    });
+    const copy = await buildNewDocument({
+      parts: [{ reader: await openReader(signed), pages: allPages(1) }],
+      now: NOW,
+    });
+    expect(copy.ok).toBe(true);
+    if (!copy.ok) return;
+
+    const roots = await rootFieldsOf(copy.value.bytes);
+    expect(roots).toHaveLength(1);
+    const [field] = roots;
+    if (field === undefined) return;
+    expect(dictGet(field, 'T')).toBeDefined();
+    expect(dictGet(field, 'V')).toBeUndefined();
+    const acro = await acroFormOf(copy.value.bytes);
+    expect(acro === undefined ? undefined : dictGet(acro, 'SigFlags')).toBeUndefined();
+
+    const loaded = await openPdf(copy.value.bytes);
+    try {
+      expect((await fieldSummaries(loaded.doc)).has('firma')).toBe(true);
+    } finally {
+      await loaded.destroy();
+    }
+  }, FILE_TIMEOUT);
+
+  it('documentos sin formulario → el catálogo no tiene /AcroForm', async () => {
+    const result = await buildNewDocument({ parts: [await part('basic-5.pdf', allPages(5))], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(await acroFormOf(result.value.bytes)).toBeUndefined();
+  });
+});
