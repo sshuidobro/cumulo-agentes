@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-093
 titulo: Lector de objetos y escritor incremental con cifrado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-092, PDF-090]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -62,3 +62,6 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0022-pdf
   4. Tests cambiados (no saltados): se elimina «trailer con /Encrypt → save-encrypted» de `incremental.test.ts` (el comportamiento que probaba ya no existe; lo cubre el nuevo fichero). Los de `xref`, `save-actions` e `incremental` pasan a los códigos nuevos.
   5. Para PDF-047: `buildCurrentDelta` (`src/state/save-actions.ts`) sigue llamando a `openForSave(file.source)` sin contraseña. Un PDF de usuario guardado desde la app devolverá `save-wrong-password` hasta que se pase la contraseña abierta. Lo dejo fuera de alcance según la ficha.
   6. No he ejecutado los E2E.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+Typecheck, eslint (src y tests), tests de la ficha y pnpm perf en verde. Reglas de §7.6.2 bien aplicadas y compartidas entre lectura y escritura; regresión byte a byte cubierta. (opcional) PDF-047 debe pasar la contraseña a openForSave. El lint de raíz falla por dist-recientes/, ajeno a la ficha.
