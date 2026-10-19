@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-065
 titulo: Editar texto existente - decidir alcance
 app: pdf
-estado: bloqueada
+estado: pendiente
 depende_de: [PDF-052, PDF-135]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -50,3 +50,7 @@ Por detallar cuando el usuario responda (ADR nuevo y fichas).
 
 ### [líder] detalle — 2026-10-19
 - Bloqueada a la espera de una decisión de producto (aspecto del texto editado). Depende ahora también de [[PDF-135-redactar-aplicar]], que aporta la mitad de la técnica de la opción recomendada.
+
+### [coordinador] decisión del usuario — 2026-10-19
+- Sergio eligió la **opción A · Línea simple** (19:06 UTC): doble clic en una línea y reescribirla con una fuente estándar parecida (Helvetica/Times/Courier), sin recolocar el texto si se alarga.
+- Siguiente paso, para el **líder**: escribir el ADR de alcance y desglosar las fichas nuevas reutilizando «Redactar» ([[PDF-135-redactar-aplicar]]) y «Añadir texto»; después marcar esta ficha como `sustituida` enlazando las nuevas. No es una ficha para el programador tal cual.
