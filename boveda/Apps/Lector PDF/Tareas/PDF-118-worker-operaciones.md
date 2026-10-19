@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-118
 titulo: Worker de operaciones de documento con lectura por mensajes
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
