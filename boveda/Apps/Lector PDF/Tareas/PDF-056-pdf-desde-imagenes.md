@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-056
 titulo: Crear PDF desde imágenes - núcleo
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-121, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -93,3 +93,6 @@ export function jpegDensity(bytes: Uint8Array): number | null;
 - Qué he hecho: `buildPdfFromImages` y `jpegDensity` según la ficha: JPEG con sus bytes originales (`/DCTDecode`), RGBA con `/SMask` solo si hay alfa, orientación EXIF por matriz, páginas fit/A4/Carta con centrado y tope de 150 ppp, árbol con `planPageTree` y escritura con `writeCompleteFile`. Op `images-to-pdf` registrada en `DOC_OPS`.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` exit 0 (255 ficheros, 3238 tests), `images-to-pdf.ts` con 100 % de líneas; perf del fichero (`pnpm exec vitest run --config vitest.perf.config.ts images-to-pdf`) OK. Criterio original con `qpdf --check` y pdf.js incluido en los tests unitarios.
 - Dudas o cosas que no he podido hacer: (1) densidad JFIF: uso la densidad horizontal y, en centímetros, la convierto ×2,54; (2) margen o `pageSize` fuera de rango lanzan `RangeError` (bug del llamante), no `Result`; (3) `/Info` lleva también Producer, CreationDate y ModDate, como `new-document.ts`; (4) `pnpm perf` sin filtro corre todas las pruebas de rendimiento; para la mía se llamó a vitest directamente. Durante las ejecuciones hubo carga de otros agentes: dos tests por timeout de 5 s (`page-tree`, `fixtures-encrypted`) pasan al relanzarlos aislados.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Lint, typecheck, tests del fichero (29) y perf OK; cobertura 100 % según el programador. Criterios cubiertos, op registrada, sin problemas bloqueantes.
