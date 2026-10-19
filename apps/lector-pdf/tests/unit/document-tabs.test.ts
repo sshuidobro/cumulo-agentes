@@ -205,6 +205,32 @@ describe('pestañas de documento', () => {
     expect(platform.closeFile).toHaveBeenCalledWith(copy);
   });
 
+  it('abrir una copia desde una pestaña en error reutilizada no deja una pestaña vacía sobrante', async () => {
+    await openRequested(fileAt('basic-5.pdf'));
+    await openRequested(fileAt('corrupt-not-pdf.pdf'));
+    expect(tabTitles()).toHaveLength(2);
+
+    await openRequested(fileAt('basic-5.pdf', '/otra-carpeta/basic-5.pdf'));
+
+    expect(tabTitles()).toEqual(['basic-5.pdf']);
+    expect(activeTitle()).toBe('basic-5.pdf');
+    expect(useViewer.getState().status).toBe('ready');
+  });
+
+  it('abrir una copia desde una pestaña vacía reutilizada no deja una pestaña vacía sobrante', async () => {
+    await openRequested(fileAt('basic-5.pdf'));
+    await openRequested(fileAt('links.pdf'));
+    await closeDocument();
+    expect(useViewer.getState().status).toBe('empty');
+    expect(tabTitles()).toHaveLength(2);
+
+    await openRequested(fileAt('basic-5.pdf', '/otra-carpeta/basic-5.pdf'));
+
+    expect(tabTitles()).toEqual(['basic-5.pdf']);
+    expect(activeTitle()).toBe('basic-5.pdf');
+    expect(useViewer.getState().status).toBe('ready');
+  });
+
   it('cancelar la contraseña de un documento nuevo cierra su pestaña y vuelve a la anterior', async () => {
     await openRequested(fileAt('basic-5.pdf'));
 

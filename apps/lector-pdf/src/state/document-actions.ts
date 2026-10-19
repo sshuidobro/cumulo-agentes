@@ -176,8 +176,9 @@ export function openDocument(file: OpenedFile, opts?: { readonly restore?: Readi
 }
 
 /**
- * Carga el fichero en la pestaña activa. `dedupe`: tras cargar, si otra pestaña tiene el mismo documento, esa pestaña
- * se activa y la carga se descarta.
+ * Carga el fichero en la pestaña activa. `dedupe`: tras cargar, si otra pestaña tiene el mismo documento (mismo
+ * `fingerprint`; el tamaño no está en `TabInfo`), esa pestaña se activa y la carga se descarta. La pestaña de la carga
+ * queda en estado `loading`, así que `activateTab` la elimina al salir (también si se reutilizó una vacía o con error).
  */
 async function runOpen(
   file: OpenedFile,

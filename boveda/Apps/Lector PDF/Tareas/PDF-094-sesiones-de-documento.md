@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-094
 titulo: Sesiones de documento - núcleo de pestañas (suspender y reanudar)
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-090, PDF-046]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -106,3 +106,9 @@ Lint OK, `pnpm --filter lector-pdf typecheck` OK, `pnpm coverage` OK (2626 tests
 1. `apps/lector-pdf/src/state/document-actions.ts` (`openRequested`/`runOpen`, rama `dedupe`) — si se reutilizó una pestaña vacía o en error (`reuse`) y la carga resulta ser gemela de otra, tras activar la gemela queda una pestaña vacía sobrante (la ficha pide cerrar la pestaña nueva) — cerrarla y añadir un test (`document-tabs.test.ts`, caso del `fingerprint` con pestaña activa vacía).
 2. `runOpen` — la coincidencia usa solo `fingerprint`, sin `file.size`: documentarlo en el comentario. (opcional)
 3. Para el líder (no bloquea, la ficha lo manda): abrir otro documento descarta sin aviso las anotaciones sin guardar hasta PDF-100/101, aunque la pestaña seguiría marcada `dirty`. Decidir si se mantiene la pregunta hasta entonces.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/document-actions.ts` (comentario de `runOpen`: coincidencia solo por `fingerprint` y pestaña de carga eliminada al activar la gemela), `apps/lector-pdf/tests/unit/document-tabs.test.ts` (2 tests nuevos).
+- Qué he hecho: revisado el punto 1 (pestaña sobrante). Con pestaña activa en error y con pestaña vacía reutilizada, la carga queda en `loading` y `activateTab` la elimina al cambiar a la gemela; añadidos dos tests de regresión que lo comprueban (pasan sin cambiar la lógica). Punto 2 documentado en el comentario. Punto 3 es decisión del líder (no tocado).
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK. `pnpm exec eslint --max-warnings 0` sobre los ficheros tocados OK. `pnpm --filter lector-pdf exec vitest run --coverage` OK: 186 ficheros, 2283 tests pasan. `pnpm lint` de la raíz falla por `apps/lector-pdf/tests/e2e/view-modes.spec.ts:3` (`TestInfo` sin usar): fichero con cambios sin commit que no es de esta ficha; no lo he tocado.
+- Dudas o cosas que no he podido hacer: no he ejecutado E2E en esta ronda (solo cambios de comentario y tests unitarios). El punto 3 del revisor sigue abierto para el líder.
