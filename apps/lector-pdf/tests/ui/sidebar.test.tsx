@@ -67,14 +67,15 @@ describe('Panel lateral · interfaz', () => {
 });
 
 describe('Panel lateral · F4, barra y preferencias', () => {
-  it('F4 abre y cierra el panel; la pestaña se guarda en prefs', () => {
+  it('F4 abre y cierra el panel; la pestaña se guarda en prefs', async () => {
     openReadyDocument();
     render(<App />);
     expect(screen.queryByRole('complementary', { name: 'Panel lateral' })).toBeNull();
 
     fireEvent.keyDown(window, { key: 'F4' });
     expect(useViewer.getState().sidebar).toBe('thumbnails');
-    expect(screen.getByRole('complementary', { name: 'Panel lateral' })).toBeInTheDocument();
+    // El panel se carga con React.lazy: hay que esperar a que aparezca.
+    expect(await screen.findByRole('complementary', { name: 'Panel lateral' })).toBeInTheDocument();
     expect(platform.prefs.get(SIDEBAR_PREF, (v): v is string => typeof v === 'string')).toBe('thumbnails');
 
     fireEvent.keyDown(window, { key: 'F4' });

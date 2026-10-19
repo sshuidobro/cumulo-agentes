@@ -30,7 +30,8 @@ afterEach(() => {
 async function openCommentBar(user: ReturnType<typeof userEvent.setup>) {
   render(<App />);
   await user.click(screen.getByRole('button', { name: 'Comentar' }));
-  return screen.getByRole('toolbar', { name: 'Comentar' });
+  // La barra se carga con React.lazy: hay que esperar a que aparezca.
+  return screen.findByRole('toolbar', { name: 'Comentar' });
 }
 
 describe('barra «Comentar» · conmutador', () => {
@@ -42,7 +43,8 @@ describe('barra «Comentar» · conmutador', () => {
     expect(screen.queryByRole('toolbar', { name: 'Comentar' })).toBeNull();
 
     await user.click(toggle);
-    expect(screen.getByRole('toolbar', { name: 'Comentar' })).toBeInTheDocument();
+    // La barra se carga con React.lazy: hay que esperar a que aparezca.
+    expect(await screen.findByRole('toolbar', { name: 'Comentar' })).toBeInTheDocument();
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(screen.getByRole('button', { name: 'Resaltar' }));

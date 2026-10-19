@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-122
 titulo: Destinos con nombre e índice al copiar páginas
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-121]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -79,3 +79,17 @@ export interface OutlineBranch { readonly ref: PdfRef; readonly objects: readonl
 - `pnpm lint`, `pnpm typecheck` y `pnpm coverage` con código 0 (253 ficheros, 3184 tests). Cobertura `name-tree.ts` 93,2 %, `outline-copy.ts` 95,6 %.
 - Criterios cubiertos por tests (árbol con `/Kids`/`/Limits`, `readTopLevelOutline`, ramas `basic-5`+`outline`, ciclo `/Next`, `links.pdf`); `qpdf --check` en las salidas de `new-document.test.ts`. Sin commit aún (el programador lo indicó).
 - (opcional) El tope de 10 000 entradas corta en silencio; valorar un aviso más adelante.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| resolveNamedDest anexo/inexistente/Kids+Limits | OK | `name-tree.test.ts` (13 tests) verdes |
+| readTopLevelOutline outline.pdf | OK | `outline-copy.test.ts` línea 68 |
+| links.pdf destino-final | OK | `new-document.test.ts` verde (47 tests en los 4 ficheros) |
+| Combinar basic-5+outline con ramas | OK | `new-document.test.ts` |
+| Ciclo /Next | OK | `outline-copy.test.ts` líneas 85 y 176 |
+| qpdf --check 0 | OK | tests de salida de `new-document.test.ts` |
+| Cobertura | OK | name-tree 93,2 %, outline-copy 95,6 % |
+| lint / typecheck / coverage | OK | exit 0; 254 ficheros, 3188 tests |
+
+Tests añadidos: ninguno (cobertura suficiente). Rendimiento: no aplica.
