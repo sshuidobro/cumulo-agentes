@@ -43,7 +43,7 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Decisiones: [[ADR-0035-org
 - [ ] Insertar páginas de `annotated.pdf` → sus anotaciones aparecen en las páginas insertadas (pdf.js).
 - [ ] Insertar una página con campos de `form-full.pdf` en `basic-5.pdf` (sin formulario) → el resultado tiene `/AcroForm` y pdf.js `getFieldObjects()` lista esos campos con sus valores.
 - [ ] Insertar en `encrypted-aes-256.pdf` (`usuario`) páginas de `basic-5.pdf` → el resultado abre con la contraseña y las páginas insertadas se leen (sus objetos van cifrados); `qpdf --check --password=usuario` 0.
-- [ ] Insertar desde `encrypted-aes-128.pdf` (contraseña de su fixture) en `basic-5.pdf` → correcto; contraseña mala → `save-wrong-password`.
+- [ ] Insertar desde `encrypted-aes-128.pdf` (`usuario`) en `basic-5.pdf` → correcto; contraseña mala → `save-wrong-password`.
 - [ ] **Criterio original**: `'combine'` de `basic-5.pdf` y `outline.pdf` → 35 páginas; `getOutline()` con dos ramas `basic-5` y `outline`, y bajo `outline` el índice completo con destinos correctos (como en PDF-122).
 - [ ] `'combine'` con `annotated.pdf` + `form.pdf` → anotaciones y campos presentes.
 - [ ] `pnpm perf`: insertar las 5 000 páginas de `pages-5000.pdf` en `basic-5.pdf` < 3 000 ms; combinar `pages-5000.pdf` + `pages-5000.pdf` < 4 000 ms.
