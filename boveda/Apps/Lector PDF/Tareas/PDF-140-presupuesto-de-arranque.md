@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-140
 titulo: Devolver el JavaScript de arranque por debajo de 500 KB
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react]
