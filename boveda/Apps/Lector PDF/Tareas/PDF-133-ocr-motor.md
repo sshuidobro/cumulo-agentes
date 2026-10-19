@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-133
 titulo: OCR - motor local tesseract.js, recursos empaquetados y escaneado de prueba
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -75,3 +75,14 @@ export async function createOcrEngine(lang: OcrLanguage, assetBaseUrl: string): 
 1. Lint y typecheck OK; `pnpm coverage`: 3043 OK y 3 fallos de UI ajenos (`comment-toolbar`, `sidebar`, ya rojos antes, en la bitácora); ninguno es de esta ficha. El código 0 depende de arreglarlos aparte.
 2. (opcional) `createOcrEngine` (rutas `ocr/`) no tiene test directo; solo se cubre `createOcrEngineWithOptions`. Se verá en PDF-134/e2e.
 3. (opcional) El JPEG del fixture es RGB con gris y no de 1 componente (limitación de `@napi-rs/canvas`); aceptable y documentado.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| assets deja 6 ficheros en `public/ocr/`; sin jsDelivr | OK | `pnpm --filter lector-pdf assets` -> 6 ficheros; grep vacío |
+| Unit Node: FACTURA, 2026-0042, Panadería, Muñoz con caja | OK | `vitest run tests/unit/ocr-engine.test.ts` 3/3 |
+| Build con `ocr/*`; bundle dentro de presupuesto | OK | `dist/ocr/` 6 ficheros; arranque 544 998 / 600 000 |
+| CSP sin cambios | OK | sin cambios en vite.config.ts ni src-tauri |
+| lint, typecheck, coverage | lint y typecheck OK; coverage 3043 OK y 3 fallos | Los 3 fallos (comment-toolbar x2, sidebar F4) son de PDF-140 (lazy), ajenos a esta ficha según la bitácora 2026-10-19 |
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: ocr-engine.test 2,4 s.
+Nota: `createOcrEngine` (rutas `ocr/`) sin probar en navegador; queda para PDF-134/e2e.
