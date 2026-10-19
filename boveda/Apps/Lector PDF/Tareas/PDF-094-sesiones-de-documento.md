@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-094
 titulo: Sesiones de documento - núcleo de pestañas (suspender y reanudar)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-090, PDF-046]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, estado, pestanas]
 ---
 
@@ -87,3 +87,16 @@ export function hasAnyUnsavedChanges(): boolean;     // activa (hasUnsavedChange
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/tabs.ts` (nuevo), `apps/lector-pdf/src/state/document-actions.ts` (participante `document`, `runOpen`, `openRequested` con pestañas), `apps/lector-pdf/src/ui/messages-tabs.ts` (`tooMany`, `alreadyOpen`), `apps/lector-pdf/src/main.tsx` (`registerDocumentParticipant()`), `apps/lector-pdf/tests/unit/tabs.test.ts` (nuevo, 15 tests), `apps/lector-pdf/tests/unit/document-tabs.test.ts` (nuevo, 9 tests con fixtures reales), `apps/lector-pdf/tests/unit/unsaved-guard.test.ts` (los 3 casos «abrir con cambios pregunta» pasan a un caso «no pregunta»), `apps/lector-pdf/tests/e2e/forms.spec.ts` y `apps/lector-pdf/tests/e2e/recent.spec.ts` (comprobaban la pregunta al abrir; ahora comprueban que no pregunta). Arreglos de preexistentes para cumplir lint/typecheck: `apps/lector-pdf/tests/helpers/save-harness.ts` (faltaban `exportFile`/`importFile` en el Platform de prueba) y `apps/lector-pdf/src/core/pdf/incremental.ts` (import sin uso).
+- Qué he hecho: registro de pestañas (`activateTab`, `beginNewTab`, `closeTab`, `cycleTab`, `findTab`, `hasAnyUnsavedChanges`) con participantes ordenados; el participante `document` suspende (aborta escaneo y apertura, `doc.cleanup`) y reanuda (restaura visor, reescanea desde la página 1, `goToPage`); `openRequested` no pregunta por cambios, detecta «ya abierto» por ruta y tras cargar por `fingerprint`, reutiliza la pestaña activa si está vacía o en error y cierra la pestaña si se cancela la apertura (también la contraseña).
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos). `pnpm --filter lector-pdf typecheck` OK (0 errores). `pnpm coverage` OK: 217 ficheros, 2626 tests pasan. `pnpm --filter lector-pdf e2e` OK: 233 passed, código 0.
+- Dudas o cosas que no he podido hacer:
+  1. **Riesgo de pérdida de datos (decisión para el líder).** Hasta PDF-100/101 el estado de anotaciones y formularios es global. `openDocument` sigue llamando a `endAnnotationSession`/`endFormSession`, así que abrir otro documento con cambios sin guardar ya no pregunta y descarta esos cambios de la pestaña anterior sin aviso. Antes se preguntaba. Opciones: mantener la pregunta hasta PDF-100, o aceptar el riesgo en esta fase interna. Lo he implementado tal como dice la ficha.
+  2. «Mismo tamaño» (`file.size`): `TabInfo` no tiene tamaño, así que la coincidencia tras cargar usa solo `fingerprint`.
+  3. Registro del participante: no se hace al importar `document-actions` porque crearía un ciclo de importación con `tabs` que puede dar TDZ. Se hace con `registerDocumentParticipant()` en `main.tsx` y en los tests.
+  4. «Mientras no está activa» lo he leído como «mientras está activa»: la fila de la pestaña activa se sincroniza con `useViewer` y `useAnnotations`.
+  5. Solo se eliminan al cambiar las pestañas en estado `loading` (como dice la ficha). Una pestaña vacía que se cancela se cierra explícitamente en `openRequested`.
+  6. Escritorio (Tauri) no probado; solo web.
+

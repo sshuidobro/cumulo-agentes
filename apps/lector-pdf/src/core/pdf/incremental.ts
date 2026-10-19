@@ -25,7 +25,6 @@ import {
   withEntries,
   type PdfDict,
   type PdfRef,
-  type PdfString,
   type PdfValue,
 } from './objects';
 import { ObjectReader } from './object-reader';

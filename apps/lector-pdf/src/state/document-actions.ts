@@ -8,14 +8,18 @@ import { pdfError } from '../core/errors';
 import { PageDimsTable } from '../core/page-dims';
 import { normalizeRotation } from '../core/rotation';
 import { windowTitle } from '../core/title';
+import { tabsMsg } from '../ui/messages-tabs';
 import { endAnnotationSession, startAnnotationSession } from './annotation-actions';
 import { endFormSession, startFormSession } from './form-actions';
+import { goToPage } from './navigation';
 import { askPassword, cancelPassword } from './password-prompt';
 import { expectRestore, flushPosition } from './position-sync';
+import { showNotice } from './notice';
 import { sidebarForOpenedDocument } from './sidebar-actions';
 import { services } from './services';
-import { initialViewerState, useViewer } from './viewer-store';
-import { confirmDiscardOrSave, hasUnsavedChanges } from './unsaved-guard';
+import { activateTab, beginNewTab, closeTab, findTab, registerTabParticipant, useTabs, type TabParticipant } from './tabs';
+import { initialViewerState, useViewer, type ViewerState } from './viewer-store';
+import { hasUnsavedChanges } from './unsaved-guard';
 
 const log = createLogger('document-actions');
 
@@ -56,14 +60,19 @@ async function closeOpened(file: OpenedFile): Promise<void> {
 }
 
 /** Detiene el escaneo, se da de baja de los avisos, libera el documento y cierra el fichero. */
-async function releaseSession(current: Session | null): Promise<void> {
-  endAnnotationSession();
-  endFormSession();
+async function releaseDocument(current: Session | null): Promise<void> {
   if (current === null) return;
   current.scan.abort();
   current.stopListening();
   await current.pdf.destroy();
   await closeOpened(current.file);
+}
+
+/** Libera lo que depende de un documento que se cierra o reemplaza: anotaciones, formularios y el documento. */
+async function releaseSession(current: Session | null): Promise<void> {
+  endAnnotationSession();
+  endFormSession();
+  await releaseDocument(current);
 }
 
 /** Invalida las aperturas en curso y devuelve la sesión que hay que liberar. */
@@ -90,12 +99,91 @@ function showError(error: AppError, name: string | null): void {
   services().platform.setTitle(windowTitle(null, false));
 }
 
+/** Escanea en segundo plano las dimensiones de las páginas desde la 1. Por encima del límite no escanea. */
+function startPageScan(loaded: LoadedPdf, scan: AbortController): void {
+  if (loaded.numPages > SCAN_PAGE_LIMIT) return;
+  scanPageDims(loaded.doc, {
+    from: 1,
+    signal: scan.signal,
+    onBatch: (entries) => {
+      if (scan.signal.aborted) return;
+      for (const entry of entries) reportPageDims(entry);
+    },
+  }).catch((cause: unknown) => {
+    log.warn('scanPageDims', cause);
+  });
+}
+
+/** Lo que hace falta para volver a mostrar un documento suspendido: su sesión y el estado del visor. */
+interface DocumentSnapshot {
+  readonly session: Session | null;
+  readonly viewer: ViewerState;
+}
+
+/**
+ * Participante de pestañas del documento (orden 0). Suspender cancela la apertura en curso o detiene el escaneo y
+ * libera la caché del documento; reanudar restaura el visor y vuelve a escanear desde la página 1.
+ */
+const documentParticipant: TabParticipant<DocumentSnapshot> = {
+  id: 'document',
+  order: 0,
+  suspend(): DocumentSnapshot {
+    flushPosition();
+    const viewer = useViewer.getState();
+    const loading = opening !== null;
+    openSeq += 1;
+    opening?.abort();
+    opening = null;
+    cancelPassword();
+    const current = takeSession();
+    if (current !== null) {
+      current.scan.abort();
+      current.pdf.doc.cleanup().catch((cause: unknown) => {
+        log.warn('cleanup', cause);
+      });
+    }
+    useViewer.setState({ ...initialViewerState, viewMode: viewer.viewMode, dimsVersion: viewer.dimsVersion });
+    return { session: current, viewer: loading ? initialViewerState : viewer };
+  },
+  resume(snapshot: DocumentSnapshot): void {
+    const current = useViewer.getState();
+    if (snapshot.session !== null) session = { ...snapshot.session, scan: new AbortController() };
+    // El modo de vista es una preferencia global: se conserva el actual, no el de la instantánea.
+    useViewer.setState({ ...snapshot.viewer, viewMode: current.viewMode, dimsVersion: current.dimsVersion + 1 });
+    const active = session;
+    if (active === null) return;
+    services().platform.setTitle(windowTitle(active.file.name, hasUnsavedChanges()));
+    startPageScan(active.pdf, active.scan);
+    goToPage(snapshot.viewer.currentPage, { yFraction: snapshot.viewer.currentYFraction });
+  },
+  async dispose(snapshot: DocumentSnapshot): Promise<void> {
+    await releaseDocument(snapshot.session);
+  },
+};
+
+/** Da de alta el participante del documento en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerDocumentParticipant(): void {
+  registerTabParticipant(documentParticipant);
+}
+
 /**
  * Abre un documento. Si ya hay otro abierto, lo cierra; si llega otra apertura antes de terminar, esta se descarta.
  * `restore`: posición a aplicar en lugar de la recordada (PDF-037, tras guardar).
  * `password`: contraseña que se prueba primero (tras guardar). Si falta o no sirve, se pide con un diálogo (PDF-046).
  */
-export async function openDocument(file: OpenedFile, opts?: { readonly restore?: ReadingPosition; readonly password?: string }): Promise<void> {
+export function openDocument(file: OpenedFile, opts?: { readonly restore?: ReadingPosition; readonly password?: string }): Promise<void> {
+  return runOpen(file, opts, false);
+}
+
+/**
+ * Carga el fichero en la pestaña activa. `dedupe`: tras cargar, si otra pestaña tiene el mismo documento, esa pestaña
+ * se activa y la carga se descarta.
+ */
+async function runOpen(
+  file: OpenedFile,
+  opts: { readonly restore?: ReadingPosition; readonly password?: string } | undefined,
+  dedupe: boolean,
+): Promise<void> {
   const { assetBaseUrl, platform } = services();
   flushPosition();
   const seq = ++openSeq;
@@ -182,9 +270,22 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
     return;
   }
 
+  if (dedupe) {
+    const { tabs, activeId } = useTabs.getState();
+    const twin = tabs.find((t) => t.id !== activeId && t.fingerprint === loaded.fingerprint) ?? null;
+    if (twin !== null) {
+      // Ya está abierto en otra pestaña: se descarta esta carga y se muestra la existente.
+      await loaded.destroy();
+      await closeOpened(file);
+      activateTab(twin.id);
+      showNotice(tabsMsg.alreadyOpen(file.name));
+      return;
+    }
+  }
+
   const scan = new AbortController();
   const stopListening = loaded.onIoError((error) => {
-    if (seq === openSeq) useViewer.setState({ ioError: error });
+    if (session?.pdf === loaded) useViewer.setState({ ioError: error });
   });
   session = { file, pdf: loaded, stopListening, scan, password: password ?? null };
 
@@ -203,19 +304,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
   startFormSession(loaded);
   loadPageLabels(loaded);
   loadOutline(loaded);
-
-  if (loaded.numPages <= SCAN_PAGE_LIMIT) {
-    scanPageDims(loaded.doc, {
-      from: 1,
-      signal: scan.signal,
-      onBatch: (entries) => {
-        if (scan.signal.aborted) return;
-        for (const entry of entries) reportPageDims(entry);
-      },
-    }).catch((cause: unknown) => {
-      log.warn('scanPageDims', cause);
-    });
-  }
+  startPageScan(loaded, scan);
 }
 
 /** Cancela la apertura en curso (si la hay). El store vuelve a estado vacío. */
@@ -233,21 +322,38 @@ export async function closeDocument(): Promise<void> {
 }
 
 /**
- * Abre un fichero que pide el usuario («Abrir», arrastrar, «Abrir con»). Antes ofrece guardar los cambios sin guardar;
- * si el usuario cancela, el fichero no se abre (y se libera).
+ * Abre un fichero que pide el usuario («Abrir», arrastrar, «Abrir con»). Si ya está abierto en una pestaña, se muestra
+ * esa. Si la pestaña activa está vacía o en error, se abre en ella; si no, en una pestaña nueva. Los cambios sin
+ * guardar del documento anterior se quedan en su pestaña: no se pregunta.
  */
-export function openRequested(file: OpenedFile): Promise<void> {
-  // Sin cambios, la apertura empieza en el mismo turno (sin esperar un aviso que no va a salir).
-  if (!hasUnsavedChanges()) return openDocument(file);
-  return confirmThenOpen(file);
-}
+export async function openRequested(file: OpenedFile): Promise<void> {
+  if (file.path !== null) {
+    const existing = findTab({ path: file.path });
+    if (existing !== null) {
+      activateTab(existing.id);
+      await closeOpened(file);
+      showNotice(tabsMsg.alreadyOpen(file.name));
+      return;
+    }
+  }
 
-async function confirmThenOpen(file: OpenedFile): Promise<void> {
-  if ((await confirmDiscardOrSave()) === 'cancel') {
+  const previous = useTabs.getState().activeId;
+  const { status } = useViewer.getState();
+  const reuse = previous !== null && (status === 'empty' || status === 'error');
+  if (!reuse && !beginNewTab(file.name, file.path)) {
     await closeOpened(file);
     return;
   }
-  await openDocument(file);
+  const tabId = useTabs.getState().activeId;
+
+  await runOpen(file, undefined, true);
+
+  // Apertura cancelada (también la contraseña) en una pestaña nueva: la pestaña se cierra y se vuelve a la anterior.
+  const cancelled = useViewer.getState().status === 'empty';
+  if (!reuse && cancelled && tabId !== null && useTabs.getState().activeId === tabId) {
+    if (previous !== null) activateTab(previous);
+    await closeTab(tabId);
+  }
 }
 
 /** Muestra el selector de ficheros del SO y abre el elegido. */

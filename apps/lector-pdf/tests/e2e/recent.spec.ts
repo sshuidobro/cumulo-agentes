@@ -145,7 +145,7 @@ test('«Borrar la lista de recientes» vacía la lista, la sección desaparece y
   await expect(page.getByRole('region', RECENT_REGION)).toHaveCount(0);
 });
 
-test('abrir un reciente con cambios sin guardar pregunta antes, como «Abrir»', async ({ page }) => {
+test('abrir un reciente con cambios sin guardar no pregunta (PDF-094: el anterior queda en su pestaña)', async ({ page }) => {
   await startPage(page, ['links.pdf', 'form-full.pdf']);
   await pick(page, 'links.pdf');
   await pick(page, 'form-full.pdf');
@@ -157,12 +157,8 @@ test('abrir un reciente con cambios sin guardar pregunta antes, como «Abrir»',
   await page.getByRole('toolbar').getByRole('button', MENU_BUTTON).click();
   await page.getByRole('menuitem', { name: 'links.pdf' }).click();
 
-  const dialog = page.getByRole('dialog', { name: msg.unsavedQuestion('form-full.pdf') });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: msg.cancel, exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(nombre).toHaveValue('Luis');
-  await expect(page).toHaveTitle(/• form-full\.pdf/);
+  await expect(page).toHaveTitle(/links\.pdf/);
+  await expect(page.getByRole('dialog', { name: msg.unsavedQuestion('form-full.pdf') })).toHaveCount(0);
 });
 
 test('la pantalla de inicio con recientes y el menú abierto no tienen incidencias serias de accesibilidad', async ({ page }, testInfo) => {
