@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-047
 titulo: Guardar anotaciones, firmas y formularios en PDF cifrado
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-093, PDF-046]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, seguridad, anotaciones, formato]
 ---
 
@@ -44,3 +44,14 @@ En la app, Ctrl+S, Guardar como e Imprimir funcionan con PDFs cifrados (con cont
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/save-actions.ts` (`buildCurrentDelta` abre con `currentPassword()`), `apps/lector-pdf/src/state/print-source.ts` (el temporal se abre con la contraseña), `apps/lector-pdf/src/state/fonts-actions.ts` (lector con la contraseña), `apps/lector-pdf/tests/e2e/encrypted-save.spec.ts` (nuevo, 8 casos), `apps/lector-pdf/tests/e2e/password.spec.ts` (el caso «Ctrl+S avisa de contraseña incorrecta» pasa a «Ctrl+S guarda sin pedir la contraseña», que describía el comportamiento anterior a PDF-047), `apps/lector-pdf/tests/support/qpdf.ts` y `tests/support/form-fields.ts` (contraseña opcional). `reopenSaved` ya usaba `currentPassword()` desde PDF-046.
+- Qué he hecho: Ctrl+S, Guardar como (reapertura) e Imprimir reutilizan la contraseña con la que se abrió el PDF; las fuentes también. Los casos E2E cubren los cuatro cifrados con usuario, owner-only, formulario cifrado con qpdfEncrypt, firma y impresión con anotación sin guardar. El diálogo de contraseña aparece una vez por apertura.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` código 0 (212 ficheros, 2583 tests); `pnpm --filter lector-pdf e2e` código 0 (233 passed, incluidos los @perf); `encrypted-save.spec.ts` 8/8.
+- Dudas o cosas que no he podido hacer:
+  1. Los cambios sin commitear que había al empezar (`annotations-import.ts`, `annotation-actions.ts`, `document-actions.ts` y sus tests) son de [[PDF-104-etiqueta-firma-conexion|PDF-104]] (lectura del nombre de los sellos), no de esta ficha. No los he tocado ni commiteado.
+  2. Los títulos de los tests van sin tildes ni «»: con esos caracteres en la carpeta de salida de Playwright, abrir el fichero guardado para reabrirlo fallaba sin mensaje.
+  3. «Firma visible tras reabrir»: se comprueba como sello de solo lectura (sin zona editable) en el panel de comentarios, con etiqueta «Firma» o «Sello» mientras PDF-104 esté pendiente.
+  4. «Ambas anotaciones con su texto»: la nota tiene su texto en `contents`; el resaltado no guarda texto, así que se comprueba con sus `quads`.
+  5. «Guardar como» no tiene E2E propio: usa la misma reapertura (`reopenSaved`) y no estaba en los criterios.
