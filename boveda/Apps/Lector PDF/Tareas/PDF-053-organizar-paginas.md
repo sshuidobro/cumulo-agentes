@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-053
 titulo: Organizar - modelo del plan de páginas, selección y deshacer (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional]
@@ -132,3 +132,12 @@ export function indexOfKey(plan: OrganizePlan, key: string): number;
 - Criterios cubiertos; núcleo puro sin React/Tauri; `invert` restaura el plan exacto. Tests organize 34/34; cobertura de `plan.ts` 98,6 % líneas.
 - `pnpm lint` y `pnpm typecheck` fallan solo por ficheros ajenos a esta ficha (`tests/unit/tabs-annotations.test.ts` no-console; `tests/unit/annotations/draft.test.ts:153` TS2345). Nada en `organize/`. El líder debe resolverlo en la ficha que los introdujo (anotaciones/pestañas).
 1. (opcional) `plan.ts:83` — `deleteCommand`/`moveCommand` lanzan `RangeError` al aplicar, no al crear (la ficha lo permite al no recibir el plan). Documentarlo en PDF-124.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios funcionales (plan, mover, borrar, insertar, selección, rendimiento 100 000) | OK | `vitest run tests/unit/organize` → 34/34 |
+| Cobertura `plan.ts` ≥ 95 % | 98,63 % líneas | vitest --coverage |
+| lint / typecheck | Sin errores en `organize/`; fallos solo ajenos (PDF-101) | `pnpm lint`/`typecheck` filtrado por organize |
+
+Tests añadidos: `apps/lector-pdf/tests/unit/organize/plan-qa.test.ts` (pureza, invert, giro -90 desde 0, tamaños inválidos NaN/Infinity, extendTo hacia atrás) → 3/3.
