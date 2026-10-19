@@ -9,6 +9,7 @@ import { useAnnotations } from '../../src/state/annotation-store';
 import { useChoice } from '../../src/state/choice';
 import { draftKey, startDraftSync } from '../../src/state/draft-sync';
 import { initServices } from '../../src/state/services';
+import { msg } from '../../src/ui/messages';
 import {
   activateTab,
   beginNewTab,
@@ -91,10 +92,22 @@ beforeEach(() => {
   useAnnotations.setState({ scan: 'idle' });
 });
 
+/**
+ * Cierra todas las pestañas descartando los cambios: un documento con cambios sin guardar pregunta antes de cerrarse,
+ * y sin respuesta la promesa de `closeTab` nunca se resuelve.
+ */
+async function closeAllTabsDiscarding(): Promise<void> {
+  for (const tab of [...useTabs.getState().tabs]) {
+    const closing = closeTab(tab.id);
+    useChoice.getState().active?.options.find((o) => o.label === msg.discard)?.pick();
+    await closing;
+  }
+}
+
 afterEach(async () => {
   stopSync?.();
   stopSync = null;
-  for (const tab of [...useTabs.getState().tabs]) await closeTab(tab.id);
+  await closeAllTabsDiscarding();
   resetTabsForTests();
   useViewer.setState({ ...initialViewerState });
   useChoice.setState({ active: null });

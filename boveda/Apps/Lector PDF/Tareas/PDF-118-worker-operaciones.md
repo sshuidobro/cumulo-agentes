@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-118
 titulo: Worker de operaciones de documento con lectura por mensajes
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -99,3 +99,26 @@ export function inProcessDocOps(): DocOpsClient;   // MessageChannel + serveDocO
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/doc-ops/{protocol,bytes,server,client}.ts`, `apps/lector-pdf/src/core/doc-ops/ops/index.ts`, `apps/lector-pdf/src/workers/doc-ops.worker.ts`, `apps/lector-pdf/src/state/doc-ops.ts`, `apps/lector-pdf/tests/unit/doc-ops/{protocol,page-rotations}.test.ts`, `apps/lector-pdf/tests/perf/doc-ops.perf.test.ts`, esta ficha.
+- Qué he hecho: protocolo, servidor (Worker) y cliente con lecturas por rangos (validadas en `[0, size)` a ambos lados), progreso throttled a 100 ms, cancelación y errores sin `cause`. Registrada `page-rotations` y ejecutor `runDocOp` / `setDocOpsRunner` / `inProcessDocOps`. Fuente en memoria local (`bytesSource`) en vez de `memorySource` para no arrastrar `@suite/platform` (con `detect` y el Worker) al chunk del Worker.
+- Comandos ejecutados y resultado: `pnpm exec vitest run tests/unit/doc-ops` → 13 tests OK. `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/doc-ops.perf.test.ts` → OK (tiempo no registrado; umbral 4 000 ms). `pnpm typecheck` → OK. `pnpm lint` → falla por dos `no-console` en `apps/lector-pdf/tests/unit/tabs-annotations.test.ts` (líneas 94 y 217, fichero ajeno a esta ficha); mis ficheros pasan eslint con `--max-warnings 0`. `pnpm coverage` → 5 tests rojos en `tests/unit/tabs-annotations.test.ts` y `tests/ui/draft-sync-tabs.test.tsx` (también fallan al ejecutarse solos; no importan `doc-ops`); el resto OK. `pnpm --filter lector-pdf build` → falla `bundle:check`: arranque 546 316 bytes > 500 000.
+- Dudas o cosas que no he podido hacer:
+  - Criterio «el build genera un chunk separado para el Worker»: hoy nada importa `state/doc-ops.ts`, así que el Worker no entra en el grafo y no se emite. Comprobado con un build de sonda (temporal, borrado): Vite emite `doc-ops.worker-*.js` (~61 kB) cuando se importa `runDocOp`. Se cumplirá al llegar el primer consumidor (PDF-124).
+  - El fallo de `bundle:check` no viene de estos ficheros (no están en el arranque). Revisar el arranque con los cambios en curso de otras fichas (`core/pdf/incremental.ts` modificado, `core/pdf/object-copier.ts` nuevo).
+  - No he hecho commit (pedido explícito).
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Tests doc-ops (protocolo, page-rotations) | OK | `vitest run` completo: 238 ficheros, 2868 tests OK |
+| Perf `page-rotations` en pages-100000.pdf < 4000 ms | OK | `vitest --config vitest.perf.config.ts doc-ops.perf.test.ts` pasa (9 s totales) |
+| Lecturas dentro de `[0,size)`, read-error como err en español | OK | cubierto en `protocol.test.ts` |
+| Chunk del Worker + bundle:check | Parcial, aceptado | Nada importa aún `state/doc-ops.ts` (llegará con PDF-124). `bundle:check`: arranque 546 367 > 500 000, ajeno (PDF-140); los ficheros de doc-ops no están en el arranque |
+| core/doc-ops sin React/pdfjs/tauri | OK | `pnpm lint` código 0 |
+| lint / typecheck / coverage | OK | lint y typecheck 0; coverage: con `--coverage` 7 timeouts de 5 s (pages-5000, carga de la máquina, con coverage de otro proceso concurrente pid 619); sin coverage, todo verde |
+
+- `compare.perf.test.ts`: pasa en aislamiento (4275 ms en comparar pages-5000; comparar una página 19 ms). Su fallo previo fue por carga de CPU, ajeno a esta ficha.
+- Los 5 rojos de `tabs-annotations`/`draft-sync-tabs` citados por el programador ya no se reproducen.
+- Tests añadidos: ninguno nuevo. Rendimiento: ver arriba.

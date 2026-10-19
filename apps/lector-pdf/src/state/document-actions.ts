@@ -149,7 +149,8 @@ const documentParticipant: TabParticipant<DocumentSnapshot> = {
       });
     }
     useViewer.setState({ ...initialViewerState, viewMode: viewer.viewMode, dimsVersion: viewer.dimsVersion });
-    return { session: current, viewer: loading ? initialViewerState : viewer };
+    // El aviso es transitorio de la pestaña que se deja: no vuelve a aparecer al reanudarla.
+    return { session: current, viewer: loading ? initialViewerState : { ...viewer, notice: null } };
   },
   resume(snapshot: DocumentSnapshot): void {
     const current = useViewer.getState();

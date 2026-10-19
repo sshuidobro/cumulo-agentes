@@ -150,7 +150,7 @@ describe('borrador con respuestas y estados (PDF-058)', () => {
     const reply = newReply({ id: 'suite-r', parent, contents: 'Sí, ñ € 😀', author: 'Ana', now: T0 });
     const review = newReviewState({ id: 'suite-s', parent, state: 'Cancelled', author: 'Luis', now: T0 });
     const edits = editsOf([parent, reply, review]);
-    const back = fromDraft(JSON.parse(JSON.stringify(toDraft(edits, 'a.pdf', SAVED_AT)) as unknown));
+    const back = fromDraft(JSON.parse(JSON.stringify(toDraft(edits, 'a.pdf', SAVED_AT))));
     expect(back?.upserts.get('suite-r')).toEqual(reply);
     expect(back?.upserts.get('suite-s')).toEqual(review);
     expect(back?.upserts.size).toBe(3);

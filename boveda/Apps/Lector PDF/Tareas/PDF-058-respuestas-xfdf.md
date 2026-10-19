@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-058
 titulo: Respuestas y estados de revisión - modelo, lectura y escritura
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-036, PDF-057, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -77,3 +77,30 @@ export function dependentIds(all: ReadonlyMap<string, Annotation>, id: string): 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/incremental.ts` (una respuesta o estado sin padre escribible ya no genera un incremento vacío roto: `writeUpdate` decide con `writableAdded`), `apps/lector-pdf/tests/unit/annotations/replies-interop.test.ts` (filtro de respuestas: pdf.js da `state: null` en las respuestas), `apps/lector-pdf/tests/unit/annotations/draft.test.ts` (error de tipo `unknown` en `JSON.parse`).
+- Qué he hecho: la implementación de la ficha ya estaba en el commit de pausa `5518a78` (modelo, `replies.ts`, import, to-pdf, incremental, UI). He arreglado los fallos de `replies-interop` (2 tests) y el error de typecheck. `replies.ts` tiene 100 % de líneas; `replies-interop` pasa 5/5 con `qpdf --check` 0.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf typecheck`: OK.
+  - `npx vitest run tests/unit/annotations tests/unit/organize` (+ cobertura de `replies.ts`): 452/452 OK.
+  - `pnpm lint`: **falla** solo por `apps/lector-pdf/tests/unit/tabs-annotations.test.ts` (líneas 94 y 217: `console.log('DBG …')` de depuración, `no-console`). No es de esta ficha: no lo he tocado.
+  - `tests/ui/draft-sync-tabs.test.tsx` (2 tests) y `tests/unit/tabs-annotations.test.ts` (3 tests): fallan por timeout de 5-10 s, no por las respuestas. Mismo origen (WIP de pestañas/borradores del commit `5518a78`). Revisar antes de `pnpm coverage`.
+  - `pnpm coverage` y `pnpm perf`: no ejecutados completos (fallan por lo anterior).
+- Dudas o cosas que no he podido hacer: falta decidir quién arregla `tabs-annotations.test.ts` (DBG y timeouts). No he hecho commit (lo pediste así: otros programadores trabajan en paralelo y hay cambios sin commit de otras fichas).
+
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Typecheck y eslint de src y tests/unit/annotations limpios; vitest annotations + ui: 813/815, solo fallan 2 de `draft-sync-tabs` (WIP ajeno de PDF-101). Modelo, `replies.ts`, import, to-pdf, `writableAdded`/`irtOf` y UI cubren los criterios.
+- (opcional) El tester debe ejecutar `pnpm coverage` y `pnpm perf` completos cuando PDF-101 esté arreglado.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Interop, reabrir, IRT, dependentIds, Group/Marked/oculta, borrador | OK | `replies-interop` y annotations + ui: 815/815 |
+| Capa SVG / annotationsOfPage / buildCommentRows | OK | tests ui y annotations en verde |
+| Cobertura `replies.ts` ≥ 90 % | OK | 97,72 % líneas |
+| lint, typecheck | OK | código 0 |
+| `pnpm coverage` completo | Con carga: 6 timeouts de 5 s (page-tree pages-5000, cifrados, commands 5000); los 6 ficheros pasan aislados (135/135). No relacionados con la ficha. | ver arriba |
+| `pnpm perf` | OK en 2.ª repetición (35/35); 1.ª: layout 301,9 vs 300 ms y 2 más, ruido de carga; 3.ª: 35/35 | `pnpm perf` |
+Tests añadidos: ninguno (ya cubiertos). Aviso: la suite completa es sensible a la carga (timeouts); conviene subir `testTimeout` de los tests de 5000 páginas/cifrado.
