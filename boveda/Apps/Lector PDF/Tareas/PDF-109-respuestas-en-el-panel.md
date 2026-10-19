@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-109
 titulo: Responder y cambiar el estado desde la ventana del comentario
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-058, PDF-101]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -59,3 +59,19 @@ export function setReviewState(parentId: string, state: ReviewState): void;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/annotation-actions.ts` (`deleteAnnotation` borra también las respuestas y estados en un solo `stack.group`); nuevos `src/state/reply-actions.ts` (`addReply`, `editReply`, `setReviewState`), `src/ui/messages-comments.ts` (`commentsMsg`), `src/ui/viewer/ReplyThread.tsx` y `ReplyThread.module.css`, `src/ui/viewer/comment-date.ts` (formato de fecha compartido); modificados `src/ui/viewer/AnnotationPopup.tsx` y `AnnotationPopup.module.css`, `src/ui/icons.tsx` (solo `IconEdit`, sin tocar los cambios ajenos). Tests: `tests/unit/annotations/reply-actions.test.ts` (nuevo), `tests/ui/annotation-popup.test.tsx` (bloque PDF-109), `tests/e2e/replies.spec.ts` (nuevo), `tests/e2e/annotations-a11y.spec.ts` (caso axe con respuestas y estado).
+- Qué he hecho: la ventana de la nota lista las respuestas (autor, fecha, texto) con editar y borrar por teclado, campo «Escribe una respuesta» con «Responder» (Ctrl+Intro, Esc cierra), menú «Estado» con las cinco opciones y «Estado: …» en la cabecera (`aria-live`). Borrar un comentario borra sus respuestas y estados en una sola entrada de deshacer. El E2E guarda, reabre y valida con qpdf `/IRT`, `/RT /R`, `/F 28` y el estado `/F 30`.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: sin errores.
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/annotations/reply-actions.test.ts`: 14/14. `tests/ui/annotation-popup.test.tsx`: 23/23.
+  - `pnpm --filter lector-pdf e2e -- tests/e2e/replies.spec.ts --project=chromium`: 1/1. `tests/e2e/annotations-a11y.spec.ts`: 4/4.
+  - `pnpm typecheck`: sin errores en mis ficheros; falla por cambios ajenos en `core/organize/save.ts`, `core/pdf/page-tree.ts`, `tests/ui/tab-bar.test.tsx` y `tests/unit/tab-close-guard.test.ts`.
+  - `pnpm coverage`: 2993 pasan, 4 fallan. `tests/ui/comment-toolbar.test.tsx` (la barra principal no muestra «Comentar») y `tests/ui/sidebar.test.tsx` (F4) fallan por cambios en curso de toolbar/atajos, no por esta ficha. `tests/unit/search-actions.test.ts` falla en la suite completa y pasa aislado (carga).
+  - Sin commit, por instrucción del líder.
+- Dudas o cosas que no he podido hacer:
+  1. La ventana tiene `max-height: 240px` (POPUP_MAX_HEIGHT_PX) y la lista de respuestas también 240 px; con un hilo largo la ventana se desplaza (`overflow-y: auto`). Decidir si conviene subir el límite de la ventana: es decisión de diseño, no la he tomado.
+  2. `editReply` con texto vacío o igual no hace nada (decisión de implementación; la ficha no lo fija).
+  3. `reviewStateOf` desempata por `modified` con `>`: dos estados fijados en el mismo milisegundo se resuelven a favor del primero. No afecta a la UI real; lo dejo anotado.
+  4. `tests/e2e/annotations-flow.spec.ts` falla al reabrir y abrir el panel de comentarios (línea 157). No lo he investigado: no toca la ventana de comentario, pero no lo he comprobado contra la base limpia.
