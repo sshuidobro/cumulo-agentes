@@ -2,6 +2,7 @@ import { type Locator, type Page } from '@playwright/test';
 import { expect, test } from './perf-fixture.ts';
 import {
   canvasCount,
+  chooseView,
   clearLongTasks,
   fixture,
   frameCount,
@@ -33,6 +34,11 @@ const JUMPS_FOR_HEAP = 30;
 const SEARCH_FIRST_MS = 1_000;
 const SEARCH_FULL_MS = 15_000;
 const LONG_TASK_MS = 100;
+/** Modos de página (PDF-050), documento de 10 000 páginas: scroll de 5 000 px, long tasks y cambio de modo. */
+const VIEW_SCROLL_PX = 5_000;
+const VIEW_LONG_TASK_MS = 50;
+const VIEW_MAX_CANVASES = 14;
+const MODE_CHANGE_MS = 200;
 
 /** Coincidencias de «marcador-1» en pages-5000: páginas 1, 10-19, 100-199 y 1000-1999 (una por página). */
 const MARCADOR_1_MATCHES = 1_111;
@@ -190,4 +196,49 @@ test('pages-5000: ninguna long task supera 100 ms durante scroll, zoom y búsque
   const worst = tasks.length === 0 ? 0 : Math.max(...tasks);
   recordMeasure(testInfo, `long tasks en scroll, zoom y búsqueda: ${String(tasks.length)} tareas, la mayor ${worst.toFixed(0)} ms`);
   expect(worst).toBeLessThan(LONG_TASK_MS);
+});
+
+test('pages-10000 en doble página continua: 5 000 px de scroll sin long tasks > 50 ms y con ≤ 14 lienzos vivos', { tag: '@perf' }, async ({ page }, testInfo) => {
+  await installPerfProbes(page);
+  await openFixture(page, 'pages-10000.pdf');
+  await waitPageRendered(page, 1);
+  await chooseView(page, 'Doble página');
+  await waitPageRendered(page, 2);
+
+  await clearLongTasks(page);
+  const viewer = page.getByTestId('viewer');
+  await viewer.hover();
+  const start = await viewer.evaluate((el) => el.scrollTop);
+  let scrolled = 0;
+  let peak = await canvasCount(page);
+  for (let i = 0; i < 200 && scrolled < VIEW_SCROLL_PX; i++) {
+    await page.mouse.wheel(0, 100);
+    scrolled = (await viewer.evaluate((el) => el.scrollTop)) - start;
+    peak = Math.max(peak, await canvasCount(page));
+  }
+
+  const tasks = await longTasks(page);
+  const slow = tasks.filter((t) => t > VIEW_LONG_TASK_MS);
+  const worst = tasks.length === 0 ? 0 : Math.max(...tasks);
+  recordMeasure(
+    testInfo,
+    `pages-10000 doble página continua: ${String(scrolled)} px de scroll, ${String(slow.length)} long tasks > 50 ms (la mayor ${worst.toFixed(0)} ms), pico ${String(peak)} lienzos (≤ ${String(VIEW_MAX_CANVASES)})`,
+  );
+  expect(scrolled, 'scroll conseguido').toBeGreaterThanOrEqual(VIEW_SCROLL_PX);
+  expect(slow, 'long tasks > 50 ms durante el scroll').toEqual([]);
+  expect(peak, 'lienzos vivos durante el scroll').toBeLessThanOrEqual(VIEW_MAX_CANVASES);
+});
+
+test('pages-10000: cambiar a doble página pinta la fila visible en ≤ 200 ms', { tag: '@perf' }, async ({ page }, testInfo) => {
+  await openFixture(page, 'pages-10000.pdf');
+  await waitPageRendered(page, 1);
+
+  await page.getByRole('button', { name: 'Vista', exact: true }).click();
+  const started = await pageNow(page);
+  await page.getByRole('menuitemradio', { name: 'Doble página', exact: true }).click();
+  await waitPageRendered(page, 2);
+  const elapsed = (await pageNow(page)) - started;
+
+  recordMeasure(testInfo, `pages-10000: cambio a doble página hasta pintar la fila visible: ${elapsed.toFixed(0)} ms (presupuesto ≤ ${String(MODE_CHANGE_MS)} ms)`);
+  expect(elapsed).toBeLessThanOrEqual(MODE_CHANGE_MS);
 });

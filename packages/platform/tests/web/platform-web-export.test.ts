@@ -6,13 +6,13 @@ import { fakeEnv, fakeHandle, namedError } from './fakes';
 const FILTERS = [{ name: 'XFDF', extensions: ['xfdf'] }];
 
 function saveHandle() {
-  const written: Uint8Array[] = [];
+  const written: Uint8Array<ArrayBuffer>[] = [];
   const handle = {
     kind: 'file',
     name: 'x.xfdf',
     getFile: async () => new File([written[0] ?? new Uint8Array()], 'x.xfdf'),
     createWritable: async () => ({
-      write: async (part: Uint8Array) => { written.push(part); },
+      write: async (part: Uint8Array<ArrayBuffer>) => { written.push(part); },
       close: async () => undefined,
       abort: async () => undefined,
     }),

@@ -36,6 +36,13 @@ export async function waitPageVisible(page: Page, n: number, total: number): Pro
   await expect(page.getByRole('group', { name: `Página ${String(n)} de ${String(total)}` })).toBeVisible();
 }
 
+/** Elige una opción del menú «Vista» (PDF-050) y espera a que el visor muestre sus marcos. */
+export async function chooseView(page: Page, option: string): Promise<void> {
+  await page.getByRole('button', { name: 'Vista', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: option, exact: true }).click();
+  await expect(page.locator('[data-testid=viewer] [data-page-index]').first()).toBeVisible();
+}
+
 /** Salta a la página `n` con Ctrl+Mayús+N, escribiendo el número e Intro. */
 export async function goToPageByKeyboard(page: Page, n: number, total: number): Promise<void> {
   await page.keyboard.press('Control+Shift+N');
