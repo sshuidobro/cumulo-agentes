@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: cambios-pedidos
+estado: bloqueada
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -58,3 +58,9 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 - Criterio NO cumplido: axe «critical aria-required-children» en el `role="tablist"`. La causa es que el botón × (`role=button`) es hijo directo de la lista a través del `div role=presentation` de cada pestaña; la ficha pide ambas cosas (× con nombre accesible dentro de cada pestaña y axe limpio). Solucionarlo exige mover el × fuera del `tablist` (cambio de estructura) o quitarlo del árbol de accesibilidad (cambiaría el test de la ×). Es una decisión de diseño: la dejo para el líder/revisor. Sin decidir, no marco la ficha como terminada.
 - Para el Manual (no probado aquí): en el navegador Chrome no entrega Ctrl+Tab ni Ctrl+W a la página; los atajos funcionan en la app de escritorio y en Playwright, y en el navegador se usa la barra con ratón o teclado. Pendiente en `tauri dev` de la máquina del usuario: Ctrl+Tab, Ctrl+W y «Abrir con» con dos PDF.
 - Dudas o cosas que no he podido hacer: (1) decisión sobre el criterio axe (ver arriba). (2) El criterio de rendimiento menciona «fixtures de 1 000 páginas»: uso tres copias de `pages-1000.pdf`. (3) No he hecho commit (petición del usuario).
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: ninguno de código (el árbol ya contenía la ronda 1 committeada en 813a19b); solo esta ficha.
+- Qué he hecho: he verificado el estado sin cambiar código. El único criterio abierto sigue siendo el axe. No hay comentario nuevo del revisor en el Registro, así que no he tocado la estructura de la barra. La ficha pide a la vez que el × (`aria-label`) esté dentro de cada pestaña y que axe no dé incidencias `critical`; con la estructura actual eso es imposible, así que es una decisión de diseño que no me corresponde tomar. Opciones para el líder: (A) sacar el × del `role="tablist"` a un contenedor hermano, manteniendo su posición visual a la derecha de cada pestaña; (B) dejar el × dentro con `aria-hidden="true"` (Supr ya cierra la pestaña enfocada) y el criterio axe se cumple, pero los lectores de pantalla no ven el botón; (C) relajar el criterio axe o aceptar la excepción documentada en el Manual.
+- Comandos ejecutados y resultado: `pnpm lint`: exit 0. `pnpm typecheck`: exit 0. `playwright test tests/e2e/tabs.spec.ts --project=chromium` (en `apps/lector-pdf`): 6 pasan, 1 falla (axe `critical aria-required-children` en `div role="tablist"`). No he lanzado de nuevo el E2E de rendimiento ni `pnpm coverage`.
+- Dudas o cosas que no he podido hacer: decisión de accesibilidad del × (opciones A/B/C arriba). Sin ella el criterio axe no se cumple y no puedo marcar la ficha como `en-revision`; la dejo `bloqueada`. Tampoco he hecho el commit de cierre porque no hay cambios de código que commitear.
