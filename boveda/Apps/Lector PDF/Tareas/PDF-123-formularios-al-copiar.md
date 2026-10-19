@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-123
 titulo: Formularios al copiar páginas a un PDF nuevo
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-122]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -48,3 +48,9 @@ Los campos de formulario de las páginas copiadas siguen siendo campos rellenabl
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/new-document-forms.ts` (nuevo), `apps/lector-pdf/src/core/pdf/new-document.ts`, `apps/lector-pdf/tests/unit/pdf/new-document.test.ts` (casos nuevos de formularios).
+- Qué he hecho: `FormsBuilder` copia por parte con `/AcroForm` los widgets de las páginas copiadas hasta su raíz (`/Parent`, máx. 32), quita los `/Kids` no copiados (campos sin hijos útiles fuera), quita `/V` de campos `/Sig` (también heredado) y construye `/AcroForm` (`/Fields`, `/DA`, `/Q`, `/NeedAppearances`, `/DR` de la primera parte; fuentes de las demás con nombre libre `X_2`…). `/SigFlags` y `/CO` no se copian. Sin `/AcroForm` en ninguna parte, el catálogo no lo tiene.
+- Comandos ejecutados y resultado: `pnpm lint` (sin avisos); `pnpm typecheck` (0 errores); `pnpm coverage`: código 0, 255 ficheros y 3229 tests en verde; `new-document-forms.ts` con 96 % de líneas. Tests nuevos: 7 casos en `new-document.test.ts` (pdf.js `getFieldObjects` y qpdf) y los 29 del fichero en verde.
+- Dudas o cosas que no he podido hacer: (1) he separado la lógica en `new-document-forms.ts` por tamaño del fichero; la ficha no lo pedía. (2) Las fuentes de `/DR` de la segunda parte se renombran (`Helv_2`) pero sus `/DA` no cambian, como pide la ficha: un campo de la segunda parte con `/DA /Helv` usará la fuente `Helv` de la primera parte. Conviene que el revisor lo valore. (3) Un `/Kids` más profundo de 32 niveles se trata como no copiable (se quita); la ficha no decía nada. (4) Si una parte tiene `/AcroForm` pero ninguno de sus widgets se copia, el resultado tiene `/Fields []`.

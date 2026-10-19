@@ -7,6 +7,7 @@ import { err, ok, type Result } from '@suite/shared';
 import { pdfError } from '../errors';
 import { writeCompleteFile } from './file-writer';
 import { toSaveError } from './incremental';
+import { FormsBuilder } from './new-document-forms';
 import { ObjectCopier } from './object-copier';
 import type { ObjectReader } from './object-reader';
 import { copyOutlineBranch, type OutlineBranch } from './outline-copy';
@@ -90,6 +91,7 @@ async function writeNewDocument(input: NewDocumentInput): Promise<Result<NewDocu
   const objects = new Map<number, PdfValue>();
   const slots: CopiedSlot[] = [];
   const branches: OutlineBranch[] = [];
+  const forms = new FormsBuilder();
   for (const [index, part] of parts.entries()) {
     const copier = new ObjectCopier({ from: part.reader, alloc: () => alloc.next(), resolveNames: true });
     await copier.reservePages(part.pages.map((slot) => slot.source));
@@ -101,7 +103,9 @@ async function writeNewDocument(input: NewDocumentInput): Promise<Result<NewDocu
       slots.push({ ref: copied.ref, dict: copied.dict, rotate: slot.rotate });
       reportProgress(onProgress, slots.length, total);
     }
+    await forms.addPart(part.reader, copier, part.pages.map((slot) => slot.source));
     for (const [objectRef, value] of copier.drain()) objects.set(objectRef.num, value);
+    forms.applyEdits(objects);
     if (input.outline === 'branches' && firstRef !== undefined) {
       const branch = await copyOutlineBranch(part.reader, copier, part.title ?? `Documento ${index + 1}`, firstRef);
       for (const [objectRef, value] of branch.objects) objects.set(objectRef.num, value);
@@ -138,6 +142,8 @@ async function writeNewDocument(input: NewDocumentInput): Promise<Result<NewDocu
   }
 
   const catalog: Record<string, PdfValue> = { Type: name('Catalog'), Pages: rootRef };
+  const acroForm = forms.acroForm();
+  if (acroForm !== null) catalog.AcroForm = acroForm;
   if (branches.length > 0) {
     const outlinesRef = alloc.next();
     linkBranches(objects, branches, outlinesRef);
