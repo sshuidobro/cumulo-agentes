@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-121
 titulo: Escribir un PDF nuevo con páginas de uno o varios PDFs
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-119, PDF-120]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -99,3 +99,17 @@ export async function buildNewDocument(input: NewDocumentInput): Promise<Result<
   - Semilla de `/ID` de `buildNewDocument`: `` `${now}|${total}` `` (la ficha no la fija).
   - Árbol de cambios ajenos sin commit (`render.ts`, `Viewer.tsx`, `Viewer.module.css`, `PageView.tsx`, `engine-render.test.ts`, `tests/e2e/detail.spec.ts`, `tests/e2e/zz-debug.spec.ts`, `tests/ui/page-view-detail.test.tsx`): no son míos ni los he tocado.
   - Los tiempos en ms de `pnpm perf` no se imprimen; solo consta que pasan los umbrales.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+Lint y typecheck con código 0; los 18 tests de la ficha pasan. `pnpm coverage` solo falla por 2 tests de UI ajenos (`tests/ui/sidebar.test.tsx` y otro de UI), ya recogidos en la bitácora. Código correcto: validación, cancelación, numeración sin huecos, camino cifrado.
+1. (opcional) `new-document.ts` — la semilla de `/ID` `now|total` repite ID para dos documentos distintos creados en el mismo instante con el mismo número de páginas.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Criterios funcionales (páginas, 2 partes, anotaciones, cifrado, compressed, giro, errores, writeCompleteFile cifrado) | OK | `new-document.test.ts` 18/18 pasan; qpdf/pdf.js dentro de los tests |
+| lint / typecheck | OK | código 0 |
+| `pnpm perf` | OK | 23 ficheros, 38/38 (incluye 1 000 y 100 000 páginas) |
+| Cobertura de `file-writer.ts` / `new-document.ts` | OK | 97 % / 100 % según el programador; sin regresión |
+| `pnpm coverage` código 0 | Con reserva | 4 fallos ajenos: `sidebar.test.tsx` F4, `comment-toolbar.test.tsx` ×2 (reproducibles aislados) y `page-tree.test.ts` pages-5000 (timeout 5 s bajo carga; pasa aislado). El commit 86ac738 no toca UI ni `page-tree`. |
+Tests añadidos: ninguno nuevo. Pendiente fuera de ficha: arreglar los 3 tests de UI rojos.

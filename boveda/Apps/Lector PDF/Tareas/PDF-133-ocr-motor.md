@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-133
 titulo: OCR - motor local tesseract.js, recursos empaquetados y escaneado de prueba
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, stack-tauri, calidad-profesional, pruebas-calidad]
@@ -70,3 +70,19 @@ export async function createOcrEngine(lang: OcrLanguage, assetBaseUrl: string): 
 - Qué he hecho: motor `createOcrEngine` con worker local (`${assetBaseUrl}ocr/`), reconocimiento por bloques→palabras con filtro de confianza < 30 y cancelación que termina y recrea el worker. Script de copia de 6 ficheros a `public/ocr/` y fixture `scanned-es-3.pdf` (JPEG 1654×2339 por página, generado con `@napi-rs/canvas`). Añadido `createOcrEngineWithOptions` (export extra de `ocr.ts`) para que el helper de Node reutilice la misma lógica. Las imágenes son JPEG RGB con gris (`/DeviceRGB`), no JPEG de 1 componente: `@napi-rs/canvas` no codifica escala de grises.
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf assets` OK (6 ficheros en `public/ocr/`); `pnpm lint` OK; `pnpm typecheck` 0 errores; `pnpm --filter lector-pdf build` OK (arranque 541 837 bytes de 600 000; `dist/ocr/` con los 6 ficheros); `vitest run tests/unit/ocr-engine.test.ts` 3/3 OK; `grep cdn.jsdelivr apps/lector-pdf/src` vacío. `pnpm coverage`: 3 fallos, ninguno de esta ficha. Dos son de UI que ya estaban rojos antes del commit (`comment-toolbar.test.tsx` y `sidebar.test.tsx`, según la bitácora del 2026-10-19). El tercero (`fixtures.test.ts`, recuento de fixtures) lo causaba esta ficha y ya está corregido a 28. El resto de la suite pasa (3043 tests). Por eso `pnpm coverage` no sale con código 0 todavía.
 - Dudas o cosas que no he podido hacer: (1) Los 3 fallos de UI no son de esta ficha; no los he tocado. (2) La CSP no cambia: no la he tocado y el build no requiere nada extra, pero el worker/WASM aún no se ha probado en navegador (eso es PDF-134/e2e). (3) No he medido la cobertura de `ocr.ts` por separado.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Lint y typecheck OK; `pnpm coverage`: 3043 OK y 3 fallos de UI ajenos (`comment-toolbar`, `sidebar`, ya rojos antes, en la bitácora); ninguno es de esta ficha. El código 0 depende de arreglarlos aparte.
+2. (opcional) `createOcrEngine` (rutas `ocr/`) no tiene test directo; solo se cubre `createOcrEngineWithOptions`. Se verá en PDF-134/e2e.
+3. (opcional) El JPEG del fixture es RGB con gris y no de 1 componente (limitación de `@napi-rs/canvas`); aceptable y documentado.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| assets deja 6 ficheros en `public/ocr/`; sin jsDelivr | OK | `pnpm --filter lector-pdf assets` -> 6 ficheros; grep vacío |
+| Unit Node: FACTURA, 2026-0042, Panadería, Muñoz con caja | OK | `vitest run tests/unit/ocr-engine.test.ts` 3/3 |
+| Build con `ocr/*`; bundle dentro de presupuesto | OK | `dist/ocr/` 6 ficheros; arranque 544 998 / 600 000 |
+| CSP sin cambios | OK | sin cambios en vite.config.ts ni src-tauri |
+| lint, typecheck, coverage | lint y typecheck OK; coverage 3043 OK y 3 fallos | Los 3 fallos (comment-toolbar x2, sidebar F4) son de PDF-140 (lazy), ajenos a esta ficha según la bitácora 2026-10-19 |
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: ocr-engine.test 2,4 s.
+Nota: `createOcrEngine` (rutas `ocr/`) sin probar en navegador; queda para PDF-134/e2e.
