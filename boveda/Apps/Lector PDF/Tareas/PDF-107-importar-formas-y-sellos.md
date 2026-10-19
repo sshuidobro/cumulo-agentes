@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-107
 titulo: Importar formas y sellos del fichero como editables
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-057, PDF-101, PDF-104]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -72,3 +72,8 @@ export async function promoteShapes(reader: ObjectReader, page: ImportedPage, fa
   - Decisiones de implementación que sigo del ADR-0029 y que el revisor puede querer confirmar: `/Border` con cuarto elemento (patrón de trazo) sigue ajena; `/BE` que no es diccionario sigue ajena; `/CA` fuera de [0, 1] se acota (igual que `import.ts`); `/CreationDate` no válida da `created: null` sin dejar la forma ajena.
   - Worktree: la ficha vivía solo en `813a19b` (rama `pdf-028-escritor-incremental`), no en el commit del worktree. Por eso el trabajo está en la rama `pdf-107-importar-formas-y-sellos` creada desde `813a19b`.
   - Los E2E fallidos de arriba (base) quedan para quien mantenga la iteración 6.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+Lint y typecheck OK; tests de `tests/unit/annotations` 496 OK. Diff de `import-shapes.ts` y `annotations-import.ts` conforme a la ficha (promoción antes de `readStampNames`, sin lector no cambia, nunca lanza).
+Las 4 decisiones del programador se confirman (conservadoras, coherentes con ADR-0029: lo que no encaja sigue ajeno): `/Border` con patrón de trazo sigue ajena; `/BE` no diccionario sigue ajena; `/CA` se acota a [0,1] como `import.ts` (`clamp01`); `/CreationDate` inválida da `created: null` sin dejar la forma ajena.
+Los E2E fallidos en base (anotados por el programador) quedan para el tester con el mismo criterio.
