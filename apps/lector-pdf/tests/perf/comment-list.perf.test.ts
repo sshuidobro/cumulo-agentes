@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCommentRows, EMPTY_COMMENT_FILTER, rowLayout, visibleRowRange } from '../../src/core/annotations/comment-list';
 import type { Annotation } from '../../src/core/annotations/model';
+import { newReply } from '../../src/core/annotations/replies';
 import { newAnnotation } from '../unit/annotations/factories';
 import { measureBest } from './measure';
 
@@ -28,9 +29,24 @@ describe('rendimiento de la lista de comentarios', () => {
     expect(ms, `buildCommentRows: ${ms.toFixed(1)} ms`).toBeLessThan(BUDGET_MS);
   });
 
+  it('con 5 000 comentarios y 5 000 respuestas, construir las filas tarda menos de 150 ms (presupuesto ×1,5)', () => {
+    const half = 5_000;
+    const effective = new Map<string, Annotation>();
+    for (const a of synthetic().values()) {
+      if (Number(a.id.slice('suite-'.length)) < half) effective.set(a.id, a);
+    }
+    for (const parent of [...effective.values()]) {
+      const reply = newReply({ id: `reply-${parent.id}`, parent, contents: `Respuesta a ${parent.id}`, author: 'Ana', now: '2026-10-01T10:00:00.000Z' });
+      effective.set(reply.id, reply);
+    }
+    const { value, ms } = measureBest(() => buildCommentRows(effective, new Map(), EMPTY_COMMENT_FILTER));
+    expect(value.filter((r) => r.kind === 'reply')).toHaveLength(half);
+    expect(ms, `buildCommentRows con respuestas: ${ms.toFixed(1)} ms`).toBeLessThan(BUDGET_MS * 1.5);
+  });
+
   it('filtrar por texto con 10 000 anotaciones tarda menos de 100 ms', () => {
     const effective = synthetic();
-    const { ms } = measureBest(() => buildCommentRows(effective, new Map(), { types: new Set(), author: null, text: 'PREVIO' }));
+    const { ms } = measureBest(() => buildCommentRows(effective, new Map(), { ...EMPTY_COMMENT_FILTER, text: 'PREVIO' }));
     expect(ms, `filtro de texto: ${ms.toFixed(1)} ms`).toBeLessThan(BUDGET_MS);
   });
 

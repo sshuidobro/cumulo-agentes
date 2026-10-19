@@ -1,5 +1,6 @@
-import type { Annotation, AnnotationType, RectPt } from './model';
+import type { Annotation, AnnotationType, RectPt, ReplyAnnotation, ReviewState } from './model';
 import type { ForeignAnnotation } from './import';
+import { indexReplies, type ReplyIndex } from './replies';
 import { SIGNATURE_STAMP_NAME } from './to-pdf';
 
 /**
@@ -14,9 +15,11 @@ export interface CommentFilter {
   readonly author: string | null;
   /** Texto a buscar en los comentarios: sin distinguir mayúsculas ni acentos. Vacío = sin filtro de texto. */
   readonly text: string;
+  /** Estados que se muestran (`'none'` = sin estado). Vacío = todos. Solo afectan a los comentarios, no a las respuestas. */
+  readonly states: ReadonlySet<ReviewState | 'none'>;
 }
 
-export const EMPTY_COMMENT_FILTER: CommentFilter = { types: new Set(), author: null, text: '' };
+export const EMPTY_COMMENT_FILTER: CommentFilter = { types: new Set(), author: null, text: '', states: new Set() };
 
 export type CommentRow =
   | { readonly kind: 'page'; readonly pageIndex: number; readonly count: number }
@@ -29,6 +32,19 @@ export type CommentRow =
       readonly modified: string | null;
       readonly excerpt: string;
       readonly readOnly: boolean;
+      /** Estado vigente del comentario; `null` si no tiene (o es «Ninguno»). */
+      readonly state: ReviewState | null;
+      /** Respuestas del comentario, de todos los niveles (las que se muestran debajo como filas `reply`). */
+      readonly replyCount: number;
+    }
+  | {
+      readonly kind: 'reply';
+      readonly id: string;
+      readonly parentId: string;
+      readonly pageIndex: number;
+      readonly author: string;
+      readonly modified: string;
+      readonly excerpt: string;
     };
 
 /** Caracteres del comentario que se muestran en la fila. */
@@ -39,6 +55,8 @@ export const NO_COMMENT_TEXT = '«sin comentario»';
 /** Altura fija de la cabecera de página y de un comentario, en px CSS (la lista es virtualizada). */
 export const PAGE_ROW_HEIGHT = 28;
 export const ITEM_ROW_HEIGHT = 72;
+/** Altura de una respuesta, sangrada bajo su comentario. */
+export const REPLY_ROW_HEIGHT = 52;
 
 const SUPPORTED_LABELS: Readonly<Record<AnnotationType, string>> = {
   highlight: 'Resaltado',
@@ -92,6 +110,9 @@ interface Candidate {
   readonly contents: string;
   readonly excerpt: string;
   readonly readOnly: boolean;
+  readonly state: ReviewState | null;
+  /** Respuestas del comentario en orden de hilo (cada respuesta, seguida de las suyas). */
+  readonly thread: readonly ReplyAnnotation[];
 }
 
 /** Etiqueta de tipo de una anotación editable. */
@@ -120,7 +141,8 @@ export function foldForSearch(text: string): string {
 
 /**
  * Filas de la lista: por página ascendente; cada página lleva una cabecera con su recuento y, debajo, sus comentarios
- * de arriba abajo (`rect` con `y2` mayor primero) y de izquierda a derecha. Las páginas sin filas no aparecen.
+ * de arriba abajo (`rect` con `y2` mayor primero) y de izquierda a derecha. Cada comentario va seguido de sus
+ * respuestas (`reply`, en orden de hilo). Las páginas sin filas no aparecen.
  */
 export function buildCommentRows(
   effective: ReadonlyMap<string, Annotation>,
@@ -128,12 +150,14 @@ export function buildCommentRows(
   f: CommentFilter,
 ): CommentRow[] {
   const needle = f.text.trim() === '' ? null : foldForSearch(f.text);
+  const index = indexReplies(effective);
   const byPage = new Map<number, Candidate[]>();
 
   const keep = (c: Candidate): void => {
     if (f.types.size > 0 && !f.types.has(c.typeLabel)) return;
     if (f.author !== null && c.author !== f.author) return;
-    if (needle !== null && !foldForSearch(c.contents).includes(needle)) return;
+    if (f.states.size > 0 && !f.states.has(c.state ?? 'none')) return;
+    if (needle !== null && !matchesText(c, needle)) return;
     const list = byPage.get(c.pageIndex);
     if (list === undefined) byPage.set(c.pageIndex, [c]);
     else list.push(c);
@@ -153,6 +177,8 @@ export function buildCommentRows(
       contents: a.contents,
       excerpt: excerptOf(a.contents, isMarkupType(a.type)),
       readOnly: false,
+      state: index.states.get(a.id) ?? null,
+      thread: threadOf(index, a.id),
     });
   }
   for (const r of foreign.values()) {
@@ -167,6 +193,8 @@ export function buildCommentRows(
       contents: r.contents,
       excerpt: excerptOf(r.contents, MARKUP_SUBTYPES.has(r.subtype)),
       readOnly: true,
+      state: null,
+      thread: [],
     });
   }
 
@@ -186,10 +214,47 @@ export function buildCommentRows(
         modified: c.modified,
         excerpt: c.excerpt,
         readOnly: c.readOnly,
+        state: c.state,
+        replyCount: c.thread.length,
       });
+      for (const r of c.thread) {
+        rows.push({
+          kind: 'reply',
+          id: r.id,
+          parentId: r.parentId,
+          pageIndex: r.pageIndex,
+          author: r.author,
+          modified: r.modified,
+          excerpt: excerptOf(r.contents, false),
+        });
+      }
     }
   }
   return rows;
+}
+
+/** Respuestas de `rootId` en orden de hilo (cada una seguida de las suyas), sin repetir ninguna. Pila explícita. */
+function threadOf(index: ReplyIndex, rootId: string): ReplyAnnotation[] {
+  const out: ReplyAnnotation[] = [];
+  const seen = new Set<string>([rootId]);
+  const stack: ReplyAnnotation[] = [...(index.replies.get(rootId) ?? [])].reverse();
+  for (let reply = stack.pop(); reply !== undefined; reply = stack.pop()) {
+    if (seen.has(reply.id)) continue;
+    seen.add(reply.id);
+    out.push(reply);
+    const children = index.replies.get(reply.id) ?? [];
+    for (let i = children.length - 1; i >= 0; i--) {
+      const child = children[i];
+      if (child !== undefined) stack.push(child);
+    }
+  }
+  return out;
+}
+
+/** El texto del filtro está en el comentario o en alguna de sus respuestas. */
+function matchesText(c: Candidate, needle: string): boolean {
+  if (foldForSearch(c.contents).includes(needle)) return true;
+  return c.thread.some((r) => foldForSearch(r.contents).includes(needle));
 }
 
 /** Autores distintos de todas las anotaciones (sin filtrar), sin vacíos, en orden español. */
@@ -226,7 +291,7 @@ export function rowLayout(rows: readonly CommentRow[]): RowLayout {
   const heights: number[] = [];
   let y = 0;
   for (const row of rows) {
-    const h = row.kind === 'page' ? PAGE_ROW_HEIGHT : ITEM_ROW_HEIGHT;
+    const h = row.kind === 'page' ? PAGE_ROW_HEIGHT : row.kind === 'reply' ? REPLY_ROW_HEIGHT : ITEM_ROW_HEIGHT;
     tops.push(y);
     heights.push(h);
     y += h;
@@ -304,11 +369,11 @@ function lastIndexAtOrBefore(tops: readonly number[], value: number): number {
   return lo;
 }
 
-/** Paso de navegación por las filas de comentario (las cabeceras de página se saltan). */
+/** Paso de navegación por las filas de comentario y respuesta (las cabeceras de página se saltan). */
 export type ItemStep = 'prev' | 'next' | 'first' | 'last';
 
 /**
- * Índice de la fila de comentario a la que lleva un paso de teclado, o `null` si no hay ninguna en esa dirección.
+ * Índice de la fila de comentario o respuesta a la que lleva un paso de teclado, o `null` si no hay ninguna en esa dirección.
  * `from` es el índice de la fila activa, o -1 si no hay ninguna (el siguiente es la primera; el anterior, la última).
  */
 export function nextItemRow(rows: readonly CommentRow[], from: number, step: ItemStep): number | null {
@@ -327,7 +392,8 @@ export function nextItemRow(rows: readonly CommentRow[], from: number, step: Ite
 
 function findItemRow(rows: readonly CommentRow[], start: number, dir: 1 | -1): number | null {
   for (let i = start; i >= 0 && i < rows.length; i += dir) {
-    if (rows[i]?.kind === 'item') return i;
+    const kind = rows[i]?.kind;
+    if (kind === 'item' || kind === 'reply') return i;
   }
   return null;
 }

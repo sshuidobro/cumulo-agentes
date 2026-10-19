@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadPdf, type LoadedPdf } from '../../src/engine';
 import type { ForeignAnnotation } from '../../src/core/annotations/import';
 import type { Annotation } from '../../src/core/annotations/model';
+import { newReply, newReviewState } from '../../src/core/annotations/replies';
 import type { SignatureAnnotation, SignatureArt } from '../../src/core/annotations';
 import { PageDimsTable } from '../../src/core/page-dims';
 import { CommentsPanel } from '../../src/ui/sidebar/CommentsPanel';
@@ -569,4 +570,77 @@ describe('firmas y sellos de un PDF abierto (PDF-104)', () => {
       await loaded.value.destroy();
     }
   }, OPEN_TIMEOUT);
+});
+
+describe('respuestas y estados en el panel (PDF-116)', () => {
+  const AT = '2026-10-17T12:00:00.000Z';
+
+  /** Una nota con una respuesta de Ana y un estado «Aceptado», en la página 2. */
+  function threaded() {
+    const note = { ...newAnnotation('suite-1', 'note', 2), contents: 'Revisar esto', author: 'Otra persona' };
+    const reply = newReply({ id: 'suite-r1', parent: note, contents: 'Hecho', author: 'Ana', now: AT });
+    const state = newReviewState({ id: 'suite-s1', parent: note, state: 'Accepted', author: 'Ana', now: AT });
+    return { note, reply, state };
+  }
+
+  it('la respuesta va bajo su comentario con su autor; el comentario muestra su estado y «1 respuesta»', () => {
+    const { note, reply, state } = threaded();
+    load([note, reply, state]);
+    setup();
+
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(2);
+    expect(options[1]).toBe(rowNamed('Respuesta de Ana'));
+    expect(screen.getByText('Aceptado')).toBeInTheDocument();
+    expect(screen.getByText('1 respuesta')).toBeInTheDocument();
+    expect(screen.getByText('1 comentario', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('flecha abajo desde el comentario pasa a su respuesta; Intro en la respuesta abre la ventana del comentario padre', async () => {
+    const user = userEvent.setup();
+    const { note, reply, state } = threaded();
+    load([note, reply, state]);
+    const list = setup();
+
+    act(() => list.focus());
+    await user.keyboard('{ArrowDown}');
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('Revisar esto').id);
+    await user.keyboard('{ArrowDown}');
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('Respuesta de Ana').id);
+
+    await user.keyboard('{Enter}');
+    expect(goToPage).toHaveBeenLastCalledWith(2, expect.objectContaining({ yFraction: expect.any(Number) }));
+    expect(useAnnotations.getState().selectedId).toBe('suite-1');
+    act(() => {
+      useViewer.setState({ currentPage: 2 });
+    });
+    expect(useAnnotations.getState().openPopupId).toBe('suite-1');
+  });
+
+  it('clic sobre una respuesta abre la ventana de su comentario', async () => {
+    const user = userEvent.setup();
+    const { note, reply, state } = threaded();
+    load([note, reply, state]);
+    setup();
+
+    await user.click(rowNamed('Respuesta de Ana'));
+    expect(useAnnotations.getState().selectedId).toBe('suite-1');
+  });
+
+  it('el menú Filtrar tiene el grupo «Estado»; elegir «Rechazado» oculta la nota aceptada con su respuesta', async () => {
+    const user = userEvent.setup();
+    const { note, reply, state } = threaded();
+    const rejected = { ...newAnnotation('suite-2', 'note', 3), contents: 'Otra nota', author: 'Otra persona' };
+    const rejectedState = newReviewState({ id: 'suite-s2', parent: rejected, state: 'Rejected', author: 'Ana', now: AT });
+    load([note, reply, state, rejected, rejectedState]);
+    setup();
+
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }));
+    expect(screen.getByText('Estado', { selector: 'div' })).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Rechazado' }));
+    expect(screen.getByText('1 comentario', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /Respuesta de Ana/ })).toBeNull();
+    expect(screen.queryByRole('option', { name: /Revisar esto/ })).toBeNull();
+    expect(screen.getByRole('option', { name: /Otra nota/ })).toBeInTheDocument();
+  });
 });

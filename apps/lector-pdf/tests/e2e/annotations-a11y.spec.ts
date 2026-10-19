@@ -7,7 +7,9 @@ import {
   openCommentBar,
   openCommentsPanel,
   openWithDownloads,
+  createNoteWithText,
   pickTool,
+  zoneOf,
 } from './annotations-kit.ts';
 import { pageFrame } from './helpers.ts';
 
@@ -65,4 +67,22 @@ test('panel de comentarios con filas: sin violaciones serious ni critical', asyn
   await expect(commentRows(page)).toHaveCount(6);
 
   expect(await seriousViolations(page, testInfo, 'panel de comentarios')).toEqual([]);
+});
+
+test('panel con nota, respuesta y estado: sin violaciones serious ni critical (PDF-116)', async ({ page }, testInfo) => {
+  await openWithDownloads(page, fixture('basic-5.pdf'));
+  await createNoteWithText(page, 'Revisar esta cifra');
+  await zoneOf(page, 1, 'Nota de').dblclick();
+  const dialog = commentDialog(page);
+  await dialog.getByRole('textbox', { name: 'Escribe una respuesta' }).fill('Primera respuesta');
+  await dialog.getByRole('button', { name: 'Responder', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Estado', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'Aceptado', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await openCommentsPanel(page);
+  await expect(commentRows(page)).toHaveCount(2);
+
+  expect(await seriousViolations(page, testInfo, 'panel de comentarios con respuesta')).toEqual([]);
 });

@@ -78,3 +78,9 @@
   background: #fff;
   border-radius: 2px;
 }
+
+.heading {
+  padding: 0.25rem 0.5rem 0.125rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}

@@ -24,7 +24,13 @@ export interface MenuActionSpec {
   readonly onSelect: () => void;
 }
 
-export type MenuEntry = MenuItemSpec | MenuActionSpec | 'separator';
+/** Rótulo de grupo (no se puede elegir): encabeza las opciones que siguen (PDF-116). */
+export interface MenuHeadingSpec {
+  readonly kind: 'heading';
+  readonly label: string;
+}
+
+export type MenuEntry = MenuItemSpec | MenuActionSpec | MenuHeadingSpec | 'separator';
 
 export interface MenuButtonProps {
   /** Nombre accesible del botón (es solo icono). */
@@ -163,6 +169,10 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, ref }
           {entries.map((entry, index) =>
             entry === 'separator' ? (
               <div key={`separator-${String(index)}`} role="separator" className={styles.separator} />
+            ) : entry.kind === 'heading' ? (
+              <div key={`heading-${String(index)}`} role="presentation" className={styles.heading}>
+                {entry.label}
+              </div>
             ) : (
               <button
                 key={entry.label}
