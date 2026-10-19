@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-100
 titulo: Pestañas - historial, búsqueda, posición y panel lateral por documento
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-094]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -55,3 +55,15 @@ Al volver a una pestaña, «Atrás/Adelante», la búsqueda abierta y la pestañ
 - lint y typecheck limpios (0 errores), `tabs-modules.test.ts` 6/6. Participantes y guardas `isSwitchingTab()` según la ficha; `token += 1` antes de `cancelSearch()` evita resultados de A en B.
 1. (opcional) `tests/unit/tabs-modules.test.ts` posición — `toBeLessThanOrEqual(10)` es laxo; afinar a una escritura por pestaña suspendida.
 2. (opcional) panel lateral — el test cierra el panel antes de alternar; no cubre A con «Índice» abierto y B con «Miniaturas» abierto.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Historial por documento | OK | `tabs-modules.test.ts` 6/6 |
+| Búsqueda abierta/opciones/contador | OK | idem |
+| Búsqueda en curso abortada | OK | idem |
+| Posición sin escrituras cruzadas | OK (cota ≤10 = una por suspensión) | idem |
+| Panel lateral por documento | OK | idem |
+| lint, typecheck, coverage | código 0; líneas 98,77 % | `pnpm lint && pnpm typecheck && pnpm coverage` |
+
+Tests añadidos: ninguno. Rendimiento: no aplica.
