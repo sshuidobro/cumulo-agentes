@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-120
 titulo: Copiar páginas y sus objetos entre PDFs (ObjectCopier)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-052]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -87,3 +87,14 @@ export class ObjectCopier {
 - Lint y typecheck limpios en los ficheros de la ficha; 14/14 tests; `object-copier.ts` con 99,1 % de líneas. Los fallos de `tabs-annotations`/`draft-sync-tabs` son de PDF-101 y no cuentan.
 - Cumple las reglas de copia, la pila explícita, el criterio de `pages-5000.pdf` y el alcance.
 - (opcional) `object-copier.ts:104` — un `/Resources` heredado que sea referencia se resuelve y se copia en línea por página, perdiendo el reparto del objeto entre páginas; copiar la referencia compartiría el objeto.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| Tests de la ficha | OK | `vitest run` completo: 238 ficheros, 2868 tests en verde (incluye los 14 de `object-copier.test.ts`) |
+| Página 2 500 de `pages-5000.pdf` ≤ 20 objetos, sin leer otras páginas | OK | cubierto por el test del espía sobre `reader.get` (verde) |
+| Cobertura `object-copier.ts` ≥ 90 % | OK | 99,1 % líneas (solo la línea 204, guarda inalcanzable), 90,5 % ramas |
+| lint / typecheck | OK | `pnpm lint` y `pnpm typecheck` con código 0 |
+| `pnpm coverage` | OK (con matiz) | no pudo ejecutarse por bloqueo del directorio `coverage` por otro vitest en paralelo; la batería completa sin cobertura y la cobertura del módulo sí pasan |
+
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: sin presupuesto aplicable.
