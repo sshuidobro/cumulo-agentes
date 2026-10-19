@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-067
 titulo: Leer en voz alta - frases, voces y motor de lectura
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-022]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
