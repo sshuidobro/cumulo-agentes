@@ -219,7 +219,7 @@ function importForeign(raw: Record<string, unknown>, pageIndex: number, index: n
 }
 
 /** Tipos que se importan como editables. Las firmas (`/Stamp` propio) no vienen de ningún fichero: son ajenas. */
-type ImportedType = Exclude<AnnotationType, 'signature'>;
+type ImportedType = Exclude<AnnotationType, 'signature' | 'square' | 'circle' | 'line' | 'polygon' | 'stamp'>;
 
 function kindOf(subtype: unknown): ImportedType | undefined {
   switch (subtype) {

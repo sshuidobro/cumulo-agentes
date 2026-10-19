@@ -15,7 +15,14 @@ import {
   type PdfValue,
 } from '../pdf/objects';
 import { serializeValue } from '../pdf/serialize';
-import type { Annotation, RectPt, Rgb } from './model';
+import type {
+  Annotation,
+  BoxShapeAnnotation,
+  LineShapeAnnotation,
+  PolygonAnnotation,
+  RectPt,
+  Rgb,
+} from './model';
 
 /** Bit 3 de `/F` (print, ISO 32000 §12.5.3): la anotación se imprime. */
 const FLAG_PRINT = 4;
@@ -40,6 +47,11 @@ const SUBTYPES: Readonly<Record<Annotation['type'], string>> = {
   freetext: 'FreeText',
   ink: 'Ink',
   signature: 'Stamp',
+  square: 'Square',
+  circle: 'Circle',
+  line: 'Line',
+  polygon: 'Polygon',
+  stamp: 'Stamp',
 };
 
 export interface AnnotationDictOptions {
@@ -88,7 +100,9 @@ export function annotationDict(a: Annotation, o: AnnotationDictOptions): PdfDict
     CA: a.opacity,
     AP: dict({ N: o.apRef }),
   };
-  Object.assign(entries, typeEntries(a));
+  for (const [key, value] of Object.entries(typeEntries(a))) {
+    if (value !== undefined) entries[key] = value;
+  }
   if (o.popupRef !== null) entries.Popup = o.popupRef;
   return dict(entries);
 }
@@ -130,8 +144,11 @@ function isPdfString(v: PdfValue | undefined): v is PdfString {
   return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'string';
 }
 
-/** Claves propias de cada tipo (sin `/Popup`, que pertenece a la nota y se gestiona aparte). */
-function typeEntries(a: Annotation): Record<string, PdfValue> {
+/**
+ * Claves propias de cada tipo (sin `/Popup`, que pertenece a la nota y se gestiona aparte). Un valor `undefined`
+ * quita la clave (en `updatedDict`) o no la pone (en `annotationDict`).
+ */
+function typeEntries(a: Annotation): Record<string, PdfValue | undefined> {
   switch (a.type) {
     case 'highlight':
     case 'underline':
@@ -147,5 +164,32 @@ function typeEntries(a: Annotation): Record<string, PdfValue> {
       return { InkList: a.paths.map((p) => [...p]), BS: dict({ W: a.width }) };
     case 'signature':
       return { Name: name(SIGNATURE_STAMP_NAME) };
+    case 'square':
+    case 'circle':
+      return shapeEntries(a);
+    case 'line':
+      return {
+        ...shapeEntries(a),
+        L: [...a.points],
+        LE: [name(a.endings[0]), name(a.endings[1])],
+        IT: a.endings.some((e) => e !== 'None') ? name('LineArrow') : undefined,
+      };
+    case 'polygon':
+      return { ...shapeEntries(a), Vertices: [...a.vertices] };
+    case 'stamp':
+      return { Name: name(a.name) };
   }
+}
+
+/**
+ * Borde y relleno de una forma: `/BS` con el grosor y trazo continuo; `/IC` solo con relleno. Se quitan `/RD`
+ * y `/BE` (rectángulo de diferencias y efecto nube), que solo tienen sentido en las formas del fichero.
+ */
+function shapeEntries(a: BoxShapeAnnotation | LineShapeAnnotation | PolygonAnnotation): Record<string, PdfValue | undefined> {
+  return {
+    BS: dict({ W: a.width, S: name('S') }),
+    IC: a.interior === null ? undefined : rgbArray(a.interior),
+    RD: undefined,
+    BE: undefined,
+  };
 }

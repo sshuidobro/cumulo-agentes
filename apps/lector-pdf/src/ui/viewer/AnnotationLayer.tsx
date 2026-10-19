@@ -648,7 +648,8 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
 
 /** Nombre accesible de la zona: «Resaltado de Ana: primeros 80 caracteres del comentario». */
 function zoneLabel(a: Annotation): string {
-  const name = msg.annotationName(msg.annotationKinds[a.type], a.author);
+  const kind = a.type === 'line' && a.endings.some((e) => e !== 'None') ? msg.annotationArrowKind : msg.annotationKinds[a.type];
+  const name = msg.annotationName(kind, a.author);
   const excerpt = Array.from(a.contents).slice(0, LABEL_CONTENTS_CHARS).join('');
   return excerpt === '' ? name : `${name}: ${excerpt}`;
 }

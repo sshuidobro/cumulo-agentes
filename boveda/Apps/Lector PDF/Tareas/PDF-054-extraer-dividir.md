@@ -1,38 +1,74 @@
 ---
 tipo: tarea
 id: PDF-054
-titulo: Extraer y dividir
+titulo: Extraer y dividir - planes y operaciones del núcleo
 app: pdf
 estado: pendiente
-depende_de: [PDF-053]
+depende_de: [PDF-123, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
-tags: [tarea, pdf, iteracion-5, organizar, por-detallar]
+actualizado: 2026-10-19
+tags: [tarea, pdf, iteracion-5, organizar, nucleo]
 ---
 
-# PDF-054 · Extraer y dividir
+# PDF-054 · Extraer y dividir: planes y operaciones del núcleo
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Paridad: [[Paridad Adobe Acrobat]]
-
-> **Ficha por detallar.** El líder la completará (firmas, ficheros, pasos y criterios exactos, y ADR si hace falta) al cerrar la iteración anterior. No empezar hasta entonces.
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Decisiones: [[ADR-0035-organizar-en-la-app]], [[ADR-0028-reescribir-pdfs]], [[ADR-0032-exportar-imagenes-y-texto]] (nombres y ZIP) · Paridad: [[Paridad Adobe Acrobat]] · Antes: [[PDF-121-documento-nuevo]], [[PDF-122-destinos-e-indice-al-copiar]], [[PDF-123-formularios-al-copiar]] · Sigue: [[PDF-127-extraer-dividir-interfaz]]
 
 ## Objetivo
-Extraer un rango a un PDF nuevo y dividir por número de páginas, por marcadores de primer nivel o por tamaño.
+Extraer un rango de páginas a un PDF nuevo y dividir un PDF por número de páginas, por marcadores de primer nivel o por tamaño máximo de fichero, como operaciones del Worker que devuelven el PDF o un ZIP con las partes.
 
 ## Contexto
-- Leer cuando se detalle: [[Paridad Adobe Acrobat]], [[Librerias y arquitectura PDF]] y los ADR enlazados en el Plan.
+- `src/core/pdf/new-document.ts` → `buildNewDocument` (con formularios y destinos, PDF-121 a PDF-123).
+- `src/core/pdf/outline-copy.ts` → `readTopLevelOutline` (PDF-122).
+- `src/core/pdf/object-copier.ts` → `ObjectCopier`, `drain`; `src/core/pdf/serialize.ts` → `serializeIndirect` (para medir).
+- `src/core/export/plan.ts` → `exportBaseName`, `buildZip`, `MAX_ZIP_BYTES`.
+- `src/core/doc-ops/ops/index.ts` → `DOC_OPS`; `src/core/pdf/incremental.ts` → `openForSave`.
 
 ## Qué hay que hacer
-Por detallar.
+1. `src/core/organize/split.ts`:
+```ts
+export type SplitMode =
+  | { readonly kind: 'pages'; readonly every: number }        // entero ≥ 1
+  | { readonly kind: 'bookmarks' }
+  | { readonly kind: 'size'; readonly maxBytes: number };    // ≥ 100 000
+export const SPLIT_SIZES_MB = [1, 2, 5, 10, 25, 50, 100] as const;
+/** Grupos consecutivos de `every` páginas (el último puede ser menor). */
+export function splitByPageCount(n: number, every: number): readonly (readonly number[])[];
+/** Cortes en las páginas de las entradas de primer nivel (sin repetir, ordenadas, sin null); si la primera no es 0, el primer grupo empieza en 0. Sin cortes → un grupo con todas. */
+export function splitByBookmarks(top: readonly OutlineTop[], n: number): readonly (readonly number[])[];
+/** Medida voraz: añade páginas a la parte actual mientras el tamaño estimado no supere `maxBytes`; una página sola mayor que el máximo va en su propia parte (`oversized` la cuenta). */
+export async function splitBySize(reader: ObjectReader, maxBytes: number, signal?: AbortSignal): Promise<{ readonly groups: readonly (readonly number[])[]; readonly oversized: number }>;
+/** «informe-parte-01.pdf»… (cifras = max(2, cifras de count)). */
+export function splitPartNames(base: string, count: number): readonly string[];
+/** Páginas 0-based → «informe-paginas-3-7.pdf» si son consecutivas, «informe-paginas-3.pdf» si es una, «informe-extracto.pdf» si no. */
+export function extractFileName(base: string, pages: readonly number[]): string;
+export function splitZipName(base: string): string;   // «informe-partes.zip»
+```
+   Tamaño estimado de una parte = 1 024 bytes + suma de `serializeIndirect` de cada objeto que su `ObjectCopier` copia (un copier nuevo por parte: los recursos compartidos cuentan una vez por parte) + 20 bytes por objeto (xref).
+2. Ops en `DOC_OPS`:
+   - `'extract'`: args `{ password: string | null; pages: readonly number[]; now: string; title: string }` → `buildNewDocument` con una parte (giro 0 = el que tenga la página: usa `readPageRotations` para conservar el giro efectivo) → `ok({ bytes })`.
+   - `'split'`: args `{ password: string | null; mode: SplitMode; baseName: string; now: string }` → grupos según el modo (`bookmarks` usa `readTopLevelOutline`; sin índice → `err` con código nuevo `'split-no-bookmarks'`) → un `buildNewDocument` por grupo (progreso = páginas escritas en total) → si la suma de bytes supera `MAX_ZIP_BYTES` → `err('split-too-big')`; si no, `buildZip` con `splitPartNames` → `ok({ zip, parts, oversized })`.
+3. `src/core/errors.ts`: `'split-no-bookmarks'` → «Este PDF no tiene marcadores para dividirlo.»; `'split-too-big'` → «Las partes ocupan demasiado para guardarlas juntas: divide un rango más pequeño.».
+4. Tests `tests/unit/organize/split.test.ts` y `tests/unit/doc-ops/split-ops.test.ts` (ops con el cliente en el mismo hilo).
 
 ## Criterios de aceptación
-- [ ] Dividir `outline.pdf` por capítulos produce 4 ficheros con las páginas esperadas.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0; presupuestos de rendimiento del Plan sin regresiones.
+- [ ] `splitByPageCount(5, 2)` → `[[0,1],[2,3],[4]]`; `every` 0 o no entero → `RangeError`.
+- [ ] **Criterio original**: dividir `outline.pdf` por marcadores → ZIP con 4 PDF (`outline-parte-01.pdf` … `-04.pdf`) de 10, 10, 9 y 1 páginas (capítulos en 1, 11, 21 y el anexo en 30); cada uno pasa `qpdf --check`.
+- [ ] Dividir `basic-5.pdf` por marcadores → `split-no-bookmarks`.
+- [ ] `splitBySize` con `pages-5000.pdf` y 100 000 bytes → todas las partes, escritas, miden ≤ 100 000 bytes salvo las contadas en `oversized`, y la suma de páginas es 5 000.
+- [ ] `'extract'` de `[2,3,4,5,6]` de `outline.pdf` → 5 páginas «Página 3 de 30»…; nombre `extractFileName('outline', …)` = `outline-paginas-3-7.pdf`.
+- [ ] `'extract'` de `encrypted-aes-256.pdf` con `usuario` → PDF sin cifrar y legible.
+- [ ] Cancelar `'split'` a mitad → `cancelled`.
+- [ ] `pnpm perf`: dividir `pages-5000.pdf` cada 100 páginas (50 partes) < 5 000 ms.
+- [ ] Cobertura de `split.ts` ≥ 90 %. `pnpm lint`, `pnpm typecheck`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
-- Por detallar.
+- Interfaz ([[PDF-127-extraer-dividir-interfaz]]). «Borrar páginas tras extraer». Dividir por páginas en blanco o por texto.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [líder] detalle — 2026-10-19
+- Ficha detallada con [[ADR-0035-organizar-en-la-app]]: este núcleo + interfaz en [[PDF-127-extraer-dividir-interfaz]]. Dependencias nuevas: PDF-123 (cadena del documento nuevo) y PDF-118 (Worker). Se quita la dependencia de PDF-053.

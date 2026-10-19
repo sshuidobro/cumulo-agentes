@@ -35,7 +35,14 @@ export const msg = {
     freetext: 'Texto',
     ink: 'Dibujo',
     signature: 'Firma',
+    square: 'Rectángulo',
+    circle: 'Elipse',
+    line: 'Línea',
+    polygon: 'Polígono',
+    stamp: 'Sello',
   },
+  /** Línea con punta (`endings` con alguna punta): nombre accesible de la zona. */
+  annotationArrowKind: 'Flecha',
   /** «Resaltado de Ana»; sin autor, solo el tipo. */
   annotationName: (kind: string, author: string): string => (author.trim() === '' ? kind : `${kind} de ${author}`),
   /** Ventana emergente de comentario (PDF-033): nombre del diálogo, campo de texto y botones. */

@@ -10,7 +10,10 @@ import { openRequested, registerDocumentParticipant } from './state/document-act
 import { initServices } from './state/services';
 import { startPositionSync } from './state/position-sync';
 import { loadAppearance } from './state/appearance-actions';
-import { loadViewMode } from './state/view-actions';
+import { loadViewMode, registerViewParticipant } from './state/view-actions';
+import { registerHistoryParticipant } from './state/history';
+import { registerSearchParticipant } from './state/search-actions';
+import { registerSidebarParticipant } from './state/sidebar-actions';
 import { installCloseGuard } from './state/unsaved-guard';
 import { startDraftSync } from './state/draft-sync';
 import { startRecentSync } from './state/recent-actions';
@@ -23,6 +26,10 @@ initServices({ platform, assetBaseUrl: new URL('pdfjs/', document.baseURI).href 
 platform.onFileOpenedFromOS((file) => void openRequested(file));
 startPositionSync();
 registerDocumentParticipant();
+registerHistoryParticipant();
+registerSearchParticipant();
+registerSidebarParticipant();
+registerViewParticipant();
 startRecentSync();
 startDraftSync(createIdbDraftStore('lector-pdf'));
 loadAppearance();

@@ -33,6 +33,19 @@ describe('borrador de anotaciones: toDraft y fromDraft', () => {
     expect(draft).toMatchObject({ version: 2, fileName: 'a.pdf', savedAt: SAVED_AT });
   });
 
+  it('los cinco tipos de forma y sello pasan fromDraft(toDraft(...)) sin pérdidas', () => {
+    const shapes = [
+      newAnnotation('suite-sq', 'square'),
+      { ...newAnnotation('suite-ci', 'circle'), interior: [0, 1, 0] as const },
+      newAnnotation('suite-ln', 'line'),
+      newAnnotation('suite-pg', 'polygon'),
+      newAnnotation('suite-st', 'stamp'),
+    ];
+    const edits = editsOf(shapes, []);
+    const back = fromDraft(JSON.parse(JSON.stringify(toDraft(edits, 'a.pdf', SAVED_AT))) as unknown);
+    expect(back).toEqual(edits);
+  });
+
   it('un borrador vacío se reconstruye vacío', () => {
     const back = fromDraft(toDraft(EMPTY_EDITS, 'a.pdf', SAVED_AT));
     expect(back).not.toBeNull();

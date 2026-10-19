@@ -4,6 +4,8 @@
  */
 
 import type { FieldValue } from '../forms/model';
+import type { StampName } from './shapes';
+import { isShapeValid } from './shapes';
 
 export type Rgb = readonly [number, number, number];
 /** x1, y1, x2, y2 con x1 <= x2 e y1 <= y2. */
@@ -92,12 +94,48 @@ export interface SignatureAnnotation extends Base {
   readonly art: SignatureArt;
 }
 
+export type ShapeLineEnding = 'None' | 'OpenArrow' | 'ClosedArrow';
+
+/** Rectángulo o elipse (PDF-057): el trazo va por dentro de `rect`; `interior` es el relleno o `null`. */
+export interface BoxShapeAnnotation extends Base {
+  readonly type: 'square' | 'circle';
+  readonly width: number;
+  readonly interior: Rgb | null;
+}
+
+/** Línea o flecha: `points` = `[x1, y1, x2, y2]`; `endings` = extremos [inicio, fin]. */
+export interface LineShapeAnnotation extends Base {
+  readonly type: 'line';
+  readonly points: readonly [number, number, number, number];
+  readonly width: number;
+  readonly endings: readonly [ShapeLineEnding, ShapeLineEnding];
+  readonly interior: Rgb | null;
+}
+
+/** Polígono cerrado: `vertices` = `[x0, y0, x1, y1, ...]`. */
+export interface PolygonAnnotation extends Base {
+  readonly type: 'polygon';
+  readonly vertices: readonly number[];
+  readonly width: number;
+  readonly interior: Rgb | null;
+}
+
+/** Sello estándar; su texto y su color salen del nombre (`shapes.ts`). */
+export interface StampAnnotation extends Base {
+  readonly type: 'stamp';
+  readonly name: StampName;
+}
+
 export type Annotation =
   | TextMarkupAnnotation
   | NoteAnnotation
   | FreeTextAnnotation
   | InkAnnotation
-  | SignatureAnnotation;
+  | SignatureAnnotation
+  | BoxShapeAnnotation
+  | LineShapeAnnotation
+  | PolygonAnnotation
+  | StampAnnotation;
 export type AnnotationType = Annotation['type'];
 
 /**
@@ -150,6 +188,10 @@ export function rectFromPaths(paths: readonly (readonly number[])[], pad: number
 export function translateAnnotation(a: Annotation, dx: number, dy: number): Annotation {
   const rect = shiftRect(a.rect, dx, dy);
   switch (a.type) {
+    case 'line':
+      return { ...a, rect, points: [a.points[0] + dx, a.points[1] + dy, a.points[2] + dx, a.points[3] + dy] };
+    case 'polygon':
+      return { ...a, rect, vertices: a.vertices.map((v, i) => (i % 2 === 0 ? v + dx : v + dy)) };
     case 'highlight':
     case 'underline':
     case 'strikeout':
@@ -163,6 +205,9 @@ export function translateAnnotation(a: Annotation, dx: number, dy: number): Anno
     case 'note':
     case 'freetext':
     case 'signature':
+    case 'square':
+    case 'circle':
+    case 'stamp':
       return { ...a, rect };
   }
 }
@@ -188,6 +233,12 @@ export function isAnnotation(v: unknown): v is Annotation {
       return isArrayOf(v.paths, isPath) && hasItems(v.paths) && isPositive(v.width);
     case 'signature':
       return isSignatureArt(v.art);
+    case 'square':
+    case 'circle':
+    case 'line':
+    case 'polygon':
+    case 'stamp':
+      return isShapeValid(v);
     default:
       return false;
   }
