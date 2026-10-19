@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-090
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089]
 intentos: 1
 skills: [pruebas-calidad, calidad-profesional]
@@ -109,3 +109,19 @@ Decisiones (no se sube ningún umbral ni presupuesto):
 6. Criterio: 5/5 en verde en el paso 1 y luego las dos baterías ×3 del punto 5 de la ficha con código 0.
 
 Luego repetir lint, typecheck, test, coverage, perf, build y las dos baterías ×3; actualizar la tabla de medidas. `intentos` se mantiene (el bloqueo no era del programador).
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/ui/App.tsx` y `apps/lector-pdf/src/ui/signature/SignatureMenu.tsx` (diálogos de Propiedades, Imprimir y Crear firma cargados con `lazy` + `Suspense`, según ADR-0027). `tests/e2e/ink.spec.ts` se ha tocado solo para diagnosticar y está restaurado (sin cambios en git). Esta ficha.
+- Qué he hecho: (A) diálogos diferidos, arranque ya en 486 857 bytes (≤ 500 000, pero **por encima de los 485 000 pedidos**, no sigo: escalo). (B) diagnóstico de `ink.spec.ts:141` con 10 repeticiones (ver abajo): no es regresión en `AnnotationLayer` al soltar; no he aplicado el arreglo del paso 3 porque la long task cae durante el trazo (paso 4: escalo).
+- Comandos ejecutados y resultado:
+  - `pnpm lint` → 0. `pnpm --filter lector-pdf typecheck` → 0.
+  - `pnpm coverage` → 0 (197 ficheros, 2 374 tests; líneas 98,65 %).
+  - `pnpm --filter lector-pdf build` → 0; `Arranque: 486857 bytes en 11 ficheros JS (máximo 500000)`.
+  - `e2e --project=chromium` sobre `print`, `properties`, `signature`, `iteration3-flow`, `iteration3-a11y` → 0 (32 passed; los diálogos diferidos funcionan en navegador).
+  - `e2e --project=chromium-perf --no-deps --repeat-each=5 -g "2 000 eventos"` (×3 lanzamientos, sin cambios de código entre ellos): 4/5 y 5/5 y 5/5 en el primer, segundo y tercero, con 2 fallos en 15 repeticiones en total. No he ejecutado las dos baterías ×3 completas: la prueba no es estable todavía.
+  - Diagnóstico (`reposo-cpu` 0–2 %, `cpu-durante` 28–29 % de 4 núcleos en **todas** las repeticiones, falladas o no; no es la máquina). Fallo con timestamps (run 1, repetición 1): long task de 51 ms @ 33 430 ms; el trazo va de `mouse.down` ≈ 850 ms a `mouse.up` ≈ 34 250–34 600 ms: cae **durante el trazo**. En el otro fallo (run 2, repetición 4) la long task de 62 ms cae dentro de la ventana del trazo, pero no registré su instante. Las long tasks de 51–52 ms al inicio (≈ 75 ms) no entran en la ventana medida.
+- Medidas: no se han repetido las medidas (a)–(c) ni los presupuestos del Plan en esta ronda; la tabla de la ronda 1 sigue vigente para el código anterior a la ronda 2.
+- Dudas o cosas que no he podido hacer (para el líder):
+  1. **Bundle (A).** 486 857 > 485 000. Los 11 ficheros del arranque: `index` 330 477; `PrintDialog.module` 62 534 (estático: lo importa `PrintProgress.tsx` desde `PrintDialog.module.css`, sin verificar qué código arrastra); `engine` 53 050; `Dialog` 28 314; `ink-preview` 3 589; `notice` 3 463; `preload-helper` 1 534; `prefs` 1 393; `properties-store` 1 390; `rolldown-runtime` 599; `logger` 514. Los 10 módulos más grandes del `index` (por fuente): `react-dom` (625 168 caracteres de fuente), `AnnotationLayer.tsx` 28 536, `Viewer.tsx` 16 800, `CommentsPanel.tsx` 15 734, `FormLayer.tsx` 14 859, `comment-list.ts` 11 210, `layout.ts` 10 891, `CommentToolbar.tsx` 10 377, `scheduler` 10 181, `MainToolbar.tsx` 8 206. Decidir: recortar el arranque (p. ej. el 62 KB de `PrintDialog.module`) o subir el margen con ADR.
+  2. **Ink (B), paso 4.** La long task cae durante el trazo, no al soltar. Escalo: decidir si se aísla el coste del trazo (ADR-0018 sin ficha) o se acepta el umbral de 100 ms de la iteración con ADR. No he tocado `AnnotationLayer.tsx` ni el umbral. La traza de la repetición fallida no se ha conservado (las ejecuciones siguientes borraron `test-results/`).
+  3. Por lo anterior, la ficha sigue sin cumplir: `chromium-perf ×3` y `build` con el margen pedido. Dejo `en-revision` y no la paso a `hecha`.

@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react';
+import { lazy, Suspense, type ChangeEvent } from 'react';
 import { msg } from './messages';
 import { useShortcuts } from './use-shortcuts';
 import { useTheme } from './use-theme';
@@ -13,9 +13,7 @@ import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
-import { PropertiesDialog } from './properties/PropertiesDialog';
 import { PrintContainer } from './print/PrintContainer';
-import { PrintDialog } from './print/PrintDialog';
 import { PrintProgress } from './print/PrintProgress';
 import './print/print.css';
 import { Sidebar } from './sidebar/Sidebar';
@@ -32,12 +30,16 @@ import { firstPage, lastPage, nextPage, prevPage } from '../state/navigation';
 import { goBack, goForward } from '../state/history';
 import { dismissNotice } from '../state/notice';
 import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/view-actions';
-import { openProperties } from '../state/properties-store';
-import { openPrintDialog } from '../state/print-actions';
+import { openProperties, usePropertiesDialog } from '../state/properties-store';
+import { openPrintDialog, usePrintDialog } from '../state/print-actions';
 import { useViewer } from '../state/viewer-store';
 import { focusPageField } from './toolbar/PageNavigator';
 import { selectPageText } from './viewer/text-selection';
 import styles from './App.module.css';
+
+// Diálogos diferidos (ADR-0027): su código no entra en el arranque y se carga al abrirlos.
+const PropertiesDialog = lazy(() => import('./properties/PropertiesDialog').then((m) => ({ default: m.PropertiesDialog })));
+const PrintDialog = lazy(() => import('./print/PrintDialog').then((m) => ({ default: m.PrintDialog })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -94,6 +96,8 @@ export function App() {
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
   const notice = useViewer((s) => s.notice);
   const sidebar = useViewer((s) => s.sidebar);
+  const propertiesOpen = usePropertiesDialog((s) => s.open);
+  const printOpen = usePrintDialog((s) => s.open);
 
   // Escape solo se consume si hay una herramienta de anotación activa.
   useShortcuts({
@@ -135,8 +139,16 @@ export function App() {
       </main>
       <Notice notice={notice} onExpire={dismissNotice} />
       <ChoiceDialog />
-      <PropertiesDialog />
-      <PrintDialog />
+      {propertiesOpen && (
+        <Suspense fallback={null}>
+          <PropertiesDialog />
+        </Suspense>
+      )}
+      {printOpen && (
+        <Suspense fallback={null}>
+          <PrintDialog />
+        </Suspense>
+      )}
       <PrintProgress />
       <PrintContainer />
       {platform.kind === 'web' && (

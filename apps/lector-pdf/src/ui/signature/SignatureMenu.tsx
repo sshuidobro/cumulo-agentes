@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { SignatureArt } from '../../core/annotations/model';
 import type { StoredSignature } from '../../core/signature/stored';
 import { deleteSignature, ensureSignaturesLoaded, useSignatures } from '../../state/signature-actions';
 import { MenuButton, type MenuEntry } from '../kit/MenuButton';
 import { IconSignature } from '../icons';
 import { signatureMsg } from '../messages-signature';
-import { SignatureDialog } from './SignatureDialog';
 import { signatureThumbnailUrl } from './thumbnail';
+
+// Diálogo diferido (ADR-0027): solo se descarga al pulsar «Crear firma…».
+const SignatureDialog = lazy(() => import('./SignatureDialog').then((m) => ({ default: m.SignatureDialog })));
 
 export interface SignatureMenuProps {
   /** Firma elegida: una guardada, o la recién creada en «Crear firma…». */
@@ -31,14 +33,18 @@ export function SignatureMenu({ onPick, disabled = false }: SignatureMenuProps) 
       <MenuButton label={signatureMsg.menuLabel} entries={entries} disabled={disabled}>
         <IconSignature />
       </MenuButton>
-      <SignatureDialog
-        open={creating}
-        onDone={(art) => {
-          setCreating(false);
-          onPick(art);
-        }}
-        onCancel={() => { setCreating(false); }}
-      />
+      {creating && (
+        <Suspense fallback={null}>
+          <SignatureDialog
+            open={creating}
+            onDone={(art) => {
+              setCreating(false);
+              onPick(art);
+            }}
+            onCancel={() => { setCreating(false); }}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
