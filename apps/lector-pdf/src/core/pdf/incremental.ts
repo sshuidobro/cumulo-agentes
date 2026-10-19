@@ -15,6 +15,9 @@ import { fromBase64 } from '../base64';
 import { pdfError } from '../errors';
 import type { FieldChange } from '../forms/diff';
 import { planFieldWrites } from '../forms/to-pdf';
+import { encryptValue } from './encrypt-value';
+import type { RandomBytes } from './crypt-rules';
+import type { SecurityHandler } from './crypto';
 import { jpegImageObject, rgbaImageObjects } from './image';
 import {
   bytesString,
@@ -42,6 +45,8 @@ export interface IncrementalInput {
   readonly now: string;
   /** Valores de formulario cambiados (PDF-042). Por defecto, ninguno. */
   readonly fields?: readonly FieldChange[];
+  /** IV de AES para cifrar los objetos. Por defecto, el del lector; con uno fijo el delta es determinista. */
+  readonly random?: RandomBytes;
 }
 
 export interface IncrementalOutput {
@@ -88,7 +93,8 @@ const ID_BYTES = 16;
 
 /**
  * Escribe el incremento. Diff vacío → `delta` vacío. Cualquier fallo se devuelve como `Result`:
- * cifrado → `save-encrypted`; cualquier otra lectura o estructura dañada → `save-unreadable`.
+ * contraseña errónea → `save-wrong-password`; cifrado no soportado → `save-encryption-unsupported`;
+ * cualquier otra lectura o estructura dañada → `save-unreadable`.
  */
 export async function buildIncrementalUpdate(input: IncrementalInput): Promise<Result<IncrementalOutput>> {
   try {
@@ -99,17 +105,21 @@ export async function buildIncrementalUpdate(input: IncrementalInput): Promise<R
 }
 
 function toSaveError(error: unknown): AppError {
-  if (error instanceof PdfSyntaxError && error.message === 'encrypted') return pdfError('save-encrypted', error);
+  if (error instanceof PdfSyntaxError && error.message === 'wrong-password') return pdfError('save-wrong-password', error);
+  if (error instanceof PdfSyntaxError && error.message === 'encryption-unsupported') {
+    return pdfError('save-encryption-unsupported', error);
+  }
   return pdfError('save-unreadable', error);
 }
 
 /**
  * Abre el lector para guardar: única forma en que la app abre un lector para escribir (PDF-037).
- * Nunca lanza: cifrado → `save-encrypted`; cualquier otro fallo → `save-unreadable`.
+ * `password` abre un PDF cifrado (por defecto, la vacía). Nunca lanza: los fallos vuelven como `Result`
+ * (ver `buildIncrementalUpdate`).
  */
-export async function openForSave(source: ByteSource): Promise<Result<ObjectReader>> {
+export async function openForSave(source: ByteSource, password?: string): Promise<Result<ObjectReader>> {
   try {
-    return ok(await ObjectReader.open(source));
+    return ok(await ObjectReader.open(source, password === undefined ? {} : { password }));
   } catch (error: unknown) {
     return err(toSaveError(error));
   }
@@ -123,7 +133,6 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
   }
 
   const trailer = reader.xref.trailer;
-  if (dictGet(trailer, 'Encrypt') !== undefined) throw new PdfSyntaxError('encrypted', 0);
   const root = dictGet(trailer, 'Root');
   if (!isRefValue(root)) throw unreadable('Root');
 
@@ -168,7 +177,7 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
   for (const m of modified) written.set(m.a.id, m.origin);
 
   // 3. Escritura. El delta empieza con un salto de línea si el original no termina en uno.
-  const writer = new DeltaWriter(source.size);
+  const writer = new DeltaWriter(source.size, reader.security, input.random ?? reader.random);
   if (source.size > 0) {
     const [last = LF] = await source.read(source.size - 1, source.size);
     if (last !== LF && last !== CR) writer.write(Uint8Array.of(LF));
@@ -327,6 +336,7 @@ function trailerDict(reader: ObjectReader, root: PdfRef, id: readonly [PdfString
   const entries: Record<string, PdfValue> = { Size: size, Root: root };
   const info = dictGet(reader.xref.trailer, 'Info');
   if (info !== undefined) entries.Info = info;
+  if (reader.encryptRef !== null) entries.Encrypt = reader.encryptRef;
   entries.ID = [id[0], id[1]];
   entries.Prev = reader.xref.lastXrefOffset;
   return entries;
@@ -415,15 +425,22 @@ function streamRows(groups: readonly Group[]): Uint8Array {
   return out;
 }
 
-/** Acumula el delta y registra el offset absoluto (`base` + bytes escritos) de cada objeto. */
+/**
+ * Acumula el delta y registra el offset absoluto (`base` + bytes escritos) de cada objeto. Con
+ * manejador de seguridad, cifra cada objeto que escribe con `object` (la xref de flujo se escribe aparte).
+ */
 class DeltaWriter {
   readonly offsets = new Map<number, XrefRow>();
   private readonly base: number;
+  private readonly security: SecurityHandler | null;
+  private readonly random: RandomBytes;
   private readonly parts: Uint8Array[] = [];
   private length = 0;
 
-  constructor(base: number) {
+  constructor(base: number, security: SecurityHandler | null, random: RandomBytes) {
     this.base = base;
+    this.security = security;
+    this.random = random;
   }
 
   /** Offset absoluto en el fichero resultante del próximo byte. */
@@ -437,8 +454,9 @@ class DeltaWriter {
   }
 
   object(num: number, gen: number, value: PdfValue): void {
+    const out = this.security === null ? value : encryptValue(this.security, num, gen, value, this.random);
     this.offsets.set(num, { offset: this.offset, gen });
-    this.write(serializeIndirect(num, gen, value));
+    this.write(serializeIndirect(num, gen, out));
   }
 
   toBytes(): Uint8Array {

@@ -8,7 +8,8 @@ export type PdfErrorCode =
   | 'password-incorrect'
   | 'io'
   | 'cancelled'
-  | 'save-encrypted'
+  | 'save-wrong-password'
+  | 'save-encryption-unsupported'
   | 'save-unreadable'
   | 'invalid-image';
 
@@ -20,7 +21,8 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'password-incorrect': 'La contraseña no es correcta.',
   'io': 'No se ha podido leer el fichero. Comprueba que sigue en su sitio.',
   'cancelled': 'Apertura cancelada.',
-  'save-encrypted': 'No se pueden guardar anotaciones en este PDF porque está cifrado. Llegará en una próxima versión.',
+  'save-wrong-password': 'No se pueden guardar los cambios: la contraseña no es correcta.',
+  'save-encryption-unsupported': 'Este PDF usa un cifrado que no se puede modificar.',
   'save-unreadable': 'No se pueden guardar los cambios: la estructura interna del PDF está dañada.',
   'invalid-image': 'La imagen no es válida o no está en un formato admitido (PNG o JPEG).',
 };

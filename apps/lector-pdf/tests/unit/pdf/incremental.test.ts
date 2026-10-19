@@ -10,7 +10,7 @@ import {
 } from '../../../src/core/annotations';
 import { buildIncrementalUpdate, openForSave, type IncrementalOutput } from '../../../src/core/pdf/incremental';
 import { ObjectReader } from '../../../src/core/pdf/object-reader';
-import { dict, dictGet, name, withEntries, type PdfRef } from '../../../src/core/pdf/objects';
+import { dictGet, type PdfRef } from '../../../src/core/pdf/objects';
 import { loadPdf, readPageAnnotations, type LoadedPdf } from '../../../src/engine';
 import { appendIncrementalUpdate } from '../../fixtures/pdf-builder';
 import { FIXTURES_DIR } from '../../fixtures/paths';
@@ -303,21 +303,6 @@ describe('buildIncrementalUpdate · annotated.pdf (borrar, modificar, añadir)',
   });
 });
 
-describe('buildIncrementalUpdate · errores', () => {
-  it('trailer con /Encrypt → save-encrypted, sin excepción', async () => {
-    const data = fixtureBytes('basic-5.pdf');
-    const reader = await ObjectReader.open(memorySource(data));
-    // El lector rechaza cifrados al abrir; aquí se simula el trailer cifrado sobre un lector válido.
-    Object.defineProperty(reader, 'xref', {
-      value: { ...reader.xref, trailer: withEntries(reader.xref.trailer, { Encrypt: dict({ Filter: name('Standard') }) }) },
-    });
-    const source = memorySource(data);
-    const result = await buildIncrementalUpdate({ source, reader, diff: diffOf([], [newAnnotation('s', 'highlight')]), now: NOW });
-    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-encrypted' }) });
-  });
-
-});
-
 describe('openForSave', () => {
   it('corrupt-bad-startxref.pdf → save-unreadable, sin excepción', async () => {
     const result = await openForSave(memorySource(fixtureBytes('corrupt-bad-startxref.pdf')));
@@ -329,14 +314,14 @@ describe('openForSave', () => {
     expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-unreadable' }) });
   });
 
-  it('un PDF cifrado de verdad (trailer /Encrypt) → save-encrypted, sin excepción', async () => {
+  it('trailer /Encrypt que no es un manejador estándar → save-encryption-unsupported, sin excepción', async () => {
     const encrypted = appendIncrementalUpdate(
       fixtureBytes('basic-5.pdf'),
       new Map([[1, '<< /Type /Catalog /Pages 2 0 R >>']]),
       '/Encrypt 9 0 R',
     );
     const result = await openForSave(memorySource(encrypted));
-    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-encrypted' }) });
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-encryption-unsupported' }) });
   });
 
   it('basic-5.pdf → ok, con la xref leída', async () => {

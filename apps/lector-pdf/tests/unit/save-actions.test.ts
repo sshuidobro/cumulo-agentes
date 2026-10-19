@@ -88,14 +88,14 @@ describe('save: guardar en sitio', () => {
     expect(h.saveAs).not.toHaveBeenCalled();
   });
 
-  it('PDF cifrado → aviso de save-encrypted y la plataforma no se llama', async () => {
+  it('PDF con /Encrypt que no es un manejador estándar → aviso de save-encryption-unsupported y la plataforma no se llama', async () => {
     const source = replaceableSource(h.original);
     await openFixture(source.source);
     source.replace(appendIncrementalUpdate(h.original, new Map([[1, '<< /Type /Catalog /Pages 2 0 R >>']]), '/Encrypt 9 0 R'));
     addHighlight();
 
     expect(await save()).toBe('failed');
-    expect(useViewer.getState().notice?.text).toBe(PDF_ERROR_MESSAGES['save-encrypted']);
+    expect(useViewer.getState().notice?.text).toBe(PDF_ERROR_MESSAGES['save-encryption-unsupported']);
     expect(h.save).not.toHaveBeenCalled();
   });
 

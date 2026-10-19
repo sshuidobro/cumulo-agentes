@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-093
 titulo: Lector de objetos y escritor incremental con cifrado
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-092, PDF-090]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, seguridad, formato, core]
 ---
 
@@ -50,3 +50,15 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0022-pdf
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/crypt-rules.ts` (nuevo), `apps/lector-pdf/src/core/pdf/encrypt-value.ts` (nuevo), `apps/lector-pdf/src/core/pdf/object-reader.ts`, `apps/lector-pdf/src/core/pdf/incremental.ts`, `apps/lector-pdf/src/core/pdf/xref.ts`, `apps/lector-pdf/src/core/errors.ts`, `apps/lector-pdf/tests/unit/incremental-encrypted.test.ts` (nuevo, 27 tests), `apps/lector-pdf/tests/unit/pdf/incremental.test.ts`, `apps/lector-pdf/tests/unit/pdf/xref.test.ts`, `apps/lector-pdf/tests/unit/save-actions.test.ts`.
+- Qué he hecho: `ObjectReader.open(src, { password, random })` abre `/Encrypt` (sin descifrarlo), expone `security`, `encryptRef` y `random`, y descifra cadenas y flujos de primer nivel al leer. `encryptValue` (en `encrypt-value.ts`) y `decryptValue` comparten las reglas de `crypt-rules.ts`. `openForSave(source, password?)` y `buildIncrementalUpdate` cifran el delta y conservan `/Encrypt` y `/ID[0]` en el trailer. Los errores nuevos son `save-wrong-password` y `save-encryption-unsupported`; se elimina `save-encrypted`. `readXref` ya no rechaza `/Encrypt`.
+- Comandos ejecutados y resultado: `pnpm typecheck` OK. `pnpm exec eslint` sobre los ficheros tocados: sin errores ni avisos. Suite completa con cobertura (`vitest run --coverage`): 172 ficheros, 2104 tests en verde. Cobertura: `crypt-rules`, `encrypt-value` y `object-reader` 100 %, `incremental` 99,06 %, `xref` 96,5 %. `pnpm perf`: 18 ficheros, 29 tests en verde. `qpdf --check` (con `--password=usuario` o sin contraseña) da 0 en los 7 PDF cifrados. Regresión: el delta de `basic-5.pdf` con un resaltado y `now` fijo es byte a byte el de HEAD (`cmp` contra un worktree de HEAD, sha256 `9fe763…ed86`, test incluido).
+- Dudas o cosas que no he podido hacer:
+  1. `pnpm lint` de la raíz falla por `apps/lector-pdf/dist-recientes/` (carpeta sin seguimiento, ajena a esta ficha; unos 20 ficheros con `no-undef`). No la he tocado. Los ficheros de esta ficha pasan el lint.
+  2. El commit incluye solo mis cambios de `errors.ts`. Ese fichero tiene además un cambio sin commit de otro programador (mensaje de `password-required`), que he dejado fuera.
+  3. Decisiones que tomé donde la ficha no decía nada: `/Encrypt` directo (no indirecto) en el trailer → `encryption-unsupported`. `/Encrypt` que no es un diccionario Standard válido → `save-encryption-unsupported`. Texto de `save-wrong-password`: «No se pueden guardar los cambios: la contraseña no es correcta.». La ficha pedía descifrar en `objectStream`, pero no hace falta: el flujo del objeto comprimido ya llega descifrado desde `readAt`, porque es de primer nivel.
+  4. Tests cambiados (no saltados): se elimina «trailer con /Encrypt → save-encrypted» de `incremental.test.ts` (el comportamiento que probaba ya no existe; lo cubre el nuevo fichero). Los de `xref`, `save-actions` e `incremental` pasan a los códigos nuevos.
+  5. Para PDF-047: `buildCurrentDelta` (`src/state/save-actions.ts`) sigue llamando a `openForSave(file.source)` sin contraseña. Un PDF de usuario guardado desde la app devolverá `save-wrong-password` hasta que se pase la contraseña abierta. Lo dejo fuera de alcance según la ficha.
+  6. No he ejecutado los E2E.

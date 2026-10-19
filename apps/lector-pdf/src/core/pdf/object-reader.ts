@@ -5,12 +5,21 @@
  */
 import type { ByteSource } from '@suite/platform';
 import { BlockCache } from './block-cache';
+import { openSecurity, type SecurityHandler } from './crypto';
+import { decryptValue, secureRandom, type RandomBytes } from './crypt-rules';
 import { decodeStreamData } from './filters';
 import { PdfLexer, type Token } from './lexer';
 import { Lru } from './lru';
 import { dictGet, PdfSyntaxError, ref, type PdfDict, type PdfRef, type PdfStream, type PdfValue } from './objects';
 import { parseIndirectObject, parseValue, type LengthResolver } from './parser';
 import { readXref, type XrefInfo } from './xref';
+
+export interface ObjectReaderOptions {
+  /** Contraseña (de usuario o de propietario). Por defecto, la vacía. */
+  readonly password?: string;
+  /** Generador de IV para escribir. Por defecto, `crypto.getRandomValues`. */
+  readonly random?: RandomBytes;
+}
 
 const OBJECT_CACHE_SIZE = 2000;
 const OBJECT_STREAM_CACHE_SIZE = 16;
@@ -32,20 +41,52 @@ interface ObjectStreamIndex {
 
 export class ObjectReader {
   readonly xref: XrefInfo;
+  /** Referencia del diccionario `/Encrypt` del trailer, o `null` si el fichero no está cifrado. */
+  readonly encryptRef: PdfRef | null;
+  /** Generador de IV que usa la escritura de este fichero. */
+  readonly random: RandomBytes;
   private readonly cache: BlockCache;
   private readonly objects = new Lru<number, PdfValue>(OBJECT_CACHE_SIZE);
   private readonly objectStreams = new Lru<number, ObjectStreamIndex>(OBJECT_STREAM_CACHE_SIZE);
   private pagesPromise: Promise<readonly PdfRef[]> | null = null;
+  private securityHandler: SecurityHandler | null = null;
 
-  private constructor(cache: BlockCache, xref: XrefInfo) {
+  private constructor(cache: BlockCache, xref: XrefInfo, encryptRef: PdfRef | null, random: RandomBytes) {
     this.cache = cache;
     this.xref = xref;
+    this.encryptRef = encryptRef;
+    this.random = random;
   }
 
-  /** Lee la xref (solo su tabla) y prepara la caché de bloques sobre la fuente. */
-  static async open(src: ByteSource): Promise<ObjectReader> {
+  /**
+   * Lee la xref (solo su tabla) y prepara la caché de bloques sobre la fuente. Si el trailer tiene
+   * `/Encrypt`, abre el manejador de seguridad con `opts.password`: `PdfSyntaxError('wrong-password')`
+   * si la contraseña no vale y `PdfSyntaxError('encryption-unsupported')` si el cifrado no se soporta.
+   */
+  static async open(src: ByteSource, opts: ObjectReaderOptions = {}): Promise<ObjectReader> {
     const xref = await readXref(src);
-    return new ObjectReader(new BlockCache(src), xref);
+    const random = opts.random ?? secureRandom;
+    const encrypt = dictGet(xref.trailer, 'Encrypt');
+    if (encrypt === undefined) return new ObjectReader(new BlockCache(src), xref, null, random);
+    // /Encrypt debe ser una referencia indirecta (ISO 32000-1 §7.5.5); una directa no se soporta.
+    if (!isRef(encrypt)) throw new PdfSyntaxError('encryption-unsupported', 0);
+
+    const reader = new ObjectReader(new BlockCache(src), xref, encrypt, random);
+    // Aún sin manejador, el diccionario /Encrypt se lee tal cual (nunca se cifra).
+    const encDict = await reader.getDict(encrypt);
+    if (encDict === null) throw new PdfSyntaxError('estructura no legible: /Encrypt', 0);
+    const id0 = firstIdBytes(xref.trailer);
+    const opened = openSecurity(encDict, id0, opts.password ?? '');
+    if (!opened.ok) {
+      throw new PdfSyntaxError(opened.error === 'wrong-password' ? 'wrong-password' : 'encryption-unsupported', 0);
+    }
+    reader.securityHandler = opened.value;
+    return reader;
+  }
+
+  /** Manejador de seguridad si el fichero está cifrado y la contraseña es válida; si no, `null`. */
+  get security(): SecurityHandler | null {
+    return this.securityHandler;
   }
 
   /** Objeto `r`. Libre, inexistente o con otro `gen` → `null`. */
@@ -223,7 +264,11 @@ export class ObjectReader {
         resolveLength = () => n;
       }
     }
-    return parseIndirectObject(bytes, 0, resolveLength).value;
+    const value = parseIndirectObject(bytes, 0, resolveLength).value;
+    // El diccionario /Encrypt nunca está cifrado; el resto de objetos de primer nivel sí (ISO 32000-2 §7.6.2).
+    const h = this.securityHandler;
+    if (h === null || r.num === this.encryptRef?.num) return value;
+    return decryptValue(h, r.num, r.gen, value);
   }
 
   private async readCompressed(objStmNum: number, index: number, num: number, chain: readonly number[]): Promise<PdfValue> {
@@ -273,6 +318,15 @@ export class ObjectReader {
       length *= 2;
     }
   }
+}
+
+/** Primer identificador de `/ID` del trailer como bytes; vacío si falta. */
+function firstIdBytes(trailer: PdfDict): Uint8Array {
+  const id = dictGet(trailer, 'ID');
+  const first = Array.isArray(id) ? id[0] : undefined;
+  return typeof first === 'object' && first !== null && !Array.isArray(first) && 'kind' in first && first.kind === 'string'
+    ? first.bytes
+    : new Uint8Array(0);
 }
 
 function pageNotFound(): PdfSyntaxError {
