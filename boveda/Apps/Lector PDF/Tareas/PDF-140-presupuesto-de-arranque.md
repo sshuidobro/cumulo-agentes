@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-140
 titulo: Devolver el JavaScript de arranque por debajo de 500 KB
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react]
@@ -47,3 +47,11 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Relacionadas: [[PDF-090-e2e-iteracion-3]]
 - Dudas o cosas que no he podido hacer: no he medido cobertura (el directorio `coverage/` estaba bloqueado por otro proceso). El fallo de timeout de `split.test.ts` es de carga de la máquina; conviene volver a lanzarlo en el ciclo del tester. Otros cambios sin commit en `core/doc-ops/ops/index.ts`, `core/errors.ts` y `core/organize/index.ts` son de otros agentes; no los he tocado ni incluido.
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 - Build: arranque 483 604 bytes (<= 500 000). Lint y typecheck limpios. Vitest: 3271 de 3271 pasan (el timeout de split.test.ts no se reproduce). Imports diferidos correctos y toSaveError movido a modulo hoja. Los E2E los reejecuta el tester.
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Build y arranque ≤ 500 000 | OK | `pnpm --filter lector-pdf build`: 483 604 bytes en 19 ficheros |
+| Funciones diferidas funcionan | OK | E2E encrypted-save, save-qa, permissions, print, password, signature, forms, annotations: 58 pasan |
+| Lint, typecheck, tests | OK | lint y typecheck limpios; vitest 3271/3271 |
+
+Dos E2E fallan (annotations-flow y annotations-foreign corpus veraPDF): al reabrir el guardado no se abre el panel «Comentarios» (F4). Fallan igual en un worktree de HEAD sin los cambios de PDF-140, así que no son regresión de esta ficha; conviene una ficha aparte.
