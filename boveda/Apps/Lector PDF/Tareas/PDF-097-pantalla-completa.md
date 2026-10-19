@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-097
 titulo: Modo pantalla completa (lectura y presentación)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-050, COM-017]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
