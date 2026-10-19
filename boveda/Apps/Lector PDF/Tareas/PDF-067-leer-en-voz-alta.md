@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-067
 titulo: Leer en voz alta - frases, voces y motor de lectura
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-022]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -136,3 +136,6 @@ Nota: el fallo de `fixtures.test.ts` y el lint de `diff.test.ts` son de otras fi
   - `pnpm coverage` (raíz): 212 ficheros, 2583 tests OK (el primer intento chocó con el lock de cobertura de otro agente; el segundo fue limpio). Cobertura global: lines 98,72 %.
   - Cobertura por fichero (la global solo mide `core/`): `src/state/read-aloud-actions.ts` 94,02 % líneas (≥ 90 %); `src/state/speech-port.ts` 90,32 % líneas (sin umbral en la ficha; sin cubrir 79-85, la rama de espera de `waitForVoices`).
 - Dudas o cosas que no he podido hacer: el commit incluye esta ficha completa, con la línea «> 2026-10-19 (líder)…» y el cambio de estado que estaban sin commit. No he tocado `diff.test.ts` ni `fixtures.test.ts` (otras fichas).
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+ESLint y typecheck limpios; 57 tests de la ficha OK. `speech-port.test.ts` cubre privacidad (voz no local sin hablar), `voiceschanged` y tope de 1 500 ms, mapeo y `onend`/`onerror`. La pausa durante la lectura adelantada (`advancing`) es correcta y está probada. Sin problemas pendientes.
