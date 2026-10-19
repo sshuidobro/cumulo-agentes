@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-116
 titulo: Respuestas y estados en el panel de comentarios
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-109]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -58,3 +58,7 @@ El panel de comentarios muestra bajo cada comentario sus respuestas (sangradas) 
   - Una respuesta de respuesta, al activarla, abre la ventana del comentario raíz del hilo. `replyCount` cuenta todas las respuestas del hilo, de todos los niveles.
   - El filtro de autor solo afecta a los comentarios, no a las respuestas. Supr sobre una fila de respuesta no borra nada (el borrado sigue en la ventana del comentario).
   - Pido revisar si el e2e de los cuatro tests previos debe abrirse como incidencia aparte.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Verificado: lint y typecheck OK. Los 4 E2E (annotations-flow:94, annotations-foreign:72, notes:91, outline:64) fallan en HEAD y también en una copia de `HEAD~1` sin los cambios (annotations-foreign:72 pasó una vez en la copia, pero falló en 2 repeticiones posteriores: intermitente, en `openCommentsPanel`/pestaña «Comentarios» no encontrada). Son previos; no atribuibles a PDF-116.
+2. Recomendación al líder: abrir una ficha aparte para estos 4 E2E; el criterio «e2e con código 0» queda condicionado a ella.
