@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: bloqueada
+estado: cambios-pedidos
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -25,7 +25,7 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 - Patrón ARIA «Tabs» de WAI-ARIA APG (activación manual: las flechas mueven el foco, Intro/Espacio activan).
 
 ## Qué hay que hacer
-1. `src/ui/tabs/TabBar.tsx` + `TabBar.module.css`: se muestra solo con **2 o más** pestañas. `role="tablist"` con `aria-label` «Documentos abiertos»; cada pestaña es un `role="tab"` con `aria-selected`, `aria-controls` al visor, `title` = nombre completo, texto truncado con elipsis (ancho máx. 220 px, mín. 120 px; si no caben, la barra hace scroll horizontal y la activa se mantiene visible con `scrollIntoView({ inline: 'nearest' })`), «• » delante si `dirty`, indicador de carga si `status === 'loading'` e icono de aviso si `'error'`. Botón × (`aria-label` «Cerrar “<nombre>”», `tabIndex={-1}`) a la derecha. Clic central (botón 1) cierra. *Roving tabindex*: solo la activa tiene `tabIndex=0`; ←/→ mueven el foco, Inicio/Fin a la primera/última, Intro/Espacio activan, Supr cierra la enfocada.
+1. `src/ui/tabs/TabBar.tsx` + `TabBar.module.css`: se muestra solo con **2 o más** pestañas. `role="tablist"` con `aria-label` «Documentos abiertos»; cada pestaña es un `role="tab"` con `aria-selected`, `aria-controls` al visor, `title` = nombre completo, texto truncado con elipsis (ancho máx. 220 px, mín. 120 px; si no caben, la barra hace scroll horizontal y la activa se mantiene visible con `scrollIntoView({ inline: 'nearest' })`), «• » delante si `dirty`, indicador de carga si `status === 'loading'` e icono de aviso si `'error'`. Botón × a la derecha, **fuera del árbol de accesibilidad** (decisión del líder, ronda 3): `aria-hidden="true"`, `tabIndex={-1}`, `title` «Cerrar “<nombre>”» (tooltip para ratón); la pestaña lleva `aria-keyshortcuts="Delete"` para anunciar que Supr la cierra. Clic central (botón 1) cierra. *Roving tabindex*: solo la activa tiene `tabIndex=0`; ←/→ mueven el foco, Inicio/Fin a la primera/última, Intro/Espacio activan, Supr cierra la enfocada.
 2. `App.tsx`: `<TabBar />` encima de `MainToolbar` (oculta en pantalla completa, `useFullscreen.on`, PDF-097); el visor y el panel se montan una vez (cambian de contenido al cambiar `useViewer`).
 3. Atajos en `shortcuts.ts` (sintaxis de `@suite/shared`: solo existe `Mod`, que es Ctrl fuera de Mac): `next-tab: ['Mod+Tab']`, `prev-tab: ['Mod+Shift+Tab']`, `close-tab: ['Mod+W', 'Mod+F4']`, con descripciones `tabsMsg.nextTab` «Documento siguiente», `tabsMsg.prevTab` «Documento anterior», `tabsMsg.closeTab` «Cerrar documento». Con una sola pestaña, `close-tab` cierra el documento. Chrome no deja a una página capturar Ctrl+Tab ni Ctrl+W: los atajos funcionan en la app de escritorio (y en Playwright); en el navegador se usa la barra con ratón o teclado. Anotarlo para el Manual en el Registro.
 4. Bloqueos: con `isSaving()`, con un diálogo modal abierto (`useChoice`, contraseña, impresión) o mientras se dibuja la firma, cambiar o cerrar pestaña no hace nada.
@@ -42,6 +42,7 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 - [ ] Rendimiento (`tabs-performance.spec.ts`, fixtures de `perf-fixture.ts` de 1 000 páginas, 3 pestañas): cambiar de pestaña con Ctrl+Tab hasta que el lienzo de la página visible está pintado ≤ 500 ms (p95 de 20 cambios); tras 20 cambios, `JSHeapUsedSize` (CDP `Performance.getMetrics`, tras `HeapProfiler.collectGarbage`) ≤ el medido tras la 1.ª ronda + 50 MB; ninguna *long task* > 200 ms durante los cambios.
 - [ ] Axe sin incidencias `serious`/`critical` con 3 pestañas (una sucia, una con error).
 - [ ] UI: la barra no aparece con 0 o 1 pestaña; los textos y `aria-label` coinciden con los indicados.
+- [ ] UI: el × tiene `aria-hidden="true"`, `tabIndex=-1` y `title` «Cerrar “links.pdf”»; clic en él cierra la pestaña; cada `role="tab"` tiene `aria-keyshortcuts="Delete"`; no hay ningún `role="button"` accesible dentro del `tablist`.
 - [ ] `pnpm --filter lector-pdf e2e` con código 0; `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` con código 0.
 - [ ] Manual (Registro): en `tauri dev`, Ctrl+Tab y Ctrl+W funcionan; abrir dos PDFs desde el explorador de archivos («Abrir con») crea dos pestañas.
 
@@ -64,3 +65,14 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 - Qué he hecho: he verificado el estado sin cambiar código. El único criterio abierto sigue siendo el axe. No hay comentario nuevo del revisor en el Registro, así que no he tocado la estructura de la barra. La ficha pide a la vez que el × (`aria-label`) esté dentro de cada pestaña y que axe no dé incidencias `critical`; con la estructura actual eso es imposible, así que es una decisión de diseño que no me corresponde tomar. Opciones para el líder: (A) sacar el × del `role="tablist"` a un contenedor hermano, manteniendo su posición visual a la derecha de cada pestaña; (B) dejar el × dentro con `aria-hidden="true"` (Supr ya cierra la pestaña enfocada) y el criterio axe se cumple, pero los lectores de pantalla no ven el botón; (C) relajar el criterio axe o aceptar la excepción documentada en el Manual.
 - Comandos ejecutados y resultado: `pnpm lint`: exit 0. `pnpm typecheck`: exit 0. `playwright test tests/e2e/tabs.spec.ts --project=chromium` (en `apps/lector-pdf`): 6 pasan, 1 falla (axe `critical aria-required-children` en `div role="tablist"`). No he lanzado de nuevo el E2E de rendimiento ni `pnpm coverage`.
 - Dudas o cosas que no he podido hacer: decisión de accesibilidad del × (opciones A/B/C arriba). Sin ella el criterio axe no se cumple y no puedo marcar la ficha como `en-revision`; la dejo `bloqueada`. Tampoco he hecho el commit de cierre porque no hay cambios de código que commitear.
+
+### [lider] ronda 3 — 2026-10-19 · decisión de accesibilidad del ×
+- **Decisión: opción B.** Es el patrón de Chrome, Firefox y VS Code: el × es una ayuda de ratón y el teclado/lector de pantalla cierra con Supr (y Ctrl+W). A (sacar el × a un contenedor hermano) complica el CSS y la posición sin mejorar nada para el lector de pantalla; C (relajar axe) va contra `calidad-profesional`.
+- Instrucciones, en `apps/lector-pdf/src/ui/tabs/TabBar.tsx` → `TabItem`:
+  1. En el botón ×: quitar `aria-label`; añadir `aria-hidden="true"` y `title={tabsMsg.closeNamed(tab.title)}`; mantener `tabIndex={-1}` y `onClick`. (axe `aria-hidden-focus` no salta con `tabIndex=-1`.)
+  2. En el `role="tab"`: añadir `aria-keyshortcuts="Delete"`.
+  3. Mantener el `div role="presentation"`. Si axe sigue dando `aria-required-children`, cambiar el `div` por `role="none"` y comprobar; no tocar nada más de la estructura.
+  4. `tests/ui/tab-bar.test.tsx:87`: buscar el × con `screen.getByTitle(tabsMsg.closeNamed('links.pdf'))` y añadir los asertos del nuevo criterio UI.
+  5. Pasar `tabs.spec.ts` completo (7/7), `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage` y dejar en `en-revision`.
+- Para el Manual: «Cerrar pestaña: botón ×, clic central, Supr con la pestaña enfocada o Ctrl+W».
+- `intentos` no se incrementa (el bloqueo era de la ficha, no del programador).
