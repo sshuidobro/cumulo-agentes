@@ -8,7 +8,7 @@ let lastSeq = 0;
  * Sin documento con dimensiones no hace nada.
  */
 export function goToPage(page: number, opts?: { readonly yFraction?: number; readonly xFraction?: number }): void {
-  const dims = useViewer.getState().dims;
+  const { dims, viewMode } = useViewer.getState();
   if (dims === null || dims.count === 0) return;
   if (!Number.isFinite(page)) throw new RangeError(`Página no válida: ${page}`);
   const target = Math.min(Math.max(Math.trunc(page), 0), dims.count - 1);
@@ -20,6 +20,8 @@ export function goToPage(page: number, opts?: { readonly yFraction?: number; rea
       yFraction: clamp01(opts?.yFraction ?? 0),
       xFraction: opts?.xFraction === undefined ? null : clamp01(opts.xFraction),
     },
+    // En modo por páginas la fila de la página pedida pasa a ser la mostrada en el mismo cambio de estado.
+    ...(viewMode.scroll === 'paged' ? { currentPage: rowFirstPage(target, viewMode.spread) } : {}),
   });
 }
 
