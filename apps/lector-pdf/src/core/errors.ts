@@ -12,7 +12,9 @@ export type PdfErrorCode =
   | 'save-encryption-unsupported'
   | 'save-unreadable'
   | 'invalid-image'
-  | 'organize-invalid';
+  | 'organize-invalid'
+  | 'xfdf-invalid'
+  | 'xfdf-empty';
 
 export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
@@ -27,6 +29,8 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'save-unreadable': 'No se pueden guardar los cambios: la estructura interna del PDF está dañada.',
   'invalid-image': 'La imagen no es válida o no está en un formato admitido (PNG o JPEG).',
   'organize-invalid': 'No se pueden reorganizar las páginas: la lista de páginas no es válida.',
+  'xfdf-invalid': 'El fichero de comentarios no es un XFDF válido.',
+  'xfdf-empty': 'El fichero no contiene comentarios que se puedan importar.',
 };
 
 /** Crea un error de PDF con mensaje en español. `cause` conserva el error original para diagnóstico. */

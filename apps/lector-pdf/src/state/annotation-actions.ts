@@ -8,6 +8,7 @@ import {
 } from '../core/annotations/commands';
 import { setFieldCommand } from '../core/forms/commands';
 import { annotationsOfPage, effectiveAnnotations } from '../core/annotations/effective';
+import { dependentIds } from '../core/annotations/replies';
 import type { ForeignAnnotation, ImportedPage } from '../core/annotations/import';
 import {
   EMPTY_EDITS,
@@ -639,13 +640,29 @@ export function updateAnnotation(next: Annotation, label?: string, mergeKey?: st
   });
 }
 
+/**
+ * Borra una anotación. Sus respuestas y estados de revisión (PDF-109) se borran con ella, en una sola entrada de
+ * deshacer cuya etiqueta es la de la anotación borrada.
+ */
 export function deleteAnnotation(id: string): void {
-  const current = getEffective().get(id);
+  const all = getEffective();
+  const current = all.get(id);
   if (current === undefined) return;
-  apply(() => {
-    stack.execute(deleteAnnotationCommand(current));
+  const parentCommand = deleteAnnotationCommand(current);
+  const depIds = dependentIds(all, id);
+  const dependents = depIds.flatMap((dep) => {
+    const found = all.get(dep);
+    return found === undefined ? [] : [deleteAnnotationCommand(found)];
   });
-  if (useAnnotations.getState().selectedId === id) {
+  const removed = new Set([id, ...depIds]);
+  apply(() => {
+    stack.group(parentCommand.label, () => {
+      stack.execute(parentCommand);
+      for (const command of dependents) stack.execute(command);
+    });
+  });
+  const { selectedId } = useAnnotations.getState();
+  if (selectedId !== null && removed.has(selectedId)) {
     useAnnotations.setState({ selectedId: null });
   }
 }

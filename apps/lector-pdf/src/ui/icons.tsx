@@ -286,6 +286,15 @@ export function IconFontSize() {
   );
 }
 
+export function IconEdit() {
+  return (
+    <Svg>
+      <path d="M12.8 4.2l3 3L7.4 15.6H4.4v-3z" />
+      <path d="M11.3 5.7l3 3" />
+    </Svg>
+  );
+}
+
 export function IconTrash() {
   return (
     <Svg>
@@ -299,6 +308,14 @@ export function IconClose() {
   return (
     <Svg>
       <path d="M5 5l10 10M15 5L5 15" />
+    </Svg>
+  );
+}
+
+export function IconWarning() {
+  return (
+    <Svg>
+      <path d="M10 3.5L18 16.5H2L10 3.5zM10 8.5v3.5M10 14.2v.3" />
     </Svg>
   );
 }

@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo } from 'react';
 import type { SignatureArt } from '../../core/annotations/model';
 import type { StoredSignature } from '../../core/signature/stored';
-import { deleteSignature, ensureSignaturesLoaded, useSignatures } from '../../state/signature-actions';
+import { deleteSignature, ensureSignaturesLoaded, setSignatureCreating, useSignatureCreation, useSignatures } from '../../state/signature-actions';
 import { MenuButton, type MenuEntry } from '../kit/MenuButton';
 import { IconSignature } from '../icons';
 import { signatureMsg } from '../messages-signature';
@@ -20,13 +20,13 @@ export interface SignatureMenuProps {
 /** Menú de firmas (PDF-086): firmas guardadas como miniaturas, «Crear firma…» y el borrado de cada una. */
 export function SignatureMenu({ onPick, disabled = false }: SignatureMenuProps) {
   const list = useSignatures((s) => s.list);
-  const [creating, setCreating] = useState(false);
+  const creating = useSignatureCreation((s) => s.open);
 
   useEffect(() => {
     ensureSignaturesLoaded();
   }, []);
 
-  const entries = useMemo(() => menuEntries(list, onPick, () => { setCreating(true); }), [list, onPick]);
+  const entries = useMemo(() => menuEntries(list, onPick, () => { setSignatureCreating(true); }), [list, onPick]);
 
   return (
     <>
@@ -38,10 +38,10 @@ export function SignatureMenu({ onPick, disabled = false }: SignatureMenuProps) 
           <SignatureDialog
             open={creating}
             onDone={(art) => {
-              setCreating(false);
+              setSignatureCreating(false);
               onPick(art);
             }}
-            onCancel={() => { setCreating(false); }}
+            onCancel={() => { setSignatureCreating(false); }}
           />
         </Suspense>
       )}

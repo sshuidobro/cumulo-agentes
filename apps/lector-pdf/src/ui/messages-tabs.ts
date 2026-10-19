@@ -1,5 +1,5 @@
 /**
- * Textos de los documentos recientes (PDF-049) y de las pestañas (PDF-095, que añadirá sus claves aquí).
+ * Textos de los documentos recientes (PDF-049) y de las pestañas (PDF-095).
  */
 export const tabsMsg = {
   /** Título de la sección de recientes en la pantalla de inicio. */
@@ -20,4 +20,20 @@ export const tabsMsg = {
   tooMany: 'Puedes tener hasta 10 documentos abiertos. Cierra alguno para abrir otro.',
   /** Aviso al abrir un documento que ya está abierto en una pestaña. */
   alreadyOpen: (name: string): string => `“${name}” ya está abierto.`,
+  /** Nombre accesible de la barra de pestañas. */
+  tabListLabel: 'Documentos abiertos',
+  /** Botón × de una pestaña: nombra el documento que cierra. */
+  closeNamed: (name: string): string => `Cerrar “${name}”`,
+  /** Marca de cambios sin guardar (también leída por los lectores de pantalla). */
+  unsavedChanges: 'Cambios sin guardar',
+  /** Indicador de una pestaña que se está abriendo. */
+  loading: 'Cargando',
+  /** Indicador de una pestaña cuyo documento no se ha podido abrir. */
+  loadFailed: 'No se ha podido abrir',
+  /** Atajo: pasa al documento siguiente. */
+  nextTab: 'Documento siguiente',
+  /** Atajo: pasa al documento anterior. */
+  prevTab: 'Documento anterior',
+  /** Atajo: cierra el documento activo. */
+  closeTab: 'Cerrar documento',
 } as const;

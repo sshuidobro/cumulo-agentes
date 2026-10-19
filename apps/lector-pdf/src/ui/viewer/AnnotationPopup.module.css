@@ -6,8 +6,9 @@
   flex-direction: column;
   gap: 0.375rem;
   box-sizing: border-box;
-  /* Mismo alto máximo que POPUP_MAX_HEIGHT_PX (popup-placement.ts). */
+  /* Mismo alto máximo que POPUP_MAX_HEIGHT_PX (popup-placement.ts). Con un hilo largo, la ventana se desplaza. */
   max-height: 240px;
+  overflow-y: auto;
   padding: 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -53,8 +54,28 @@
   outline-offset: 1px;
 }
 
+.status {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.25rem;
+}
+
+/* El menú «Estado» va a la izquierda del pie; Borrar y Cerrar, a la derecha. */
+.stateWrap {
+  margin-right: auto;
+}
+
+.stateText {
+  padding: 0 0.375rem;
+  font-size: 0.8125rem;
 }

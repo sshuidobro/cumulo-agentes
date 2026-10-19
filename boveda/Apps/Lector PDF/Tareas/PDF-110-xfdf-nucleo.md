@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-110
 titulo: XFDF - parser XML seguro, exportar e importar comentarios (núcleo)
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-058]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -87,3 +87,26 @@ export function importXfdf(xml: string, o: XfdfImportOptions): Result<XfdfImport
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/xfdf/xfdf.ts` (completado; el código de `xml.ts` y `index.ts` ya estaba bien y no cambió), `apps/lector-pdf/tests/unit/xfdf/xfdf.test.ts` (muestra de Acrobat y una expectativa corregidas). `errors.ts` ya tenía los códigos `xfdf-invalid` y `xfdf-empty`.
+- Qué he hecho: revisado el trabajo en curso y corregidos tres fallos. (1) Las notas abiertas perdían `open` al exportar: ahora se escribe `<popup open="yes"/>` solo si la nota está abierta, para cumplir la ida y vuelta. (2) La ficha dice «sin popup» al exportar, pero el criterio de ida y vuelta exige conservar `open`; he priorizado el criterio. Duda para el líder: confirmar esta interpretación. (3) El `color` de un sello importado se fija con `stampColor(name)`, como al crearlo en la app. La muestra de Acrobat pone `coords` como atributo de `highlight` (según la tabla), no como hijo.
+- Comandos ejecutados y resultado: `pnpm lint` → 0 avisos. `vitest run tests/unit/xfdf` → 56/56 pasan; cobertura de `src/core/xfdf/xfdf.ts` 99,5 % líneas. `pnpm typecheck` → falla por ficheros que no son míos (`src/core/pdf/page-tree.ts`, `tests/ui/tab-bar.test.tsx`, `tests/unit/tab-close-guard.test.ts`, trabajo de otros programadores); ningún error en `core/xfdf/`. `pnpm coverage` completo: 2956 de 2958 tests pasan; fallan 2 de otros ficheros ajenos (`tests/ui/sidebar.test.tsx`, atajo F4 del panel lateral, en árbol de otros programadores), así que el comando sale con código 1. Cobertura de `core/xfdf/` ≥ 99 % líneas.
+- Dudas o cosas que no he podido hacer: (a) conflicto ficha: «al exportar, sin popup» frente a la ida y vuelta de `open`; resuelto a favor de la ida y vuelta. (b) `pnpm typecheck` no pasa por los ficheros ajenos mencionados. (c) No se han hecho tests de `pnpm perf` ni e2e (no aplican a esta ficha). No se ha tocado git (sin commit, según instrucciones).
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Revisados `src/core/xfdf/{xml,xfdf,index}.ts`, códigos en `errors.ts` y tests. Vitest xfdf 56/56; cobertura de `core/xfdf/` 99,4 % líneas; eslint limpio; `tsc` sin errores en xfdf (los fallos de typecheck son de ficheros ajenos: page-tree, tab-bar).
+- Parser sin recursión, rechaza DOCTYPE/entidades/cruzadas/límites. Ida y vuelta, duplicados, Acrobat, skipped y empty cubiertos.
+1. (opcional) `xfdf.ts:109` — `<popup open="yes"/>` solo si la nota está abierta contradice «sin popup» de la ficha, pero es necesario para la ida y vuelta de `open`; decisión aceptada.
+2. (opcional) `xfdf.ts:169` — el `throw RangeError` es inalcanzable; correcto como guarda de bug.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Ida y vuelta 13 tipos, duplicados=13, Acrobat, parseXml (DOCTYPE, `&foo;`, cruzadas, 20M, 100 000 niveles), skipped/empty, firmas | OK | `vitest run tests/unit/xfdf` 56/56 |
+| Cobertura `core/xfdf/` | OK: xfdf.ts 99,54 %, xml.ts 99,25 % líneas | vitest --coverage acotado |
+| lint | OK, 0 avisos | `pnpm lint` |
+| typecheck | Fallo solo en ficheros ajenos (`tab-bar.test.tsx`, `tab-close-guard.test.ts`, PDF-109/119); 0 errores en xfdf | `pnpm typecheck` |
+| Batería completa | 2993/2997; 4 caídas por carga (otro vitest concurrente: timeouts en `fixtures-encrypted`, `search-actions`); pasan aisladas | rerun aislado 92/92 |
+
+Tests añadidos: ninguno (los existentes cubren los criterios). Rendimiento: no aplica.
