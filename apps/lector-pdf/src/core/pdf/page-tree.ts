@@ -13,7 +13,7 @@ import { err, ok, type Result } from '@suite/shared';
 import { pdfError } from '../errors';
 import type { RandomBytes } from './crypt-rules';
 import { finishDelta, reserveXref, startDelta, type DeltaWriter } from './delta-writer';
-import { toSaveError } from './incremental';
+import { toSaveError } from './save-error';
 import type { ObjectReader } from './object-reader';
 import { planPageTree, type TreeNode } from './page-tree-layout';
 import { dict, dictGet, name, PdfSyntaxError, ref, withEntries, type PdfDict, type PdfRef, type PdfValue } from './objects';

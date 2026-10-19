@@ -5,7 +5,7 @@
  * afectadas (ADR-0014). Nunca lanza: los errores vuelven como `Result`.
  */
 import type { ByteSource } from '@suite/platform';
-import { err, ok, type AppError, type Result } from '@suite/shared';
+import { err, ok, type Result } from '@suite/shared';
 import { inflateSync } from 'fflate';
 import { buildAppearance } from '../annotations/appearance';
 import type { AnnotationDiff } from '../annotations/diff';
@@ -13,7 +13,6 @@ import { parseRef } from '../annotations/import';
 import type { Annotation, PdfObjRef } from '../annotations/model';
 import { annotationDict, popupDict, updatedDict } from '../annotations/to-pdf';
 import { fromBase64 } from '../base64';
-import { pdfError } from '../errors';
 import type { FieldChange } from '../forms/diff';
 import { planFieldWrites } from '../forms/to-pdf';
 import { finishDelta, reserveXref, startDelta, type DeltaWriter } from './delta-writer';
@@ -29,6 +28,7 @@ import {
   type PdfValue,
 } from './objects';
 import { ObjectReader } from './object-reader';
+import { toSaveError } from './save-error';
 
 export interface IncrementalInput {
   readonly source: ByteSource;
@@ -84,15 +84,6 @@ export async function buildIncrementalUpdate(input: IncrementalInput): Promise<R
   } catch (error: unknown) {
     return err(toSaveError(error));
   }
-}
-
-/** Error de guardado (`Result`) a partir de un fallo de lectura o escritura. Lo comparten los escritores de PDF. */
-export function toSaveError(error: unknown): AppError {
-  if (error instanceof PdfSyntaxError && error.message === 'wrong-password') return pdfError('save-wrong-password', error);
-  if (error instanceof PdfSyntaxError && error.message === 'encryption-unsupported') {
-    return pdfError('save-encryption-unsupported', error);
-  }
-  return pdfError('save-unreadable', error);
 }
 
 /**

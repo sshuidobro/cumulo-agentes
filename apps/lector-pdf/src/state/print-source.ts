@@ -1,5 +1,5 @@
 import { createLogger } from '@suite/shared';
-import { concatSource } from '../core/pdf';
+import { concatSource } from '../core/pdf/concat-source';
 import { loadPdf, type PDFDocumentProxy } from '../engine';
 import { buildCurrentDelta } from './save-actions';
 import { currentPassword } from './document-actions';

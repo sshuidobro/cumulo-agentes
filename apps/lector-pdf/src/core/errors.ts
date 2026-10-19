@@ -14,7 +14,9 @@ export type PdfErrorCode =
   | 'invalid-image'
   | 'organize-invalid'
   | 'xfdf-invalid'
-  | 'xfdf-empty';
+  | 'xfdf-empty'
+  | 'split-no-bookmarks'
+  | 'split-too-big';
 
 export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
@@ -31,6 +33,8 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'organize-invalid': 'No se pueden reorganizar las páginas: la lista de páginas no es válida.',
   'xfdf-invalid': 'El fichero de comentarios no es un XFDF válido.',
   'xfdf-empty': 'El fichero no contiene comentarios que se puedan importar.',
+  'split-no-bookmarks': 'Este PDF no tiene marcadores para dividirlo.',
+  'split-too-big': 'Las partes ocupan demasiado para guardarlas juntas: divide un rango más pequeño.',
 };
 
 /** Crea un error de PDF con mensaje en español. `cause` conserva el error original para diagnóstico. */

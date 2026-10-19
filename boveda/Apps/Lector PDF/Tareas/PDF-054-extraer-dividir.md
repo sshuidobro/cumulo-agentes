@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-054
 titulo: Extraer y dividir - planes y operaciones del núcleo
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-123, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -98,3 +98,12 @@ export function splitZipName(base: string): string;   // «informe-partes.zip»
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 - lint, typecheck y `pnpm coverage` con código 0; criterios cubiertos por tests (marcadores 10/10/9/1 con qpdf, size 5000 págs, red de seguridad, cancelación, checkZipBudget, extract AES-256).
 1. `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (buildGroup) — (opcional) tras la red de seguridad `done` cuenta las páginas dos veces; el progreso se limita con `Math.min` y no falla, pero no es exacto.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck, coverage | OK | código 0; 257 ficheros, 3274 tests pasan; líneas 98,61 % |
+| Criterios de la ficha (conteo, marcadores 10/10/9/1 con qpdf, sin marcadores, size 5000 págs ≤ 100 000, red de seguridad, checkZipBudget, extract y AES-256, cancelar) | OK | `tests/unit/doc-ops/split-ops.test.ts`, `tests/unit/organize/split.test.ts` en verde |
+| Perf (50 partes < 5 s) | OK | `vitest.perf.config.ts split` pasa |
+| Cobertura split.ts ≥ 90 % | OK | no aparece en la tabla (filas al 100 % omitidas) |
+Tests añadidos: ninguno. Rendimiento: dentro de presupuesto.
