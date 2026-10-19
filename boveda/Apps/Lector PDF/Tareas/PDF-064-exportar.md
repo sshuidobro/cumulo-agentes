@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-064
 titulo: Exportar a imágenes y texto - núcleo y render
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-022]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -83,3 +83,19 @@ export function buildZip(entries: readonly { readonly name: string; readonly byt
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/engine/print-render.ts` (generalizado a `renderPageImage`; `renderPageForPrint` pasa a envoltorio PNG), `apps/lector-pdf/src/core/export/plan.ts` (nuevo, núcleo puro), `apps/lector-pdf/tests/unit/export-plan.test.ts` (nuevo), `apps/lector-pdf/tests/unit/print-render.test.ts` (solo añadido el `describe` de `renderPageImage`; los tests de impresión existentes sin tocar), esta ficha.
+- Qué he hecho: `renderPageImage` con PNG o JPEG, dpi real y relleno blanco en JPEG; `renderPageForPrint` sigue con la misma firma. Núcleo `core/export/plan.ts` con todas las funciones de la ficha. Cobertura de `plan.ts`: 100 % de líneas. Lint y tests de mis ficheros limpios.
+- Comandos ejecutados y resultado:
+  - `npx vitest run tests/unit/print-render.test.ts tests/unit/print-actions.test.ts tests/ui/print-dialog.test.tsx`: 44 pasan (impresión existente sin cambios).
+  - `npx vitest run tests/unit/export-plan.test.ts`: 27 pasan.
+  - `npx eslint --max-warnings 0` sobre mis 4 ficheros: limpio. `pnpm typecheck`: limpio.
+  - `pnpm lint`: falla por ficheros ajenos en curso: `tests/unit/compare/diff.test.ts` (non-null assertions, PDF-063) y `tests/unit/read-aloud/probe.test.ts` (console, PDF-067).
+  - `pnpm coverage`: falla por ficheros ajenos: `read-aloud/probe.test.ts` ya no existe al ejecutar; `tests/unit/fixtures.test.ts` espera 25 fixtures y hay 26. Todo lo demás pasa (2525 tests).
+  - `pnpm --filter lector-pdf e2e`: primera vez 1 fallo en `pdfjs-deferred.spec.ts` (abrir con chunk en vuelo, presupuesto de tiempo bajo carga); aislado pasa; segunda ejecución completa: 225 pasan, código 0.
+- Dudas o cosas que no he podido hacer:
+  - El criterio «612×792 a 600 ppp = 5100×6600 sin recortar» no se cumple: 33 660 000 píxeles superan `MAX_CANVAS_PIXELS` (33 554 432), así que se recorta. Los tests cubren el caso recortado (`reduced: true`, producto ≤ tope) y un caso que cabe (300×300 pt a 600 ppp = 2500×2500).
+  - `buildZip` lanza `RangeError` si se repite un nombre de entrada, en vez de perder una entrada en silencio. No estaba en la ficha; es una guarda y se puede quitar si no la quieres.
+  - Los tests de render están en `tests/unit/print-render.test.ts` (como pide la ficha); el test del TXT con `basic-5.pdf` está en `export-plan.test.ts`.
+  - Pendiente de la ficha: que `pnpm lint` y `pnpm coverage` pasen en limpio depende de que PDF-063 y PDF-067 terminen sus ficheros.
