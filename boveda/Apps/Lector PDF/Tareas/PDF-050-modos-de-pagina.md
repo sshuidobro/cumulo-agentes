@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-050
 titulo: Modos de página en el visor y menú «Vista»
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-102, PDF-049]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -86,3 +86,20 @@ Como en Adobe («Vista › Modo de presentación de páginas»): una página a l
   - Las pruebas de tiempo de «basic-5 < 1 s» y de «annotated» pueden fallar por carga al arrancar la suite completa (se ha visto 2 veces en 5 ejecuciones combinadas). No he tocado sus umbrales. Conviene que el tester lo vigile.
   - La prueba de «annotated» (`render.spec.ts`) no la he investigado: si el tester la ve roja de forma repetida, puede tener relación con el nuevo cálculo de zoom automático de PDF-050.
   - Los cambios en las fichas PDF-094 y PDF-106 son de otros programadores; no los he tocado ni incluido en mi commit.
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+Lint, typecheck (raíz) y tests UI de PDF-050 en verde; los 4 puntos de la ronda 1 resueltos (perf `pages-10000`, E2E de F3/resaltado/seis modos/axe, typecheck, barra en una fila con `zoom.spec.ts` revertido).
+- (opcional) El E2E de F3 se ejecuta en doble página continua; el criterio habla de F3 entre filas en `paged`. Lo cubre «los seis modos». El tester debe verificarlo en `paged`.
+- (opcional) Anotar en la ficha las medidas de las pruebas `@perf`. El tester debe vigilar los fallos intermitentes de arranque en frío (`basic-5 < 1 s`, `annotated`).
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck (raíz), coverage | OK | 98,65 % líneas |
+| E2E completo | OK | `pnpm --filter lector-pdf e2e`: 249/249 (chromium + chromium-perf) |
+| F3 en `paged` (otra fila) | OK | test nuevo `paged + doble página: F3 salta a la coincidencia de otra fila…` |
+| Resto de criterios E2E (filas, portada, rueda, persistencia, resaltado, axe, 6 modos) | OK | `view-modes.spec.ts` 14/14 |
+| @perf pages-10000 | OK | scroll 5 000 px ≈ 4,2-4,4 s de prueba sin long tasks > 50 ms, ≤ 14 lienzos; cambio a doble página ≈ 1,0 s de prueba total (aserción ≤ 200 ms hasta pintar) |
+
+Arranque en frío: `--repeat-each=5` de «basic-5 < 1 s» (≈ 0,91 s de prueba), `render basic-5 < 1 s` y «annotated resaltado amarillo»: 20/20 sin fallos; perf nuevas 5/5. Intermitencia no reproducida (queda como riesgo bajo por carga al inicio de la suite).
+Tests añadidos: `view-modes.spec.ts` F3 en `paged` + doble página.

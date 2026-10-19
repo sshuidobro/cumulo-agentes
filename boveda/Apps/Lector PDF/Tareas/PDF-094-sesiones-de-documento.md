@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-094
 titulo: Sesiones de documento - núcleo de pestañas (suspender y reanudar)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-090, PDF-046]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -112,3 +112,15 @@ Lint OK, `pnpm --filter lector-pdf typecheck` OK, `pnpm coverage` OK (2626 tests
 - Qué he hecho: revisado el punto 1 (pestaña sobrante). Con pestaña activa en error y con pestaña vacía reutilizada, la carga queda en `loading` y `activateTab` la elimina al cambiar a la gemela; añadidos dos tests de regresión que lo comprueban (pasan sin cambiar la lógica). Punto 2 documentado en el comentario. Punto 3 es decisión del líder (no tocado).
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK. `pnpm exec eslint --max-warnings 0` sobre los ficheros tocados OK. `pnpm --filter lector-pdf exec vitest run --coverage` OK: 186 ficheros, 2283 tests pasan. `pnpm lint` de la raíz falla por `apps/lector-pdf/tests/e2e/view-modes.spec.ts:3` (`TestInfo` sin usar): fichero con cambios sin commit que no es de esta ficha; no lo he tocado.
 - Dudas o cosas que no he podido hacer: no he ejecutado E2E en esta ronda (solo cambios de comentario y tests unitarios). El punto 3 del revisor sigue abierto para el líder.
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+Typecheck de lector-pdf OK; tests de tabs, document-tabs y unsaved-guard OK (33). Lint de raíz: fallo ajeno (view-modes.spec.ts, PDF-050). Punto 1 de la ronda 1 comprobado: los dos tests de regresión cubren el caso (pestaña en error y pestaña vacía reutilizadas) y pasan. Punto 3 (descarte sin aviso hasta PDF-100/101) sigue pendiente para el líder; no bloquea.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck | OK | `pnpm lint` 0 avisos; `pnpm --filter lector-pdf typecheck` OK |
+| tests + cobertura | OK | `pnpm coverage`: 220 ficheros, 2647 tests; líneas 98,65 % |
+| criterios unit/integración (tabs.test.ts, document-tabs.test.ts) | OK | incluidos en la batería completa |
+| E2E | OK | `playwright test --project=chromium` (lanzado por otro proceso sobre el mismo árbol): 234 passed, EXIT 0; mi ejecución chocó con el puerto 4173 |
+Sin tests añadidos. Pendiente para el líder (no bloquea): descarte sin aviso de anotaciones al abrir otro documento hasta PDF-100/101.

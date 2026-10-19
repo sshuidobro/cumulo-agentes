@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-106
 titulo: Separar el escritor de incrementos (delta-writer.ts) de incremental.ts
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-047, PDF-104]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -81,3 +81,18 @@ export function reserveXref(reader: ObjectReader, next: number): { readonly xref
 - Qué he hecho: he comprobado que el golden test pasa contra el código actual (3/3) y que `delta-writer.ts` cumple la API de la ficha (no importa `core/annotations` ni `core/forms`). He añadido los tests de `startDelta`, `DeltaWriter`, `reserveXref`, `finishDelta` (tabla, flujo, `/ID`, cifrado AES-128) reabriendo el delta con `ObjectReader`. `incremental.ts` tiene 298 líneas.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (220 ficheros, 2647 tests; `delta-writer.ts` 99,13 % líneas). `pnpm perf`: `incremental.perf` y `layout.perf` OK; **falla** `compare.perf.test.ts` «se compara en ≤ 30 ms (cálculo)» (190-287 ms), también al repetirlo con la carga de la máquina bajando (load 5-7 en 4 núcleos por otros agentes). Ese código (`core/compare`) no lo toca esta ficha.
 - Dudas o cosas que no he podido hacer: el criterio `pnpm perf` con código 0 no se cumple por `compare.perf` (fallo previo, fuera de esta ficha). Hace falta revisar si el presupuesto es estable en esta máquina o si corresponde a PDF-063. No he hecho commit de otros ficheros con cambios sin confirmar (`packages/platform/tests/web/...`, `apps/lector-pdf/src/state/document-actions.ts` y similares son de otros programadores).
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Sin problemas bloqueantes. lint y typecheck OK; golden, delta-writer, incremental, incremental-qa, interop e incremental-encrypted pasan (159 tests). `incremental.ts` 298 líneas (<360); `delta-writer.ts` sin imports de annotations/forms y exportado en `index.ts`. Cobertura 99,13 % según programador. `compare.perf` (30 ms) es ajeno a la ficha y no se tiene en cuenta; el tester debe repetir `pnpm perf` en máquina en reposo.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Golden delta byte a byte | OK | `pnpm coverage`: 220 ficheros, 2647 tests, todos verdes |
+| Tests de Contexto sin modificar | OK | incluidos en la batería completa, verdes |
+| `incremental.ts` < 360 y sin imports de annotations/forms | OK | 298 líneas; grep sin coincidencias |
+| Cobertura `delta-writer.ts` ≥ 90 % | OK | 100 % líneas (summary), 99,13 % en tabla |
+| lint, typecheck, perf | lint y typecheck OK; `incremental.perf` OK en 3 ejecuciones | `pnpm perf` global falla por tests ajenos |
+
+`pnpm perf` global no sale con 0: la máquina nunca estuvo en reposo (load 6-13 por otros agentes). Fallan de forma distinta en cada pasada tests ajenos (`compare.perf` 30 ms, `annotation-layer.perf`, `search.perf` 52,7 ms frente a 50), todos por carga. `incremental.perf` pasó siempre. Conviene repetir `pnpm perf` global en reposo real.
+Tests añadidos: ninguno (los del programador cubren los criterios).

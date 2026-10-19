@@ -177,6 +177,21 @@ test('doble página: F3 lleva a una coincidencia de otra fila y la muestra', asy
   await expect(pageFrame(page, 1)).toHaveCount(0);
 });
 
+test('paged + doble página: F3 salta a la coincidencia de otra fila y solo queda montada su fila', async ({ page }) => {
+  await openFixture(page, 'basic-5.pdf');
+  await chooseView(page, 'Una página a la vez');
+  await chooseView(page, 'Doble página');
+  await page.keyboard.press('Control+f');
+  await page.getByRole('searchbox', { name: 'Buscar en el documento' }).fill('marcador-');
+  await expect(page.getByRole('search').getByText('1 de 5', { exact: true })).toBeVisible();
+  await page.keyboard.press('F3');
+  await page.keyboard.press('F3');
+  await expect(page.getByRole('search').getByText('3 de 5', { exact: true })).toBeVisible();
+  await expect(pageFrame(page, 3)).toBeVisible();
+  await expect(pageFrame(page, 1)).toHaveCount(0);
+  await expect(pageFrame(page, 2)).toHaveCount(0);
+});
+
 test('doble página: el resaltado de la página derecha de la fila queda en esa página al guardar', async ({ page }, testInfo) => {
   await openFixtureWithDownloads(page, 'basic-5.pdf');
   await chooseView(page, 'Doble página');
