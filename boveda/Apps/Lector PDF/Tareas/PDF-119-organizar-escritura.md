@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-119
 titulo: Organizar - escribir el plan (páginas en blanco y limpieza de formularios)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-053]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -97,3 +97,15 @@ export async function buildOrganizeUpdate(input: OrganizeInput): Promise<Result<
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/page-tree-layout.ts` (nuevo: `planPageTree`, `PAGE_TREE_FANOUT`), `apps/lector-pdf/src/core/pdf/page-tree.ts` (refactor: `writePageTree`, `createAllocator`, `ObjectAllocator`, `AddedPage`, `catalogRef` exportado; `buildPageTreeUpdate` queda como envoltorio), `apps/lector-pdf/src/core/organize/forms-cleanup.ts` (nuevo: `removePageWidgets`), `apps/lector-pdf/src/core/organize/save.ts` (nuevo: `buildOrganizeUpdate`), `apps/lector-pdf/tests/unit/organize/save.test.ts` (nuevo), `apps/lector-pdf/tests/perf/organize.perf.test.ts` (nuevo).
+- Qué he hecho: el árbol de PDF-052 pasa a `writePageTree` sobre un `DeltaWriter` ajeno; `buildPageTreeUpdate` mantiene la misma salida. `buildOrganizeUpdate` añade páginas en blanco (`alloc.next()`, `MediaBox`, `Resources`), limpia widgets de las páginas borradas en `/AcroForm` (`/Fields`, `/CO`, `/Kids`, con AcroForm directo o indirecto) y escribe todo en un incremento. Sin cambios → delta vacío.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: sin errores ni avisos.
+  - `tsc -p tsconfig.json` de lector-pdf: sin errores en mis ficheros. Quedan 3 errores en `tests/ui/tab-bar.test.tsx` y `tests/unit/tab-close-guard.test.ts` (trabajo ajeno, no tocado).
+  - `vitest run` de `tests/unit/organize`, `tests/unit/pdf/page-tree.test.ts` y `delta-writer-golden.test.ts`: 83/83 pasan; los dos últimos sin cambios.
+  - `pnpm coverage`: 2995 pasan, 2 fallan en ficheros ajenos (`tests/ui/comment-toolbar.test.tsx`, `tests/ui/sidebar.test.tsx`); no los he tocado. Cobertura de líneas por fichero: `forms-cleanup.ts` 98,6 %, `save.ts` 95,7 %, `page-tree.ts` 98,7 %.
+  - `vitest run --config vitest.perf.config.ts tests/perf/organize.perf.test.ts`: pasa (`pages-100000.pdf` con blanco en la mitad, < 15 s).
+  - No he ejecutado `page-tree.perf.test.ts` ni `pnpm perf` completo.
+- Dudas o cosas que no he podido hacer: (1) `removePageWidgets` devuelve el número de widgets de las páginas borradas (lo leo de «Devuelve los widgets quitados»); si se quiere el número efectivo quitado de `/Fields`, se cambia. (2) Sin commit, como se pidió. (3) Los fallos de `comment-toolbar` y `sidebar` deben revisarse en su ficha correspondiente.
