@@ -1,6 +1,7 @@
 import { createLogger } from '@suite/shared';
 import type { ByteSource } from '@suite/platform';
 import { mergeFonts, openForSave, scanFonts, type FontInfo } from '../core/pdf';
+import { currentPassword } from './document-actions';
 import { initialFontScan, useFontScan } from './fonts-store';
 import { useViewer } from './viewer-store';
 
@@ -46,7 +47,7 @@ export function resetFontScan(): void {
 async function runScan(source: ByteSource, controller: AbortController): Promise<void> {
   const { signal } = controller;
   try {
-    const opened = await openForSave(source);
+    const opened = await openForSave(source, currentPassword() ?? undefined);
     if (signal.aborted) return;
     if (!opened.ok) {
       log.warn('startFontScan', opened.error.code);

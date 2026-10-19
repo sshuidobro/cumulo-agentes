@@ -2,6 +2,7 @@ import { createLogger } from '@suite/shared';
 import { concatSource } from '../core/pdf';
 import { loadPdf, type PDFDocumentProxy } from '../engine';
 import { buildCurrentDelta } from './save-actions';
+import { currentPassword } from './document-actions';
 import { services } from './services';
 import { hasUnsavedChanges } from './unsaved-guard';
 import { useViewer } from './viewer-store';
@@ -41,7 +42,12 @@ export async function openPrintSource(): Promise<PrintSource | null> {
   // Sin delta, el documento abierto ya contiene lo mismo que se guardaría.
   if (built.value === null) return opened(true);
 
-  const temporary = await loadPdf(concatSource(file.source, built.value), { assetBaseUrl: services().assetBaseUrl });
+  // El temporal conserva el cifrado del original: se abre con la misma contraseña (PDF-047).
+  const password = currentPassword();
+  const temporary = await loadPdf(concatSource(file.source, built.value), {
+    assetBaseUrl: services().assetBaseUrl,
+    ...(password === null ? {} : { password }),
+  });
   if (!temporary.ok) {
     log.warn('openPrintSource', temporary.error.code);
     return opened(false);
