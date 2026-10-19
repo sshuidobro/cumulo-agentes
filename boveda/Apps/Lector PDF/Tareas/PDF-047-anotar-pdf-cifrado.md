@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-047
 titulo: Guardar anotaciones, firmas y formularios en PDF cifrado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-093, PDF-046]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -58,3 +58,11 @@ En la app, Ctrl+S, Guardar como e Imprimir funcionan con PDFs cifrados (con cont
 
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 Commit 343600b revisado. Los 3 cambios de `src` son mínimos y correctos (`openForSave`, temporal de impresión y fuentes con `currentPassword()`); sin cambios de seguridad. Lint, typecheck y tests de unidad verdes; E2E no ejecutado por mí (los pasará el tester: `encrypted-save.spec.ts` 8 casos, owner-only sin diálogo, formularios con qpdfEncrypt, firma, impresión, contador de diálogo = 1). (opcional) El E2E de firma acepta `Firma|Sello` mientras PDF-104 siga abierto: endurecerlo a «Firma» cuando PDF-104 esté hecha (y haga falta pasar la contraseña, ver PDF-104 punto 4).
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E 4 cifrados, owner-only, formulario qpdfEncrypt, firma, impresión, diálogo = 1 | OK | `encrypted-save.spec.ts` 8/8 verdes en `pnpm --filter lector-pdf e2e` |
+| lint / typecheck / coverage | OK | código 0; líneas 98,72 % |
+| e2e completo | OK en 2.ª pasada (222 passed) | 1.ª pasada: `ink.spec.ts:141` (@perf, long tasks) falló una vez bajo carga; no relacionado con PDF-047, pasó al repetir |
+Tests añadidos: ninguno (los del programador cubren los criterios). Nota: el E2E de firma sigue aceptando `Firma|Sello` hasta PDF-104; ink @perf es sensible a carga.
