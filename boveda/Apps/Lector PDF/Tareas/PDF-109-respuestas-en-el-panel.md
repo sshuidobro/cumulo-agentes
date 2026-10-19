@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-109
 titulo: Responder y cambiar el estado desde la ventana del comentario
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-058, PDF-101]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -75,3 +75,7 @@ export function setReviewState(parentId: string, state: ReviewState): void;
   2. `editReply` con texto vacío o igual no hace nada (decisión de implementación; la ficha no lo fija).
   3. `reviewStateOf` desempata por `modified` con `>`: dos estados fijados en el mismo milisegundo se resuelven a favor del primero. No afecta a la UI real; lo dejo anotado.
   4. `tests/e2e/annotations-flow.spec.ts` falla al reabrir y abrir el panel de comentarios (línea 157). No lo he investigado: no toca la ventana de comentario, pero no lo he comprobado contra la base limpia.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. `annotations-flow.spec.ts:129` (duda 4 del programador) — no es regresión de esta ficha: falla en `openCommentsPanel` (no existe la pestaña «Comentarios» en la página reabierta, ni con F4), antes de abrir ninguna ventana de comentario. PDF-109 no toca sidebar, panel ni `App.tsx`; coincide con los cambios ajenos en curso de atajos/pestañas (`shortcuts.ts`, `App.tsx`, tab-bar), igual que el fallo de `sidebar.test.tsx` (F4). El líder/tester debe vigilarlo al cerrar esas fichas.
+2. (opcional) Duda 1 (ventana y lista a 240 px): decisión de diseño, no bloquea.
