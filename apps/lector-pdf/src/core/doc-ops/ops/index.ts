@@ -1,6 +1,7 @@
 import { err, ok, type AppError, type Result } from '@suite/shared';
 import { pdfError } from '../../errors';
 import { openForSave } from '../../pdf/incremental';
+import { buildPdfFromImages, type ImageInput, type PageSizeMode } from '../../pdf/images-to-pdf';
 import { readPageRotations, type PageRotation } from '../../pdf/page-tree';
 import type { SaveSlot } from '../../organize/plan';
 import { buildOrganizeUpdate } from '../../organize/save';
@@ -88,8 +89,41 @@ const organize: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> =>
   return ok({ delta: built.value.delta });
 };
 
+interface ImagesToPdfArgs {
+  readonly images: readonly ImageInput[];
+  readonly pageSize: PageSizeMode;
+  readonly margin: number;
+  readonly now: string;
+}
+
+/** Igual que `parseOrganizeArgs`: un argumento mal formado es un bug de la app. La validación de las imágenes es de `buildPdfFromImages`. */
+function parseImagesToPdfArgs(args: unknown): ImagesToPdfArgs {
+  if (typeof args !== 'object' || args === null || !('images' in args) || !('pageSize' in args) || !('margin' in args) || !('now' in args)) {
+    throw new TypeError('images-to-pdf: argumentos no válidos.');
+  }
+  const { images, pageSize, margin, now } = args;
+  if (!Array.isArray(images)) throw new TypeError('images-to-pdf: las imágenes deben ser una lista.');
+  if (typeof pageSize !== 'string') throw new TypeError('images-to-pdf: el tamaño de página debe ser texto.');
+  if (typeof margin !== 'number') throw new TypeError('images-to-pdf: el margen debe ser un número.');
+  if (typeof now !== 'string') throw new TypeError('images-to-pdf: la fecha debe ser texto.');
+  return { images: images as readonly ImageInput[], pageSize: pageSize as PageSizeMode, margin, now };
+}
+
+/** Crea un PDF con una página por imagen (PDF-056). Sin fuentes: las imágenes llegan en los argumentos. */
+const imagesToPdf: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const parsed = parseImagesToPdfArgs(args);
+  return buildPdfFromImages({
+    ...parsed,
+    signal: ctx.signal,
+    onProgress: (done, total) => {
+      ctx.progress(done, total);
+    },
+  });
+};
+
 /** Registro de operaciones del Worker. Cada ficha que añade una operación la registra aquí. */
 export const DOC_OPS: DocOpRegistry = {
   'page-rotations': pageRotations,
   organize,
+  'images-to-pdf': imagesToPdf,
 };
