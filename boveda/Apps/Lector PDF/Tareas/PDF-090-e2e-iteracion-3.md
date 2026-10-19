@@ -125,3 +125,36 @@ Luego repetir lint, typecheck, test, coverage, perf, build y las dos baterías �
   1. **Bundle (A).** 486 857 > 485 000. Los 11 ficheros del arranque: `index` 330 477; `PrintDialog.module` 62 534 (estático: lo importa `PrintProgress.tsx` desde `PrintDialog.module.css`, sin verificar qué código arrastra); `engine` 53 050; `Dialog` 28 314; `ink-preview` 3 589; `notice` 3 463; `preload-helper` 1 534; `prefs` 1 393; `properties-store` 1 390; `rolldown-runtime` 599; `logger` 514. Los 10 módulos más grandes del `index` (por fuente): `react-dom` (625 168 caracteres de fuente), `AnnotationLayer.tsx` 28 536, `Viewer.tsx` 16 800, `CommentsPanel.tsx` 15 734, `FormLayer.tsx` 14 859, `comment-list.ts` 11 210, `layout.ts` 10 891, `CommentToolbar.tsx` 10 377, `scheduler` 10 181, `MainToolbar.tsx` 8 206. Decidir: recortar el arranque (p. ej. el 62 KB de `PrintDialog.module`) o subir el margen con ADR.
   2. **Ink (B), paso 4.** La long task cae durante el trazo, no al soltar. Escalo: decidir si se aísla el coste del trazo (ADR-0018 sin ficha) o se acepta el umbral de 100 ms de la iteración con ADR. No he tocado `AnnotationLayer.tsx` ni el umbral. La traza de la repetición fallida no se ha conservado (las ejecuciones siguientes borraron `test-results/`).
   3. Por lo anterior, la ficha sigue sin cumplir: `chromium-perf ×3` y `build` con el margen pedido. Dejo `en-revision` y no la paso a `hecha`.
+
+### [lider] replanificación 2 — 2026-10-19
+Estado → `pendiente`. `intentos` se mantiene (escalado correcto, no es fallo del programador).
+
+**A. Bundle: cerrado, sin trabajo.** 486 857 ≤ 500 000 cumple el criterio de la ficha; los 485 000 eran un margen interno. Anotado en [[ADR-0027-dialogos-diferidos]] (revisión). No tocar `App.tsx`, `SignatureMenu.tsx` ni el presupuesto.
+
+**B. `ink.spec.ts` «2 000 eventos»** → [[ADR-0016-e2e-long-tasks-en-serie]] (revisión 3): el umbral no cambia; atribuir y corregir.
+1. Diagnóstico (no se versiona; al acabar `git diff tests/` debe salir vacío). En la prueba, envolver solo `mouse.down`…`mouse.up` con
+   `await page.context().browser()!.startTracing(page, { path: test.info().outputPath('ink-trace.json'), categories: ['devtools.timeline','disabled-by-default-devtools.timeline','disabled-by-default-v8.cpu_profiler','v8.gc'] })` y `await page.context().browser()!.stopTracing()`. Lanzar `pnpm --filter lector-pdf e2e --project=chromium-perf --no-deps --repeat-each=5 -g "2 000 eventos"` hasta tener **un fallo**; copiar su `ink-trace.json` al scratchpad antes de relanzar.
+2. En la traza, buscar en el hilo principal del renderer el `RunTask` ≥ 50 ms y anotar en el Registro sus 5 hijos de más duración (nombre, ms) y, si hay, las funciones JS con más tiempo propio.
+3. Según el hijo dominante:
+   - **GC** (`MajorGC`, `V8.GC_MARK_COMPACTOR`, `V8.GCFinalizeMC*` ≥ 30 ms) → quitar asignaciones por evento en `src/ui/viewer/AnnotationLayer.tsx` → `addInkSample`:
+     - En `ink-preview.ts` añadir `export function invertTransform(t: readonly number[]): readonly [number, number, number, number, number, number]` (det = a·d − b·c; resultado `[d/det, −b/det, −c/det, a/det, (c·f − d·e)/det, (b·e − a·f)/det]`) con test unitario: para el `transform` de un viewport con rotación 0 y 90, aplicar `t` y luego la inversa devuelve el punto (±1e-9).
+     - `InkStroke` gana `bounds: readonly [number, number, number, number]` (= `pageBoundsPt()` en `beginInk`) e `inv` (= `invertTransform(viewport.transform)` en `beginInk`). `addInkSample` calcula `u = clientX − box.left`, `v = clientY − box.top`, `x = inv[0]·u + inv[2]·v + inv[4]`, `y = inv[1]·u + inv[3]·v + inv[5]` y recorta con `stroke.bounds`, sin crear arrays. Mismo resultado que `convertToPdfPoint` (lo cubren las pruebas de posición de `ink.spec.ts`).
+   - **Cualquier otro** (render de React, `Paint`/`Layout`/raster, pdf.js, tarea sin código de la app) → no cambiar código: escalar al líder con lo del paso 2 y la ruta de la traza.
+4. Tras el arreglo: 3 lanzamientos de `--repeat-each=5 -g "2 000 eventos"` → 15/15 en verde. Luego todo el punto 5 de la ficha y los criterios: lint, typecheck, test, coverage, perf, build, las dos baterías ×3 con código 0, y **rehacer la tabla de medidas** (la de la ronda 1 es de un código anterior).
+
+### [programador] ronda 3 — 2026-10-19
+- Ficheros cambiados: ninguno de código ni de tests (`git diff -- apps/lector-pdf/tests/` vacío tras restaurar la prueba de diagnóstico). Solo esta ficha. Trazas guardadas fuera del repo: `/tmp/claude-0/-home-claude-cumulo-agentes/409a8bbc-9d52-502a-8457-def03208983e/scratchpad/ink-trace-r3.json` y `.../scratchpad/ink-trace-r2.json`; logs de las 4 tandas en `/tmp/claude-0/ink-run-1.log` a `ink-run-4.log`.
+- Qué he hecho: paso B.1 (trazado con `startTracing` solo entre `mouse.down` y `mouse.up`, sin cambiar aserciones) y B.2 (análisis del `RunTask` ≥ 50 ms del `CrRendererMain`). Paso B.4 de la traza: cae **durante el trazo**, así que según la replanificación 2 no toco código y escalo.
+- Comandos ejecutados y resultado:
+  - `e2e --project=chromium-perf --no-deps --repeat-each=5 -g "2 000 eventos"` ×4 tandas (con el trazado activo): 3/5, 5/5, 3/5, 2/5 → **7 fallos de 20**. Las long tasks falladas: 60, 73, 74 ms (ver abajo).
+  - Análisis de trazas con script propio (no versionado) en el scratchpad.
+- Traza (la misma en las dos trazas analizadas):
+  - Ventana del trazo según `EventDispatch`: `pointerdown` a 90,0 ms y `pointerup` a 33 636 ms (2 001 `pointermove`).
+  - Fallo en tanda 4, repetición 3: `RunTask` de **74,1 ms** a 30 212 ms; hijo dominante `Commit` **68,8 ms** (frameSeqId 2044, layerTreeId 1); resto: `EventDispatch` 2,9 ms, `PrePaint` 0,7 ms. Sin GC dentro de la tarea.
+  - Fallo en tanda 4, repetición 2: `RunTask` de **74,1 ms** a 32 925 ms; hijo dominante `Commit` **69,5 ms** (frameSeqId 2207); resto: `EventDispatch` 2,6 ms, `PrePaint` 0,3 ms. Hay un GC menor (`MC_EVACUATE` 17 ms) a 32 881 ms, fuera de la tarea.
+  - Las tareas de 71–82 ms a ~3 ms (`EvaluateScript`) ocurren antes de `pointerdown`, fuera de la ventana medida.
+  - Conclusión del paso 2: el coste dominante es el `Commit` del compositor (no es GC ni `AnnotationLayer` al soltar). La causa concreta (raster/paint de alguna capa durante el trazo) **no está verificada**; es una hipótesis.
+- Dudas o cosas que no he podido hacer (para el líder):
+  1. **Escalado (paso 4 de la replanificación 2).** La long task es un `Commit` de ~70 ms durante el trazo. No es GC (paso 3, primera rama) y no es una tarea de la app al soltar (paso 3, segunda rama). Según la regla, es «cualquier otro»: no cambio código. Decidir si se investiga la capa que se repinta durante el trazo (¿ADR-0018 vista previa en canvas?, ¿capa de anotaciones?) o si se aísla el trazo con una ficha nueva.
+  2. Las 20 repeticiones no cumplen el criterio «15/15» del punto 4: no se ha hecho el arreglo ni se han repetido las baterías ×3, ni el lint, build y medidas, porque el paso 4 no se ejecuta sin decisión del líder.
+  3. Ficha en `en-revision`, sin cambios de código ni de tests.
