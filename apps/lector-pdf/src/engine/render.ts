@@ -18,6 +18,11 @@ export interface RenderPageOptions {
   readonly signal: AbortSignal;
   /** Modo noche (ADR-0015): si se pasa, los píxeles del lienzo se transforman con estos colores, salvo las imágenes. */
   readonly night?: NightColors;
+  /**
+   * Origen de la zona que dibuja el lienzo, en px CSS sobre la página a `scale` (ADR-0025). Sin él se dibuja la
+   * página entera; con él, el lienzo muestra solo la zona que empieza en este punto (lienzo de detalle).
+   */
+  readonly offset?: { readonly x: number; readonly y: number };
 }
 
 /**
@@ -32,7 +37,15 @@ export async function renderPageToCanvas(
 ): Promise<'done' | 'cancelled'> {
   if (o.signal.aborted) return 'cancelled';
 
-  const viewport = page.getViewport({ scale: o.scale, rotation: o.rotation });
+  const viewport =
+    o.offset === undefined
+      ? page.getViewport({ scale: o.scale, rotation: o.rotation })
+      : page.getViewport({
+          scale: o.scale,
+          rotation: o.rotation,
+          offsetX: -o.offset.x,
+          offsetY: -o.offset.y,
+        });
   const params: RenderParams = {
     canvas,
     viewport,

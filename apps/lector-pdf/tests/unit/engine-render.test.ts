@@ -97,6 +97,18 @@ describe('renderPageToCanvas', () => {
     expect(params.transform).toEqual([2, 0, 0, 2, 0, 0]);
   });
 
+  it('con origen de zona desplaza el viewport con offsetX/offsetY negativos (lienzo de detalle)', async () => {
+    const { page, getViewport } = fakePage(ok());
+    await renderPageToCanvas(page, {} as HTMLCanvasElement, {
+      scale: 2,
+      rotation: 90,
+      outputScale: 1,
+      offset: { x: 120, y: 340 },
+      signal: new AbortController().signal,
+    });
+    expect(getViewport).toHaveBeenCalledWith({ scale: 2, rotation: 90, offsetX: -120, offsetY: -340 });
+  });
+
   it('abortar durante el dibujo cancela la tarea de pdf.js y devuelve cancelled', async () => {
     const { RenderingCancelledException } = pdfjs();
     const controller = new AbortController();

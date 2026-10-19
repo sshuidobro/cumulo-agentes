@@ -193,6 +193,8 @@ export function Viewer() {
   // Fuente de verdad del scroll vertical (px de contenido). El estado de React solo sirve para pintar.
   const contentYRef = useRef(0);
   const [contentY, setContentY] = useState(0);
+  // Desplazamiento horizontal (px): el navegador lo gestiona, pero la zona visible del detalle (ADR-0025) lo necesita.
+  const [scrollX, setScrollX] = useState(0);
   // scrollTop que el propio visor ha puesto: su evento `scroll` de eco se ignora para no perder precisión.
   const echoRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -213,6 +215,7 @@ export function Viewer() {
     frameRef.current = requestAnimationFrame(() => {
       frameRef.current = null;
       setContentY(contentYRef.current);
+      setScrollX(ref.current?.scrollLeft ?? 0);
     });
   }, []);
 
@@ -484,8 +487,10 @@ export function Viewer() {
     if (el === null) return;
     const echo = echoRef.current;
     echoRef.current = null;
-    if (echo !== null && el.scrollTop === echo) return;
-    contentYRef.current = clampY(scrollTopToContentY(el.scrollTop, map) + originY, lo, hi);
+    // El eco no cambia contentY, pero sí puede traer un desplazamiento horizontal (zona del detalle): se redibuja igual.
+    if (echo === null || el.scrollTop !== echo) {
+      contentYRef.current = clampY(scrollTopToContentY(el.scrollTop, map) + originY, lo, hi);
+    }
     scheduleRender();
   };
 
@@ -498,6 +503,8 @@ export function Viewer() {
     const range = paged ? rowRange(layout, shownPage) : visibleRange(layout, contentY, contentY + vh, 1);
     const inView = paged ? range : visibleRange(layout, contentY, contentY + vh, 0);
     const scrollTop = contentYToScrollTop(contentY, map) - originY;
+    // Zona visible en las coordenadas de los marcos (espaciador): la misma que ve el usuario.
+    const viewRect = { x: scrollX, y: scrollTop, width: viewport.width, height: vh };
     for (let i = range.first; i <= range.last; i++) {
       frames.push(
         <PageView
@@ -511,6 +518,7 @@ export function Viewer() {
           zoom={zoom}
           rotation={rotation}
           visible={i >= inView.first && i <= inView.last}
+          viewportRect={i >= inView.first && i <= inView.last ? viewRect : null}
         />,
       );
     }
