@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-058
 titulo: Respuestas y estados de revisión - modelo, lectura y escritura
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-036, PDF-057, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
