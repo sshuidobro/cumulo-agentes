@@ -6,6 +6,7 @@ target/
 dist/
 fixtures/pdf/generated/
 apps/*/public/pdfjs/
+apps/*/public/ocr/
 playwright-report/
 test-results/
 apps/*/src-tauri/gen/

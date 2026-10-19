@@ -115,8 +115,8 @@ describe('PdfBuilder y buildPageTree', () => {
 });
 
 describe('fixtures generados', () => {
-  it('se generan los 26 ficheros y una segunda ejecución no toca ninguno', () => {
-    expect(FIXTURES).toHaveLength(27);
+  it('se generan los 28 ficheros y una segunda ejecución no toca ninguno', () => {
+    expect(FIXTURES).toHaveLength(28);
     for (const fixture of FIXTURES) {
       expect(existsSync(fixturePath(fixture.name))).toBe(true);
     }
