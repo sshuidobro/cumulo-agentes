@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-116
 titulo: Respuestas y estados en el panel de comentarios
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-109]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -48,3 +48,13 @@ El panel de comentarios muestra bajo cada comentario sus respuestas (sangradas) 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/comment-list.ts`, `apps/lector-pdf/src/core/annotations/replies.ts` (`indexReplies`, `threadRootId`), `apps/lector-pdf/src/ui/sidebar/CommentsPanel.tsx` y `.module.css`, `apps/lector-pdf/src/ui/kit/MenuButton.tsx` y `.module.css` (rótulo de grupo `heading`), `apps/lector-pdf/src/ui/messages-comments.ts`; tests en `tests/unit/annotations/comment-list.test.ts`, `tests/perf/comment-list.perf.test.ts`, `tests/ui/comments-panel.test.tsx`, `tests/e2e/comments-panel.spec.ts`, `tests/e2e/annotations-a11y.spec.ts`.
+- Qué he hecho: filas `reply` sangradas bajo su comentario (`REPLY_ROW_HEIGHT` 52), `state` y `replyCount` en las filas `item`, `CommentFilter.states` con grupo «Estado» en el menú Filtrar, búsqueda de texto también en respuestas y navegación con flechas, Intro y clic en respuestas. El índice de respuestas y estados es de un solo recorrido para no ser cuadrático.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK (un error previo en `new-document.test.ts`, ajeno a esta ficha, ya no aparece); `pnpm coverage` (con directorio propio) 255 ficheros y 3 229 tests OK, `comment-list.ts` 100 % líneas, `replies.ts` 100 %; `pnpm perf` 40/40 OK (nuevo caso 5 000 comentarios + 5 000 respuestas bajo 150 ms); e2e de `comments-panel`, `annotations-a11y` y `replies` OK; `pnpm --filter lector-pdf e2e` completo: 254 OK y 4 fallos (`annotations-flow.spec.ts:94`, `annotations-foreign.spec.ts:72`, `notes.spec.ts:91`, `outline.spec.ts:64`). Los cuatro fallan igual en una copia de `HEAD` sin mis cambios, así que son previos y no los he tocado. Por eso el e2e completo no sale con código 0.
+- Dudas o cosas que no he podido hacer:
+  - «Cinco opciones» de estado: he puesto las cuatro con nombre (Aceptado, Rechazado, Cancelado, Completado) más «Sin estado»; «Ninguno» equivale a «Sin estado» y no lo duplico.
+  - Una respuesta de respuesta, al activarla, abre la ventana del comentario raíz del hilo. `replyCount` cuenta todas las respuestas del hilo, de todos los niveles.
+  - El filtro de autor solo afecta a los comentarios, no a las respuestas. Supr sobre una fila de respuesta no borra nada (el borrado sigue en la ventana del comentario).
+  - Pido revisar si el e2e de los cuatro tests previos debe abrirse como incidencia aparte.

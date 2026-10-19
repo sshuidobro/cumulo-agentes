@@ -1,6 +1,6 @@
 import { REVIEW_STATE_LABELS, type ReviewState } from '../core/annotations';
 
-/** Textos de las respuestas y estados de revisión en la ventana de comentario (PDF-109). */
+/** Textos de las respuestas y estados de revisión en la ventana de comentario (PDF-109) y en el panel (PDF-116). */
 export const commentsMsg = {
   /** Nombre accesible de la lista de respuestas. */
   replies: 'Respuestas',
@@ -20,4 +20,8 @@ export const commentsMsg = {
   stateNone: 'Sin estado',
   /** Número de respuestas del hilo: «1 respuesta» / «N respuestas». */
   replyCount: (n: number): string => (n === 1 ? '1 respuesta' : `${n.toLocaleString('es-ES')} respuestas`),
+  /** Nombre accesible de una respuesta en el panel de comentarios (PDF-116). */
+  replyRowName: (author: string): string => `Respuesta de ${author}`,
+  /** Grupo «Estado» del menú de filtro del panel de comentarios (PDF-116). */
+  filterStates: 'Estado',
 } as const;

@@ -85,16 +85,54 @@ function timeOf(iso: string): number {
   return Date.parse(iso);
 }
 
+/** Ordena respuestas de la más antigua a la más nueva (`created ?? modified`); a igualdad, el orden de entrada. */
+function sortByCreated(list: readonly ReplyAnnotation[]): ReplyAnnotation[] {
+  return list
+    .map((a, index) => ({ a, index, t: timeOf(a.created ?? a.modified) }))
+    .sort((x, y) => x.t - y.t || x.index - y.index)
+    .map((x) => x.a);
+}
+
 /** Respuestas directas de `parentId`, de la más antigua a la más nueva (`created ?? modified`). */
 export function repliesOf(all: ReadonlyMap<string, Annotation>, parentId: string): readonly ReplyAnnotation[] {
   const out: ReplyAnnotation[] = [];
   for (const a of all.values()) {
     if (a.type === 'reply' && a.parentId === parentId) out.push(a);
   }
-  return out
-    .map((a, index) => ({ a, index, t: timeOf(a.created ?? a.modified) }))
-    .sort((x, y) => x.t - y.t || x.index - y.index)
-    .map((x) => x.a);
+  return sortByCreated(out);
+}
+
+/**
+ * Respuestas y estados de todos los padres en un solo recorrido: el panel de comentarios lo necesita para muchas filas
+ * (con `repliesOf` y `reviewStateOf` por cada una sería cuadrático). Mismas reglas que esas dos funciones.
+ */
+export interface ReplyIndex {
+  /** Respuestas directas por id de padre, en el orden de `repliesOf`. */
+  readonly replies: ReadonlyMap<string, readonly ReplyAnnotation[]>;
+  /** Estado vigente por id de padre (el de `reviewStateOf`, sin `None`). */
+  readonly states: ReadonlyMap<string, ReviewState>;
+}
+
+export function indexReplies(all: ReadonlyMap<string, Annotation>): ReplyIndex {
+  const byParent = new Map<string, ReplyAnnotation[]>();
+  const latest = new Map<string, ReviewStateAnnotation>();
+  for (const a of all.values()) {
+    if (a.type === 'reply') {
+      const list = byParent.get(a.parentId);
+      if (list === undefined) byParent.set(a.parentId, [a]);
+      else list.push(a);
+    } else if (a.type === 'review') {
+      const current = latest.get(a.parentId);
+      if (current === undefined || timeOf(a.modified) > timeOf(current.modified)) latest.set(a.parentId, a);
+    }
+  }
+  const replies = new Map<string, readonly ReplyAnnotation[]>();
+  for (const [parentId, list] of byParent) replies.set(parentId, sortByCreated(list));
+  const states = new Map<string, ReviewState>();
+  for (const [parentId, a] of latest) {
+    if (a.state !== 'None') states.set(parentId, a.state);
+  }
+  return { replies, states };
 }
 
 /** Estado vigente: el `review` con `modified` más reciente; `null` si no hay ninguno o es 'None'. */
@@ -109,6 +147,22 @@ export function reviewStateOf(
   }
   if (latest === null || latest.state === 'None') return null;
   return latest;
+}
+
+/**
+ * Comentario raíz del hilo al que pertenece `id`: la propia anotación si no es respuesta; si lo es, sube por `parentId`
+ * hasta el primer no-respuesta (la ventana de comentario muestra todo el hilo).
+ */
+export function threadRootId(all: ReadonlyMap<string, Annotation>, id: string): string {
+  let current = id;
+  const seen = new Set<string>();
+  let a = all.get(current);
+  while (a?.type === 'reply' && !seen.has(current)) {
+    seen.add(current);
+    current = a.parentId;
+    a = all.get(current);
+  }
+  return current;
 }
 
 /** Ids que dependen de `id` (respuestas y estados, recursivo: respuestas de respuestas). Sin `id`. */

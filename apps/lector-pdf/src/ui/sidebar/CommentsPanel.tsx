@@ -13,7 +13,8 @@ import {
   type RowLayout,
 } from '../../core/annotations/comment-list';
 import { effectiveAnnotations } from '../../core/annotations/effective';
-import type { Annotation, Rgb } from '../../core/annotations/model';
+import type { Annotation, ReviewState, Rgb } from '../../core/annotations/model';
+import { dependentIds, REVIEW_STATE_LABELS, REVIEW_STATES, threadRootId } from '../../core/annotations/replies';
 import {
   cancelScanAll,
   deleteAnnotation,
@@ -38,6 +39,7 @@ import {
 import { IconButton } from '../kit/IconButton';
 import { MenuButton, type MenuEntry } from '../kit/MenuButton';
 import { msg } from '../messages';
+import { commentsMsg } from '../messages-comments';
 import { useViewportSize } from '../viewer/use-viewport-size';
 import styles from './CommentsPanel.module.css';
 
@@ -47,6 +49,11 @@ const DATE_FORMAT = new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeS
 const OVERSCAN = 4;
 /** Altura de referencia de la lista mientras aún no se conoce la real (primer pintado). */
 const DEFAULT_VIEW_HEIGHT = 600;
+/** Estados que ofrece el menú de filtro (sin «Ninguno»: ese caso es «Sin estado»). */
+const FILTER_STATES: readonly ReviewState[] = REVIEW_STATES.filter((state) => state !== 'None');
+
+type ItemRow = Extract<CommentRow, { kind: 'item' }>;
+type ReplyRow = Extract<CommentRow, { kind: 'reply' }>;
 
 /** Id DOM de la fila `index`, para `aria-activedescendant` de la lista. */
 function rowDomId(index: number): string {
@@ -61,15 +68,33 @@ function revealRow(el: HTMLElement, layout: RowLayout, index: number, viewHeight
   else if (bottom > el.scrollTop + viewHeight) el.scrollTop = bottom - viewHeight;
 }
 
-function toggleType(types: ReadonlySet<string>, label: string): ReadonlySet<string> {
-  const next = new Set(types);
-  if (next.has(label)) next.delete(label);
-  else next.add(label);
+function toggleMember<T>(set: ReadonlySet<T>, value: T): ReadonlySet<T> {
+  const next = new Set(set);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
   return next;
 }
 
 function isFiltered(filter: CommentFilter): boolean {
-  return filter.types.size > 0 || filter.author !== null || filter.text.trim() !== '';
+  return filter.types.size > 0 || filter.author !== null || filter.states.size > 0 || filter.text.trim() !== '';
+}
+
+/**
+ * Id de la fila de comentario o respuesta más cercana a `index` que no esté en `gone` (primero hacia abajo, luego hacia
+ * arriba). `null` si no queda ninguna.
+ */
+function nearestRowId(rows: readonly CommentRow[], index: number, gone: ReadonlySet<string>): string | null {
+  const navigable = (row: CommentRow | undefined): row is ItemRow | ReplyRow =>
+    (row?.kind === 'item' || row?.kind === 'reply') && !gone.has(row.id);
+  for (let i = index + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (navigable(row)) return row.id;
+  }
+  for (let i = index - 1; i >= 0; i--) {
+    const row = rows[i];
+    if (navigable(row)) return row.id;
+  }
+  return null;
 }
 
 function cssColor([r, g, b]: Rgb): string {
@@ -111,7 +136,7 @@ export function CommentsPanel(): ReactElement {
     [rows],
   );
   const range = visibleRowRange(layout, scrollTop, viewHeight, OVERSCAN);
-  const activeIndex = activeId === null ? -1 : rows.findIndex((row) => row.kind === 'item' && row.id === activeId);
+  const activeIndex = activeId === null ? -1 : rows.findIndex((row) => row.kind !== 'page' && row.id === activeId);
   const activeCandidate = activeIndex < 0 ? undefined : rows[activeIndex];
   const activeRow = activeCandidate?.kind === 'item' ? activeCandidate : undefined;
 
@@ -136,9 +161,13 @@ export function CommentsPanel(): ReactElement {
     setScrollTop(el.scrollTop);
   }, [selectedId, rows, layout, viewHeight]);
 
-  /** Va a la anotación: su página en la posición del `rect`, y si es editable, la selecciona y abre su comentario. */
-  function activate(row: Extract<CommentRow, { kind: 'item' }>): void {
-    const rect = effective.get(row.id)?.rect ?? foreign.get(row.id)?.rect;
+  /**
+   * Va a la anotación: su página en la posición del `rect`, y si es editable, la selecciona y abre su comentario.
+   * Una respuesta lleva a la ventana de su comentario raíz.
+   */
+  function activate(row: ItemRow | ReplyRow): void {
+    const id = row.kind === 'reply' ? threadRootId(effective, row.id) : row.id;
+    const rect = effective.get(id)?.rect ?? foreign.get(id)?.rect;
     const { dims, rotation } = useViewer.getState();
     let yFraction = 0;
     if (rect !== undefined && dims !== null && row.pageIndex < dims.count) {
@@ -146,21 +175,21 @@ export function CommentsPanel(): ReactElement {
       yFraction = rectTopFraction(rect, dims.width(i), dims.height(i), (dims.rotation(i) + rotation) % 360);
     }
     goToPage(row.pageIndex, { yFraction });
-    if (row.readOnly) return;
-    select(row.id);
-    openPopupWhenPageCurrent(row.id, row.pageIndex);
+    if (row.kind === 'item' && row.readOnly) return;
+    select(id);
+    openPopupWhenPageCurrent(id, row.pageIndex);
   }
 
   /**
-   * Borra una anotación (PDF-070). La fila activa pasa a la siguiente fila de comentario o, si no hay, a la anterior;
-   * si no queda ninguna, no hay fila activa. El foco no se mueve.
+   * Borra una anotación (PDF-070) con sus respuestas y estados. La fila activa pasa a la fila de comentario o respuesta
+   * más cercana que sobreviva; si no queda ninguna, no hay fila activa. El foco no se mueve.
    */
   function deleteRow(id: string): void {
-    const index = rows.findIndex((row) => row.kind === 'item' && row.id === id);
-    const target = nextItemRow(rows, index, 'next') ?? nextItemRow(rows, index, 'prev');
-    const targetRow = target === null ? undefined : rows[target];
+    const gone = new Set([id, ...dependentIds(effective, id)]);
+    const index = rows.findIndex((row) => row.kind !== 'page' && row.id === id);
+    const nextId = nearestRowId(rows, index, gone);
     deleteAnnotation(id);
-    setActiveId(targetRow?.kind === 'item' ? targetRow.id : null);
+    setActiveId(nextId);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -179,12 +208,12 @@ export function CommentsPanel(): ReactElement {
     event.stopPropagation();
     if (step === null) {
       const row = rows[activeIndex];
-      if (row !== undefined && row.kind === 'item') activate(row);
+      if (row !== undefined && row.kind !== 'page') activate(row);
       return;
     }
     const target = nextItemRow(rows, activeIndex, step);
     const row = target === null ? undefined : rows[target];
-    if (target === null || row === undefined || row.kind !== 'item') return;
+    if (target === null || row === undefined || row.kind === 'page') return;
     setActiveId(row.id);
     const el = listRef.current;
     if (el !== null) {
@@ -193,7 +222,7 @@ export function CommentsPanel(): ReactElement {
     }
   }
 
-  function onRowClick(row: Extract<CommentRow, { kind: 'item' }>): void {
+  function onRowClick(row: ItemRow | ReplyRow): void {
     setActiveId(row.id);
     activate(row);
   }
@@ -204,7 +233,7 @@ export function CommentsPanel(): ReactElement {
       label,
       checked: filter.types.has(label),
       onSelect: () => {
-        setFilter((f) => ({ ...f, types: toggleType(f.types, label) }));
+        setFilter((f) => ({ ...f, types: toggleMember(f.types, label) }));
       },
     })),
     ...(types.length > 0 && authors.length > 0 ? (['separator'] as const) : []),
@@ -224,6 +253,24 @@ export function CommentsPanel(): ReactElement {
         setFilter((f) => ({ ...f, author: name }));
       },
     })),
+    'separator',
+    { kind: 'heading', label: commentsMsg.filterStates },
+    ...FILTER_STATES.map((state): MenuEntry => ({
+      kind: 'checkbox',
+      label: REVIEW_STATE_LABELS[state],
+      checked: filter.states.has(state),
+      onSelect: () => {
+        setFilter((f) => ({ ...f, states: toggleMember<ReviewState | 'none'>(f.states, state) }));
+      },
+    })),
+    {
+      kind: 'checkbox',
+      label: commentsMsg.stateNone,
+      checked: filter.states.has('none'),
+      onSelect: () => {
+        setFilter((f) => ({ ...f, states: toggleMember<ReviewState | 'none'>(f.states, 'none') }));
+      },
+    },
   ];
 
   const items: ReactElement[] = [];
@@ -243,6 +290,32 @@ export function CommentsPanel(): ReactElement {
           >
             <span>{msg.commentPage(row.pageIndex + 1)}</span>
             <span className={styles.pageCount}>{msg.commentsCount(row.count)}</span>
+          </div>,
+        );
+        continue;
+      }
+      if (row.kind === 'reply') {
+        const replyDate = formatDate(row.modified);
+        items.push(
+          <div
+            key={row.id}
+            id={rowDomId(i)}
+            role="option"
+            aria-selected={row.id === selectedId}
+            className={row.id === selectedId ? `${styles.row} ${styles.replyRow} ${styles.rowSelected}` : `${styles.row} ${styles.replyRow}`}
+            style={{ top, height }}
+            onClick={() => {
+              onRowClick(row);
+            }}
+          >
+            <div className={styles.body}>
+              <div className={styles.meta}>
+                <span className={styles.name}>{commentsMsg.replyRowName(row.author)}</span>
+                {' '}
+                {replyDate !== null && <span className={styles.date}>{replyDate}</span>}
+              </div>
+              <p className={`${styles.excerpt} ${styles.replyExcerpt}`}>{row.excerpt}</p>
+            </div>
           </div>,
         );
         continue;
@@ -278,6 +351,8 @@ export function CommentsPanel(): ReactElement {
               {' '}
               {date !== null && <span className={styles.date}>{date}</span>}
               {row.readOnly && <span className={styles.readOnly}>{msg.commentReadOnly}</span>}
+              {row.state !== null && <span className={styles.state}>{REVIEW_STATE_LABELS[row.state]}</span>}
+              {row.replyCount > 0 && <span className={styles.replies}>{commentsMsg.replyCount(row.replyCount)}</span>}
             </div>
             <p className={styles.excerpt}>{row.excerpt}</p>
           </div>
