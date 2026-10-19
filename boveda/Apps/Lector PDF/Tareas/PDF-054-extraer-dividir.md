@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-054
 titulo: Extraer y dividir - planes y operaciones del núcleo
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-123, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -72,3 +72,9 @@ export function splitZipName(base: string): string;   // «informe-partes.zip»
 
 ### [líder] detalle — 2026-10-19
 - Ficha detallada con [[ADR-0035-organizar-en-la-app]]: este núcleo + interfaz en [[PDF-127-extraer-dividir-interfaz]]. Dependencias nuevas: PDF-123 (cadena del documento nuevo) y PDF-118 (Worker). Se quita la dependencia de PDF-053.
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/organize/split.ts` (nuevo), `apps/lector-pdf/src/core/organize/index.ts`, `apps/lector-pdf/src/core/errors.ts`, `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (ops `extract` y `split`), `apps/lector-pdf/tests/unit/organize/split.test.ts`, `apps/lector-pdf/tests/unit/doc-ops/split-ops.test.ts`, `apps/lector-pdf/tests/perf/split.perf.test.ts`.
+- Qué he hecho: funciones de planes (`splitByPageCount`, `splitByBookmarks`, `splitBySize`, nombres) y ops `extract` y `split` según la ficha, con códigos `split-no-bookmarks` y `split-too-big`. Criterios cumplidos: conteo, marcadores (10/10/9/1 con qpdf), `split-no-bookmarks`, extract con AES-256 y contraseña de usuario, cancelación, perf (50 partes: 3,9 s < 5 s) y cobertura de `split.ts` al 100 %.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK; `pnpm coverage` código 0 (1 fallo transitorio por timeout del test de 44 MB, corregido con timeout explícito); `pnpm exec vitest run --config vitest.perf.config.ts split` OK; `pnpm lint` falla por ficheros que no son míos (`src/core/pdf/incremental.ts`: imports sin uso; `src/state/annotation-actions.ts`: `import()`), sin errores en los míos.
+- Dudas o cosas que no he podido hacer: **bloqueada por una contradicción de la ficha.** El criterio «partes ≤ 100 000 bytes» no se cumple con la fórmula de la ficha: con `pages-5000.pdf` a 100 000 bytes, las partes de ~370 páginas miden 110 019–110 227 bytes reales. La causa medida es que la fórmula no cuenta lo que `buildNewDocument` añade por página (`/Parent N 0 R`, unos 14 bytes, y la entrada en `/Kids`, unos 8 bytes) ni los nodos `/Pages` intermedios. Hace falta decidir: (a) añadir un coste fijo por página a la fórmula (cifra a fijar) o (b) otro criterio. No lo he inventado; el test de ese criterio no está escrito. Otros puntos: `split-too-big` no tiene test (exige más de 1 GB); el campo `parts` de `ok` es un número; en modo marcadores, un índice sin ningún destino de página da `split-no-bookmarks`; el test de cancelación llama a `DOC_OPS.split` directamente porque el canal en el mismo hilo no entrega el aborto antes de que termine la operación.
