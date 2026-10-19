@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-110
 titulo: XFDF - parser XML seguro, exportar e importar comentarios (núcleo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-058]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -93,3 +93,9 @@ export function importXfdf(xml: string, o: XfdfImportOptions): Result<XfdfImport
 - Qué he hecho: revisado el trabajo en curso y corregidos tres fallos. (1) Las notas abiertas perdían `open` al exportar: ahora se escribe `<popup open="yes"/>` solo si la nota está abierta, para cumplir la ida y vuelta. (2) La ficha dice «sin popup» al exportar, pero el criterio de ida y vuelta exige conservar `open`; he priorizado el criterio. Duda para el líder: confirmar esta interpretación. (3) El `color` de un sello importado se fija con `stampColor(name)`, como al crearlo en la app. La muestra de Acrobat pone `coords` como atributo de `highlight` (según la tabla), no como hijo.
 - Comandos ejecutados y resultado: `pnpm lint` → 0 avisos. `vitest run tests/unit/xfdf` → 56/56 pasan; cobertura de `src/core/xfdf/xfdf.ts` 99,5 % líneas. `pnpm typecheck` → falla por ficheros que no son míos (`src/core/pdf/page-tree.ts`, `tests/ui/tab-bar.test.tsx`, `tests/unit/tab-close-guard.test.ts`, trabajo de otros programadores); ningún error en `core/xfdf/`. `pnpm coverage` completo: pendiente de resultado en el momento de escribir esta entrada (ver nota siguiente).
 - Dudas o cosas que no he podido hacer: (a) conflicto ficha: «al exportar, sin popup» frente a la ida y vuelta de `open`; resuelto a favor de la ida y vuelta. (b) `pnpm typecheck` no pasa por los ficheros ajenos mencionados. (c) No se han hecho tests de `pnpm perf` ni e2e (no aplican a esta ficha). No se ha tocado git (sin commit, según instrucciones).
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Revisados `src/core/xfdf/{xml,xfdf,index}.ts`, códigos en `errors.ts` y tests. Vitest xfdf 56/56; cobertura de `core/xfdf/` 99,4 % líneas; eslint limpio; `tsc` sin errores en xfdf (los fallos de typecheck son de ficheros ajenos: page-tree, tab-bar).
+- Parser sin recursión, rechaza DOCTYPE/entidades/cruzadas/límites. Ida y vuelta, duplicados, Acrobat, skipped y empty cubiertos.
+1. (opcional) `xfdf.ts:109` — `<popup open="yes"/>` solo si la nota está abierta contradice «sin popup» de la ficha, pero es necesario para la ida y vuelta de `open`; decisión aceptada.
+2. (opcional) `xfdf.ts:169` — el `throw RangeError` es inalcanzable; correcto como guarda de bug.

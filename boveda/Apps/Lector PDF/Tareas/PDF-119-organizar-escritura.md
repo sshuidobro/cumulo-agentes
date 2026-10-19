@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-119
 titulo: Organizar - escribir el plan (páginas en blanco y limpieza de formularios)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-053]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -109,3 +109,8 @@ export async function buildOrganizeUpdate(input: OrganizeInput): Promise<Result<
   - `vitest run --config vitest.perf.config.ts tests/perf/organize.perf.test.ts`: pasa (`pages-100000.pdf` con blanco en la mitad, < 15 s).
   - No he ejecutado `page-tree.perf.test.ts` ni `pnpm perf` completo.
 - Dudas o cosas que no he podido hacer: (1) `removePageWidgets` devuelve el número de widgets de las páginas borradas (lo leo de «Devuelve los widgets quitados»); si se quiere el número efectivo quitado de `/Fields`, se cambia. (2) Sin commit, como se pidió. (3) Los fallos de `comment-toolbar` y `sidebar` deben revisarse en su ficha correspondiente.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Lint sin avisos; tests de organize, page-tree y delta-writer-golden: 83/83 (los dos últimos sin tocar). Cubiertos todos los criterios (blanco, giro, cifrado, form-full, campo con dos widgets, outline, inválidos/imported, cancelled, perf).
+- Duda del programador: se queda como está. La ficha dice «devuelve los widgets quitados» y define widgets como los de las páginas borradas; `removePageWidgets` devuelve ese número. Es válido.
+- (opcional) Los 2 fallos de `pnpm coverage` (`comment-toolbar`, `sidebar`) y los errores de tipos de tab-bar son ajenos a esta ficha; el tester debe tenerlos en cuenta.
