@@ -69,6 +69,8 @@ interface Run {
   index: number;
   /** Búsqueda de la página siguiente (lectura adelantada), o `null` si no hay más que leer. */
   next: Promise<Found | null> | null;
+  /** `true` mientras `advancePage` espera esa búsqueda: una reanudación en ese momento no debe decir nada aún. */
+  advancing: boolean;
 }
 
 let run: Run | null = null;
@@ -119,6 +121,7 @@ export async function startReading(scope: 'page' | 'document'): Promise<'started
     chunks: [],
     index: 0,
     next: null,
+    advancing: false,
   };
   run = r;
   useReadAloud.setState({ status: 'loading', scope, current: null });
@@ -164,7 +167,9 @@ export function togglePause(): void {
     speechPort().cancel();
     useReadAloud.setState({ status: 'paused' });
   } else if (status === 'paused') {
-    speakCurrent(r);
+    // Si aún se busca la página siguiente, esa búsqueda dirá el primer fragmento al llegar.
+    if (r.advancing) useReadAloud.setState({ status: 'speaking' });
+    else speakCurrent(r);
   }
 }
 
@@ -237,8 +242,10 @@ async function advancePage(r: Run): Promise<void> {
     endRun();
     return;
   }
+  r.advancing = true;
   try {
     const found = await r.next;
+    r.advancing = false;
     if (run !== r) return;
     if (found === null) {
       endRun();
@@ -255,6 +262,7 @@ async function advancePage(r: Run): Promise<void> {
       useReadAloud.setState({ current: found.chunks[0] ?? null });
     }
   } catch (cause: unknown) {
+    r.advancing = false;
     fail(r, cause);
   }
 }

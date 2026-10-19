@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-063
 titulo: Comparar dos PDFs - núcleo de diferencias de texto
 app: pdf
-estado: en-test
+estado: cambios-pedidos
 depende_de: [PDF-022]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-19
@@ -91,3 +91,16 @@ export function describeChange(c: PageChange): string;
 
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 - Lint y typecheck limpios; tests de `tests/unit/compare` (30) y `compare.perf` en verde (página 20 ms, pages-5000 3,6 s). Criterios cubiertos con tests; sin problemas bloqueantes. No he lanzado la batería completa ni la cobertura global (otros revisores en curso); el programador reporta cobertura de `core/compare/` ≥ 97 %.
+
+### [tester] ronda 1 — 2026-10-19 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck | OK | limpios |
+| `pnpm coverage` | OK | exit 0, 211 ficheros, 2573 tests; `core/compare` líneas 98,92 % (compare 97,95; diff 100; words 100) |
+| Tests funcionales (changed/same/only-in/cancel/diff/words) | OK | dentro de la batería en verde |
+| Perf `pages-5000.pdf` frente a sí mismo < 30 s | OK | 3,8–4,3 s |
+| Perf página 5 000 palabras / 1 500 cambios ≤ 30 ms | FALLA (intermitente) | `pnpm perf` y 6 ejecuciones aisladas de `compare.perf` (load 3–5 en 4 núcleos): peor 20,9 / 26,2 / 30,7 / 34,1 / 37,4 / 39,2 ms; 4 de 7 ejecuciones superan 30 ms. |
+
+Reproducir: `cd /home/claude/cumulo-agentes && pnpm exec vitest run --config vitest.perf.config.ts compare.perf` (repetir 3 veces).
+Petición: dar margen real a `diffSequences`/`comparePageWords` (objetivo ≤ 15 ms en reposo, p. ej. recortar prefijo/sufijo común, reutilizar arrays Int32Array, evitar copias en la fusión de operaciones) para que el presupuesto de 30 ms se cumpla de forma estable con carga moderada. No se relaja el umbral.
+Tests añadidos: ninguno. Rendimiento: arriba.

@@ -293,6 +293,55 @@ describe('pausa y reanudación', () => {
     togglePause();
     expect(useReadAloud.getState().status).toBe('idle');
   });
+
+  it('pausar y reanudar mientras se busca la página siguiente no dice nada dos veces', async () => {
+    const gate: { release?: (items: { str: string; hasEOL: boolean }[]) => void } = {};
+    override.source = {
+      getPageItems: (pageIndex) =>
+        pageIndex === 0
+          ? Promise.resolve([{ str: 'Primera.', hasEOL: false }])
+          : pageIndex === 1
+            ? new Promise((resolve) => { gate.release = resolve; })
+            : Promise.resolve([]),
+    };
+    await startReading('document');
+    port.at(0).opts.onEnd();
+
+    togglePause();
+    togglePause();
+    expect(port.spoken).toHaveLength(1);
+    expect(useReadAloud.getState().status).toBe('speaking');
+
+    gate.release?.([{ str: 'Segunda.', hasEOL: false }]);
+    await settle(() => { expect(port.spoken).toHaveLength(2); });
+    expect(port.at(1).text).toBe('Segunda.');
+    expect(useViewer.getState().navRequest?.page).toBe(1);
+    expect(useReadAloud.getState().status).toBe('speaking');
+  });
+
+  it('pausar mientras se busca la página siguiente y reanudar después la deja lista', async () => {
+    const gate: { release?: (items: { str: string; hasEOL: boolean }[]) => void } = {};
+    override.source = {
+      getPageItems: (pageIndex) =>
+        pageIndex === 0
+          ? Promise.resolve([{ str: 'Primera.', hasEOL: false }])
+          : pageIndex === 1
+            ? new Promise((resolve) => { gate.release = resolve; })
+            : Promise.resolve([]),
+    };
+    await startReading('document');
+    port.at(0).opts.onEnd();
+
+    togglePause();
+    gate.release?.([{ str: 'Segunda.', hasEOL: false }]);
+    await settle(() => { expect(useReadAloud.getState().current?.text).toBe('Segunda.'); });
+    expect(port.spoken).toHaveLength(1);
+    expect(useReadAloud.getState().status).toBe('paused');
+
+    togglePause();
+    expect(port.spoken).toHaveLength(2);
+    expect(port.at(1).text).toBe('Segunda.');
+  });
 });
 
 describe('errores, parada y cambios de documento', () => {

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-067
 titulo: Leer en voz alta - frases, voces y motor de lectura
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-022]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -125,3 +125,14 @@ Typecheck y ESLint de los ficheros de la ficha limpios; 45 tests OK; cobertura `
 1. `apps/lector-pdf/src/state/speech-port.ts:27-60` — `browserSpeechPort` tiene 16 % de cobertura y ningún test, y ahí vive la garantía de privacidad «nunca usa voces no locales» (`find(... && v.localService)`), además de la espera de `voiceschanged` (1 500 ms), el mapeo `voiceURI`→`id` y `onend`/`onerror` — añadir `tests/unit/speech-port.test.ts` con un `window.speechSynthesis` y `SpeechSynthesisUtterance` falsos (y timers falsos) que compruebe: `voices()` espera `voiceschanged` y también termina a los 1 500 ms; `speak` con una voz `localService:false` llama a `onError('voice-unavailable')` y no a `synth.speak`; con voz local fija `voice`, `lang`, `rate` y propaga `onend`/`onerror`; `available()` sin API es `false`; `cancel()` sin API no lanza.
 2. `apps/lector-pdf/src/state/read-aloud-actions.ts:235-256` (opcional) — si se pausa y se reanuda mientras `advancePage` espera la página siguiente, `togglePause` vuelve a decir el último fragmento y luego `advancePage` llama a `speakCurrent` otra vez (voz duplicada). Basta con comprobar `r.seq`/un indicador «avanzando» antes de reanudar.
 Nota: el fallo de `fixtures.test.ts` y el lint de `diff.test.ts` son de otras fichas, no bloquean esta.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/read-aloud-actions.ts`, `apps/lector-pdf/tests/unit/read-aloud-actions.test.ts`, `apps/lector-pdf/tests/unit/speech-port.test.ts` (nuevo) y esta ficha.
+- Qué he hecho: (1) `speech-port.test.ts` con `speechSynthesis`, `SpeechSynthesisUtterance` y timers falsos: disponibilidad, espera a `voiceschanged` y tope de 1 500 ms, voz local con voz/idioma/velocidad/fin/error, y voz no local o inexistente → `voice-unavailable` sin hablar. (2) Fragmento repetido al pausar/reanudar durante la búsqueda de la página siguiente: al reanudar en ese momento, `speakCurrent` usaba un índice ya fuera de rango y paraba la lectura, y al llegar la búsqueda podía volver a decir. Ahora `Run.advancing` marca la espera: reanudar solo vuelve a `speaking` y `advancePage` dice el primer fragmento una vez. Dos tests nuevos lo cubren.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf exec eslint` sobre los 4 ficheros tocados: sin avisos.
+  - `pnpm typecheck`: OK.
+  - `pnpm exec vitest run tests/unit/read-aloud* tests/unit/speech-port.test.ts` (desde `apps/lector-pdf`): 4 ficheros, 57 tests OK.
+  - `pnpm coverage` (raíz): 212 ficheros, 2583 tests OK (el primer intento chocó con el lock de cobertura de otro agente; el segundo fue limpio). Cobertura global: lines 98,72 %.
+  - Cobertura por fichero (la global solo mide `core/`): `src/state/read-aloud-actions.ts` 94,02 % líneas (≥ 90 %); `src/state/speech-port.ts` 90,32 % líneas (sin umbral en la ficha; sin cubrir 79-85, la rama de espera de `waitForVoices`).
+- Dudas o cosas que no he podido hacer: el commit incluye esta ficha completa, con la línea «> 2026-10-19 (líder)…» y el cambio de estado que estaban sin commit. No he tocado `diff.test.ts` ni `fixtures.test.ts` (otras fichas).
