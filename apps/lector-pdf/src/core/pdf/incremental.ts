@@ -9,6 +9,7 @@ import { err, ok, type AppError, type Result } from '@suite/shared';
 import { inflateSync } from 'fflate';
 import { buildAppearance } from '../annotations/appearance';
 import { isEmptyDiff, type AnnotationDiff } from '../annotations/diff';
+import { parseRef } from '../annotations/import';
 import type { Annotation, PdfObjRef } from '../annotations/model';
 import { annotationDict, popupDict, updatedDict } from '../annotations/to-pdf';
 import { fromBase64 } from '../base64';
@@ -62,6 +63,8 @@ interface AddedPlan {
    * `[imagen]` si es `jpeg`, ninguno en el resto. Se reservan aquí para que la xref no tenga huecos.
    */
   readonly extra: readonly PdfRef[];
+  /** `/IRT` de una respuesta o estado (PDF-058); `null` para el resto. */
+  readonly irt: PdfRef | null;
 }
 
 interface ModifiedPlan {
@@ -118,13 +121,15 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
 
   // 1. Números de objeto: anotación, apariencia y popup (solo notas) por cada añadida; apariencia por cada modificada.
   let next = reader.xref.size;
-  const added: AddedPlan[] = diff.added.map((a) => {
+  const numbered = writableAdded(diff).map((a) => {
     const annot = ref(next++);
     const ap = ref(next++);
     const popup = a.type === 'note' ? ref(next++) : null;
     const extra = Array.from({ length: imageObjectCount(a) }, () => ref(next++));
     return { a, annot, ap, popup, extra };
   });
+  const annotOf = new Map(numbered.map((p) => [p.a.id, p.annot] as const));
+  const added: AddedPlan[] = numbered.map((p) => ({ ...p, irt: irtOf(p.a, annotOf) }));
   const modified: ModifiedPlan[] = diff.modified.map((a) => ({ a, origin: fileOrigin(a).ref, ap: ref(next++) }));
   const fieldWrites = await planFieldWrites(reader, fields, () => ref(next++));
   const { xrefNum, size } = reserveXref(reader, next);
@@ -206,7 +211,7 @@ async function rewritePage(
   const newAnnots: readonly PdfValue[] = [...kept, ...appended];
 
   for (const p of added) {
-    writer.object(p.annot.num, 0, annotationDict(p.a, { pageRef, apRef: p.ap, popupRef: p.popup, now }));
+    writer.object(p.annot.num, 0, annotationDict(p.a, { pageRef, apRef: p.ap, popupRef: p.popup, now, irtRef: p.irt }));
     writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
     writeSignatureImage(writer, p.a, p.extra);
     if (p.popup !== null && p.a.type === 'note') {
@@ -276,6 +281,35 @@ async function annotsOf(
   throw unreadable(`/Annots de la página ${index + 1}`);
 }
 
+
+/**
+ * Anotaciones nuevas que se escriben (PDF-058). Una respuesta o estado solo se escribe si su padre se escribe en
+ * este incremento o es del fichero y no se borra; si no, se descarta. Se repite hasta que no cambie la lista
+ * (una respuesta a una descartada también se descarta).
+ */
+function writableAdded(diff: AnnotationDiff): readonly Annotation[] {
+  const removedIds = new Set(diff.removed.map((a) => a.id));
+  let list: readonly Annotation[] = diff.added;
+  for (;;) {
+    const ids = new Set(list.map((a) => a.id));
+    const next = list.filter((a) => {
+      if (a.type !== 'reply' && a.type !== 'review') return true;
+      if (ids.has(a.parentId)) return true;
+      return a.parentId.startsWith('ref:') && parseRef(a.parentId.slice(4)) !== null && !removedIds.has(a.parentId);
+    });
+    if (next.length === list.length) return next;
+    list = next;
+  }
+}
+
+/** `/IRT` de una respuesta o estado: el padre nuevo de este incremento, o el objeto del fichero. */
+function irtOf(a: Annotation, annotOf: ReadonlyMap<string, PdfRef>): PdfRef | null {
+  if (a.type !== 'reply' && a.type !== 'review') return null;
+  const local = annotOf.get(a.parentId);
+  if (local !== undefined) return local;
+  const file = parseRef(a.parentId.slice('ref:'.length));
+  return file === null ? null : toRef(file);
+}
 
 function fileOrigin(a: Annotation): { readonly ref: PdfObjRef; readonly popupRef: PdfObjRef | null } {
   if (a.origin.kind !== 'file') throw new RangeError(`la anotación ${a.id} no proviene del fichero`);

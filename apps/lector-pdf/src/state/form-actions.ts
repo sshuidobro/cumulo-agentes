@@ -19,6 +19,7 @@ import { services } from './services';
 import { initialFormState, useForms, type FormState } from './form-store';
 import { goToPage } from './navigation';
 import { showNotice } from './notice';
+import { registerTabParticipant, type TabParticipant } from './tabs';
 import { useViewer } from './viewer-store';
 import { formMsg } from '../ui/messages-forms';
 
@@ -27,6 +28,7 @@ const HIGHLIGHT_PREF = 'formHighlight';
 
 /** Suscripciones de la sesión de formularios de un documento. */
 interface FormSession {
+  readonly pdf: LoadedPdf;
   readonly stopPages: () => void;
   readonly stopEdits: () => void;
 }
@@ -47,11 +49,17 @@ function isBoolean(v: unknown): v is boolean {
  */
 export function startFormSession(pdf: LoadedPdf): void {
   endFormSession();
-  const doc = pdf.doc;
   const highlight = services().platform.prefs.get(HIGHLIGHT_PREF, isBoolean) ?? true;
   useForms.setState(initialFormState(highlight));
   fillableNoticeShown = false;
+  subscribeForms(pdf);
+}
+
+/** Se da de alta en los avisos de anotaciones para mantener los formularios de `pdf` al día (sin tocar el store). */
+function subscribeForms(pdf: LoadedPdf): void {
+  const doc = pdf.doc;
   session = {
+    pdf,
     stopPages: onPagesImported((pages) => {
       importPages(doc, pages);
     }),
@@ -59,6 +67,51 @@ export function startFormSession(pdf: LoadedPdf): void {
       applyEdits(doc, before, after);
     }),
   };
+}
+
+/** Lo que hace falta para volver a mostrar un documento suspendido con sus formularios (PDF-101). */
+interface FormsSnapshot {
+  /** Documento de la sesión, o `null` sin documento. */
+  readonly pdf: LoadedPdf | null;
+  readonly fields: FormState['fields'];
+  readonly byPage: FormState['byPage'];
+  readonly fillableNoticeShown: boolean;
+  readonly pendingFocus: { readonly pageIndex: number; readonly widgetId: string } | null;
+}
+
+/**
+ * Participante de pestañas de los formularios (orden 20). Suspender guarda campos y avisos, y deja el módulo como
+ * `endFormSession()`. Los valores rellenados siguen en el documento pdf.js, que no se destruye aquí. Reanudar restaura
+ * el store y vuelve a darse de alta en los avisos, sin volver a mostrar «hay campos que rellenar».
+ */
+const formsParticipant: TabParticipant<FormsSnapshot> = {
+  id: 'forms',
+  order: 20,
+  suspend(): FormsSnapshot {
+    const { fields, byPage } = useForms.getState();
+    const snapshot: FormsSnapshot = {
+      pdf: session?.pdf ?? null,
+      fields,
+      byPage,
+      fillableNoticeShown,
+      pendingFocus,
+    };
+    endFormSession();
+    return snapshot;
+  },
+  resume(snapshot: FormsSnapshot): void {
+    if (snapshot.pdf === null) return;
+    useForms.setState({ fields: snapshot.fields, byPage: snapshot.byPage });
+    fillableNoticeShown = snapshot.fillableNoticeShown;
+    pendingFocus = snapshot.pendingFocus;
+    subscribeForms(snapshot.pdf);
+  },
+  dispose: () => Promise.resolve(),
+};
+
+/** Da de alta el participante de formularios en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerFormsParticipant(): void {
+  registerTabParticipant(formsParticipant);
 }
 
 /** Cierra la sesión de formularios: se da de baja de los avisos y vacía el store (conserva el resaltado). */

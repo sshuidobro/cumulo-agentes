@@ -1,4 +1,5 @@
 import type { Annotation, AnnotationEdits } from './model';
+import { isDrawable } from './replies';
 
 /**
  * Lo que se ve: `línea base ⊕ cambios`. Orden: las de la línea base en su orden (sustituidas si
@@ -21,11 +22,11 @@ export function effectiveAnnotations(
   return result;
 }
 
-/** Anotaciones de una página, en el orden de `all`. */
+/** Anotaciones dibujables de una página, en el orden de `all` (sin respuestas ni estados, PDF-058). */
 export function annotationsOfPage(all: ReadonlyMap<string, Annotation>, pageIndex: number): readonly Annotation[] {
   const out: Annotation[] = [];
   for (const a of all.values()) {
-    if (a.pageIndex === pageIndex) out.push(a);
+    if (a.pageIndex === pageIndex && isDrawable(a)) out.push(a);
   }
   return out;
 }

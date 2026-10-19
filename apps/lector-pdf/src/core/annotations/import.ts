@@ -9,6 +9,7 @@
 import { parsePdfDate } from '../pdf-date';
 import { importWidget } from '../forms/import';
 import type { FormField } from '../forms/model';
+import { isReviewState } from './replies';
 import {
   quadFromRect,
   type Annotation,
@@ -82,9 +83,18 @@ export function importPageAnnotations(
       if (field !== null) widgets.push(field);
       continue;
     }
+    const relation = relationOf(raw);
+    if (relation === 'ignored') continue;
+    if (relation === 'reply' || relation === 'review') {
+      // Respuestas y estados (PDF-058): se importan aunque estén ocultas, como hace Adobe.
+      const related = importRelation(raw, relation, pageIndex, fallbackDate);
+      if (related !== null) supported.push(related);
+      else foreign.push(importForeign(raw, pageIndex, i));
+      continue;
+    }
     const hidden = hiddenOf(raw.annotationFlags);
     if (hidden === true) continue;
-    const annotation = hidden === false ? importSupported(raw, pageIndex, fallbackDate) : null;
+    const annotation = hidden === false && relation === null ? importSupported(raw, pageIndex, fallbackDate) : null;
     if (annotation !== null) {
       supported.push(annotation);
     } else {
@@ -97,11 +107,30 @@ export function importPageAnnotations(
 /** Convierte una anotación de tipo soportado; `null` si el tipo no lo es o algún dato no encaja. */
 function importSupported(raw: Record<string, unknown>, pageIndex: number, fallbackDate: string): Annotation | null {
   const kind = kindOf(raw.subtype);
-  if (kind === undefined || typeof raw.id !== 'string') return null;
+  if (kind === undefined) return null;
+  const base = baseOf(raw, pageIndex, fallbackDate);
+  if (base === null) return null;
+  switch (kind) {
+    case 'highlight':
+    case 'underline':
+    case 'strikeout':
+      return buildTextMarkup(base, kind, base.rect, raw.quadPoints);
+    case 'note':
+      return buildNote(base, raw);
+    case 'freetext':
+      return buildFreeText(base, raw);
+    case 'ink':
+      return buildInk(base, raw);
+  }
+}
+
+/** Campos comunes de una anotación del fichero (id, caja, origen…); `null` si alguno no encaja. */
+function baseOf(raw: Record<string, unknown>, pageIndex: number, fallbackDate: string): BaseFields | null {
+  if (typeof raw.id !== 'string') return null;
   const ref = parseRef(raw.id);
   const rect = toRect(raw.rect);
   const popupRef = optRef(raw.popupRef);
-  const color = optRgb(raw.color, kind === 'highlight' ? YELLOW : BLACK);
+  const color = optRgb(raw.color, raw.subtype === 'Highlight' ? YELLOW : BLACK);
   const opacity = optNumber(raw.opacity, DEFAULT_OPACITY);
   const contents = textObj(raw.contentsObj);
   const author = textObj(raw.titleObj);
@@ -121,7 +150,7 @@ function importSupported(raw: Record<string, unknown>, pageIndex: number, fallba
     return null;
   }
   const origin: AnnotationOrigin = { kind: 'file', ref, popupRef };
-  const base: BaseFields = {
+  return {
     id: `ref:${raw.id}`,
     pageIndex,
     rect,
@@ -133,18 +162,37 @@ function importSupported(raw: Record<string, unknown>, pageIndex: number, fallba
     created,
     origin,
   };
-  switch (kind) {
-    case 'highlight':
-    case 'underline':
-    case 'strikeout':
-      return buildTextMarkup(base, kind, rect, raw.quadPoints);
-    case 'note':
-      return buildNote(base, raw);
-    case 'freetext':
-      return buildFreeText(base, raw);
-    case 'ink':
-      return buildInk(base, raw);
-  }
+}
+
+/**
+ * Respuesta o estado de revisión (PDF-058, ADR-0030). `null` si `/Text` no es una respuesta ni un estado.
+ * `ignored`: grupo de respuestas (`Group`) o marca personal (`Marked`); `foreign`: relación que no encaja.
+ */
+type RelationKind = 'reply' | 'review' | 'ignored' | 'foreign';
+
+function relationOf(raw: Record<string, unknown>): RelationKind | null {
+  if (raw.subtype !== 'Text' || raw.inReplyTo === undefined || raw.inReplyTo === null) return null;
+  if (typeof raw.inReplyTo !== 'string' || parseRef(raw.inReplyTo) === null) return 'foreign';
+  if (raw.replyType === 'Group' || raw.stateModel === 'Marked') return 'ignored';
+  if (raw.replyType !== undefined && raw.replyType !== null && raw.replyType !== 'R') return 'foreign';
+  if (raw.state === undefined || raw.state === null) return 'reply';
+  return raw.stateModel === 'Review' ? 'review' : 'foreign';
+}
+
+/** Respuesta (`reply`) o estado (`review`) con su padre `ref:<IRT>`; `null` si algún dato no encaja. */
+function importRelation(
+  raw: Record<string, unknown>,
+  kind: 'reply' | 'review',
+  pageIndex: number,
+  fallbackDate: string,
+): Annotation | null {
+  const base = baseOf(raw, pageIndex, fallbackDate);
+  if (base === null || typeof raw.inReplyTo !== 'string') return null;
+  const parentId = `ref:${raw.inReplyTo}`;
+  if (kind === 'reply') return { ...base, type: 'reply', parentId };
+  const state = raw.state;
+  if (!isReviewState(state)) return null;
+  return { ...base, type: 'review', parentId, state };
 }
 
 function buildTextMarkup(
@@ -218,8 +266,14 @@ function importForeign(raw: Record<string, unknown>, pageIndex: number, index: n
   };
 }
 
-/** Tipos que se importan como editables. Las firmas (`/Stamp` propio) no vienen de ningún fichero: son ajenas. */
-type ImportedType = Exclude<AnnotationType, 'signature' | 'square' | 'circle' | 'line' | 'polygon' | 'stamp'>;
+/**
+ * Tipos que se importan como editables. Las firmas (`/Stamp` propio) no vienen de ningún fichero: son ajenas.
+ * Respuestas y estados se detectan antes (`relationOf`).
+ */
+type ImportedType = Exclude<
+  AnnotationType,
+  'signature' | 'square' | 'circle' | 'line' | 'polygon' | 'stamp' | 'reply' | 'review'
+>;
 
 function kindOf(subtype: unknown): ImportedType | undefined {
   switch (subtype) {

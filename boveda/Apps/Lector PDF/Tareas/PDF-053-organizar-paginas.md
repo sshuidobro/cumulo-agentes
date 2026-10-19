@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-053
 titulo: Organizar - modelo del plan de páginas, selección y deshacer (núcleo)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-052]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional]
@@ -121,3 +121,9 @@ export function indexOfKey(plan: OrganizePlan, key: string): number;
 
 ### [líder] detalle — 2026-10-19
 - Ficha detallada con [[ADR-0035-organizar-en-la-app]]. La función «girar, borrar y reordenar» se parte: este núcleo (PDF-053), escritura ([[PDF-119-organizar-escritura]]), Worker ([[PDF-118-worker-operaciones]]), estado ([[PDF-124-organizar-estado]]), vista ([[PDF-125-organizar-vista]]) y arrastrar + e2e ([[PDF-126-organizar-arrastrar-e2e]]). El criterio original (reordenar `pages-5000.pdf`, índice y enlaces correctos) pasa a PDF-126. `estado: pendiente`, `intentos: 0`.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/organize/plan.ts`, `apps/lector-pdf/src/core/organize/index.ts`, `apps/lector-pdf/tests/unit/organize/plan.test.ts` (nuevos); esta ficha (estado y registro).
+- Qué he hecho: implementado el plan de páginas (huecos, comandos puros con `invert` que restaura el plan exacto, selección y `pruneSelection`) según las firmas de la ficha. Tests: 34, cubren los criterios de aceptación y un test de rendimiento de 100 000 huecos. Cobertura de `plan.ts`: 98,6 % de líneas.
+- Comandos ejecutados y resultado: `pnpm lint` → sin errores. `pnpm typecheck` → falla por ficheros ajenos (no tocados por mí): `src/core/annotations/import.ts`, `src/core/pdf/incremental.ts`, `tests/support/standard-annotations.ts`, `tests/unit/annotations/*`; ninguno en `organize/`. `vitest run tests/unit/organize` → 34/34. Suite completa → 2430/2431; falla `tests/unit/search-actions.test.ts` (closeSearch), ajena a esta ficha.
+- Dudas o cosas que no he podido hacer: (1) `deleteCommand` y `moveCommand` no reciben el plan, así que sus `RangeError` se lanzan al aplicar el comando, no al crearlo; los tamaños de `insertBlankCommand` sí se validan al crearlo (no dependen del plan). (2) `selectAll(plan)` no recibe la selección actual: origen y foco quedan en el primer hueco. (3) `extendTo` sustituye la selección por el rango; `toggleKey` pone origen y foco en la clave pulsada. (4) No he hecho commit.

@@ -258,6 +258,8 @@ const SUBTYPE: Readonly<Record<AnnotationType, string>> = {
   line: 'Line',
   polygon: 'Polygon',
   stamp: 'Stamp',
+  reply: 'Text',
+  review: 'Text',
 };
 
 /** Extras de la anotación que pdf.js lee además de `/AP` (QuadPoints para marcados, InkList para trazos). */
@@ -495,5 +497,17 @@ describe('buildAppearance · formas: coordenadas dentro de /BBox y determinismo 
 
   it.each(shapes.map((a) => [a.type, a] as const))('%s: dos llamadas dan la misma apariencia', (_type, a) => {
     expect(buildAppearance(a).stream).toEqual(buildAppearance(a).stream);
+  });
+});
+
+describe('respuestas y estados de revisión (PDF-058)', () => {
+  it('su apariencia es un Form XObject sin contenido con BBox = rect', () => {
+    const parent = newAnnotation('suite-nota', 'note');
+    const reply = { ...newAnnotation('suite-r', 'reply'), rect: parent.rect };
+    for (const a of [reply, newAnnotation('suite-s', 'review')]) {
+      const ap = buildAppearance(a);
+      expect(new TextDecoder().decode(decodeStreamData(ap.stream)).trim()).toBe('');
+      expect(ap.stream.dict.entries.get('BBox')).toEqual([10, 20, 110, 40]);
+    }
   });
 });

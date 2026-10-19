@@ -378,6 +378,10 @@ function drawingOf(a: Annotation, imageRef: PdfRef | undefined): Drawing {
       return polygonDrawing(a);
     case 'stamp':
       return stampDrawing(a);
+    case 'reply':
+    case 'review':
+      // Respuestas y estados (PDF-058): Form XObject vacío; ningún visor pinta un icono.
+      return { ops: [] };
   }
 }
 

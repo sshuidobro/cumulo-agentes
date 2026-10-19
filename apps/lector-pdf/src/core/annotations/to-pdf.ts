@@ -32,6 +32,10 @@ const POPUP_HEIGHT = 100;
 const POPUP_WIDTH = 200;
 /** Ancho de la línea de los dibujos y del texto libre, en puntos. */
 const FREETEXT_BORDER = 1;
+/** `/F` de una respuesta: print + no zoom + no rotate; visible como el popup (PDF-058). */
+const REPLY_FLAGS = 28;
+/** `/F` de un estado de revisión: como REPLY_FLAGS y además oculta, como hace Adobe (PDF-058). */
+const REVIEW_FLAGS = 30;
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
@@ -52,6 +56,8 @@ const SUBTYPES: Readonly<Record<Annotation['type'], string>> = {
   line: 'Line',
   polygon: 'Polygon',
   stamp: 'Stamp',
+  reply: 'Text',
+  review: 'Text',
 };
 
 export interface AnnotationDictOptions {
@@ -63,6 +69,8 @@ export interface AnnotationDictOptions {
   readonly popupRef: PdfRef | null;
   /** ISO 8601: fecha de modificación (`/M`). */
   readonly now: string;
+  /** Padre de una respuesta o estado (`/IRT`); `null` para el resto. Obligatorio en `reply` y `review`. */
+  readonly irtRef: PdfRef | null;
 }
 
 export interface UpdatedDictOptions {
@@ -85,6 +93,9 @@ function rgbArray(c: Rgb): readonly number[] {
 
 /** Diccionario `/Annot` nuevo de la anotación `a`. */
 export function annotationDict(a: Annotation, o: AnnotationDictOptions): PdfDict {
+  if ((a.type === 'reply' || a.type === 'review') && o.irtRef === null) {
+    throw new Error(`Falta el comentario padre (/IRT) de ${a.type} ${a.id}`);
+  }
   const entries: Record<string, PdfValue> = {
     Type: name('Annot'),
     Subtype: name(SUBTYPES[a.type]),
@@ -100,7 +111,7 @@ export function annotationDict(a: Annotation, o: AnnotationDictOptions): PdfDict
     CA: a.opacity,
     AP: dict({ N: o.apRef }),
   };
-  for (const [key, value] of Object.entries(typeEntries(a))) {
+  for (const [key, value] of Object.entries(typeEntries(a, o.irtRef ?? undefined))) {
     if (value !== undefined) entries[key] = value;
   }
   if (o.popupRef !== null) entries.Popup = o.popupRef;
@@ -133,7 +144,7 @@ export function updatedDict(original: PdfDict, a: Annotation, o: UpdatedDictOpti
     C: rgbArray(a.color),
     CA: a.opacity,
     AP: dict({ N: o.apRef }),
-    ...typeEntries(a),
+    ...typeEntries(a, undefined),
   });
   const previous = dictGet(original, 'Contents');
   const sameText = isPdfString(previous) && decodeTextString(previous) === a.contents;
@@ -146,9 +157,10 @@ function isPdfString(v: PdfValue | undefined): v is PdfString {
 
 /**
  * Claves propias de cada tipo (sin `/Popup`, que pertenece a la nota y se gestiona aparte). Un valor `undefined`
- * quita la clave (en `updatedDict`) o no la pone (en `annotationDict`).
+ * quita la clave (en `updatedDict`) o no la pone (en `annotationDict`). `irt` es el padre de una respuesta o
+ * estado; `undefined` deja `/IRT` como esté (en `updatedDict`, que lo conserva).
  */
-function typeEntries(a: Annotation): Record<string, PdfValue | undefined> {
+function typeEntries(a: Annotation, irt: PdfRef | undefined): Record<string, PdfValue | undefined> {
   switch (a.type) {
     case 'highlight':
     case 'underline':
@@ -178,6 +190,21 @@ function typeEntries(a: Annotation): Record<string, PdfValue | undefined> {
       return { ...shapeEntries(a), Vertices: [...a.vertices] };
     case 'stamp':
       return { Name: name(a.name) };
+    case 'reply':
+      return {
+        ...(irt === undefined ? {} : { IRT: irt }),
+        RT: name('R'),
+        Name: name('Comment'),
+        F: REPLY_FLAGS,
+      };
+    case 'review':
+      return {
+        ...(irt === undefined ? {} : { IRT: irt }),
+        State: encodeTextString(a.state),
+        StateModel: encodeTextString('Review'),
+        Name: name('Comment'),
+        F: REVIEW_FLAGS,
+      };
   }
 }
 

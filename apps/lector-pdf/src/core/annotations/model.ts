@@ -126,6 +126,21 @@ export interface StampAnnotation extends Base {
   readonly name: StampName;
 }
 
+export type ReviewState = 'Accepted' | 'Rejected' | 'Cancelled' | 'Completed' | 'None';
+
+/** Respuesta a otra anotación (PDF-058): `/Text` con `/IRT` y `/RT /R`. No se dibuja. */
+export interface ReplyAnnotation extends Base {
+  readonly type: 'reply';
+  readonly parentId: string;
+}
+
+/** Estado de revisión de otra anotación (PDF-058): `/Text` con `/IRT`, `/State` y `/StateModel /Review`. No se dibuja. */
+export interface ReviewStateAnnotation extends Base {
+  readonly type: 'review';
+  readonly parentId: string;
+  readonly state: ReviewState;
+}
+
 export type Annotation =
   | TextMarkupAnnotation
   | NoteAnnotation
@@ -135,7 +150,9 @@ export type Annotation =
   | BoxShapeAnnotation
   | LineShapeAnnotation
   | PolygonAnnotation
-  | StampAnnotation;
+  | StampAnnotation
+  | ReplyAnnotation
+  | ReviewStateAnnotation;
 export type AnnotationType = Annotation['type'];
 
 /**
@@ -208,6 +225,8 @@ export function translateAnnotation(a: Annotation, dx: number, dy: number): Anno
     case 'square':
     case 'circle':
     case 'stamp':
+    case 'reply':
+    case 'review':
       return { ...a, rect };
   }
 }
@@ -239,6 +258,10 @@ export function isAnnotation(v: unknown): v is Annotation {
     case 'polygon':
     case 'stamp':
       return isShapeValid(v);
+    case 'reply':
+      return isParentId(v.parentId);
+    case 'review':
+      return isParentId(v.parentId) && REVIEW_STATE_VALUES.includes(v.state);
     default:
       return false;
   }
@@ -271,6 +294,12 @@ export function isSignatureArt(v: unknown): boolean {
     );
   }
   return false;
+}
+
+const REVIEW_STATE_VALUES: readonly unknown[] = ['Accepted', 'Rejected', 'Cancelled', 'Completed', 'None'];
+
+function isParentId(v: unknown): boolean {
+  return typeof v === 'string' && v.length > 0;
 }
 
 const NOTE_ICONS: readonly unknown[] = ['Comment', 'Note', 'Key', 'Help', 'NewParagraph', 'Paragraph', 'Insert'];
