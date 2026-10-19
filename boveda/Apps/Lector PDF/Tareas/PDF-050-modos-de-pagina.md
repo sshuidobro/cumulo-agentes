@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-050
 titulo: Modos de página en el visor y menú «Vista»
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-102, PDF-049]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
 actualizado: 2026-10-19
@@ -64,3 +64,9 @@ Como en Adobe («Vista › Modo de presentación de páginas»): una página a l
   - Las flechas ←/→ no cambian de página en modo por páginas si hay desplazamiento horizontal (comportamiento ya existente de «Página siguiente»); con la portada sola a zoom automático el contenido puede ser más ancho que el visor.
   - `src/state/view-actions.ts` no se ha tocado: `setViewMode` sigue yendo a la fila solo al cambiar de páginas por fila, como fija PDF-102 (su test lo exige). El paso de continuo a por páginas lo resuelve el visor (`goToPage` al cambiar `paged`).
 
+
+### [revisor] ronda 1 — 2026-10-19 — CAMBIOS
+1. `apps/lector-pdf/tests/e2e/performance.spec.ts` — falta el criterio de rendimiento (10 000 páginas, `pairs` continuo: 5 000 px sin long tasks > 50 ms, ≤ 14 lienzos; cambio de modo ≤ 200 ms). El programador lo reconoce sin hacer — añadir la prueba `@perf` y ejecutarla.
+2. `apps/lector-pdf/tests/e2e/view-modes.spec.ts` — faltan E2E exigidos: F3 salta a coincidencia en otra fila en `paged`, y resaltado en la página derecha de fila doble guardado y comprobado con pdf.js; además persistencia y miniaturas/comentarios/búsqueda en los 6 modos y axe con menú abierto y en doble página: verificar que existen y cubren los 6 modos; añadir lo que falte.
+3. `pnpm typecheck` de la raíz falla (`packages/platform/tests/web/platform-web-export.test.ts`, TS2322 `Uint8Array` a `BlobPart`); el criterio exige código 0. Aunque sea previo, la ficha no puede aprobarse en rojo: arreglarlo (cambio mínimo de tipo en el test) o escalar al líder.
+4. `MainToolbar.module.css` — `flex-wrap: wrap` convierte la barra en dos filas a 1280 px y obligó a modificar `zoom.spec.ts`; contradice «todos los E2E anteriores pasan sin cambios». Compactar la barra (espacios/agrupar) para que quepa en una fila y revertir el ajuste de `zoom.spec.ts`.
