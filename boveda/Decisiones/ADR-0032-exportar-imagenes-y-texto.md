@@ -24,7 +24,7 @@ Acrobat Pro exporta a imagen (PNG, JPEG) y a texto ([[PDF-064-exportar|PDF-064]]
 ## Decisión
 **Opción A.**
 - **Imágenes**: PNG o JPEG (calidad 0,92), resolución 72, 150, 300 o 600 ppp; la escala es `printScale` (tope de píxeles del lienzo: si se recorta, se avisa con la resolución real). Una página → un fichero `<nombre>-p<N>.png`; varias → `<nombre>-imagenes.zip` con `<nombre>-p0001.png`… (relleno con ceros a la anchura del total), escrito con `zipSync` de `fflate` sin recomprimir (`level: 0`). Límite del ZIP: 1 GB estimado (`páginas × ancho × alto × 4 / 3`); por encima se pide reducir el rango o la resolución. Comentarios: incluidos u omitidos como en imprimir.
-- **Texto**: UTF-8 con BOM (para que el Bloc de notas de Windows lo abra bien), saltos `\r\n`, el texto de cada página como lo concatena la búsqueda (`buildPageText`, orden de pdf.js), páginas separadas por una línea en blanco y salto de página `\f`. Rango de páginas como en imprimir.
+- **Texto**: UTF-8 con BOM (para que el Bloc de notas de Windows lo abra bien), saltos `\r\n`, el texto de cada página como lo concatena la búsqueda (`buildPageText`, orden de pdf.js), páginas separadas por un salto de página `\f` en su propia línea (`\r\n\f\r\n`). Rango de páginas como en imprimir.
 - **Permisos** ([[ADR-0022-pdf-cifrados]]): si el PDF no permite copiar, exportar texto e imágenes está deshabilitado con «El autor de este PDF no permite copiar su contenido.».
 - **Guardado**: `Platform.exportFile` ([[COM-018-exportar-fichero]]): no entra en «Recientes».
 - **Progreso y cancelar**: como imprimir; nunca más de un lienzo vivo a la vez.
