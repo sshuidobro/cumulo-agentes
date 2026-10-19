@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-090
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089, PDF-105]
 intentos: 1
 skills: [pruebas-calidad, calidad-profesional]
@@ -207,3 +207,10 @@ Estado → `pendiente`, depende de [[PDF-105-vista-previa-trazo-offscreen]]. `in
   1. **Estabilidad (criterio «e2e ×3 con código 0» no cumplido de forma estable).** La batería chromium ×3 pasó una vez (582/582) y falló en la segunda ejecución por `render.spec.ts` «annotated» (carrera de lectura del canvas). El subconjunto de `performance`/`render`/`search` ×3 falló una vez por tiempo agotado al abrir `pages-100000` (`performance.spec.ts:94`). Ambas pruebas son anteriores a esta ficha y no las he tocado. Decidir: estabilizar esas pruebas (una ficha aparte) o aceptar el riesgo.
   2. Ninguna medida se ha forzado ni se ha subido un umbral. La ficha queda en `en-revision`, no en `hecha`.
   3. Las muestras de Adobe (`interop-samples/`) no se han regenerado en esta ronda; no hay cambios de código que las afecten.
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+1. Verificado: `pnpm lint` 0, `pnpm typecheck` 0, `e2e --project=chromium --repeat-each=3` → 582 passed (código 0). Tabla de medidas completa y dentro de presupuesto; bundle 487 003 ≤ 500 000; chromium-perf ×3 en verde (PDF-105 resuelve el trazo); a11y 8/8 y flow sin fallos.
+2. (opcional) `render.spec.ts` «annotated» (lectura de canvas con width 0) y `performance.spec.ts:94` (apertura de `pages-100000` lenta) fallaron una vez cada una en las ejecuciones del programador; son pruebas anteriores y no reproducidas en mi ejecución. Conviene una ficha de estabilización.
+
+### [tester] ronda 4 — 2026-10-19
+PASA. lint, typecheck, coverage (98,65 %), perf (29), build (arranque 487 003 B), e2e chromium ×3 582/582 y chromium-perf ×3 36/36. Pendiente: ficha de estabilización de `render.spec.ts` «annotated» y `performance.spec.ts:94` (fallos sueltos no reproducidos).
