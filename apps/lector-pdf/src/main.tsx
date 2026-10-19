@@ -7,6 +7,8 @@ import './engine/worker';
 import { loadPdfjs } from './engine/pdfjs';
 import { App } from './ui/App';
 import { openRequested, registerDocumentParticipant } from './state/document-actions';
+import { registerAnnotationParticipant } from './state/annotation-actions';
+import { registerFormsParticipant } from './state/form-actions';
 import { initServices } from './state/services';
 import { startPositionSync } from './state/position-sync';
 import { loadAppearance } from './state/appearance-actions';
@@ -26,6 +28,8 @@ initServices({ platform, assetBaseUrl: new URL('pdfjs/', document.baseURI).href 
 platform.onFileOpenedFromOS((file) => void openRequested(file));
 startPositionSync();
 registerDocumentParticipant();
+registerAnnotationParticipant();
+registerFormsParticipant();
 registerHistoryParticipant();
 registerSearchParticipant();
 registerSidebarParticipant();

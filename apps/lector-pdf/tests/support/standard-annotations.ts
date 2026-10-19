@@ -6,7 +6,10 @@
 import { quadFromRect, type Annotation, type AnnotationType, type RectPt, type Rgb } from '../../src/core/annotations';
 
 /** Tipos del conjunto: los que la app escribe como anotaciones editables (sin la firma, PDF-085). */
-type StandardType = Exclude<AnnotationType, 'signature' | 'square' | 'circle' | 'line' | 'polygon' | 'stamp'>;
+type StandardType = Exclude<
+  AnnotationType,
+  'signature' | 'square' | 'circle' | 'line' | 'polygon' | 'stamp' | 'reply' | 'review'
+>;
 
 export const STANDARD_AUTHOR = 'Prueba';
 export const STANDARD_CONTENTS = 'Revisión: año, ñandú, café, ¿qué tal? 5 € ';

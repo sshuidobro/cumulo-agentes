@@ -1,4 +1,5 @@
 export * from './model';
+export * from './replies';
 export * from './effective';
 export * from './commands';
 export * from './diff';

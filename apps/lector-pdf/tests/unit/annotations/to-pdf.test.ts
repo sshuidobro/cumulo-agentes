@@ -32,7 +32,7 @@ function nameOf(v: PdfValue | undefined): string {
 }
 
 function build(a: Annotation, popupRef: typeof POPUP | null = null): PdfDict {
-  return annotationDict(a, { pageRef: PAGE, apRef: AP, popupRef, now: NOW });
+  return annotationDict(a, { pageRef: PAGE, apRef: AP, popupRef, now: NOW, irtRef: null });
 }
 
 describe('annotationDict', () => {
@@ -278,5 +278,50 @@ describe('formas y sellos (PDF-057)', () => {
     const original = dict({ Type: name('Annot'), Subtype: name('Square'), IC: [0, 1, 0] });
     const a = { ...shape, type: 'square', width: 2, interior: [1, 1, 0] } as Annotation;
     expect(dictGet(updatedDict(original, a, { apRef: AP, now: NOW }), 'IC')).toEqual([1, 1, 0]);
+  });
+});
+
+describe('respuestas y estados de revisión (PDF-058)', () => {
+  const PARENT = ref(20);
+  const reply = (over: object = {}): Annotation => make('reply', { parentId: 'ref:20R', ...over });
+  const review = (over: object = {}): Annotation => make('review', { parentId: 'ref:20R', state: 'Completed', ...over });
+  const opts = { pageRef: PAGE, apRef: AP, popupRef: null, now: NOW, irtRef: PARENT };
+
+  it('una respuesta es /Text con /IRT, /RT /R, /Name /Comment y /F 28', () => {
+    const d = annotationDict(reply(), opts);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Text');
+    expect(dictGet(d, 'IRT')).toEqual(PARENT);
+    expect(nameOf(dictGet(d, 'RT'))).toBe('R');
+    expect(nameOf(dictGet(d, 'Name'))).toBe('Comment');
+    expect(dictGet(d, 'F')).toBe(28);
+    expect(dictGet(d, 'State')).toBeUndefined();
+  });
+
+  it('un estado es /Text con /IRT, /State, /StateModel /Review, /Name /Comment y /F 30 (oculta)', () => {
+    const d = annotationDict(review(), opts);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Text');
+    expect(dictGet(d, 'IRT')).toEqual(PARENT);
+    expect(str(dictGet(d, 'State'))).toBe('Completed');
+    expect(str(dictGet(d, 'StateModel'))).toBe('Review');
+    expect(nameOf(dictGet(d, 'Name'))).toBe('Comment');
+    expect(dictGet(d, 'F')).toBe(30);
+  });
+
+  it('sin padre (irtRef null) en una respuesta o un estado es un error de programación', () => {
+    expect(() => annotationDict(reply(), { ...opts, irtRef: null })).toThrow(/IRT/);
+    expect(() => annotationDict(review(), { ...opts, irtRef: null })).toThrow(/IRT/);
+  });
+
+  it('updatedDict conserva el /IRT del original al cambiar la respuesta', () => {
+    const original = annotationDict(reply(), opts);
+    const changed = updatedDict(original, reply({ contents: 'Otro texto' }), { apRef: AP, now: NOW });
+    expect(dictGet(changed, 'IRT')).toEqual(PARENT);
+    expect(str(dictGet(changed, 'Contents'))).toBe('Otro texto');
+  });
+
+  it('el resto de tipos no lleva /IRT ni /RT', () => {
+    const d = annotationDict(make('highlight', { quads: [[1, 2, 3, 4, 5, 6, 7, 8]] }), { ...opts, irtRef: null });
+    expect(dictGet(d, 'IRT')).toBeUndefined();
+    expect(dictGet(d, 'RT')).toBeUndefined();
   });
 });

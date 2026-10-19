@@ -61,6 +61,10 @@ export function AnnotationShape({ a }: { readonly a: Annotation }): ReactElement
       return <PolygonShape a={a} />;
     case 'stamp':
       return <StampShape a={a} />;
+    case 'reply':
+    case 'review':
+      // Respuestas y estados no se dibujan (PDF-058).
+      return <></>;
   }
 }
 
@@ -90,6 +94,9 @@ export function ZoneShape({ a }: { readonly a: Annotation }): ReactElement {
       return <line x1={a.points[0]} y1={a.points[1]} x2={a.points[2]} y2={a.points[3]} className={styles.zoneLine} />;
     case 'polygon':
       return <polygon points={svgPointsForPath(a.vertices)} className={styles.zoneLine} />;
+    case 'reply':
+    case 'review':
+      return <></>;
   }
 }
 

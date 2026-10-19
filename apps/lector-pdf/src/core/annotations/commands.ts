@@ -14,6 +14,8 @@ const ADD_LABEL: Readonly<Record<AnnotationType, string>> = {
   line: 'añadir línea',
   polygon: 'añadir polígono',
   stamp: 'añadir sello',
+  reply: 'responder',
+  review: 'cambiar estado',
 };
 
 const NOUN: Readonly<Record<AnnotationType, string>> = {
@@ -29,6 +31,8 @@ const NOUN: Readonly<Record<AnnotationType, string>> = {
   line: 'línea',
   polygon: 'polígono',
   stamp: 'sello',
+  reply: 'respuesta',
+  review: 'estado',
 };
 
 /**

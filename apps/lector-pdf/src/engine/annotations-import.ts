@@ -23,6 +23,8 @@ export async function readPageAnnotations(
  * Mismo patrón que `scanPageDims`: cede el hilo entre lotes. Devuelve `'cancelled'` si `signal` aborta.
  */
 export async function scanAnnotations(doc: PDFDocumentProxy, opts: {
+  /** Primera página a importar (0-based, por defecto 0). */
+  readonly from?: number;
   readonly signal?: AbortSignal;
   readonly batchSize?: number;
   readonly fallbackDate: string;
@@ -32,7 +34,7 @@ export async function scanAnnotations(doc: PDFDocumentProxy, opts: {
   const batchSize = opts.batchSize ?? 50;
   let batch: ImportedPage[] = [];
 
-  for (let i = 0; i < doc.numPages; i++) {
+  for (let i = opts.from ?? 0; i < doc.numPages; i++) {
     if (opts.signal?.aborted) return 'cancelled';
     const page = await doc.getPage(i + 1);
     batch.push(await readPageAnnotations(page, opts.fallbackDate, opts.reader ?? null));

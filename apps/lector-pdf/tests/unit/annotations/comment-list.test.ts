@@ -12,12 +12,14 @@ import {
   PAGE_ROW_HEIGHT,
   rectTopFraction,
   rowLayout,
+  typeLabelOf,
   typeLabelsOf,
   visibleRowRange,
   type CommentFilter,
   type CommentRow,
 } from '../../../src/core/annotations/comment-list';
 import type { ForeignAnnotation } from '../../../src/core/annotations/import';
+import { newReply, newReviewState } from '../../../src/core/annotations/replies';
 import type { Annotation } from '../../../src/core/annotations/model';
 import { endAnnotationSession, startAnnotationSession } from '../../../src/state/annotation-actions';
 import { initialAnnotationState, useAnnotations } from '../../../src/state/annotation-store';
@@ -26,7 +28,7 @@ import { fixtureSource, nodeAssetBase } from '../../helpers/pdfjs-node';
 import { loadPdf, type LoadedPdf } from '../../../src/engine';
 import { initServices } from '../../../src/state/services';
 import { createStorageStore, type Platform } from '@suite/platform';
-import { newAnnotation } from './factories';
+import { newAnnotation, T0 } from './factories';
 
 const OPEN_TIMEOUT = 30_000;
 
@@ -350,5 +352,17 @@ describe('etiqueta «Firma» de sellos ajenos', () => {
 
     expect(rows.flatMap((r) => (r.kind === 'item' ? [r.typeLabel] : []))).toEqual(['Sello', 'Sello']);
     expect(typeLabelsOf(new Map(), ajenas)).toEqual(['Sello']);
+  });
+});
+
+describe('respuestas y estados en la lista de comentarios (PDF-058)', () => {
+  it('su etiqueta es Respuesta y Estado, y no son filas propias', () => {
+    const parent = { ...newAnnotation('suite-nota', 'note'), rect: [10, 100, 20, 110] as const };
+    const reply = newReply({ id: 'suite-r', parent, contents: 'Sí', author: 'Ana', now: T0 });
+    const review = newReviewState({ id: 'suite-s', parent, state: 'Accepted', author: 'Ana', now: T0 });
+    expect(typeLabelOf(reply)).toBe('Respuesta');
+    expect(typeLabelOf(review)).toBe('Estado');
+    const rows = buildCommentRows(map([parent, reply, review]), new Map(), EMPTY_COMMENT_FILTER);
+    expect(rows.flatMap((r) => (r.kind === 'item' ? [r.id] : []))).toEqual(['suite-nota']);
   });
 });

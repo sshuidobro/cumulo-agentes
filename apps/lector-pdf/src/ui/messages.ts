@@ -40,6 +40,8 @@ export const msg = {
     line: 'Línea',
     polygon: 'Polígono',
     stamp: 'Sello',
+    reply: 'Respuesta',
+    review: 'Estado',
   },
   /** Línea con punta (`endings` con alguna punta): nombre accesible de la zona. */
   annotationArrowKind: 'Flecha',

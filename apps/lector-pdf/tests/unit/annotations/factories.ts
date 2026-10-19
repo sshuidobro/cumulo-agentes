@@ -43,6 +43,10 @@ export function newAnnotation(id: string, type: AnnotationType = 'highlight', pa
       return { ...base, type, vertices: [10, 20, 110, 20, 60, 50], width: 2, interior: null };
     case 'stamp':
       return { ...base, type, name: 'Draft' };
+    case 'reply':
+      return { ...base, type, parentId: 'suite-padre' };
+    case 'review':
+      return { ...base, type, parentId: 'suite-padre', state: 'Accepted' };
   }
 }
 

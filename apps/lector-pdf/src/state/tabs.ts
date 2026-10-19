@@ -59,6 +59,11 @@ export function registerTabParticipant<S>(participant: TabParticipant<S>): void 
   participants.set(participant.id, participant);
 }
 
+/** Quita un participante del registro (p. ej. al detener la sincronización que lo daba de alta). */
+export function unregisterTabParticipant(id: string): void {
+  participants.delete(id);
+}
+
 /** Participantes por orden ascendente (para `resume`) o descendente (para `suspend`). */
 function ordered(ascending: boolean): TabParticipant<unknown>[] {
   const list = [...participants.values()].sort((a, b) => a.order - b.order);

@@ -86,6 +86,11 @@ function beginReplacement(): Session | null {
   return takeSession();
 }
 
+/** Señal de aborto del escaneo del documento activo, o null sin documento (las anotaciones la usan al reanudar, PDF-101). */
+export function currentScanSignal(): AbortSignal | null {
+  return session?.scan.signal ?? null;
+}
+
 /** Contraseña con la que se abrió el documento actual, o null. Solo vive en memoria mientras está abierto. */
 export function currentPassword(): string | null {
   return session?.password ?? null;

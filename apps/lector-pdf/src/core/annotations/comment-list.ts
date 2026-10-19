@@ -53,6 +53,8 @@ const SUPPORTED_LABELS: Readonly<Record<AnnotationType, string>> = {
   line: 'Línea',
   polygon: 'Polígono',
   stamp: 'Sello',
+  reply: 'Respuesta',
+  review: 'Estado',
 };
 
 /** Subtipos ajenos con nombre en español; el resto se muestra con su `subtype` tal cual. */
@@ -138,6 +140,8 @@ export function buildCommentRows(
   };
 
   for (const a of effective.values()) {
+    // Respuestas y estados no son filas propias: el panel los anida bajo su comentario (PDF-109).
+    if (a.type === 'reply' || a.type === 'review') continue;
     keep({
       id: a.id,
       pageIndex: a.pageIndex,
