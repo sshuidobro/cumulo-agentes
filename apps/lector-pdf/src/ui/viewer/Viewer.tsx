@@ -478,8 +478,10 @@ export function Viewer() {
   };
 
   // Tras abrir un documento, el visor recibe el foco para que el teclado funcione de inmediato.
+  // Si el foco está en la barra de pestañas (cambio con teclado, PDF-095), el visor no se lo quita.
   useEffect(() => {
-    if (dims !== null) ref.current?.focus();
+    if (dims === null || document.activeElement?.closest('[role="tablist"]') != null) return;
+    ref.current?.focus();
   }, [dims]);
 
   const onScroll = (): void => {

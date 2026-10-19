@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-131
 titulo: Reescribir el documento completo (con o sin cifrado nuevo)
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-060, PDF-121]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -66,3 +66,30 @@ export async function rewriteDocument(input: RewriteInput): Promise<Result<{ rea
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/rewrite.ts` (nuevo); `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (ops `protect`, `unprotect`, `rewrite` y helpers); `apps/lector-pdf/src/core/errors.ts` (`not-protected`, `owner-password-required`); `apps/lector-pdf/tests/unit/pdf/rewrite.test.ts`; `apps/lector-pdf/tests/unit/doc-ops/protect-ops.test.ts`; `apps/lector-pdf/tests/perf/rewrite.perf.test.ts`.
+- Qué he hecho: `rewriteDocument` recorre en anchura desde `/Root` e `/Info` con cola explícita y numeración 1..N por descubrimiento; quita `/Perms`, descarta `/Encrypt` y las referencias inexistentes (→ `null`), fija `/Length` directo y cifra con `createAes256Security` si se pide. Las tres ops se registran en `DOC_OPS`. Tests: 22 de reescritura y 11 de ops, incluidos qpdf (`--check`, `--show-encryption`) y pdf.js.
+- Decisión menor a revisar: `RewriteInput` tiene un campo opcional `keepEncryption` (no está en la ficha). Con `encryption: null`, `rewrite` necesita conservar el cifrado original y `unprotect` no; sin el campo no hay forma de distinguirlos sin cambiar la firma pedida. Un `Info` directo (no referencia) se descarta: la ficha solo prevé referencias.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf typecheck`: sin errores de mis ficheros. Quedan errores en `tests/unit/pdf/flatten.test.ts` (fichero de otro programador, en curso).
+  - ESLint sobre mis 6 ficheros: sin errores. `pnpm lint` de la raíz falla con 11 746 errores, todos en `apps/lector-pdf/dist-pdf095/` (carpeta de build no excluida en `eslint.config`; no es mía).
+  - `vitest run` de mis 2 ficheros de test: 33/33 OK. Cobertura de `rewrite.ts` (con esos tests): líneas 100 %, sentencias 90,9 %, ramas 84 %.
+  - `pnpm perf` (solo `rewrite.perf.test.ts`, con `vitest run --config vitest.perf.config.ts <fichero>`): 2/2 OK; cada pasada sobre `pages-100000.pdf` tarda unos 8 s, sin y con cifrado (límites 20 s y 25 s).
+  - `pnpm coverage` completo: 2 ficheros fallan que no son míos: `tests/unit/fixtures.test.ts` (espera 28 fixtures y `catalog.ts` tiene 29 ahora, cambio de otro programador) y `tests/unit/search-actions.test.ts` (`revealSeq`). `pnpm perf` completo: una prueba falla en `annotation-layer.perf.test.ts` (107,7 ms frente a 100 ms), tampoco mía.
+- Dudas o cosas que no he podido hacer: los criterios de pdf.js y qpdf están automatizados en los tests, no comprobados a mano en la interfaz (PDF-132 la usará). Sin commit, como se pidió.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Lint raíz, tsc y los 33 tests de la ficha pasan; el código cumple los criterios. `keepEncryption` es una extensión aceptable (necesaria para distinguir `rewrite` de `unprotect`).
+- (opcional) `rewrite.ts`: un `/Info` directo se descarta; documentado, sin impacto en los criterios.
+- Pendiente para el tester: `pnpm perf` y `pnpm coverage` completos (hay fallos ajenos a la ficha en fixtures.test.ts, search-actions y annotation-layer.perf).
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Fixtures (incremental, borrar página, protect, unprotect, rewrite AES-128, annotated/form/outline/compressed) con pdf.js y qpdf | OK | `rewrite.test.ts` + `protect-ops.test.ts`: 33/33 |
+| Perf `pages-100000.pdf` < 20 s / < 25 s | OK | `pnpm perf`: 26 ficheros, 43/43 (antes ~8 s por pasada) |
+| Cobertura `rewrite.ts` ≥ 90 % | OK | líneas 100 %, sentencias 90,9 %, ramas 84 % |
+| lint, typecheck, coverage | OK | los tres con código 0; global líneas 98,62 % |
+
+Sin fallos. Tests añadidos: ninguno (la cobertura existente basta).

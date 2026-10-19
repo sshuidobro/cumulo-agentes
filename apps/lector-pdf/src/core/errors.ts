@@ -16,7 +16,9 @@ export type PdfErrorCode =
   | 'xfdf-invalid'
   | 'xfdf-empty'
   | 'split-no-bookmarks'
-  | 'split-too-big';
+  | 'split-too-big'
+  | 'not-protected'
+  | 'owner-password-required';
 
 export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
@@ -35,6 +37,8 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'xfdf-empty': 'El fichero no contiene comentarios que se puedan importar.',
   'split-no-bookmarks': 'Este PDF no tiene marcadores para dividirlo.',
   'split-too-big': 'Las partes ocupan demasiado para guardarlas juntas: divide un rango más pequeño.',
+  'not-protected': 'Este PDF no tiene contraseña.',
+  'owner-password-required': 'Para quitar la protección hace falta la contraseña de permisos.',
 };
 
 /** Crea un error de PDF con mensaje en español. `cause` conserva el error original para diagnóstico. */

@@ -3,7 +3,7 @@
  * (nuestro o de Acrobat) como anotaciones nuevas. Sin dependencias: el XML lo lee `xml.ts`.
  */
 import { err, ok, type Result } from '@suite/shared';
-import { isAnnotation, type Annotation, type ReplyAnnotation, type ReviewStateAnnotation, type Rgb } from '../annotations/model';
+import { isAnnotation, isFlattened, type Annotation, type ReplyAnnotation, type ReviewStateAnnotation, type Rgb } from '../annotations/model';
 import { stampColor } from '../annotations/shapes';
 import { pdfError } from '../errors';
 import { parsePdfDate, toPdfDate } from '../pdf-date';
@@ -26,7 +26,7 @@ function isReplyLike(a: Annotation): a is ReplyLike {
  * después de su padre. Una respuesta cuyo padre no se exporta conserva su orden original.
  */
 export function exportXfdf(all: ReadonlyMap<string, Annotation>, o: XfdfExportOptions): string {
-  const items = [...all.values()].filter((a) => a.type !== 'signature');
+  const items = [...all.values()].filter((a) => a.type !== 'signature' && !isFlattened(a));
   const exportedIds = new Set(items.map((a) => a.id));
   const repliesByParent = new Map<string, Annotation[]>();
   const roots: Annotation[] = [];

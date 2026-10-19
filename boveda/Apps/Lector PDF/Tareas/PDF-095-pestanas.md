@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: pendiente
+estado: cambios-pedidos
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, ui, pestanas]
 ---
 
@@ -50,3 +50,11 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/Viewer.tsx` (el visor no roba el foco si está en la barra de pestañas); `apps/lector-pdf/tests/fixtures/catalog.ts` (fixture `pages-1000.pdf`); `apps/lector-pdf/tests/unit/fixtures.test.ts` (recuento 28 → 29 por el fixture nuevo); nuevos `apps/lector-pdf/tests/e2e/tabs.spec.ts`, `apps/lector-pdf/tests/e2e/tabs-performance.spec.ts` y `apps/lector-pdf/tests/e2e/tabs-kit.ts`.
+- Qué he hecho: `TabBar`, `tab-actions.ts`, atajos, cableado en `App.tsx`, `unsaved-guard` y tests UI ya estaban en el árbol (commit 8a53421); los he verificado contra la ficha. He añadido los E2E de los criterios (6 de 7 pasan) y el de rendimiento (pasa). Copias de `basic-5.pdf` con `/ID` distinto para que pdf.js no las tome por duplicados. Corrección de foco: al cambiar con Intro, el visor se llevaba el foco y Supr no cerraba.
+- Comandos ejecutados y resultado: `pnpm lint`: OK. `pnpm typecheck`: OK salvo errores en `tests/unit/pdf/rewrite.test.ts` (trabajo ajeno en curso, PDF-131; no lo he tocado). `pnpm coverage`: solo fallaba el recuento de fixtures, ya corregido; el resto (3334 tests) pasa. `playwright test tests/e2e/tabs.spec.ts --project=chromium`: 6 pasan, 1 falla (axe, ver abajo). `playwright test tests/e2e/tabs-performance.spec.ts --project=chromium-perf`: pasa; medidas: cambio de pestaña p95 97 ms (límite 500), heap 7.8 → 7.9 MB, 0 long tasks. La primera ejecución de perf se bloqueó por CPU ocupada por otros procesos (ADR-0016), no por la app. No he lanzado la suite E2E completa.
+- Criterio NO cumplido: axe «critical aria-required-children» en el `role="tablist"`. La causa es que el botón × (`role=button`) es hijo directo de la lista a través del `div role=presentation` de cada pestaña; la ficha pide ambas cosas (× con nombre accesible dentro de cada pestaña y axe limpio). Solucionarlo exige mover el × fuera del `tablist` (cambio de estructura) o quitarlo del árbol de accesibilidad (cambiaría el test de la ×). Es una decisión de diseño: la dejo para el líder/revisor. Sin decidir, no marco la ficha como terminada.
+- Para el Manual (no probado aquí): en el navegador Chrome no entrega Ctrl+Tab ni Ctrl+W a la página; los atajos funcionan en la app de escritorio y en Playwright, y en el navegador se usa la barra con ratón o teclado. Pendiente en `tauri dev` de la máquina del usuario: Ctrl+Tab, Ctrl+W y «Abrir con» con dos PDF.
+- Dudas o cosas que no he podido hacer: (1) decisión sobre el criterio axe (ver arriba). (2) El criterio de rendimiento menciona «fixtures de 1 000 páginas»: uso tres copias de `pages-1000.pdf`. (3) No he hecho commit (petición del usuario).

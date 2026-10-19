@@ -1,4 +1,4 @@
-import type { Annotation, AnnotationType, RectPt, ReplyAnnotation, ReviewState } from './model';
+import { isFlattened, type Annotation, type AnnotationType, type RectPt, type ReplyAnnotation, type ReviewState } from './model';
 import type { ForeignAnnotation } from './import';
 import { indexReplies, type ReplyIndex } from './replies';
 import { SIGNATURE_STAMP_NAME } from './to-pdf';
@@ -166,6 +166,8 @@ export function buildCommentRows(
   for (const a of effective.values()) {
     // Respuestas y estados no son filas propias: el panel los anida bajo su comentario (PDF-109).
     if (a.type === 'reply' || a.type === 'review') continue;
+    // Las anotaciones aplanadas pasan a ser contenido de la página al guardar (ADR-0036): no son comentarios.
+    if (isFlattened(a)) continue;
     keep({
       id: a.id,
       pageIndex: a.pageIndex,

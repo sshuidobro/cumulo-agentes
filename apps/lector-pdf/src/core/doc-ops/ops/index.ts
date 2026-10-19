@@ -8,6 +8,9 @@ import { buildOrganizeUpdate } from '../../organize/save';
 import { buildZip, MAX_ZIP_BYTES } from '../../export/plan';
 import { buildNewDocument } from '../../pdf/new-document';
 import type { ObjectReader } from '../../pdf/object-reader';
+import type { NewSecurityInput, PermissionChoice } from '../../pdf/crypto';
+import { PERMISSION_FLAG } from '../../permissions';
+import { rewriteDocument } from '../../pdf/rewrite';
 import { readTopLevelOutline } from '../../pdf/outline-copy';
 import {
   checkZipBudget,
@@ -17,7 +20,7 @@ import {
   splitPartNames,
   type SplitMode,
 } from '../../organize/split';
-import type { DocOp, DocOpRegistry } from '../protocol';
+import type { DocOp, DocOpRegistry, OpContext } from '../protocol';
 
 interface PageRotationsArgs {
   readonly password: string | null;
@@ -326,6 +329,159 @@ const split: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
   return ok({ zip: buildZip(entries), parts: parts.length, oversized });
 };
 
+interface PasswordNowArgs {
+  readonly password: string | null;
+  readonly now: string;
+}
+
+/** Igual que `parsePageRotationsArgs`: un argumento mal formado es un bug de la app. */
+function parsePasswordNowArgs(op: string, args: unknown): PasswordNowArgs {
+  if (typeof args !== 'object' || args === null || !('password' in args) || !('now' in args)) {
+    throw new TypeError(`${op}: argumentos no válidos.`);
+  }
+  const { password, now } = args;
+  if (password !== null && typeof password !== 'string') throw new TypeError(`${op}: la contraseña debe ser texto o null.`);
+  if (typeof now !== 'string') throw new TypeError(`${op}: la fecha debe ser texto.`);
+  return { password, now };
+}
+
+interface ProtectArgs extends PasswordNowArgs {
+  readonly userPassword: string;
+  readonly ownerPassword: string;
+  readonly permissions: PermissionChoice;
+}
+
+function isPermissionChoice(value: unknown): value is PermissionChoice {
+  if (typeof value !== 'object' || value === null) return false;
+  return (
+    'print' in value &&
+    (value.print === 'none' || value.print === 'low' || value.print === 'high') &&
+    'modify' in value &&
+    typeof value.modify === 'boolean' &&
+    'copy' in value &&
+    typeof value.copy === 'boolean' &&
+    'annotate' in value &&
+    typeof value.annotate === 'boolean' &&
+    'fillForms' in value &&
+    typeof value.fillForms === 'boolean' &&
+    'assemble' in value &&
+    typeof value.assemble === 'boolean'
+  );
+}
+
+function parseProtectArgs(args: unknown): ProtectArgs {
+  if (
+    typeof args !== 'object' ||
+    args === null ||
+    !('userPassword' in args) ||
+    !('ownerPassword' in args) ||
+    !('permissions' in args)
+  ) {
+    throw new TypeError('protect: argumentos no válidos.');
+  }
+  const base = parsePasswordNowArgs('protect', args);
+  const { userPassword, ownerPassword, permissions } = args;
+  if (typeof userPassword !== 'string' || typeof ownerPassword !== 'string') {
+    throw new TypeError('protect: las contraseñas deben ser texto.');
+  }
+  if (!isPermissionChoice(permissions)) throw new TypeError('protect: los permisos no son válidos.');
+  return { ...base, userPassword, ownerPassword, permissions };
+}
+
+/** Banderas de `/P` que hacen falta para que el documento no tenga restricciones. */
+const ALL_PERMISSION_FLAGS: readonly number[] = [
+  PERMISSION_FLAG.PRINT,
+  PERMISSION_FLAG.PRINT_HIGH_QUALITY,
+  PERMISSION_FLAG.MODIFY_CONTENTS,
+  PERMISSION_FLAG.COPY,
+  PERMISSION_FLAG.MODIFY_ANNOTATIONS,
+  PERMISSION_FLAG.FILL_INTERACTIVE_FORMS,
+  PERMISSION_FLAG.ASSEMBLE,
+];
+
+/** `true` si el valor `/P` no restringe ninguna acción. */
+function permitsEverything(p: number): boolean {
+  return ALL_PERMISSION_FLAGS.every((flag) => (p & flag) !== 0);
+}
+
+/** Abre la fuente 0 con la contraseña dada (`null` = vacía). */
+async function openSource(ctx: OpContext, password: string | null): Promise<Result<ObjectReader, AppError>> {
+  const source = ctx.sources[0];
+  if (source === undefined) throw new RangeError('protección: falta el documento (fuente 0).');
+  if (ctx.signal.aborted) return err(pdfError('cancelled'));
+  return openForSave(source, password ?? undefined);
+}
+
+/** Protege el PDF con AES-256 y permisos elegidos (PDF-131): reescritura completa con cifrado nuevo. */
+const protect: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const parsed = parseProtectArgs(args);
+  const opened = await openSource(ctx, parsed.password);
+  if (!opened.ok) return opened;
+  const encryption: NewSecurityInput = {
+    userPassword: parsed.userPassword,
+    ownerPassword: parsed.ownerPassword,
+    permissions: parsed.permissions,
+    random: opened.value.random,
+  };
+  const written = await rewriteDocument({
+    reader: opened.value,
+    encryption,
+    now: parsed.now,
+    signal: ctx.signal,
+    onProgress: (done, total) => {
+      ctx.progress(done, total);
+    },
+  });
+  if (!written.ok) return written;
+  return ok({ bytes: written.value.bytes });
+};
+
+/**
+ * Quita la protección (PDF-131). Sin cifrado → `not-protected`. Con la contraseña de usuario y permisos restringidos
+ * → `owner-password-required` (hace falta la de propietario para quitar lo que la de usuario no permite).
+ */
+const unprotect: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const { password, now } = parsePasswordNowArgs('unprotect', args);
+  const opened = await openSource(ctx, password);
+  if (!opened.ok) return opened;
+  const reader = opened.value;
+  const security = reader.security;
+  if (security === null) return err(pdfError('not-protected'));
+  if (security.authenticatedAs === 'user' && !permitsEverything(security.permissions)) {
+    return err(pdfError('owner-password-required'));
+  }
+  const written = await rewriteDocument({
+    reader,
+    encryption: null,
+    now,
+    signal: ctx.signal,
+    onProgress: (done, total) => {
+      ctx.progress(done, total);
+    },
+  });
+  if (!written.ok) return written;
+  return ok({ bytes: written.value.bytes });
+};
+
+/** Reescribe el PDF completo conservando su cifrado si lo tiene (PDF-131): lo usa la redacción (PDF-135). */
+const rewrite: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const { password, now } = parsePasswordNowArgs('rewrite', args);
+  const opened = await openSource(ctx, password);
+  if (!opened.ok) return opened;
+  const written = await rewriteDocument({
+    reader: opened.value,
+    encryption: null,
+    keepEncryption: true,
+    now,
+    signal: ctx.signal,
+    onProgress: (done, total) => {
+      ctx.progress(done, total);
+    },
+  });
+  if (!written.ok) return written;
+  return ok({ bytes: written.value.bytes });
+};
+
 /** Registro de operaciones del Worker. Cada ficha que añade una operación la registra aquí. */
 export const DOC_OPS: DocOpRegistry = {
   'page-rotations': pageRotations,
@@ -333,4 +489,7 @@ export const DOC_OPS: DocOpRegistry = {
   'images-to-pdf': imagesToPdf,
   extract,
   split,
+  protect,
+  unprotect,
+  rewrite,
 };

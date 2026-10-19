@@ -10,7 +10,7 @@ import { inflateSync } from 'fflate';
 import { buildAppearance } from '../annotations/appearance';
 import type { AnnotationDiff } from '../annotations/diff';
 import { parseRef } from '../annotations/import';
-import type { Annotation, PdfObjRef } from '../annotations/model';
+import { isFlattened, type Annotation, type PdfObjRef } from '../annotations/model';
 import { annotationDict, popupDict, updatedDict } from '../annotations/to-pdf';
 import { fromBase64 } from '../base64';
 import type { FieldChange } from '../forms/diff';
@@ -28,6 +28,13 @@ import {
   type PdfValue,
 } from './objects';
 import { ObjectReader } from './object-reader';
+import {
+  effectiveResources,
+  freeResourceName,
+  withResource,
+  wrapStreams,
+  wrappedContents,
+} from './page-content';
 import { toSaveError } from './save-error';
 
 export interface IncrementalInput {
@@ -54,7 +61,8 @@ export interface IncrementalOutput {
 
 interface AddedPlan {
   readonly a: Annotation;
-  readonly annot: PdfRef;
+  /** `null` si la anotación se aplana: entonces no es un objeto de anotación, solo su apariencia. */
+  readonly annot: PdfRef | null;
   readonly ap: PdfRef;
   /** Solo para notas. */
   readonly popup: PdfRef | null;
@@ -71,6 +79,15 @@ interface ModifiedPlan {
   readonly a: Annotation;
   readonly origin: PdfObjRef;
   readonly ap: PdfRef;
+}
+
+/**
+ * Números del contenido que se añade a una página con anotaciones aplanadas (ADR-0036): los dos flujos que
+ * envuelven el contenido original (`open` = «q», `close` = «Q» + los `Do`).
+ */
+interface ContentRefs {
+  readonly open: PdfRef;
+  readonly close: PdfRef;
 }
 
 /**
@@ -102,6 +119,7 @@ export async function openForSave(source: ByteSource, password?: string): Promis
 async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> {
   const { source, reader, diff, now } = input;
   const fields = input.fields ?? [];
+  assertFlattenIsNew(diff);
   const writable = writableAdded(diff);
   if (writable.length === 0 && diff.modified.length === 0 && diff.removed.length === 0 && fields.length === 0) {
     return { delta: new Uint8Array(0), expectedSize: source.size, written: new Map() };
@@ -112,16 +130,23 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
   if (!isRefValue(root)) throw unreadable('Root');
 
   // 1. Números de objeto: anotación, apariencia y popup (solo notas) por cada añadida; apariencia por cada modificada.
+  // Una anotación aplanada no tiene objeto de anotación; sí apariencia e imágenes. Por cada página con aplanados,
+  // dos números más para el contenido (`ContentRefs`).
   let next = reader.xref.size;
   const numbered = writable.map((a) => {
-    const annot = ref(next++);
+    const annot = isFlattened(a) ? null : ref(next++);
     const ap = ref(next++);
     const popup = a.type === 'note' ? ref(next++) : null;
     const extra = Array.from({ length: imageObjectCount(a) }, () => ref(next++));
     return { a, annot, ap, popup, extra };
   });
-  const annotOf = new Map(numbered.map((p) => [p.a.id, p.annot] as const));
+  const annotOf = new Map<string, PdfRef>();
+  for (const p of numbered) if (p.annot !== null) annotOf.set(p.a.id, p.annot);
   const added: AddedPlan[] = numbered.map((p) => ({ ...p, irt: irtOf(p.a, annotOf) }));
+  const flatPages = [...new Set(writable.filter(isFlattened).map((a) => a.pageIndex))].sort((x, y) => x - y);
+  const contentRefs = new Map<number, ContentRefs>(
+    flatPages.map((index) => [index, { open: ref(next++), close: ref(next++) }] as const),
+  );
   const modified: ModifiedPlan[] = diff.modified.map((a) => ({ a, origin: fileOrigin(a).ref, ap: ref(next++) }));
   const fieldWrites = await planFieldWrites(reader, fields, () => ref(next++));
   const { xrefNum, size } = reserveXref(reader, next);
@@ -148,7 +173,7 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
   }
 
   const written = new Map<string, PdfObjRef>();
-  for (const p of added) written.set(p.a.id, { num: p.annot.num, gen: 0 });
+  for (const p of added) if (p.annot !== null) written.set(p.a.id, { num: p.annot.num, gen: 0 });
   for (const m of modified) written.set(m.a.id, m.origin);
 
   // 3. Escritura. El delta empieza con un salto de línea si el original no termina en uno.
@@ -168,7 +193,15 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
   // Páginas tocadas, en orden para que la salida sea determinista.
   const pages = [...new Set([...addedByPage.keys(), ...removedByPage.keys()])].sort((x, y) => x - y);
   for (const index of pages) {
-    await rewritePage(reader, writer, index, addedByPage.get(index) ?? [], removedByPage.get(index) ?? new Set(), now);
+    await rewritePage(
+      reader,
+      writer,
+      index,
+      addedByPage.get(index) ?? [],
+      removedByPage.get(index) ?? new Set(),
+      now,
+      contentRefs.get(index) ?? null,
+    );
   }
 
   // 4. Sección xref con el mismo tipo que la última del original.
@@ -179,7 +212,8 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
 /**
  * Reescribe la página `index`: quita las refs de las anotaciones borradas (y sus popups), añade las
  * nuevas y escribe las anotaciones nuevas con su apariencia y popup. Si `/Annots` es un array indirecto
- * se reescribe solo ese array; si es directo o no existe, se reescribe la página.
+ * se reescribe solo ese array; si es directo o no existe, se reescribe la página. Las anotaciones
+ * aplanadas (ADR-0036) se dibujan al final del contenido de la página, en el mismo objeto de página.
  */
 async function rewritePage(
   reader: ObjectReader,
@@ -188,33 +222,92 @@ async function rewritePage(
   added: readonly AddedPlan[],
   removedNums: ReadonlySet<number>,
   now: string,
+  contentRefs: ContentRefs | null,
 ): Promise<void> {
   const pageRef = await reader.pageRef(index);
   const page = await reader.getDict(pageRef);
   if (page === null) throw unreadable(`página ${index + 1}`);
-  const annots = await annotsOf(reader, page, index);
+  const annotPlans = added.filter((p) => !isFlattened(p.a));
+  const flatPlans = added.filter((p) => isFlattened(p.a));
+  // Cambios del diccionario de página: solo las claves que cambian.
+  const pageChanges: Record<string, PdfValue> = {};
 
-  const kept = annots.items.filter((item) => !(isRefValue(item) && removedNums.has(item.num)));
-  const appended: PdfRef[] = [];
-  for (const p of added) {
-    appended.push(p.annot);
-    if (p.popup !== null) appended.push(p.popup);
-  }
-  const newAnnots: readonly PdfValue[] = [...kept, ...appended];
+  if (annotPlans.length > 0 || removedNums.size > 0) {
+    const annots = await annotsOf(reader, page, index);
+    const kept = annots.items.filter((item) => !(isRefValue(item) && removedNums.has(item.num)));
+    const appended: PdfRef[] = [];
+    for (const p of annotPlans) {
+      if (p.annot !== null) appended.push(p.annot);
+      if (p.popup !== null) appended.push(p.popup);
+    }
+    const newAnnots: readonly PdfValue[] = [...kept, ...appended];
 
-  for (const p of added) {
-    writer.object(p.annot.num, 0, annotationDict(p.a, { pageRef, apRef: p.ap, popupRef: p.popup, now, irtRef: p.irt }));
-    writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
-    writeSignatureImage(writer, p.a, p.extra);
-    if (p.popup !== null && p.a.type === 'note') {
-      writer.object(p.popup.num, 0, popupDict(p.annot, p.a.rect, p.a.open));
+    for (const p of annotPlans) {
+      if (p.annot === null) continue;
+      writer.object(p.annot.num, 0, annotationDict(p.a, { pageRef, apRef: p.ap, popupRef: p.popup, now, irtRef: p.irt }));
+      writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
+      writeSignatureImage(writer, p.a, p.extra);
+      if (p.popup !== null && p.a.type === 'note') {
+        writer.object(p.popup.num, 0, popupDict(p.annot, p.a.rect, p.a.open));
+      }
+    }
+
+    if (annots.indirect === null) {
+      pageChanges.Annots = newAnnots;
+    } else {
+      writer.object(annots.indirect.num, annots.indirect.gen, newAnnots);
     }
   }
 
-  if (annots.indirect === null) {
-    writer.object(pageRef.num, pageRef.gen, withEntries(page, { Annots: newAnnots }));
-  } else {
-    writer.object(annots.indirect.num, annots.indirect.gen, newAnnots);
+  if (flatPlans.length > 0) {
+    if (contentRefs === null) throw new RangeError(`faltan números de contenido para la página ${index + 1}`);
+    Object.assign(pageChanges, await flattenInto(reader, writer, page, flatPlans, contentRefs));
+  }
+
+  if (Object.keys(pageChanges).length > 0) {
+    writer.object(pageRef.num, pageRef.gen, withEntries(page, pageChanges));
+  }
+}
+
+/**
+ * Dibuja cada anotación aplanada como Form XObject de la página (`/SuiteFlatN`) y añade al contenido un
+ * flujo `q` antes y otro `Q` + `q /SuiteFlatN Do Q` después (ADR-0036). Devuelve `/Contents` y `/Resources`
+ * nuevos del diccionario de página; los recursos heredados se copian aquí, así las demás páginas no cambian.
+ */
+async function flattenInto(
+  reader: ObjectReader,
+  writer: DeltaWriter,
+  page: PdfDict,
+  plans: readonly AddedPlan[],
+  contentRefs: ContentRefs,
+): Promise<Record<string, PdfValue>> {
+  let resources = await effectiveResources(reader, page);
+  let ops = '';
+  for (const p of plans) {
+    const resName = freeResourceName(resources, 'XObject', 'SuiteFlat');
+    resources = withResource(resources, 'XObject', resName, p.ap);
+    ops += `q /${resName} Do Q\n`;
+    writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
+    writeSignatureImage(writer, p.a, p.extra);
+  }
+  const streams = wrapStreams(ops);
+  writer.object(contentRefs.open.num, 0, streams.open);
+  writer.object(contentRefs.close.num, 0, streams.close);
+  return {
+    Contents: wrappedContents(page, contentRefs.open, contentRefs.close),
+    Resources: resources,
+  };
+}
+
+/**
+ * Una anotación aplanada tiene que ser nueva (ADR-0036): si viene del fichero, es un bug de quien prepara el
+ * incremento.
+ */
+function assertFlattenIsNew(diff: AnnotationDiff): void {
+  for (const a of [...diff.added, ...diff.modified, ...diff.removed]) {
+    if (isFlattened(a) && a.origin.kind === 'file') {
+      throw new RangeError(`la anotación aplanada ${a.id} proviene del fichero`);
+    }
   }
 }
 
@@ -283,7 +376,7 @@ function writableAdded(diff: AnnotationDiff): readonly Annotation[] {
   const removedIds = new Set(diff.removed.map((a) => a.id));
   let list: readonly Annotation[] = diff.added;
   for (;;) {
-    const ids = new Set(list.map((a) => a.id));
+    const ids = new Set(list.filter((a) => !isFlattened(a)).map((a) => a.id));
     const next = list.filter((a) => {
       if (a.type !== 'reply' && a.type !== 'review') return true;
       if (ids.has(a.parentId)) return true;
