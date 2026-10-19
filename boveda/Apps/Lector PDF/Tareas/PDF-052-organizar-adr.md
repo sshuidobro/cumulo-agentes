@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-052
 titulo: Reorganizar páginas por actualización incremental (núcleo y medidas)
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-039, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -93,3 +93,14 @@ export async function buildPageTreeUpdate(input: PageTreeInput): Promise<Result<
 ### [líder] replanificación — 2026-10-19
 - Desbloqueada sin preguntar al usuario: pdf-lib y forks son MIT y qpdf Apache-2.0 (no hay GPL/AGPL salvo mupdf), y además se decide no usar ninguna librería: escritor propio ([[ADR-0028-reescribir-pdfs]]).
 - La ficha pasa de «ADR y prueba» a núcleo de reorganización con medidas. La parte común del escritor se separa antes en [[PDF-106-escritor-de-incrementos]] (`depende_de` añade PDF-106). `estado: pendiente`, `intentos: 0`.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/page-tree.ts` (nuevo), `apps/lector-pdf/src/core/errors.ts` (código `organize-invalid`), `apps/lector-pdf/src/core/pdf/incremental.ts` (exporta `toSaveError`, sin cambios de comportamiento), `apps/lector-pdf/src/core/pdf/serialize.ts` (mismos bytes, más rápido: ver abajo), `apps/lector-pdf/tests/unit/pdf/page-tree.test.ts` (nuevo), `apps/lector-pdf/tests/perf/page-tree.perf.test.ts` (nuevo), `boveda/Decisiones/ADR-0028-reescribir-pdfs.md` (tabla «Medidas»), esta ficha.
+- Qué he hecho: Implementado `buildPageTreeUpdate` y `readPageRotations` según la ficha: solo giros (reescribe solo las páginas que cambian) y reordenación general (árbol nuevo de 32 hijos bajo la raíz `/Pages` original, páginas con `/Parent`, `/Rotate` y atributos heredados copiados). Tests: 18 unitarios con pdf.js y qpdf (todos los criterios de aceptación) y 3 de rendimiento. Para cumplir el presupuesto de 100 000 páginas he optimizado el serializador (el coste estaba en codificar cada fragmento por separado y en los nombres) y he hecho una única pasada de lectura del árbol en el giro y en `readPageRotations`.
+- Comandos ejecutados y resultado:
+  - `pnpm lint` → sin errores ni avisos.
+  - `pnpm typecheck` → sin errores.
+  - `pnpm exec vitest run tests/unit/pdf/page-tree.test.ts` → 18/18 pasan. Junto con `delta-writer-golden` y `serialize`, 41/41.
+  - `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/page-tree.perf.test.ts` → 3/3 pasan. Medidas (mejor de 3 tras calentamiento, incluye `ObjectReader.open`): `pages-5000` borrar pág. 2 = 218 ms (límite 1 000); `pages-100000` borrar pág. 2 = 5 299 ms (límite 15 000); `pages-100000` girar pág. 50 000 = 2 521 ms (límite 3 000, margen estrecho). Anotadas en ADR-0028.
+  - `pnpm coverage` no se pudo lanzar en la carpeta por defecto porque otro proceso de Vitest ocupaba `coverage/`. Lo he ejecutado con `--coverage.reportsDirectory` propio: 225 ficheros y 2 695 tests pasan; `page-tree.ts` con 93,08 % de líneas (requisito ≥ 90 %).
+- Dudas o cosas que no he podido hacer: (1) El "giro efectivo" ignora un `/Rotate` que no sea número (lo trata como ausente y sigue subiendo por `/Parent`); la ficha no lo dice. (2) Cambios fuera de la lista de ficheros de la ficha: `serialize.ts` y la exportación de `toSaveError` (necesarios para el rendimiento y para no duplicar el mapeo de errores). Conviene revisarlo en la revisión. (3) El margen del giro en 100 000 páginas es pequeño (2,5 s de 3 s); si el revisor lo mide más lento en su máquina, el cuello de botella es leer las 100 000 páginas (~2 s) y no el escritor. (4) Sin commit, como se pidió. (5) La medida de rendimiento no se hizo con la CPU en reposo comprobada (no se ejecutó `pnpm perf` completo).
