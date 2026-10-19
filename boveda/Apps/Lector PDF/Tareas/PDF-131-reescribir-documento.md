@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-131
 titulo: Reescribir el documento completo (con o sin cifrado nuevo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-060, PDF-121]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -78,3 +78,8 @@ export async function rewriteDocument(input: RewriteInput): Promise<Result<{ rea
   - `pnpm perf` (solo `rewrite.perf.test.ts`, con `vitest run --config vitest.perf.config.ts <fichero>`): 2/2 OK; cada pasada sobre `pages-100000.pdf` tarda unos 8 s, sin y con cifrado (límites 20 s y 25 s).
   - `pnpm coverage` completo: 2 ficheros fallan que no son míos: `tests/unit/fixtures.test.ts` (espera 28 fixtures y `catalog.ts` tiene 29 ahora, cambio de otro programador) y `tests/unit/search-actions.test.ts` (`revealSeq`). `pnpm perf` completo: una prueba falla en `annotation-layer.perf.test.ts` (107,7 ms frente a 100 ms), tampoco mía.
 - Dudas o cosas que no he podido hacer: los criterios de pdf.js y qpdf están automatizados en los tests, no comprobados a mano en la interfaz (PDF-132 la usará). Sin commit, como se pidió.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Lint raíz, tsc y los 33 tests de la ficha pasan; el código cumple los criterios. `keepEncryption` es una extensión aceptable (necesaria para distinguir `rewrite` de `unprotect`).
+- (opcional) `rewrite.ts`: un `/Info` directo se descarta; documentado, sin impacto en los criterios.
+- Pendiente para el tester: `pnpm perf` y `pnpm coverage` completos (hay fallos ajenos a la ficha en fixtures.test.ts, search-actions y annotation-layer.perf).

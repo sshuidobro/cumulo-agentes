@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
 actualizado: 2026-10-19

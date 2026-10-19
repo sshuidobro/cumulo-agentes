@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-059
 titulo: Añadir texto e imagen al contenido de la página - núcleo (aplanar)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-052, PDF-058, PDF-110]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -80,3 +80,7 @@ export function wrappedContents(page: PdfDict, open: PdfRef, close: PdfRef): rea
   - `pnpm coverage`: 3333 pasan, 2 fallan, ninguno en código de esta ficha. `tests/unit/fixtures.test.ts` espera 28 fixtures y hay 29 (`tests/fixtures/catalog.ts` lo modifica otro cambio en curso). `tests/unit/search-actions.test.ts` (debounce) falla con carga y pasa solo (7/7).
   - `pnpm lint` en la raíz falla con ~11.700 errores de `no-undef` en `apps/lector-pdf/dist-pdf095/` (carpeta sin seguimiento de otro programador, no está en `ignores`); no he tocado esa carpeta.
 - Dudas o cosas que no he podido hacer: no hay commit (pedido por el coordinador). La cobertura global no sale porque `pnpm coverage` no imprime tabla cuando falla algún test; la medí solo para los ficheros de esta ficha. Interfaz fuera de alcance (PDF-130).
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Typecheck limpio; vitest de `tests/unit/pdf` 709/709; ESLint de `src/core` y `tests/unit/pdf` sin errores. Cada criterio tiene su test; `page-content.ts` sin SSR ni React; escritura única de página con `/Annots` y `/Contents`.
+- (opcional) El lint raíz falla por `dist-pdf095/` ajeno a la ficha y `fixtures.test.ts` (28 vs 29) es de otro cambio: el tester debe repetir `pnpm coverage` completo cuando se resuelvan.
