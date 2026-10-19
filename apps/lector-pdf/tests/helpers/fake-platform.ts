@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { platformError, type ByteSource, type OpenedFile, type Platform } from '@suite/platform';
+import { platformError, type ByteSource, type ExportOutcome, type FileFilter, type OpenedFile, type Platform } from '@suite/platform';
 import { err, ok } from '@suite/shared';
 
 /** Fichero abierto de prueba sobre una fuente cualquiera. */
@@ -19,10 +19,13 @@ export function openedFile(name: string, source: ByteSource): OpenedFile {
  * Platform de prueba: todo se puede sustituir con `overrides`. Lo que no se sustituye
  * responde como una plataforma sin esa capacidad.
  */
-export function createFakePlatform(overrides: Partial<Platform> = {}): Platform {
+export function createFakePlatform(
+  overrides: Partial<Platform> = {},
+): Platform & { lastExport: { name: string; filters: readonly FileFilter[]; bytes: Uint8Array } | null } {
   let fullscreen = false;
   const fullscreenListeners = new Set<(on: boolean) => void>();
-  return {
+  const fake: Platform & { lastExport: { name: string; filters: readonly FileFilter[]; bytes: Uint8Array } | null } = {
+    lastExport: null,
     kind: 'web',
     isMac: false,
     prefs: { get: () => null, set: () => undefined, remove: () => undefined },
@@ -31,6 +34,11 @@ export function createFakePlatform(overrides: Partial<Platform> = {}): Platform 
     openDropped: vi.fn(async () => ok(null)),
     save: vi.fn(async () => err(platformError('unsupported'))),
     saveAs: vi.fn(async () => err(platformError('unsupported'))),
+    exportFile: vi.fn(async (name: string, filters: readonly FileFilter[], bytes: Uint8Array) => {
+      fake.lastExport = { name, filters, bytes };
+      return ok<ExportOutcome>('saved');
+    }),
+    importFile: vi.fn(async () => ok(null)),
     closeFile: vi.fn(async () => undefined),
     onFileOpenedFromOS: () => () => undefined,
     openExternalUrl: vi.fn(async () => err(platformError('unsupported'))),
@@ -54,4 +62,5 @@ export function createFakePlatform(overrides: Partial<Platform> = {}): Platform 
     },
     ...overrides,
   };
+  return fake;
 }

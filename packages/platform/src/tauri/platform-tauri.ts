@@ -2,7 +2,7 @@ import { createLogger, err, ok, type Result } from '@suite/shared';
 import { PlatformIoError, platformError } from '../errors';
 import { createStorageStore } from '../prefs';
 import type {
-  ByteSource, FileFilter, OpenedFile, Platform, PlatformErrorCode, RecentFile, SaveData, SaveOutcome,
+  ByteSource, ExportOutcome, FileFilter, ImportedFile, OpenedFile, Platform, PlatformErrorCode, RecentFile, SaveData, SaveOutcome,
 } from '../types';
 import type { TauriApi } from './tauri-api';
 import { realTauriApi } from './tauri-api';
@@ -128,6 +128,15 @@ function safeLocalStorage(): Storage | null {
   }
 }
 
+/** Cierra un token sin que un fallo al cerrar tape el resultado de la operación. */
+async function closeQuietly(api: TauriApi, token: string): Promise<void> {
+  try {
+    await api.invoke<boolean>('suite_close', { token });
+  } catch (cause) {
+    log.warn('No se ha podido cerrar el fichero temporal.', cause);
+  }
+}
+
 /** Platform de escritorio: los diálogos, rutas y E/S viven en Rust; JS solo maneja tokens. */
 export function createTauriPlatform(
   options: { readonly prefsPrefix: string },
@@ -204,6 +213,42 @@ export function createTauriPlatform(
       const saved = await save(toOpened(api, dto), data);
       if (!saved.ok) return saved;
       return ok({ kind: 'saved', file: saved.value });
+    },
+
+    async exportFile(suggestedName: string, filters: readonly FileFilter[], bytes: Uint8Array): Promise<Result<ExportOutcome>> {
+      let dto: FileInfoDto | null;
+      try {
+        dto = await api.invoke<FileInfoDto | null>('suite_save_dialog', { suggestedName, filters, remember: false });
+      } catch (cause) {
+        return err(platformError(mapCode(errorCode(cause)), cause));
+      }
+      if (dto === null) return ok('cancelled');
+      const target = toOpened(api, dto);
+      try {
+        const saved = await save(target, { kind: 'bytes', bytes });
+        return saved.ok ? ok('saved') : saved;
+      } finally {
+        await closeQuietly(api, target.token);
+      }
+    },
+
+    async importFile(filters: readonly FileFilter[], maxBytes: number): Promise<Result<ImportedFile | null>> {
+      let dto: FileInfoDto | null;
+      try {
+        dto = await api.invoke<FileInfoDto | null>('suite_open_dialog', { filters, remember: false });
+      } catch (cause) {
+        return err(platformError(mapCode(errorCode(cause)), cause));
+      }
+      if (dto === null) return ok(null);
+      try {
+        if (dto.size > maxBytes) return err(platformError('out-of-range'));
+        const opened = toOpened(api, dto);
+        return ok({ name: dto.name, bytes: await opened.source.read(0, dto.size) });
+      } catch (cause) {
+        return err(platformError(cause instanceof PlatformIoError ? cause.code : mapCode(errorCode(cause)), cause));
+      } finally {
+        await closeQuietly(api, dto.token);
+      }
     },
 
     async closeFile(file: OpenedFile): Promise<void> {

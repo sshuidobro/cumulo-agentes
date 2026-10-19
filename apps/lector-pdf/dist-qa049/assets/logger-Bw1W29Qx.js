@@ -1,0 +1,2 @@
+function e(e){return{ok:!0,value:e}}function t(e){return{ok:!1,error:e}}var n={debug:0,info:1,warn:2,error:3},r={sink:(e,t,n,r)=>{let i=`[${t}] ${n}`,a=globalThis.console[e];r===void 0?a(i):a(i,r)},minLevel:`warn`};function i(e){let t=(t,i,a)=>{let{sink:o,minLevel:s}=r;o===null||n[t]<n[s]||(a===void 0?o(t,e,i):o(t,e,i,a))};return{debug:(e,n)=>t(`debug`,e,n),info:(e,n)=>t(`info`,e,n),warn:(e,n)=>t(`warn`,e,n),error:(e,n)=>t(`error`,e,n)}}export{t as n,e as r,i as t};
+//# sourceMappingURL=logger-Bw1W29Qx.js.map

@@ -3,7 +3,7 @@ import type { AppError, Result } from '@suite/shared';
 import { blobSource } from '../byte-source';
 import { platformError } from '../errors';
 import { createStorageStore } from '../prefs';
-import type { FileFilter, OpenedFile, Platform, RecentFile, SaveData, SaveOutcome } from '../types';
+import type { ExportOutcome, FileFilter, ImportedFile, OpenedFile, Platform, RecentFile, SaveData, SaveOutcome } from '../types';
 import type { DataTransferItemFsAccess, PermissionHandle } from './fs-access';
 import { toAcceptAttribute, toAcceptTypes } from './mime';
 import { MAX_RECENTS, createRecentStore, rememberEntry } from './recent-store';
@@ -232,6 +232,53 @@ export function createWebPlatform(
     return ok({ kind: 'saved', file: toOpened(written.value, handle) });
   };
 
+  const exportFile = async (
+    name: string,
+    filters: readonly FileFilter[],
+    bytes: Uint8Array,
+  ): Promise<Result<ExportOutcome>> => {
+    const picker = env.showSaveFilePicker;
+    if (picker === undefined) {
+      env.download(new Blob([bytes.slice()]), name);
+      return ok('downloaded');
+    }
+    let handle: FileSystemFileHandle;
+    try {
+      handle = await picker({ suggestedName: name, types: toAcceptTypes(filters) });
+    } catch (cause) {
+      return errorName(cause) === 'AbortError' ? ok('cancelled') : failure(cause);
+    }
+    const written = await writeTo(handle, { kind: 'bytes', bytes });
+    return written.ok ? ok('saved') : written;
+  };
+
+  const readImported = async (file: File, maxBytes: number): Promise<Result<ImportedFile>> => {
+    if (file.size > maxBytes) return err(platformError('out-of-range'));
+    try {
+      return ok({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+    } catch (cause) {
+      return failure(cause);
+    }
+  };
+
+  const importFile = async (filters: readonly FileFilter[], maxBytes: number): Promise<Result<ImportedFile | null>> => {
+    const picker = env.showOpenFilePicker;
+    let file: File | null;
+    try {
+      if (picker === undefined) {
+        file = await env.pickWithInput(toAcceptAttribute(filters));
+      } else {
+        const handles = await picker({ types: toAcceptTypes(filters), excludeAcceptAllOption: false, multiple: false });
+        const handle = handles[0];
+        file = handle === undefined ? null : await handle.getFile();
+      }
+    } catch (cause) {
+      return errorName(cause) === 'AbortError' ? ok(null) : failure(cause);
+    }
+    if (file === null) return ok(null);
+    return readImported(file, maxBytes);
+  };
+
   const toRecentFile = (record: RecentRecord): RecentFile => ({
     id: record.id,
     name: record.name,
@@ -297,6 +344,10 @@ export function createWebPlatform(
     openDropped,
 
     save,
+
+    exportFile,
+
+    importFile,
 
     saveAs,
 

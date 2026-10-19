@@ -1,5 +1,7 @@
 export type {
   ByteSource,
+  ExportOutcome,
+  ImportedFile,
   FileFilter,
   OpenedFile,
   SaveData,
