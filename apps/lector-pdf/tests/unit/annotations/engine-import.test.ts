@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { memorySource } from '@suite/platform';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadPdf, readPageAnnotations, scanAnnotations, type LoadedPdf } from '../../../src/engine';
-import type { ImportedPage } from '../../../src/core/annotations';
-import { CORPUS_DIR } from '../../fixtures/paths';
+import type { ImportedPage, SignatureAnnotation, SignatureArt } from '../../../src/core/annotations';
+import { openForSave } from '../../../src/core/pdf/incremental';
+import type { ObjectReader } from '../../../src/core/pdf/object-reader';
+import { additionsDiff, saveAnnotations } from '../../support/save-annotations';
+import { CORPUS_DIR, FIXTURES_DIR } from '../../fixtures/paths';
 import { fixtureSource, nodeAssetBase } from '../../helpers/pdfjs-node';
 
 const assetBaseUrl = nodeAssetBase();
@@ -152,6 +155,85 @@ describe('corpus veraPDF · importación', () => {
       expect(supported.map((a) => a.type)).toEqual(['highlight']);
     } finally {
       await loaded.destroy();
+    }
+  }, OPEN_TIMEOUT);
+});
+
+describe('readPageAnnotations con lector (nombre de los sellos ajenos)', () => {
+  const INK: SignatureArt = { kind: 'ink', paths: [[0, 0, 25, 40, 50, 0]], width: 2, box: [100, 50] };
+  const signature: SignatureAnnotation = {
+    id: 'firma-1',
+    type: 'signature',
+    pageIndex: 0,
+    rect: [100, 100, 300, 200],
+    color: [0, 0, 0.6],
+    opacity: 1,
+    contents: '',
+    author: 'Ana',
+    modified: FALLBACK,
+    created: FALLBACK,
+    origin: { kind: 'new' },
+    art: INK,
+  };
+
+  async function signedDocument(): Promise<Uint8Array> {
+    const original = new Uint8Array(readFileSync(join(FIXTURES_DIR, 'basic-5.pdf')));
+    const { data } = await saveAnnotations(original, additionsDiff([signature]));
+    return data;
+  }
+
+  it('con lector, la firma de la suite es un ajeno con stampName «SuiteFirma»; sin lector, no lleva stampName', async () => {
+    const data = await signedDocument();
+    const loaded = await loadPdf(memorySource(data), { assetBaseUrl });
+    if (!loaded.ok) throw new Error(loaded.error.code);
+    try {
+      const page = await loaded.value.doc.getPage(1);
+      const opened = await openForSave(memorySource(data));
+      if (!opened.ok) throw new Error(opened.error.code);
+
+      const withReader = await readPageAnnotations(page, FALLBACK, opened.value);
+      expect(withReader.foreign).toHaveLength(1);
+      expect(withReader.foreign[0]?.stampName).toBe('SuiteFirma');
+
+      const withoutReader = await readPageAnnotations(page, FALLBACK);
+      expect(withoutReader.foreign).toHaveLength(1);
+      expect(withoutReader.foreign[0]?.stampName).toBeUndefined();
+      expect(await readPageAnnotations(page, FALLBACK, null)).toEqual(withoutReader);
+    } finally {
+      await loaded.value.destroy();
+    }
+  }, OPEN_TIMEOUT);
+
+  it('una página sin /Stamp ajeno no lee ningún diccionario', async () => {
+    const loaded = await openFixture('annotated.pdf');
+    try {
+      const getDict = vi.fn(async () => null);
+      const reader = { getDict } as unknown as ObjectReader;
+      const imported = await readPageAnnotations(await loaded.doc.getPage(1), FALLBACK, reader);
+      expect(imported.foreign.some((a) => a.subtype === 'Stamp')).toBe(false);
+      expect(getDict).not.toHaveBeenCalled();
+    } finally {
+      await loaded.destroy();
+    }
+  }, OPEN_TIMEOUT);
+
+  it('scanAnnotations pasa el lector a cada página', async () => {
+    const data = await signedDocument();
+    const loaded = await loadPdf(memorySource(data), { assetBaseUrl });
+    if (!loaded.ok) throw new Error(loaded.error.code);
+    try {
+      const opened = await openForSave(memorySource(data));
+      if (!opened.ok) throw new Error(opened.error.code);
+      const batches: ImportedPage[][] = [];
+      const outcome = await scanAnnotations(loaded.value.doc, {
+        fallbackDate: FALLBACK,
+        reader: opened.value,
+        onBatch: (pages) => { batches.push([...pages]); },
+      });
+      expect(outcome).toBe('done');
+      expect(batches.flat()[0]?.foreign[0]?.stampName).toBe('SuiteFirma');
+    } finally {
+      await loaded.value.destroy();
     }
   }, OPEN_TIMEOUT);
 });

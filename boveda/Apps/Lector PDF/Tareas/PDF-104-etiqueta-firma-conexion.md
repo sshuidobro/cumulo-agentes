@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-104
 titulo: Etiqueta «Firma» al reabrir - conexión con la sesión de anotaciones
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-103]
 intentos: 1
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional]
@@ -66,3 +66,9 @@ Lint, typecheck y tests de annotations + comments-panel en verde. El código (pa
 3. Criterio 5 (error de `openForSave`): el test de `annotation-actions.test.ts` comprueba `stampName` undefined, pero la ficha pide también la fila «Sello» en el panel; basta cubrirlo en el test de UI del punto 1 con una fuente que falle al leer.
 4. (opcional, no bloquea) `annotation-actions.ts` `openForSave(source)` sin contraseña: en un PDF cifrado la firma reabierta saldrá como «Sello» (`PDF-047` lo tolera con `/Firma|Sello/`). Anotar como ficha de seguimiento pasando `currentPassword()`.
 5. Higiene: el directorio sin seguimiento `apps/lector-pdf/dist-qa049/` no es de esta ficha; no commitear. El cambio de `PDF-063-comparar.md` es de otra revisión.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/tests/ui/comments-panel.test.tsx` (bloque nuevo `firmas y sellos de un PDF abierto (PDF-104)`, 4 tests). El código de producción no cambia desde la ronda 1. Commit con los cambios de PDF-104 (código, tests y esta ficha); no incluido el resto del árbol (`PDF-047`, `PDF-063`, `dist-qa049/`).
+- Qué he hecho: añadidos los tests de los puntos 1-3 del revisor. (a) `openDocument` sobre un PDF con firma de la suite → fila «Firma» y filtro «Firma»; (b) mismo PDF con `/Name /Approved` (mismo número de bytes, la xref no cambia) → «Sello»; (c) modo «lazy» con el documento real y `numPages` 25 000 → `ensurePageAnnotations(0)` deja la fila «Firma»; (d) `openForSave` falla (fuente que rechaza la lectura) → `scan: 'done'` y fila «Sello». Comprobado con mutación: sin `file.source` en `document-actions.ts` falla el test (a); restaurado.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` exit 0: 212 ficheros y 2587 tests en verde (antes 2583), líneas 98.72 %.
+- Dudas o cosas que no he podido hacer: (1) El punto 4 (contraseña en `openForSave`) no lo he hecho: `annotation-actions.ts` tendría que importar `currentPassword` de `document-actions.ts`, que ya importa de `annotation-actions.ts`; no es trivial sin un ciclo de módulos. Queda para una ficha de seguimiento. (2) El PDF de los tests es un mínimo escrito a mano: en jsdom no se pueden leer `tests/fixtures/` (`import.meta.url` no es `file:`). (3) No he vuelto a correr `pnpm perf` en esta ronda: no cambia código de producción; la ronda 1 lo dio en verde.

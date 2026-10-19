@@ -199,7 +199,7 @@ export async function openDocument(file: OpenedFile, opts?: { readonly restore?:
     sidebar: sidebarForOpenedDocument(pageMode),
   });
   platform.setTitle(windowTitle(file.name, false));
-  startAnnotationSession(loaded, scan.signal);
+  startAnnotationSession(loaded, scan.signal, file.source);
   startFormSession(loaded);
   loadPageLabels(loaded);
   loadOutline(loaded);

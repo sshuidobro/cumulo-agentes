@@ -1,10 +1,21 @@
 import { importPageAnnotations, type ImportedPage } from '../core/annotations/import';
+import { readStampNames, withStampNames } from '../core/annotations/stamp-names';
+import type { ObjectReader } from '../core/pdf/object-reader';
 import type { PDFDocumentProxy, PDFPageProxy } from './pdfjs';
 
-/** Anotaciones de una página, importadas al modelo (o como ajenas). */
-export async function readPageAnnotations(page: PDFPageProxy, fallbackDate: string): Promise<ImportedPage> {
+/**
+ * Anotaciones de una página, importadas al modelo (o como ajenas). Con `reader`, los `/Stamp` ajenos llevan su
+ * `/Name` (PDF-103): solo se lee el diccionario de los sellos, nunca el resto de anotaciones.
+ */
+export async function readPageAnnotations(
+  page: PDFPageProxy,
+  fallbackDate: string,
+  reader: ObjectReader | null = null,
+): Promise<ImportedPage> {
   const raws = await page.getAnnotations({ intent: 'display' });
-  return importPageAnnotations(page.pageNumber - 1, raws, fallbackDate);
+  const imported = importPageAnnotations(page.pageNumber - 1, raws, fallbackDate);
+  if (reader === null || !imported.foreign.some((a) => a.subtype === 'Stamp')) return imported;
+  return withStampNames(imported, await readStampNames(reader, imported.foreign));
 }
 
 /**
@@ -16,6 +27,7 @@ export async function scanAnnotations(doc: PDFDocumentProxy, opts: {
   readonly batchSize?: number;
   readonly fallbackDate: string;
   readonly onBatch: (pages: readonly ImportedPage[]) => void;
+  readonly reader?: ObjectReader | null;
 }): Promise<'done' | 'cancelled'> {
   const batchSize = opts.batchSize ?? 50;
   let batch: ImportedPage[] = [];
@@ -23,7 +35,7 @@ export async function scanAnnotations(doc: PDFDocumentProxy, opts: {
   for (let i = 0; i < doc.numPages; i++) {
     if (opts.signal?.aborted) return 'cancelled';
     const page = await doc.getPage(i + 1);
-    batch.push(await readPageAnnotations(page, opts.fallbackDate));
+    batch.push(await readPageAnnotations(page, opts.fallbackDate, opts.reader ?? null));
     if (batch.length >= batchSize) {
       const full = batch;
       batch = [];
