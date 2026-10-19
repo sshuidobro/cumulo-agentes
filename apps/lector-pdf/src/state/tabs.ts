@@ -131,6 +131,11 @@ function syncActive(): void {
 useViewer.subscribe(syncActive);
 useAnnotations.subscribe(syncActive);
 
+/** Pone al día la barra con los cambios de la pestaña activa (p. ej. cambios pendientes de organizar). */
+export function refreshActiveTab(): void {
+  syncActive();
+}
+
 /**
  * Suspende la pestaña activa: guarda su información y la instantánea de cada participante (orden descendente).
  * Llamar solo con `switching` activo.

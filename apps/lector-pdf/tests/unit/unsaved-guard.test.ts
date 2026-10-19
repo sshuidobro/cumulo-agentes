@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { memorySource } from '@suite/platform';
 import { openRequested } from '../../src/state/document-actions';
 import { addAnnotation } from '../../src/state/annotation-actions';
-import { confirmDiscardOrSave, installCloseGuard } from '../../src/state/unsaved-guard';
+import { registerPendingChanges } from '../../src/state/save-actions';
+import { confirmDiscardOrSave, hasUnsavedChanges, installCloseGuard } from '../../src/state/unsaved-guard';
 import { useChoice } from '../../src/state/choice';
 import { useViewer } from '../../src/state/viewer-store';
 import { openedFile } from '../helpers/fake-platform';
@@ -114,3 +115,32 @@ describe('confirmDiscardOrSave y abrir otro documento', () => {
     expect(h.save).not.toHaveBeenCalled();
   });
 });
+
+describe('cambios pendientes (organizar) en el aviso de cierre', () => {
+  afterEach(() => {
+    registerPendingChanges(null);
+  });
+
+  it('hasUnsavedChanges es true mientras hay cambios pendientes sucios', () => {
+    let dirty = true;
+    registerPendingChanges({ isDirty: () => dirty, save: vi.fn(async () => 'saved' as const), discard: () => undefined });
+    expect(hasUnsavedChanges()).toBe(true);
+
+    dirty = false;
+    expect(hasUnsavedChanges()).toBe(false);
+  });
+
+  it('«No guardar» descarta también los cambios pendientes', async () => {
+    await openFixture();
+    const discard = vi.fn();
+    registerPendingChanges({ isDirty: () => true, save: vi.fn(async () => 'saved' as const), discard });
+
+    const decision = confirmDiscardOrSave();
+    await answerChoice('No guardar');
+
+    expect(await decision).toBe('proceed');
+    expect(discard).toHaveBeenCalledTimes(1);
+    expect(h.save).not.toHaveBeenCalled();
+  });
+});
+

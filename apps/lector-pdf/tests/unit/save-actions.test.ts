@@ -6,9 +6,9 @@ import { addAnnotation, endAnnotationSession } from '../../src/state/annotation-
 import { useAnnotations } from '../../src/state/annotation-store';
 import { setFieldValue } from '../../src/state/form-actions';
 import { useForms } from '../../src/state/form-store';
-import { PDF_FILTERS, openDocument } from '../../src/state/document-actions';
+import { currentPassword, PDF_FILTERS, openDocument } from '../../src/state/document-actions';
 import { setCurrentPage } from '../../src/state/navigation';
-import { isSaving, save, saveAs } from '../../src/state/save-actions';
+import { isSaving, registerPendingChanges, save, saveAs, writeDocument } from '../../src/state/save-actions';
 import { startPositionSync } from '../../src/state/position-sync';
 import { setZoomMode } from '../../src/state/view-actions';
 import { useViewer } from '../../src/state/viewer-store';
@@ -247,3 +247,71 @@ describe('save: solo valores de formulario (PDF-042)', () => {
     expect(h.save).not.toHaveBeenCalled();
   });
 });
+
+describe('writeDocument y cambios pendientes', () => {
+  afterEach(() => {
+    registerPendingChanges(null);
+  });
+
+  it('replace guarda los bytes con la plataforma y reabre el resultado con la contraseña dada', async () => {
+    const file = await openFixture();
+    const bytes = fixtureBytes(FIXTURE);
+    h.save.mockResolvedValueOnce({ ok: true, value: openedFile(FIXTURE, memorySource(bytes)) });
+
+    expect(await writeDocument({ kind: 'replace', bytes, password: 'secreto' })).toBe('saved');
+
+    const [target, data] = h.save.mock.calls[0] as unknown as [OpenedFile, SaveData];
+    expect(target).toBe(file);
+    expect(data).toEqual({ kind: 'bytes', bytes });
+    expect(useViewer.getState().file).not.toBe(file);
+    expect(currentPassword()).toBe('secreto');
+  });
+
+  it('append anexa el incremento dado con la base y el tamaño del fichero abierto', async () => {
+    const file = await openFixture();
+    const delta = new Uint8Array([1, 2, 3]);
+
+    expect(await writeDocument({ kind: 'append', delta })).toBe('saved');
+
+    const [target, data] = h.save.mock.calls[0] as unknown as [OpenedFile, SaveData];
+    expect(target).toBe(file);
+    expect(data).toEqual({ kind: 'append', base: file, expectedSize: file.size, delta });
+  });
+
+  it('save() con cambios pendientes sucios delega en su save y no escribe en la plataforma', async () => {
+    await openFixture();
+    const pendingSave = vi.fn(async () => 'saved' as const);
+    registerPendingChanges({ isDirty: () => true, save: pendingSave, discard: () => undefined });
+
+    expect(await save()).toBe('saved');
+
+    expect(pendingSave).toHaveBeenCalledTimes(1);
+    expect(h.save).not.toHaveBeenCalled();
+  });
+
+  it('con cambios pendientes limpios, save() guarda las anotaciones como siempre', async () => {
+    await openFixture();
+    const pendingSave = vi.fn(async () => 'saved' as const);
+    registerPendingChanges({ isDirty: () => false, save: pendingSave, discard: () => undefined });
+    addHighlight();
+
+    expect(await save()).toBe('saved');
+
+    expect(pendingSave).not.toHaveBeenCalled();
+    expect(h.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('solo puede haber un cambio pendiente registrado a la vez', () => {
+    const changes = { isDirty: () => false, save: async () => 'nothing' as const, discard: () => undefined };
+    registerPendingChanges(changes);
+
+    expect(() => {
+      registerPendingChanges({ ...changes });
+    }).toThrow();
+    registerPendingChanges(null);
+    expect(() => {
+      registerPendingChanges({ ...changes });
+    }).not.toThrow();
+  });
+});
+

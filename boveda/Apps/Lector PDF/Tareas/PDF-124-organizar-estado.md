@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-124
 titulo: Organizar - estado, acciones, guardado encadenado y escrituras de documento
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-053, PDF-118, PDF-119, PDF-101]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -95,3 +95,9 @@ export function cancelOrganizeSave(): void;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (op `organize`); `src/state/save-actions.ts` (`writeDocument`, `DocumentWrite`, `PendingChanges`, `registerPendingChanges`, `pendingChanges`; `save()` delega en los pendientes sucios); `src/state/unsaved-guard.ts`; `src/state/organize-store.ts` y `src/state/organize-actions.ts` (nuevos); `src/ui/messages-organize.ts` (nuevo); `src/state/tabs.ts` (`refreshActiveTab`); `src/state/annotation-actions.ts` (título con la marca de la vista); `src/main.tsx` (registro del participante de pestañas). Tests: `tests/unit/organize-actions.test.ts` (nuevo, 12 casos), `tests/unit/save-actions.test.ts` y `tests/unit/unsaved-guard.test.ts` (casos nuevos).
+- Qué he hecho: vista Organizar como estado (abrir, girar, borrar, mover, insertar en blanco, deshacer/rehacer, selección) y guardado encadenado: el plan y las anotaciones sin guardar van en un único incremento a través del Worker, con cancelación y avisos. Ctrl+S, el aviso de cierre y las pestañas usan los cambios pendientes. `writeDocument` reutiliza el flujo de Ctrl+S (en sitio, copia, «cambió en disco»). Cubre los criterios de aceptación salvo el de `pnpm coverage` con código 0 (ver abajo).
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `vitest run` de `organize-actions`, `save-actions` y `unsaved-guard`: 41/41 OK. `pnpm coverage`: código 1 con 4 tests rojos que no son de estos cambios: `tests/ui/comment-toolbar.test.tsx` (2), `tests/ui/sidebar.test.tsx` (1; ambos buscan roles que no están en la UI) y `tests/unit/fixtures.test.ts` (1; cuenta 28 ficheros y `tests/fixtures/catalog.ts` cambia en otro trabajo en curso). Además, otro proceso de Vitest (pid 13760) usaba `coverage/`: se usó un directorio de informes propio.
+- Dudas o cosas que no he podido hacer: (1) Sin foco, la página en blanco toma el tamaño del último hueco; si el hueco de referencia es «importado» o no tiene dimensiones conocidas, no se inserta y queda un aviso en el log (PDF-128 deberá resolverlo). (2) `registerPendingChanges` lanza un error si ya hay otro registrado («solo uno a la vez»). (3) La vista se cierra al cambiar el documento abierto, vía suscripción a `useViewer.file`. (4) No hay test del aviso «PDF sin permiso de organizar» (una vez por documento). (5) El criterio «pnpm coverage con código 0» no se cumple por los 4 tests rojos ajenos a esta ficha; lo dejo para que el líder decida.
