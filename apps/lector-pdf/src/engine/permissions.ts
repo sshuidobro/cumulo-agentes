@@ -1,7 +1,6 @@
 import { createLogger } from '@suite/shared';
 import type { ByteSource } from '@suite/platform';
 import { cipherKindOf, type CipherKind } from '../core/permissions';
-import { openForSave } from '../core/pdf/incremental';
 import type { PDFDocumentProxy } from './pdfjs';
 
 const log = createLogger('permissions');
@@ -24,6 +23,8 @@ export async function readPermissions(doc: PDFDocumentProxy): Promise<ReadonlySe
  * contraseña de propietario). Devuelve `null` si no se puede leer. Nunca lanza.
  */
 export async function readCipher(source: ByteSource, password: string): Promise<CipherKind | null> {
+  // Escritor de incrementos en diferido (PDF-140): no entra en el arranque.
+  const { openForSave } = await import('../core/pdf/incremental');
   const opened = await openForSave(source, password);
   if (!opened.ok) {
     log.warn('readCipher', opened.error.code);

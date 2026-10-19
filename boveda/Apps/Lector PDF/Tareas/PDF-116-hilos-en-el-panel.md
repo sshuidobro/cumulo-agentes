@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-116
 titulo: Respuestas y estados en el panel de comentarios
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-109]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -62,3 +62,14 @@ El panel de comentarios muestra bajo cada comentario sus respuestas (sangradas) 
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 1. Verificado: lint y typecheck OK. Los 4 E2E (annotations-flow:94, annotations-foreign:72, notes:91, outline:64) fallan en HEAD y también en una copia de `HEAD~1` sin los cambios (annotations-foreign:72 pasó una vez en la copia, pero falló en 2 repeticiones posteriores: intermitente, en `openCommentsPanel`/pestaña «Comentarios» no encontrada). Son previos; no atribuibles a PDF-116.
 2. Recomendación al líder: abrir una ficha aparte para estos 4 E2E; el criterio «e2e con código 0» queda condicionado a ella.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit filas/filtros, UI flechas e Intro | OK | `pnpm coverage`: todo verde, 97,73 % líneas |
+| Rendimiento 5 000+5 000 | OK | `pnpm perf` 40/40 |
+| E2E panel y respuestas/Aceptado/filtro Rechazado | OK | `comments-panel.spec.ts` 8/8 junto a a11y |
+| axe sin violaciones nuevas | OK | `annotations-a11y.spec.ts` (incl. caso PDF-116) |
+| lint, typecheck | OK | código 0 |
+| e2e completo código 0 | NO (previo) | 5 fallos: `annotations-flow:94`, `annotations-foreign:72`, `notes:91` (reproducible, previo), y dos de tiempo bajo carga (`performance:72`, `render:70`) que pasan aislados. Ninguno toca el panel. |
+Pendiente para el líder: ficha aparte para los E2E inestables/previos (notes:91, annotations-flow:94, annotations-foreign:72, outline:64).

@@ -6,7 +6,7 @@
 import { err, ok, type Result } from '@suite/shared';
 import { pdfError } from '../errors';
 import { writeCompleteFile } from './file-writer';
-import { toSaveError } from './incremental';
+import { toSaveError } from './save-error';
 import { FormsBuilder } from './new-document-forms';
 import { ObjectCopier } from './object-copier';
 import type { ObjectReader } from './object-reader';

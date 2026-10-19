@@ -39,7 +39,6 @@ import {
 } from '../core/annotations/palette';
 import { windowTitle } from '../core/title';
 import { organizeDirty } from './organize-store';
-import { openForSave } from '../core/pdf/incremental';
 import type { ObjectReader } from '../core/pdf/object-reader';
 import { readPageAnnotations, scanAnnotations, type LoadedPdf } from '../engine';
 import { setFileAnnotationHidden } from '../engine/annotation-visibility';
@@ -172,7 +171,9 @@ export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal, sour
   const stop = linkedController(signal);
   const reader: Promise<ObjectReader | null> = source === undefined
     ? Promise.resolve(null)
-    : openForSave(source).then((r) => (r.ok ? r.value : null), () => null);
+    : import('../core/pdf/incremental')
+      .then(({ openForSave }) => openForSave(source))
+      .then((r) => (r.ok ? r.value : null), () => null);
   const current: Session = { pdf, stop, pending: new Map(), reader, imported: 0 };
   session = current;
   stack = createStack();

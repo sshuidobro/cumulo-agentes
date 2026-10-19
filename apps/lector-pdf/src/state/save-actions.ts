@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import { createLogger, err, ok, type AppError, type Result } from '@suite/shared';
 import type { OpenedFile, SaveData } from '@suite/platform';
 import { diffAnnotations, isEmptyDiff, type AnnotationDiff } from '../core/annotations/diff';
-import { diffFields, type FieldChange } from '../core/forms';
-import { buildIncrementalUpdate, openForSave } from '../core/pdf';
+import { diffFields, type FieldChange } from '../core/forms/diff';
 import { msg } from '../ui/messages';
 import { markAnnotationsSaved, nowIso } from './annotation-actions';
 import { useAnnotations } from './annotation-store';
@@ -150,6 +149,8 @@ function hasChanges(changes: CurrentChanges): boolean {
  */
 export async function buildCurrentDelta(file: OpenedFile): Promise<Result<Uint8Array | null, AppError>> {
   const changes = currentChanges();
+  // Escritor de incrementos cargado en diferido (PDF-140): no entra en el arranque.
+  const { buildIncrementalUpdate, openForSave } = await import('../core/pdf/incremental');
   // La contraseña con la que se abrió el documento (PDF-046) evita volver a pedirla al guardar (PDF-047).
   const reader = await openForSave(file.source, currentPassword() ?? undefined);
   if (!reader.ok) return err(reader.error);

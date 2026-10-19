@@ -8,7 +8,7 @@ import { err, ok, type Result } from '@suite/shared';
 import { pdfError } from '../errors';
 import type { RandomBytes } from '../pdf/crypt-rules';
 import { finishDelta, reserveXref, startDelta } from '../pdf/delta-writer';
-import { toSaveError } from '../pdf/incremental';
+import { toSaveError } from '../pdf/save-error';
 import type { ObjectReader } from '../pdf/object-reader';
 import { dict, name } from '../pdf/objects';
 import {
