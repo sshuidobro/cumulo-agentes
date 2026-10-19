@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-018
 titulo: Platform.exportFile e importFile - exportar e importar sin tocar recientes
 app: comun
-estado: en-revision
+estado: en-test
 depende_de: [COM-017]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -73,3 +73,8 @@ importFile(filters: readonly FileFilter[], maxBytes: number): Promise<Result<Imp
 - Dudas o cosas que no he podido hacer:
   - El typecheck de `apps/lector-pdf` y los 2 tests de UI de lector-pdf no pasan. Son ajenos a COM-018 y no los he tocado porque están fuera de alcance; el líder debe asignarlos a la ficha del lector PDF correspondiente. Hasta entonces el criterio «pnpm typecheck y pnpm coverage con código 0» no se cumple en el monorepo completo.
   - Hay otro proceso de vitest con cobertura en el mismo directorio (pid 14113 al ejecutarse); no lo he detenido.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+- Revisado `types.ts`, `platform-web.ts` (exportFile/importFile), `platform-tauri.ts` (exportFile/importFile), Rust y fake. Cumple los criterios: sin `remember`, token cerrado en `finally`, `out-of-range` antes de leer, cancelar correcto.
+- Comprobado: `pnpm lint` 0; tsc de `packages/platform` OK; vitest de `packages/platform` 250/250; `cargo test` y `clippy -D warnings` OK.
+- Nota para el tester/líder: el typecheck y 2 tests de UI de `apps/lector-pdf` fallan por WIP ajeno (ver registro del programador); no atribuible a COM-018.
