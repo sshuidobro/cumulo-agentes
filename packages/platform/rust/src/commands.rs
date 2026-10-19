@@ -157,7 +157,7 @@ fn update_recents<R: Runtime, T>(
 
 /// Anota en recientes una ruta elegida por el usuario o recibida del SO. Es un
 /// efecto secundario: si no se puede guardar la lista, la apertura sigue adelante.
-fn remember<R: Runtime>(
+fn add_to_recents<R: Runtime>(
     app: &AppHandle<R>,
     state: &SuitePlatformState,
     path: &Path,
@@ -242,7 +242,7 @@ pub async fn suite_open_dialog<R: Runtime>(
             let path = picked_path(picked)?;
             let info = register_existing(&state.registry, &path)?;
             if should_remember(remember) {
-                remember(&app, &state, &path, Some(info.size));
+                add_to_recents(&app, &state, &path, Some(info.size));
             }
             Ok(Some(info.into()))
         }
@@ -267,7 +267,7 @@ pub async fn suite_save_dialog<R: Runtime>(
             // Un destino que aún no existe no tiene tamaño: se anota sin él.
             let size = info.last_modified_ms.map(|_| info.size);
             if should_remember(remember) {
-                remember(&app, &state, &path, size);
+                add_to_recents(&app, &state, &path, size);
             }
             Ok(Some(info.into()))
         }
@@ -417,7 +417,7 @@ pub fn register_os_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<PathBuf>) {
         let Ok(info) = register_existing(&state.registry, &path) else {
             continue;
         };
-        remember(app, &state, &path, Some(info.size));
+        add_to_recents(app, &state, &path, Some(info.size));
         lock_pending(&state).push(info);
         queued = true;
     }

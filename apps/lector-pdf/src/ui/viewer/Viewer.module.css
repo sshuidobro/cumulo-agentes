@@ -103,6 +103,18 @@
   height: 100%;
 }
 
+/* Lienzo de detalle (ADR-0025): su posición y tamaño los pone PageView en píxeles. No recibe el puntero. */
+.detailHost {
+  position: absolute;
+  pointer-events: none;
+}
+
+.detailHost > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .renderError {
   position: relative;
   max-width: 90%;

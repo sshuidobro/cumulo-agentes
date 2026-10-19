@@ -88,7 +88,7 @@ fixtures/pdf/generated/ (no versionado) · fixtures/pdf/corpus/ (versionado) · 
 | Guardar formularios en `form-full.pdf` · imprimir 20 páginas de 5 000 (it. 3, [[PDF-090-e2e-iteracion-3|PDF-090]]) | < 1 s · < 20 s sin *long tasks* |
 | Cambiar de pestaña hasta pintar la página (3 × 1 000 páginas, it. 4) | ≤ 500 ms (p95); heap estable (+50 MB máx. tras 20 cambios) |
 | Lienzos con zoom alto (it. 4) | ≤ 12 base + 1 de detalle por página visible; ≤ 300 MB de lienzos |
-| JavaScript estático del arranque (pdf.js diferido, [[ADR-0017-carga-diferida-de-pdfjs]]) | ≤ 500 000 bytes (`bundle:check`, vigente con [[PDF-075-pdfjs-diferido]]); diálogos bajo demanda ([[ADR-0027-dialogos-diferidos]]) |
+| JavaScript estático del arranque (pdf.js diferido, [[ADR-0017-carga-diferida-de-pdfjs]]) | ≤ 600 000 bytes (`bundle:check`; antes 500 000, subido por el usuario en [[ADR-0041-presupuesto-arranque-600kb]]); diálogos bajo demanda ([[ADR-0027-dialogos-diferidos]]) |
 
 ## Comandos
 - Requisitos del sistema (una vez, Linux): `apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev qpdf` (WebKitGTK solo para compilar Tauri; `qpdf` para validar PDFs escritos).

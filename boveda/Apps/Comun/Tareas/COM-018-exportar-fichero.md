@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-018
 titulo: Platform.exportFile e importFile - exportar e importar sin tocar recientes
 app: comun
-estado: pendiente
+estado: en-revision
 depende_de: [COM-017]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -59,3 +59,17 @@ importFile(filters: readonly FileFilter[], maxBytes: number): Promise<Result<Imp
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `packages/platform/rust/src/commands.rs` (la función auxiliar `remember` pasa a `add_to_recents`; el parámetro `remember` de `suite_open_dialog` y `suite_save_dialog` la sombreaba y no compilaba). Ficha: `estado` y `actualizado`.
+- Qué he hecho: la implementación ya estaba en el repositorio (WIP de commits anteriores): `ExportOutcome`/`ImportedFile`/`exportFile`/`importFile` en `types.ts`, versiones web y Tauri, parámetro `remember: Option<bool>` en Rust, `createFakePlatform` con `lastExport`, y tests en `packages/platform/tests/web/platform-web-export.test.ts` y `tests/tauri/export-tauri.test.ts`. He verificado cada punto de la ficha contra el código y he corregido el error de compilación de Rust. No he cambiado nada más.
+- Comandos ejecutados y resultado:
+  - `cargo fmt --all --check`: 0.
+  - `cargo clippy --workspace --all-targets --all-features -- -D warnings`: 0.
+  - `cargo test --workspace --all-features`: 0 (todos los tests Rust pasan, incluido `should_remember`).
+  - `pnpm lint`: 0.
+  - `pnpm typecheck`: `packages/platform` OK; **falla en `apps/lector-pdf`** (fuera de alcance): `tests/ui/tab-bar.test.tsx(26)` llama a `initServices(createFakePlatform())` pero `initServices` espera `AppServices` (`platform`, `assetBaseUrl`); `tests/unit/tab-close-guard.test.ts(97,118)` llama a un `never`. Es WIP previo de lector-pdf.
+  - `pnpm coverage` (con `--coverage.reportsDirectory` propio porque otro proceso de vitest tenía el directorio de cobertura bloqueado): exit 1 solo por 2 tests de `apps/lector-pdf`: `tests/ui/comment-toolbar.test.tsx` (barra «Comentar») y `tests/ui/sidebar.test.tsx` (panel lateral, rol `complementary`). Ambos fallan en HEAD por WIP ajeno a esta ficha. `packages/platform`: 24 ficheros, 250 tests, todos pasan.
+- Dudas o cosas que no he podido hacer:
+  - El typecheck de `apps/lector-pdf` y los 2 tests de UI de lector-pdf no pasan. Son ajenos a COM-018 y no los he tocado porque están fuera de alcance; el líder debe asignarlos a la ficha del lector PDF correspondiente. Hasta entonces el criterio «pnpm typecheck y pnpm coverage con código 0» no se cumple en el monorepo completo.
+  - Hay otro proceso de vitest con cobertura en el mismo directorio (pid 14113 al ejecutarse); no lo he detenido.
