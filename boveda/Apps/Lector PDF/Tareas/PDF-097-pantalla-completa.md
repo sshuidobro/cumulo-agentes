@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-097
 titulo: Modo pantalla completa (lectura y presentación)
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-050, COM-017]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, ui, visor]
 ---
 
@@ -48,3 +48,10 @@ Como el «Modo de pantalla completa» de Adobe (Ctrl+L): la ventana ocupa la pan
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/fullscreen-actions.ts` (nuevo), `src/state/view-actions.ts` (`applyViewMode` sin persistir), `src/ui/App.tsx`, `src/ui/App.module.css`, `src/ui/messages-view.ts`, `src/ui/shortcuts.ts` (`fullscreen`, `fullscreen-next`, `fullscreen-prev`), `src/ui/toolbar/ViewMenu.tsx`, `src/ui/viewer/Viewer.tsx`, `src/ui/viewer/Viewer.module.css`, `src/ui/viewer/use-idle-cursor.ts` (nuevo); tests nuevos `tests/unit/fullscreen-actions.test.ts`, `tests/ui/fullscreen-viewer.test.tsx`, `tests/e2e/fullscreen.spec.ts`; `tests/ui/view-menu.test.tsx` (una prueba más).
+- Qué he hecho: Ctrl+L y «Pantalla completa» en «Vista» entran en modo por páginas con ajuste a página, sin panel ni barras ni herramienta de anotación, sin escribir la preferencia; Esc, Ctrl+L o la salida del SO restauran modo, zoom, panel y herramienta. En el visor: clic izquierdo pasa de fila (salvo enlaces y anotaciones), Espacio/Re Pág/Av Pág/Intro/Retroceso por atajos, fondo negro, fila centrada, cursor oculto tras 2 s, `data-current-page` (1-based). Aviso «Pulsa Esc…» con el `Notice` existente.
+- Comandos ejecutados y resultado: `pnpm lint` sin errores ni avisos; `pnpm typecheck` sin errores; `pnpm --filter lector-pdf exec vitest run` de los ficheros tocados (fullscreen-actions, fullscreen-viewer, view-menu, view-actions, app): 5 ficheros OK; `pnpm --filter lector-pdf e2e -- tests/e2e/fullscreen.spec.ts --project=chromium`: 6/6 OK (incluye axe sin incidencias graves). `pnpm coverage`: **falla** por 3 pruebas de `tests/ui/open.test.tsx` («No "readPermissions" export is defined on the "../../src/engine" mock»); ese fallo viene de cambios sin commit de otro programador en `src/engine/index.ts` y `src/state/document-actions.ts`, que no he tocado. Hay que relanzar `pnpm coverage` cuando esté resuelto.
+- Dudas o cosas que no he podido hacer: (1) La prueba manual en `tauri dev` (Ctrl+L a pantalla completa sin bordes y Esc con el tamaño anterior) no la he podido hacer: solo hay entorno web. (2) La barra de búsqueda (`SearchBar`) no se oculta en pantalla completa, porque la ficha solo nombra barra principal, barra de comentarios y panel; si debe ocultarse, dímelo. (3) El `data-current-page` es 1-based. (4) Las teclas de página (Espacio, Intro, Re/Av Pág, Retroceso) se resuelven como atajos del registro: no pasan por el visor, para evitar avanzar dos veces.
+
