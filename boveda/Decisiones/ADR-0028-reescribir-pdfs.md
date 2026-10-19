@@ -41,13 +41,13 @@ Hechos que cambian la pregunta:
 5. Las operaciones largas (más de 5 000 páginas) se ejecutarán en un Web Worker con progreso y cancelar ([[PDF-053-organizar-paginas|PDF-053]]); el núcleo acepta `signal` y `onProgress`.
 
 ## Medidas
-Las rellena el programador de PDF-052 (`pnpm perf`, mejor de 3, máquina en reposo).
+Medidas de PDF-052 (`pnpm perf`, calentamiento + mejor de 3, `ObjectReader.open` incluido; máquina de desarrollo sin comprobar el reposo de CPU).
 
 | Caso | Tiempo | Delta (bytes) |
 |---|---|---|
-| `pages-5000.pdf`: borrar la página 2 | _pendiente_ | _pendiente_ |
-| `pages-100000.pdf`: borrar la página 2 | _pendiente_ | _pendiente_ |
-| `pages-100000.pdf`: girar la página 50 000 | _pendiente_ | _pendiente_ |
+| `pages-5000.pdf`: borrar la página 2 | 218 ms | 729 947 |
+| `pages-100000.pdf`: borrar la página 2 | 5 299 ms | 15 123 448 |
+| `pages-100000.pdf`: girar la página 50 000 | 2 521 ms | 317 |
 
 ## Consecuencias
 - Sin dependencias ni licencias nuevas. Todo el código vive en `core/` y se prueba en Node con qpdf y pdf.js.
