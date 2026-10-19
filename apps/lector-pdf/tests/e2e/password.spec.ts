@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { fixture, pageFrame } from './helpers.ts';
+import { fixture, pageField, pageFrame, waitDraftSaved } from './helpers.ts';
+import { createNoteWithText } from './annotations-kit.ts';
+import { expectViewerReady } from './viewer-ready.ts';
 
 /**
  * Abrir PDFs con contraseña (PDF-046): diálogo propio, reintento tras un error, cancelación y accesibilidad.
@@ -109,4 +111,59 @@ test('el diálogo, con y sin error, no tiene violaciones serious/critical de axe
   await passwordField(page).press('Enter');
   await expect(passwordDialog(page).getByRole('alert')).toBeVisible();
   expect(await seriousViolations(page, testInfo, 'diálogo con error')).toEqual([]);
+});
+
+/** Abre un cifrado con la contraseña indicada y espera a que el visor esté listo. */
+async function openWithPassword(page: Page, name: string, password: string): Promise<void> {
+  await choose(page, name);
+  await expect(passwordDialog(page)).toBeVisible();
+  await passwordField(page).fill(password);
+  await passwordField(page).press('Enter');
+  await expect(page.getByTestId('viewer')).toBeVisible();
+  await expectViewerReady(page);
+}
+
+test('tras abrir con contraseña, una nota y Ctrl+S avisan del guardado sin pedir la contraseña otra vez', async ({ page }) => {
+  await openWithPassword(page, AES128, USER);
+
+  await createNoteWithText(page, 'Nota cifrada');
+  await page.keyboard.press('Control+s');
+
+  // Hasta PDF-047 el guardado no usa la contraseña abierta: el aviso es el de contraseña incorrecta, sin diálogo.
+  await expect(page.getByRole('status').getByText('No se pueden guardar los cambios: la contraseña no es correcta.')).toBeVisible();
+  await expect(passwordDialog(page)).toHaveCount(0);
+});
+
+test('la página donde estaba se recuerda: tras recargar y reabrir con contraseña se abre en la página 3', async ({ page }) => {
+  await openWithPassword(page, AES128, USER);
+
+  await pageField(page).fill('3');
+  await pageField(page).press('Enter');
+  await expect(page.getByRole('group', { name: 'Página 3 de 5' })).toBeVisible();
+
+  // Recargar guarda la posición al ocultarse la página (pagehide), como en remember.spec.ts.
+  await page.reload();
+  await openWithPassword(page, AES128, USER);
+
+  await expect(pageField(page)).toHaveValue('3');
+});
+
+test('una nota sin guardar en un cifrado se ofrece para recuperar tras recargar y reabrir con contraseña', async ({ page }) => {
+  await openWithPassword(page, AES128, USER);
+
+  await createNoteWithText(page, 'Borrador cifrado');
+  await waitDraftSaved(page);
+
+  await page.reload();
+  await choose(page, AES128);
+  await passwordField(page).fill(USER);
+  await passwordField(page).press('Enter');
+
+  const zone = pageFrame(page, 1).locator('[role="button"][aria-label^="Nota"]');
+  const draft = page.getByRole('dialog', { name: /Hay cambios sin guardar de la última vez en «encrypted-aes-128\.pdf»/ });
+  await expect(draft).toBeVisible();
+  await draft.getByRole('button', { name: 'Recuperar' }).click();
+
+  await expect(draft).toHaveCount(0);
+  await expect(zone).toHaveCount(1);
 });
