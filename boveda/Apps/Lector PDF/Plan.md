@@ -203,7 +203,8 @@ Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PD
 | [[PDF-089-esperas-fijas-e2e]] | Quitar las esperas fijas de las pruebas e2e y prohibirlas con ESLint | — | hecha |
 | [[PDF-103-etiqueta-firma-al-reabrir]] | Etiqueta «Firma» para sellos de la suite - núcleo (`ObjectReader`) | PDF-085 | pendiente |
 | [[PDF-104-etiqueta-firma-conexion]] | Etiqueta «Firma» al reabrir - conexión con la sesión de anotaciones | PDF-103 | pendiente |
-| [[PDF-090-e2e-iteracion-3]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3 | PDF-083, PDF-043, PDF-044, PDF-088, PDF-089 | pendiente |
+| [[PDF-105-vista-previa-trazo-offscreen]] | Vista previa del trazo en OffscreenCanvas (fuera del Commit del compositor) | — | pendiente |
+| [[PDF-090-e2e-iteracion-3]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3 | PDF-083, PDF-043, PDF-044, PDF-088, PDF-089, PDF-105 | pendiente |
 
 Orden (sin dos fichas en paralelo sobre el mismo fichero): **ola A** en paralelo PDF-040, PDF-084, PDF-087, PDF-045, PDF-089, COM-014 → **ola B** PDF-079 ∥ PDF-088 ∥ PDF-044 → **ola C** PDF-080 ∥ PDF-082 → **ola D** PDF-081 ∥ PDF-085 → **ola E** PDF-041 ∥ PDF-086 → **ola F** PDF-042 (tras PDF-085, comparten `incremental.ts`) → **ola G** PDF-083 ∥ PDF-043 (ficheros distintos: `FormLayer` frente a `AnnotationLayer` y barra) → PDF-090.
 

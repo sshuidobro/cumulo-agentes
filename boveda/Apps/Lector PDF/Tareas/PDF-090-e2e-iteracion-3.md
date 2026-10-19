@@ -3,8 +3,8 @@ tipo: tarea
 id: PDF-090
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3
 app: pdf
-estado: en-revision
-depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089]
+estado: pendiente
+depende_de: [PDF-083, PDF-043, PDF-044, PDF-088, PDF-089, PDF-105]
 intentos: 1
 skills: [pruebas-calidad, calidad-profesional]
 creado: 2026-10-18
@@ -158,3 +158,10 @@ Estado → `pendiente`. `intentos` se mantiene (escalado correcto, no es fallo d
   1. **Escalado (paso 4 de la replanificación 2).** La long task es un `Commit` de ~70 ms durante el trazo. No es GC (paso 3, primera rama) y no es una tarea de la app al soltar (paso 3, segunda rama). Según la regla, es «cualquier otro»: no cambio código. Decidir si se investiga la capa que se repinta durante el trazo (¿ADR-0018 vista previa en canvas?, ¿capa de anotaciones?) o si se aísla el trazo con una ficha nueva.
   2. Las 20 repeticiones no cumplen el criterio «15/15» del punto 4: no se ha hecho el arreglo ni se han repetido las baterías ×3, ni el lint, build y medidas, porque el paso 4 no se ejecuta sin decisión del líder.
   3. Ficha en `en-revision`, sin cambios de código ni de tests.
+
+### [lider] replanificación 3 — 2026-10-19
+Estado → `pendiente`, depende de [[PDF-105-vista-previa-trazo-offscreen]]. `intentos` se mantiene (escalado correcto).
+- **B (ink «2 000 eventos»)**: el `Commit` de ≈ 69 ms se ataca en PDF-105 (vista previa con `transferControlToOffscreen`, con contraste previo sin vista previa). Ver revisión de [[ADR-0018-vista-previa-del-trazo-en-canvas]]. En esta ficha no se toca `ink-preview.ts`, `AnnotationLayer.tsx` ni `ink.spec.ts`.
+- **A (bundle)**: cerrado en la replanificación 2.
+- Cuando PDF-105 esté `hecha`: hacer solo el punto 4 de la replanificación 2 desde «Luego todo el punto 5»: lint, typecheck, test, coverage, perf, build (anotar «Arranque: N»), las dos baterías ×3 con código 0 y la **tabla de medidas nueva** completa.
+- Si PDF-105 acaba `bloqueada` (la hipótesis falla), la 090 sigue esperándola; el líder decide allí.

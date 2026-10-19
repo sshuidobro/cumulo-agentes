@@ -5,7 +5,7 @@ app: pdf
 estado: aceptada
 fecha: 2026-10-18
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [decision, pdf, e2e, rendimiento]
 ---
 
@@ -59,3 +59,7 @@ Se mantiene la decisión. Tres precisiones:
 **Consecuencias.**
 - La condición «carga de 1 min < 1,0 antes de lanzar» de las fichas deja de ser necesaria para la validez de la medida (la garantiza la puerta); se mantiene la regla de no lanzar otras baterías en paralelo durante una verificación.
 - Si una `@perf` falla con la puerta pasada y `cpu-durante` normal (cercana al valor de referencia en reposo que deja anotado [[PDF-078-reposo-cpu-antes-de-perf]], que es lo que gasta el propio Chromium de la prueba), es una regresión de la app y se optimiza. Si `cpu-durante` es claramente mayor, se busca el proceso intruso en `top` antes de nada.
+
+## Revisión 3 · 2026-10-19 (tras [[PDF-090-e2e-iteracion-3]], ronda 2)
+- `ink.spec.ts` «2 000 eventos» falla 2/15 con una *long task* de 51-62 ms **durante el trazo**, con la puerta pasada y `cpu-durante` normal (28-29 %). Por la consecuencia anterior, se trata como regresión de la app.
+- **Decisión.** Umbral sin cambios (50 ms del observador, cero entradas). Antes de optimizar, se **atribuye** la tarea con una traza de Chromium (`browser.startTracing`, categorías `devtools.timeline`, `disabled-by-default-devtools.timeline`, `disabled-by-default-v8.cpu_profiler`, `v8.gc`) de una repetición fallida; la corrección depende del hijo dominante de la tarea (ver la ficha). La instrumentación de traza no se versiona.

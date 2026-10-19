@@ -28,3 +28,7 @@ Los tres diálogos se importan con `React.lazy` y se montan solo con su estado `
 - Margen de ~15 KB para la iteración 4.
 - Todo diálogo nuevo que no se use al arrancar se carga igual (regla para próximas fichas).
 - Vigilar que el foco inicial y `aria-*` de los diálogos siguen igual (lo cubren `iteration3-a11y` y los tests de componente).
+
+## Revisión 2026-10-19 (tras [[PDF-090-e2e-iteracion-3]], ronda 2)
+- Medido: arranque **486 857 bytes** (antes 500 004). El objetivo de 485 000 era un margen interno de la replanificación, no el presupuesto: el presupuesto de `bundle:check` sigue en **500 000** y se cumple. Se acepta; margen real ~13 KB.
+- No se sube el presupuesto. A vigilar en la iteración 4: el trozo estático `PrintDialog.module` (62 534 bytes) existe porque `PrintProgress.tsx` importa `PrintDialog.module.css`; la primera ficha de la iteración 4 que toque el arranque lo separará (CSS propio de `PrintProgress`) y medirá.
