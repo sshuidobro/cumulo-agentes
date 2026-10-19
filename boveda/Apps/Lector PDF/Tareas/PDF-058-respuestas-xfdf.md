@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-058
 titulo: Respuestas y estados de revisión - modelo, lectura y escritura
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-036, PDF-057, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -93,3 +93,14 @@ export function dependentIds(all: ReadonlyMap<string, Annotation>, id: string): 
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 - Typecheck y eslint de src y tests/unit/annotations limpios; vitest annotations + ui: 813/815, solo fallan 2 de `draft-sync-tabs` (WIP ajeno de PDF-101). Modelo, `replies.ts`, import, to-pdf, `writableAdded`/`irtOf` y UI cubren los criterios.
 - (opcional) El tester debe ejecutar `pnpm coverage` y `pnpm perf` completos cuando PDF-101 esté arreglado.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Interop, reabrir, IRT, dependentIds, Group/Marked/oculta, borrador | OK | `replies-interop` y annotations + ui: 815/815 |
+| Capa SVG / annotationsOfPage / buildCommentRows | OK | tests ui y annotations en verde |
+| Cobertura `replies.ts` ≥ 90 % | OK | 97,72 % líneas |
+| lint, typecheck | OK | código 0 |
+| `pnpm coverage` completo | Con carga: 6 timeouts de 5 s (page-tree pages-5000, cifrados, commands 5000); los 6 ficheros pasan aislados (135/135). No relacionados con la ficha. | ver arriba |
+| `pnpm perf` | OK en 2.ª repetición (35/35); 1.ª: layout 301,9 vs 300 ms y 2 más, ruido de carga; 3.ª: 35/35 | `pnpm perf` |
+Tests añadidos: ninguno (ya cubiertos). Aviso: la suite completa es sensible a la carga (timeouts); conviene subir `testTimeout` de los tests de 5000 páginas/cifrado.
