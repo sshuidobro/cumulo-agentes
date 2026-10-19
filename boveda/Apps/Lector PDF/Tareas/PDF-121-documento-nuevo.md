@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-121
 titulo: Escribir un PDF nuevo con páginas de uno o varios PDFs
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-119, PDF-120]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -85,3 +85,17 @@ export async function buildNewDocument(input: NewDocumentInput): Promise<Result<
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/delta-writer.ts` (exporta `newIdBytes` —antes `idBytes`—, `groupsOf`, `tableRow` y `Group`, sin cambiar su código); nuevos `apps/lector-pdf/src/core/pdf/file-writer.ts` (`writeCompleteFile`), `apps/lector-pdf/src/core/pdf/new-document.ts` (`buildNewDocument`), `apps/lector-pdf/tests/unit/pdf/new-document.test.ts` y `apps/lector-pdf/tests/perf/new-document.perf.test.ts`.
+- Qué he hecho: `writeCompleteFile` escribe cabecera `%PDF-1.7`, objetos (cifrados con `DeltaWriter` si hay `encryption`, con `/Encrypt` sin cifrar como N+1), xref clásica desde 0 y trailer con `/ID`. `buildNewDocument` valida las partes, copia cada página con `ObjectCopier` (catálogo 1, `/Pages` 2, `/Info` 3, intermedios al final), aplica el giro absoluto y reporta progreso cada 100 páginas. Los 18 tests de unidad cubren los criterios de aceptación con pdf.js y qpdf; el de cifrado usa el `SecurityHandler` AES-256 de `encrypted-aes-256.pdf`.
+- Comandos ejecutados y resultado:
+  - `npx vitest run tests/unit/pdf/new-document.test.ts`: 18/18 pasan.
+  - `pnpm perf` (ejecuta toda la suite de rendimiento, el filtro de ruta no aplica en ese script): código 0, 38 tests, incluidos los 2 de creación (1 000 páginas < 2 s y 100 000 < 20 s).
+  - `pnpm lint`: falla por `tests/e2e/zz-debug.spec.ts` (`waitForTimeout` y `console`), fichero no creado por esta ficha. ESLint sobre mis ficheros: sin avisos.
+  - `pnpm typecheck`: sin errores en mis ficheros. Quedan errores previos en `tests/unit/tab-close-guard.test.ts` y `tests/ui/tab-bar.test.tsx`, y uno nuevo en `tests/ui/page-view-detail.test.tsx`, de trabajo ajeno en curso.
+  - `pnpm coverage`: código 1 por 3 tests de UI fuera de alcance (`tests/ui/comment-toolbar.test.tsx` ×2, `tests/ui/sidebar.test.tsx` ×1). Cobertura de los módulos de la ficha (cobertura acotada a `file-writer.ts` y `new-document.ts`): `file-writer.ts` 97 % de líneas, `new-document.ts` 100 %.
+- Dudas o cosas que no he podido hacer:
+  - Semilla de `/ID` de `buildNewDocument`: `` `${now}|${total}` `` (la ficha no la fija).
+  - Árbol de cambios ajenos sin commit (`render.ts`, `Viewer.tsx`, `Viewer.module.css`, `PageView.tsx`, `engine-render.test.ts`, `tests/e2e/detail.spec.ts`, `tests/e2e/zz-debug.spec.ts`, `tests/ui/page-view-detail.test.tsx`): no son míos ni los he tocado.
+  - Los tiempos en ms de `pnpm perf` no se imprimen; solo consta que pasan los umbrales.

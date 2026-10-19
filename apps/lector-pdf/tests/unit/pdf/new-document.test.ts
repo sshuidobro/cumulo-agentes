@@ -1,0 +1,414 @@
+/**
+ * Creación de PDF nuevos con páginas de una o varias fuentes (PDF-121, ADR-0028). Los ficheros se validan con pdf.js
+ * (el visor) y con qpdf (lector independiente). Fixtures de `tests/fixtures/catalog.ts`.
+ */
+import { readFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { memorySource } from '@suite/platform';
+import { afterAll, describe, expect, it } from 'vitest';
+import { loadPdf, type LoadedPdf, type PDFDocumentProxy } from '../../../src/engine';
+import { writeCompleteFile } from '../../../src/core/pdf/file-writer';
+import { buildNewDocument, type NewDocumentPart } from '../../../src/core/pdf/new-document';
+import { ObjectCopier } from '../../../src/core/pdf/object-copier';
+import { ObjectReader } from '../../../src/core/pdf/object-reader';
+import { dict, name, PdfSyntaxError, ref, withEntries, type PdfRef, type PdfValue } from '../../../src/core/pdf/objects';
+import type { PageSlot } from '../../../src/core/pdf/page-tree';
+import { FIXTURES_DIR } from '../../fixtures/paths';
+import { nodeAssetBase } from '../../helpers/pdfjs-node';
+import { qpdfCheck, run } from '../../support/qpdf';
+
+const assetBaseUrl = nodeAssetBase();
+const NOW = '2026-10-19T10:00:00.000Z';
+const USER = 'usuario';
+const FILE_TIMEOUT = 120_000;
+
+const tempDirs: string[] = [];
+afterAll(() => {
+  for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
+});
+
+function fixture(file: string): Uint8Array {
+  return new Uint8Array(readFileSync(join(FIXTURES_DIR, file)));
+}
+
+/** Todas las páginas de un fixture, en orden, con giro 0. */
+function allPages(count: number): PageSlot[] {
+  return Array.from({ length: count }, (_, source) => ({ source, rotate: 0 }));
+}
+
+async function openReader(data: Uint8Array, password?: string): Promise<ObjectReader> {
+  return ObjectReader.open(memorySource(data), password === undefined ? {} : { password });
+}
+
+async function part(file: string, pages: PageSlot[], password?: string): Promise<NewDocumentPart> {
+  return { reader: await openReader(fixture(file), password), pages };
+}
+
+/** Escribe bytes en un directorio temporal y devuelve la ruta (para qpdf). */
+function tempFile(data: Uint8Array, file = 'salida.pdf'): string {
+  const dir = mkdtempSync(join(tmpdir(), 'suite-pdf-nuevo-'));
+  tempDirs.push(dir);
+  const path = join(dir, file);
+  writeFileSync(path, data);
+  return path;
+}
+
+async function openPdf(data: Uint8Array, password?: string): Promise<LoadedPdf> {
+  const result = await loadPdf(memorySource(data), password === undefined ? { assetBaseUrl } : { assetBaseUrl, password });
+  if (!result.ok) throw new Error(`loadPdf falló: ${result.error.code}`);
+  return result.value;
+}
+
+/** Texto de una página de pdf.js, sin espacios entre elementos (los fixtures escriben cada línea en un fragmento). */
+async function textOf(doc: PDFDocumentProxy, pageNumber: number): Promise<string> {
+  const page = await doc.getPage(pageNumber);
+  const content = await page.getTextContent();
+  return content.items.map((item) => ('str' in item ? item.str : '')).join('');
+}
+
+/** Subtipo y contenido (`/Contents`) de cada anotación de una página de pdf.js. */
+async function annotationsOf(doc: PDFDocumentProxy, pageNumber: number): Promise<{ subtype: string; contents: string }[]> {
+  const page = await doc.getPage(pageNumber);
+  const list: unknown = await page.getAnnotations();
+  if (!Array.isArray(list)) throw new Error('getAnnotations no devolvió una lista');
+  return list.map((item: unknown) => {
+    const annotation = item as { subtype?: unknown; contentsObj?: { str?: unknown } };
+    return {
+      subtype: typeof annotation.subtype === 'string' ? annotation.subtype : '',
+      contents: typeof annotation.contentsObj?.str === 'string' ? annotation.contentsObj.str : '',
+    };
+  });
+}
+
+function startsWithPdf17(bytes: Uint8Array): boolean {
+  return new TextDecoder().decode(bytes.subarray(0, 8)) === '%PDF-1.7';
+}
+
+describe('buildNewDocument: páginas de un fixture', () => {
+  it('basic-5.pdf páginas [4, 0] → 2 páginas «Página 5 de 5» y «Página 1 de 5»; qpdf valida', async () => {
+    const result = await buildNewDocument({
+      parts: [await part('basic-5.pdf', [{ source: 4, rotate: 0 }, { source: 0, rotate: 0 }])],
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.pageCount).toBe(2);
+    expect(startsWithPdf17(result.value.bytes)).toBe(true);
+
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect(loaded.numPages).toBe(2);
+      expect(await textOf(loaded.doc, 1)).toContain('Página 5 de 5');
+      expect(await textOf(loaded.doc, 2)).toContain('Página 1 de 5');
+    } finally {
+      await loaded.destroy();
+    }
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+  });
+
+  it('dos partes: basic-5.pdf y outline.pdf completos → 35 páginas en orden; qpdf valida', async () => {
+    const basic = await openReader(fixture('basic-5.pdf'));
+    const outline = await openReader(fixture('outline.pdf'));
+    const basicCount = await basic.pageCount();
+    const outlineCount = await outline.pageCount();
+    const result = await buildNewDocument({
+      parts: [
+        { reader: basic, pages: allPages(basicCount) },
+        { reader: outline, pages: allPages(outlineCount) },
+      ],
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.pageCount).toBe(basicCount + outlineCount);
+
+    const source = await openPdf(fixture('outline.pdf'));
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect(loaded.numPages).toBe(35);
+      expect(await textOf(loaded.doc, 1)).toContain('Página 1 de 5');
+      expect(await textOf(loaded.doc, 5)).toContain('Página 5 de 5');
+      expect(await textOf(loaded.doc, 6)).toBe(await textOf(source.doc, 1));
+      expect(await textOf(loaded.doc, 35)).toBe(await textOf(source.doc, source.numPages));
+    } finally {
+      await loaded.destroy();
+      await source.destroy();
+    }
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+  });
+
+  it('annotated.pdf: las anotaciones de cada página copiada mantienen subtipo y /Contents, en el orden elegido', async () => {
+    const data = fixture('annotated.pdf');
+    const reader = await openReader(data);
+    const count = await reader.pageCount();
+    const order: PageSlot[] = Array.from({ length: count }, (_, i) => ({ source: count - 1 - i, rotate: 0 }));
+    const result = await buildNewDocument({ parts: [{ reader, pages: order }], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const source = await openPdf(data);
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      for (const [i, slot] of order.entries()) {
+        const expected = await annotationsOf(source.doc, slot.source + 1);
+        expect(expected.length).toBeGreaterThan(0);
+        expect(await annotationsOf(loaded.doc, i + 1)).toEqual(expected);
+      }
+    } finally {
+      await loaded.destroy();
+      await source.destroy();
+    }
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+  });
+
+  it('compressed.pdf: correcto en pdf.js y qpdf', async () => {
+    const reader = await openReader(fixture('compressed.pdf'));
+    const count = await reader.pageCount();
+    const result = await buildNewDocument({ parts: [{ reader, pages: allPages(count) }], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect(loaded.numPages).toBe(count);
+    } finally {
+      await loaded.destroy();
+    }
+    expect(qpdfCheck(tempFile(result.value.bytes)).code).toBe(0);
+  });
+
+  it('encrypted-aes-256.pdf (usuario): el resultado se abre sin contraseña, con texto legible y sin cifrado', async () => {
+    const reader = await openReader(fixture('encrypted-aes-256.pdf'), USER);
+    const count = await reader.pageCount();
+    const result = await buildNewDocument({ parts: [{ reader, pages: allPages(count) }], now: NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect(loaded.numPages).toBe(count);
+      expect((await textOf(loaded.doc, 1)).length).toBeGreaterThan(0);
+    } finally {
+      await loaded.destroy();
+    }
+    const path = tempFile(result.value.bytes);
+    expect(qpdfCheck(path).code).toBe(0);
+    expect(run(['--show-encryption', path]).stdout).toContain('File is not encrypted');
+  });
+
+  it('giro: página con rotate 90 → getPage(1).rotate === 90, y 0 sin /Rotate', async () => {
+    const result = await buildNewDocument({
+      parts: [await part('basic-5.pdf', [{ source: 0, rotate: 90 }, { source: 1, rotate: 0 }])],
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      expect((await loaded.doc.getPage(1)).rotate).toBe(90);
+      expect((await loaded.doc.getPage(2)).rotate).toBe(0);
+    } finally {
+      await loaded.destroy();
+    }
+  });
+
+  it('título: /Info /Title con el texto indicado y Producer de la aplicación', async () => {
+    const result = await buildNewDocument({
+      parts: [await part('basic-5.pdf', [{ source: 0, rotate: 0 }])],
+      title: 'Informe de prueba',
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const loaded = await openPdf(result.value.bytes);
+    try {
+      const meta = await loaded.doc.getMetadata();
+      const info = meta.info as { Title?: unknown; Producer?: unknown };
+      expect(info.Title).toBe('Informe de prueba');
+      expect(info.Producer).toBe('Cúmulo Lector PDF');
+    } finally {
+      await loaded.destroy();
+    }
+  });
+
+  it('informa del progreso cada 100 páginas y al final', async () => {
+    const reader = await openReader(fixture('pages-5000.pdf'));
+    const calls: [number, number][] = [];
+    const result = await buildNewDocument({
+      parts: [{ reader, pages: allPages(150) }],
+      now: NOW,
+      onProgress: (done, total) => calls.push([done, total]),
+    });
+    expect(result.ok).toBe(true);
+    expect(calls).toEqual([
+      [100, 150],
+      [150, 150],
+    ]);
+  }, FILE_TIMEOUT);
+});
+
+describe('buildNewDocument: errores', () => {
+  it('sin páginas → organize-invalid', async () => {
+    const result = await buildNewDocument({ parts: [], now: NOW });
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'organize-invalid' }) });
+  });
+
+  it('una parte sin páginas no cuenta: si el total es 0, organize-invalid', async () => {
+    const result = await buildNewDocument({ parts: [{ reader: await openReader(fixture('basic-5.pdf')), pages: [] }], now: NOW });
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'organize-invalid' }) });
+  });
+
+  it('índice fuera de rango, repetido, no entero o giro inválido → organize-invalid', async () => {
+    const cases: PageSlot[][] = [
+      [{ source: 5, rotate: 0 }],
+      [{ source: -1, rotate: 0 }],
+      [{ source: 0.5, rotate: 0 }],
+      [{ source: 0, rotate: 0 }, { source: 0, rotate: 90 }],
+      [{ source: 0, rotate: 45 as 0 }],
+    ];
+    for (const pages of cases) {
+      const result = await buildNewDocument({ parts: [await part('basic-5.pdf', pages)], now: NOW });
+      expect(result, JSON.stringify(pages)).toEqual({ ok: false, error: expect.objectContaining({ code: 'organize-invalid' }) });
+    }
+  });
+
+  it('la misma página en dos partes distintas sí es válida', async () => {
+    const result = await buildNewDocument({
+      parts: [await part('basic-5.pdf', [{ source: 0, rotate: 0 }]), await part('basic-5.pdf', [{ source: 0, rotate: 0 }])],
+      now: NOW,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.pageCount).toBe(2);
+  });
+
+  it('signal abortado → cancelled', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const result = await buildNewDocument({
+      parts: [await part('basic-5.pdf', [{ source: 0, rotate: 0 }])],
+      now: NOW,
+      signal: controller.signal,
+    });
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'cancelled' }) });
+  });
+
+  it('abortar durante la copia (en la página 100) → cancelled', async () => {
+    const controller = new AbortController();
+    const result = await buildNewDocument({
+      parts: [{ reader: await openReader(fixture('pages-5000.pdf')), pages: allPages(150) }],
+      now: NOW,
+      signal: controller.signal,
+      onProgress: (done) => {
+        if (done === 100) controller.abort();
+      },
+    });
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'cancelled' }) });
+  });
+
+  it('un fallo de lectura se devuelve como error de guardado, no se lanza', async () => {
+    const broken = {
+      pageCount: (): Promise<number> => Promise.reject(new PdfSyntaxError('roto', 0)),
+    } as unknown as ObjectReader;
+    const result = await buildNewDocument({ parts: [{ reader: broken, pages: [{ source: 0, rotate: 0 }] }], now: NOW });
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'save-unreadable' }) });
+  });
+});
+
+describe('writeCompleteFile', () => {
+  /** Documento mínimo a mano: catálogo 1, /Pages 2 y una página 3 sin contenido. */
+  function minimalObjects(): (readonly [number, PdfValue])[] {
+    return [
+      [1, dict({ Type: name('Catalog'), Pages: ref(2) })],
+      [2, dict({ Type: name('Pages'), Kids: [ref(3)], Count: 1 })],
+      [3, dict({ Type: name('Page'), Parent: ref(2), MediaBox: [0, 0, 100, 100] })],
+    ];
+  }
+
+  it('xref desde 0 con cada objeto en su offset; trailer con /ID de 16 bytes y el id0 indicado', () => {
+    const id0 = Uint8Array.from({ length: 16 }, (_, i) => i + 1);
+    const bytes = writeCompleteFile({ objects: minimalObjects(), root: ref(1), seed: 'semilla', id0 });
+    const text = new TextDecoder('latin1').decode(bytes);
+    expect(text.startsWith('%PDF-1.7\n')).toBe(true);
+    expect(text.endsWith('%%EOF\n')).toBe(true);
+
+    const startxref = Number(/startxref\n(\d+)\n%%EOF\n$/.exec(text)?.[1]);
+    expect(text.slice(startxref, startxref + 'xref\n0 1\n'.length)).toBe('xref\n0 1\n');
+    expect(text).toContain('/Size 4');
+    expect(text).toContain('/ID [<0102030405060708090A0B0C0D0E0F10> <');
+    expect(text).not.toContain('/Info');
+    expect(text).not.toContain('/Encrypt');
+  });
+
+  it('con /Info, las entradas de la xref apuntan exactamente a «N 0 obj»', () => {
+    const objects = minimalObjects();
+    const bytes = writeCompleteFile({ objects, root: ref(1), info: ref(3), seed: 'semilla' });
+    const text = new TextDecoder('latin1').decode(bytes);
+    const startxref = Number(/startxref\n(\d+)\n%%EOF\n$/.exec(text)?.[1]);
+    const table = text.slice(startxref);
+    expect(table.startsWith('xref\n0 1\n0000000000 65535 f \n1 3\n')).toBe(true);
+    const offsets = [...table.matchAll(/^(\d{10}) 00000 n \n/gm)].map((m) => Number(m[1]));
+    expect(offsets).toHaveLength(3);
+    for (const [index, offset] of offsets.entries()) {
+      expect(text.slice(offset, offset + `${index + 1} 0 obj\n`.length)).toBe(`${index + 1} 0 obj\n`);
+    }
+    expect(text).toContain('/Info 3 0 R');
+  });
+
+  it('con cifrado AES-256: el /Encrypt va como objeto N+1 sin cifrar y qpdf lo abre con la contraseña', async () => {
+    const data = fixture('encrypted-aes-256.pdf');
+    const reader = await openReader(data, USER);
+    const handler = reader.security;
+    const encryptRef = reader.encryptRef;
+    if (handler === null || encryptRef === null) throw new Error('el fixture debe estar cifrado');
+    const encrypt = await reader.getDict(encryptRef);
+    if (encrypt === null) throw new Error('sin diccionario /Encrypt');
+
+    // Catálogo 1 y /Pages 2 fijos; la página y sus objetos toman números desde 3.
+    const copier = new ObjectCopier({ from: reader, alloc: counter(3) });
+    const pageRef = (await copier.reservePages([0])).get(0);
+    if (pageRef === undefined) throw new Error('sin referencia reservada');
+    const copied = await copier.copyPage(0);
+    const objects: (readonly [number, PdfValue])[] = [
+      [1, dict({ Type: name('Catalog'), Pages: ref(2) })],
+      [2, dict({ Type: name('Pages'), Kids: [pageRef], Count: 1 })],
+      [pageRef.num, withEntries(copied.dict, { Parent: ref(2) })],
+      ...copier.drain().map(([r, v]) => [r.num, v] as const),
+    ];
+    objects.sort((a, b) => a[0] - b[0]);
+    const bytes = writeCompleteFile({
+      objects,
+      root: ref(1),
+      seed: 'cifrado',
+      encryption: { handler, encrypt, random: deterministicRandom() },
+    });
+    const path = tempFile(bytes);
+    expect(qpdfCheck(path, USER).code).toBe(0);
+    const loaded = await openPdf(bytes, USER);
+    try {
+      expect(loaded.numPages).toBe(1);
+      expect((await textOf(loaded.doc, 1)).length).toBeGreaterThan(0);
+    } finally {
+      await loaded.destroy();
+    }
+    const text = new TextDecoder('latin1').decode(bytes);
+    expect(text).toMatch(/\/Encrypt \d+ 0 R/);
+  }, FILE_TIMEOUT);
+});
+
+/** Números nuevos a partir de `first`. */
+function counter(first: number): () => PdfRef {
+  let next = first;
+  return () => ref(next++);
+}
+
+/** Generador de IV determinista: suficiente para validar el formato; la aleatoriedad real está en `secureRandom`. */
+function deterministicRandom(): (n: number) => Uint8Array {
+  let seed = 7;
+  return (n) => {
+    const out = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      out[i] = seed & 0xff;
+    }
+    return out;
+  };
+}

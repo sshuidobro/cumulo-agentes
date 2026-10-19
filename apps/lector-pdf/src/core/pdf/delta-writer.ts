@@ -145,7 +145,7 @@ function trailerDict(reader: ObjectReader, root: PdfRef, id: readonly [PdfString
  * Si el original no tiene `/ID` válido, `id0` también es nuevo.
  */
 function documentId(trailer: PdfDict, seed: string): readonly [PdfString, PdfString] {
-  const id1 = bytesString(idBytes(seed), true);
+  const id1 = bytesString(newIdBytes(seed), true);
   const original = dictGet(trailer, 'ID');
   if (isArrayValue(original) && original.length === 2) {
     const [first, second] = original;
@@ -158,8 +158,8 @@ function idSeed(now: string, sourceSize: number, objectCount: number): string {
   return `${now}|${sourceSize}|${objectCount}`;
 }
 
-/** 16 bytes: cuatro pasadas de FNV-1a de 32 bits con bases distintas. */
-function idBytes(seed: string): Uint8Array {
+/** 16 bytes: cuatro pasadas de FNV-1a de 32 bits con bases distintas. Determinista para una misma `seed`. */
+export function newIdBytes(seed: string): Uint8Array {
   const data = TEXT_ENCODER.encode(seed);
   const out = new Uint8Array(ID_BYTES);
   for (let lane = 0; lane < ID_BYTES / 4; lane++) {
@@ -175,13 +175,13 @@ function idBytes(seed: string): Uint8Array {
   return out;
 }
 
-interface Group {
+export interface Group {
   readonly start: number;
   readonly rows: readonly (readonly [number, XrefRow])[];
 }
 
 /** Subsecciones de números consecutivos, ordenadas. */
-function groupsOf(entries: ReadonlyMap<number, XrefRow>): Group[] {
+export function groupsOf(entries: ReadonlyMap<number, XrefRow>): Group[] {
   const nums = [...entries.keys()].sort((x, y) => x - y);
   const groups: Array<{ start: number; rows: Array<readonly [number, XrefRow]> }> = [];
   for (const num of nums) {
@@ -198,7 +198,7 @@ function groupsOf(entries: ReadonlyMap<number, XrefRow>): Group[] {
 }
 
 /** Fila de una xref de tabla: 20 bytes exactos. */
-function tableRow(row: XrefRow): string {
+export function tableRow(row: XrefRow): string {
   return `${String(row.offset).padStart(10, '0')} ${String(row.gen).padStart(5, '0')} n \n`;
 }
 
