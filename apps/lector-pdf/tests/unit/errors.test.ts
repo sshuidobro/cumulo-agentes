@@ -15,7 +15,7 @@ describe('pdfError', () => {
     expect(PDF_ERROR_MESSAGES['not-pdf']).toBe('Este fichero no es un PDF.');
     expect(PDF_ERROR_MESSAGES.corrupt).toBe('El PDF está dañado y no se puede abrir.');
     expect(PDF_ERROR_MESSAGES['password-required']).toBe(
-      'Este PDF está protegido con contraseña. Abrir PDFs con contraseña llegará en una próxima versión.',
+      'Este PDF está protegido con contraseña.',
     );
     expect(PDF_ERROR_MESSAGES['password-incorrect']).toBe('La contraseña no es correcta.');
     expect(PDF_ERROR_MESSAGES.io).toBe('No se ha podido leer el fichero. Comprueba que sigue en su sitio.');

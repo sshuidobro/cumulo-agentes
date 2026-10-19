@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-091, PDF-090]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, seguridad, ui]
 ---
 
@@ -47,3 +47,10 @@ Al abrir un PDF protegido aparece un diálogo propio que pide la contraseña; si
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/password-prompt.ts` (nuevo), `apps/lector-pdf/src/state/document-actions.ts`, `apps/lector-pdf/src/state/save-actions.ts`, `apps/lector-pdf/src/ui/security/PasswordDialog.tsx` y `PasswordDialog.module.css` (nuevos), `apps/lector-pdf/src/ui/messages-security.ts` (nuevo), `apps/lector-pdf/src/ui/App.tsx`, `apps/lector-pdf/src/ui/kit/Dialog.tsx`, `apps/lector-pdf/src/core/errors.ts` (solo el texto de `password-required`), `apps/lector-pdf/tests/unit/errors.test.ts`, `apps/lector-pdf/tests/unit/password-prompt.test.ts` (nuevo), `apps/lector-pdf/tests/unit/document-password.test.ts` (nuevo), `apps/lector-pdf/tests/ui/password-dialog.test.tsx` (nuevo), `apps/lector-pdf/tests/e2e/password.spec.ts` (nuevo).
+- Qué he hecho: `askPassword`/`submitPassword`/`cancelPassword` (una petición a la vez, sin registrar la contraseña). `openDocument` pide la contraseña con bucle hasta abrir o cancelar; `Session.password` y `currentPassword()`; `reopenSaved` la reutiliza. Diálogo «Contraseña necesaria» con campo, casilla de mostrar, aviso `role="alert"`, Intro, Cancelar y Esc.
+- Decisiones menores tomadas (avisar si no son válidas): la ficha cita `messages-security.ts` como existente, pero no existía, así que lo creé. La petición lleva un `id` además de `name` e `incorrect`, para que el diálogo se remonte con el campo vacío en cada intento. `Dialog` acepta `data-initial-focus` para que el foco inicial vaya al campo y no al primer botón (cambio aditivo en el kit).
+- Comandos ejecutados y resultado: `pnpm coverage` → 204 ficheros, 2454 tests en verde, cobertura global 96,6 % líneas. `pnpm typecheck` → sin errores. `playwright test tests/e2e/password.spec.ts --project=chromium` → 10/10. `pnpm lint` → falla por errores en ficheros ajenos a esta ficha (`src/ui/open/RecentList.tsx`, `tests/ui/recent.test.tsx`, `tests/unit/pdf/incremental.test.ts`); mis ficheros no tienen avisos.
+- Dudas o cosas que no he podido hacer: (1) El criterio «tras abrir con contraseña, añadir una nota y Ctrl+S → aviso sin pedir la contraseña» no tiene E2E: falta añadir la nota en el test. (2) Los criterios de «recordar posición y borradores con PDF cifrado» no tienen test. (3) El `errors.ts` del árbol está modificado por otro programador (`save-encrypted` → `save-wrong-password`, `save-encryption-unsupported`): no he tocado esas líneas. Solo he commiteado mi cambio de `password-required`.

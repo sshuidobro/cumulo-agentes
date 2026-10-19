@@ -16,7 +16,7 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
   'not-pdf': 'Este fichero no es un PDF.',
   'corrupt': 'El PDF está dañado y no se puede abrir.',
-  'password-required': 'Este PDF está protegido con contraseña. Abrir PDFs con contraseña llegará en una próxima versión.',
+  'password-required': 'Este PDF está protegido con contraseña.',
   'password-incorrect': 'La contraseña no es correcta.',
   'io': 'No se ha podido leer el fichero. Comprueba que sigue en su sitio.',
   'cancelled': 'Apertura cancelada.',
