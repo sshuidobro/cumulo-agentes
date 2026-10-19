@@ -77,8 +77,7 @@ export async function buildOrganizeUpdate(input: OrganizeInput): Promise<Result<
    - Páginas en blanco: `alloc.next()` cada una; `dict({ Type: /Page, MediaBox: [0, 0, width, height], Resources: dict({}) })` como `AddedPage`; su `PageSlot.source` = `n + k`.
    - Orden: `startDelta` → árbol (`writePageTree`) → `removePageWidgets` con las refs originales no presentes en `slots` → `reserveXref` + `finishDelta`. Sin cambios (plan idéntico al documento) → delta vacío.
    - Excepciones → `toSaveError`.
-5. `DOC_OPS` (`src/core/doc-ops/ops/index.ts`, si [[PDF-118-worker-operaciones|PDF-118]] ya existe; si no, deja el registro para PDF-124): `'organize'` con args `{ password: string | null; slots: SaveSlot[]; now: string }` → `ok({ delta: Uint8Array })`.
-6. Tests `tests/unit/organize/save.test.ts` (pdf.js de `loadPdf` en Node y `qpdfCheck`, como `page-tree.test.ts`).
+5. Tests `tests/unit/organize/save.test.ts` (pdf.js de `loadPdf` en Node y `qpdfCheck`, como `page-tree.test.ts`).
 
 ## Criterios de aceptación
 - [ ] `tests/unit/pdf/page-tree.test.ts` y `delta-writer-golden.test.ts` pasan sin tocar.
