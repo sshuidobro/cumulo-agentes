@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-063
 titulo: Comparar dos PDFs - núcleo de diferencias de texto
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-022]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -82,3 +82,9 @@ export function describeChange(c: PageChange): string;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/compare/words.ts`, `diff.ts`, `compare.ts` (nuevos); `apps/lector-pdf/tests/fixtures/catalog.ts` (fixture `basic-5-changed.pdf`, `GENERATOR_VERSION` 5); `apps/lector-pdf/tests/unit/fixtures.test.ts` (recuento de fixtures 25 → 26); `apps/lector-pdf/tests/unit/compare/{words,diff,compare}.test.ts` (nuevos); `apps/lector-pdf/tests/perf/compare.perf.test.ts` (nuevo).
+- Qué he hecho: `pageWords` (NFC, posiciones de ítem, unión de guiones de corte), `diffSequences` (Myers con tope D, operaciones fusionadas, tokens convertidos a enteros para que el bucle no compare cadenas), `comparePageWords` y `CompareSession` (cesión del hilo, progreso como máximo cada 100 ms, cancelación, fallo de lectura → `too-different`) y `describeChange` (lados recortados a 80 caracteres con «…»). Fixture `basic-5-changed.pdf` añadido al catálogo; `FUENTES.md` no lista los generados, así que no lo he tocado.
+- Comandos ejecutados y resultado: `pnpm lint` → sin errores ni avisos. `pnpm typecheck` → OK. `pnpm coverage` → código 0, 211 ficheros y 2571 tests en verde; cobertura de líneas de `src/core/compare/`: `compare.ts` 97,95 %, `diff.ts` 100 %, `words.ts` 100 %. `pnpm exec vitest run --config vitest.perf.config.ts compare.perf` → OK: página de 5 000 palabras con 1 500 cambios, peor de 5 ejecuciones 20–25 ms (≤ 30 ms); `pages-5000.pdf` frente a sí mismo 3–7,5 s (< 30 s). Los tiempos varían mucho según la carga de la máquina compartida: con load 15 la página tardó 38–47 ms antes de optimizar `diffSequences`.
+- Dudas o cosas que no he podido hacer: el criterio de rendimiento depende de la carga de la máquina; conviene medirlo en reposo (`pnpm perf`). En `pnpm coverage` un test de `fixtures-encrypted` (AES-256 con objstm) superó 5 s una vez con la máquina cargada y pasó en las ejecuciones siguientes; no lo he tocado. No he añadido `index.ts` en `core/compare/` porque `core/search/` tampoco lo tiene.

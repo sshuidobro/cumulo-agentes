@@ -14,7 +14,7 @@ import { textPage } from './pdf-builder.ts';
 import { qpdfEncrypt } from './encrypted.ts';
 
 /** Subir si cambia la forma de los ficheros generados: fuerza la regeneración en todos los equipos. */
-export const GENERATOR_VERSION = 4;
+export const GENERATOR_VERSION = 5;
 
 export interface FixtureSpec {
   readonly name: string;
@@ -31,10 +31,20 @@ const BASIC_LINE_3 = [
   'rebusquedas no es la palabra completa.',
 ];
 
-function buildBasic5(): Uint8Array {
+/** Cinco páginas con la línea 3 de cada una tomada de `lineFor` (1-based). */
+function buildBasic5With(lineFor: (page: number) => string): Uint8Array {
   return buildDocument(5, (page) => ({
-    content: textPage([`Página ${page} de 5`, `marcador-${page}`, BASIC_LINE_3[page - 1] ?? '']),
+    content: textPage([`Página ${page} de 5`, `marcador-${page}`, lineFor(page)]),
   }));
+}
+
+function buildBasic5(): Uint8Array {
+  return buildBasic5With((page) => BASIC_LINE_3[page - 1] ?? '');
+}
+
+/** Igual que `basic-5.pdf` salvo la línea 3 de la página 2: «página» pasa a «hoja» (comparar, PDF-063). */
+function buildBasic5Changed(): Uint8Array {
+  return buildBasic5With((page) => (page === 2 ? 'Texto de búsqueda en la hoja dos.' : (BASIC_LINE_3[page - 1] ?? '')));
 }
 
 /** Degradado propio de cada página: r = (x + k) % 256, g = (y * 2) % 256, b = (k * 37) % 256. */
@@ -109,6 +119,7 @@ function buildBadStartxref(): Uint8Array {
 
 export const FIXTURES: readonly FixtureSpec[] = [
   { name: 'basic-5.pdf', build: buildBasic5 },
+  { name: 'basic-5-changed.pdf', build: buildBasic5Changed },
   { name: 'pages-5000.pdf', build: () => buildNumbered(5000, NEEDLES_5000) },
   { name: 'pages-100000.pdf', build: () => buildNumbered(100000, new Set([99999])) },
   // Caso degenerado: todas las páginas como hijos directos de un único /Pages.
