@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-057
 titulo: Formas y sellos - modelo, apariencias y escritura
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-039]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -108,3 +108,12 @@ export interface StampAnnotation extends Base { readonly type: 'stamp'; readonly
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 - `pnpm lint`, `pnpm typecheck` y `pnpm coverage` en verde (líneas 98,77 %). Criterios cubiertos: interop qpdf + pdf.js, `/BBox`, determinismo, borrador, capa SVG, etiquetas. Sin cambios pedidos.
 - (opcional) No se ha hecho commit: el coordinador debe confirmarlo junto con el resto de cambios del árbol.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| interop qpdf + pdf.js, /BBox, determinismo, borrador, capa SVG | OK | `pnpm coverage`: 228 ficheros, 2761 tests en verde |
+| Cobertura shapes.ts >= 90 % | OK | 100 % líneas, 96,77 % ramas |
+| lint, typecheck, coverage, perf | OK | código 0; perf 20 ficheros / 34 tests en verde |
+
+Tests añadidos: ninguno (los del programador cubren cada criterio). Rendimiento: búsqueda 5000 págs 2138 ms, scanAnnotations 581 ms; sin regresiones.
