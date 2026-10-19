@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-093
 titulo: Lector de objetos y escritor incremental con cifrado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-092, PDF-090]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
