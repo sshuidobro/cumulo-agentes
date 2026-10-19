@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-048
 titulo: Respetar los permisos del documento (copiar, imprimir) y avisar al anotar
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-046, PDF-044, PDF-045]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -66,3 +66,9 @@ export function permissionsFrom(flags: ReadonlySet<number> | null): DocPermissio
   - El aviso de anotar comparte un único indicador por documento para anotar y para rellenar.
   - Durante la ronda, `typecheck` y `lint` fallaron por ficheros ajenos a esta ficha (`fullscreen-actions.test.ts` y un `zz-measure.perf.test.ts` que otro agente ha retirado después); al repetir, pasaron. No los he tocado.
   - No hago commit, según la petición.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Lint y typecheck OK; tests de la ficha (unit y UI de permisos, open) 26/26 OK. `pnpm coverage` completo no se pudo lanzar (otro Vitest usaba `coverage/`); el programador informa de 2695 tests verdes y 96,5 %. El tester debe repetirlo.
+2. Duda bandera 512: decisión de revisión, se mantiene solo la bandera 16 para copiar. Es lo que hace Adobe Reader (512 solo habilita la extracción para lectores de pantalla, no el portapapeles). Sin cambios.
+3. (opcional) `cipherKindOf` distingue RC4 40/128 por la longitud de la clave (<= 5 bytes); correcto para los fixtures, vigilar R3 con `/Length` 40.
+4. Cambios ajenos en el árbol (PDF-097, PDF-050: Viewer, ViewMenu, view-actions) no pertenecen a esta ficha; deben ir en sus propios commits.

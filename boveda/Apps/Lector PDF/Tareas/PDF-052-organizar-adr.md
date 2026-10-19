@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-052
 titulo: Reorganizar páginas por actualización incremental (núcleo y medidas)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-039, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -104,3 +104,8 @@ export async function buildPageTreeUpdate(input: PageTreeInput): Promise<Result<
   - `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/page-tree.perf.test.ts` → 3/3 pasan. Medidas (mejor de 3 tras calentamiento, incluye `ObjectReader.open`): `pages-5000` borrar pág. 2 = 218 ms (límite 1 000); `pages-100000` borrar pág. 2 = 5 299 ms (límite 15 000); `pages-100000` girar pág. 50 000 = 2 521 ms (límite 3 000, margen estrecho). Anotadas en ADR-0028.
   - `pnpm coverage` no se pudo lanzar en la carpeta por defecto porque otro proceso de Vitest ocupaba `coverage/`. Lo he ejecutado con `--coverage.reportsDirectory` propio: 225 ficheros y 2 695 tests pasan; `page-tree.ts` con 93,08 % de líneas (requisito ≥ 90 %).
 - Dudas o cosas que no he podido hacer: (1) El "giro efectivo" ignora un `/Rotate` que no sea número (lo trata como ausente y sigue subiendo por `/Parent`); la ficha no lo dice. (2) Cambios fuera de la lista de ficheros de la ficha: `serialize.ts` y la exportación de `toSaveError` (necesarios para el rendimiento y para no duplicar el mapeo de errores). Conviene revisarlo en la revisión. (3) El margen del giro en 100 000 páginas es pequeño (2,5 s de 3 s); si el revisor lo mide más lento en su máquina, el cuello de botella es leer las 100 000 páginas (~2 s) y no el escritor. (4) Sin commit, como se pidió. (5) La medida de rendimiento no se hizo con la CPU en reposo comprobada (no se ejecutó `pnpm perf` completo).
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Lint y typecheck sin avisos; `tests/unit/pdf` 22 ficheros / 450 tests en verde (incluye page-tree). `pnpm coverage` no se pudo lanzar (otro Vitest ocupa `coverage/`); se acepta el 93,08 % medido por el programador.
+2. `page-tree.ts` cumple las reglas de la ficha (validación, giro heredado, raíz reutilizada, orden de escritura, cancelación y progreso). Cambios en `serialize.ts` e `incremental.ts` (`toSaveError`) justificados y sin cambio de comportamiento.
+3. (opcional) El margen del giro en 100 000 páginas (2,5 s de 3 s) es estrecho: que el tester lo mida con la CPU en reposo.
