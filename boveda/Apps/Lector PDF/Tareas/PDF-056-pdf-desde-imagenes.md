@@ -67,7 +67,7 @@ export function jpegDensity(bytes: Uint8Array): number | null;
    - Números con como mucho 4 decimales. Contenido sin comprimir (es corto). `/Info /Title` = nombre de la primera imagen sin extensión. Árbol con `planPageTree`. Fichero con `writeCompleteFile`.
    - 0 imágenes o más de 500 → `organize-invalid`. Progreso por imagen; `signal` → `cancelled`.
 3. Op `'images-to-pdf'` en `DOC_OPS` (sin fuentes): args = `ImagesToPdfInput` sin `signal`/`onProgress` → `ok({ bytes, pages })`.
-4. Tests `tests/unit/pdf/images-to-pdf.test.ts`: JPEG de prueba generados en el test (los hay en los tests de firma: `tests/unit/signature-exif.test.ts`; reutiliza su generador o crea JPEG mínimos válidos con `@napi-rs/canvas` si está disponible; si no, con bytes JPEG fijos de 8×8 incluidos en el test).
+4. Tests `tests/unit/pdf/images-to-pdf.test.ts`: JPEG y RGBA de prueba generados en el test con `@napi-rs/canvas` (`devDependency` `@napi-rs/canvas@1.0.11`; añádela si aún no está); la etiqueta EXIF de orientación se inserta en el JPEG como en `tests/unit/signature-exif.test.ts`.
 
 ## Criterios de aceptación
 - [ ] **Criterio original**: 10 imágenes (6 JPEG y 4 RGBA) → PDF de 10 páginas, `qpdf --check` 0, y para cada JPEG, el flujo de su Image XObject (`qpdf --show-object=N --raw-stream-data`) es **byte a byte igual** al fichero de entrada.

@@ -27,7 +27,7 @@ Un módulo `src/engine/ocr.ts` que reconoce el texto de una imagen de página co
 - Fixtures: `tests/fixtures/pdf-builder.ts`, `tests/fixtures/catalog.ts`, `fixtures/FUENTES.md`.
 
 ## Qué hay que hacer
-1. Dependencias (versiones exactas): `tesseract.js@7.0.0` y `tesseract.js-core@7.0.0` en `dependencies`; `@tesseract.js-data/spa@1.0.0`, `@tesseract.js-data/eng@1.0.0` y `@napi-rs/canvas@1.0.11` en `devDependencies` de `apps/lector-pdf`.
+1. Dependencias (versiones exactas): `tesseract.js@7.0.0` y `tesseract.js-core@7.0.0` en `dependencies`; `@tesseract.js-data/spa@1.0.0`, `@tesseract.js-data/eng@1.0.0` y `@napi-rs/canvas@1.0.11` (si aún no está) en `devDependencies` de `apps/lector-pdf`.
 2. `scripts/copy-ocr-assets.mjs` (se llama desde el script `assets` tras el de pdf.js): copia a `public/ocr/` `tesseract.js/dist/worker.min.js`, `tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js`, `tesseract-core-simd-lstm.wasm.js`, `tesseract-core-lstm.wasm.js`, y `@tesseract.js-data/{spa,eng}/4.0.0_best_int/{spa,eng}.traineddata.gz`. Añade `public/ocr/` al `.gitignore` como `public/pdfjs/`.
 3. `src/engine/ocr.ts`:
 ```ts

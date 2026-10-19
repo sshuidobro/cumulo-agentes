@@ -41,7 +41,7 @@ export interface CompleteFile {
   readonly seed: string;
   readonly encryption?: FileEncryption;
 }
-/** `%PDF-1.7` + binario, objetos (cifrados si hay `encryption`; el `/Encrypt` va como último objeto sin cifrar), xref clásica (`0 N+1`), trailer y `%%EOF`. */
+/** `%PDF-1.7` + binario, objetos (cifrados si hay `encryption`; el writer añade el `/Encrypt` como objeto N+1 sin cifrar), xref clásica desde 0, trailer y `%%EOF`. */
 export function writeCompleteFile(f: CompleteFile): Uint8Array;
 ```
    Trailer: `/Size`, `/Root`, `/Info` (si hay), `/Encrypt` (si hay), `/ID [id0 id1]` con `id1 = newIdBytes(seed + '|1')`. Concatena las partes una sola vez al final (como `DeltaWriter.toBytes`).

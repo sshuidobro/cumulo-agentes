@@ -48,7 +48,7 @@ export interface PartialImage {
    - `flate`: el núcleo decodifica, pone a 0 los bytes de los píxeles de `pixelRects` (1 o 3 bytes por píxel), vuelve a codificar con `flateEncode` (sin predictor) y crea un objeto nuevo con el mismo diccionario sin `/DecodeParms`.
    - La página usa el objeto nuevo con el mismo nombre en su `/Resources` (directos, propios de esa página): las demás páginas que comparten la imagen original no cambian.
 4. Op `'redact'`: args gana `imageReplacements: readonly (readonly [string, Uint8Array])[]`.
-5. Tests en `tests/unit/redact/images.test.ts` con PDF construidos en el test (imagen Flate RGB 100×100 a toda la página; imagen JPEG en gris compartida por dos páginas — el JPEG «pintado» lo genera el test con `@napi-rs/canvas`).
+5. Tests en `tests/unit/redact/images.test.ts` con PDF construidos en el test (imagen Flate RGB 100×100 a toda la página; imagen JPEG en gris compartida por dos páginas — el JPEG «pintado» lo genera el test con `@napi-rs/canvas`, `devDependency` `@napi-rs/canvas@1.0.11`; añádela si aún no está).
 
 ## Criterios de aceptación
 - [ ] Imagen Flate RGB 100×100 dibujada a 200×200 pt, zona que tapa el cuarto superior izquierdo → en el resultado, los píxeles `[0..50) × [0..50)` de la imagen de esa página son 0 y el resto iguales al original; la página sigue sin ser imagen entera (conserva su texto).
