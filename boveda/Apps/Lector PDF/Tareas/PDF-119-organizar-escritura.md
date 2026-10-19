@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-119
 titulo: Organizar - escribir el plan (páginas en blanco y limpieza de formularios)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-053]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -114,3 +114,14 @@ export async function buildOrganizeUpdate(input: OrganizeInput): Promise<Result<
 - Lint sin avisos; tests de organize, page-tree y delta-writer-golden: 83/83 (los dos últimos sin tocar). Cubiertos todos los criterios (blanco, giro, cifrado, form-full, campo con dos widgets, outline, inválidos/imported, cancelled, perf).
 - Duda del programador: se queda como está. La ficha dice «devuelve los widgets quitados» y define widgets como los de las páginas borradas; `removePageWidgets` devuelve ese número. Es válido.
 - (opcional) Los 2 fallos de `pnpm coverage` (`comment-toolbar`, `sidebar`) y los errores de tipos de tab-bar son ajenos a esta ficha; el tester debe tenerlos en cuenta.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| page-tree y delta-writer-golden sin tocar | OK | vitest organize + page-tree + golden: 83/83 |
+| Blanco, giro, cifrado, form-full, dos widgets, outline, inválidos/imported, cancelled | OK | cubiertos en `tests/unit/organize/save.test.ts` (verde) |
+| Perf 100000 págs + blanco < 15 s | OK | `vitest run --config vitest.perf.config.ts organize.perf`: pasa (33,8 s total con generación del fixture) |
+| Cobertura ≥ 90 % líneas | OK | forms-cleanup 98,6 %, save 95,7 %, page-tree 98,7 % |
+| lint | OK | 0 avisos |
+| typecheck / coverage | OK para esta ficha | Solo fallan ficheros ajenos: tab-bar/tab-close-guard (3 errores de tipos); comment-toolbar (2) y sidebar (1) en coverage: 2994/2997 |
+Tests añadidos: ninguno (cobertura suficiente). Los fallos ajenos no tocan organize/page-tree.
