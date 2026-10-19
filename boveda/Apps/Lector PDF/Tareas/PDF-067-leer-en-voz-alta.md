@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-067
 titulo: Leer en voz alta - frases, voces y motor de lectura
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-022]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -103,3 +103,19 @@ export function setVoice(id: string): void;                   // igual que setRa
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/read-aloud/chunks.ts`, `apps/lector-pdf/src/core/read-aloud/voices.ts`, `apps/lector-pdf/src/state/speech-port.ts`, `apps/lector-pdf/src/state/read-aloud-actions.ts`, `apps/lector-pdf/src/ui/messages-read-aloud.ts`, `apps/lector-pdf/tests/unit/read-aloud/chunks.test.ts`, `apps/lector-pdf/tests/unit/read-aloud/voices.test.ts`, `apps/lector-pdf/tests/unit/read-aloud-actions.test.ts` y esta ficha.
+- Qué he hecho: fragmentos por frase (`Intl.Segmenter`, con respaldo por regex), voces locales (españolas primero, `pickVoice`), port de voz sobre `speechSynthesis` con voz falsa en tests, y el motor `useReadAloud` (leer página o documento con lectura adelantada de 1 página, pausa, velocidad, voz, parada al cambiar de documento). Todos los criterios de aceptación tienen test; en `basic-5.pdf` la página 1 da «Página 1 de 5 marcador-1 El veloz murciélago hindú comía feliz cardillo y kiwi.» con posiciones exactas.
+- Comandos ejecutados y resultado:
+  - `pnpm typecheck`: OK.
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/read-aloud*`: 45 tests OK.
+  - Cobertura de mis módulos (vitest con v8): `core/read-aloud` 100 % líneas (chunks 96 % sentencias, 90 % ramas); `read-aloud-actions.ts` 93,8 % líneas.
+  - `pnpm lint`: falla solo por `tests/unit/compare/diff.test.ts` (9 `no-non-null-assertion`), fichero de otro programador en curso; mis ficheros pasan ESLint sin avisos.
+  - `pnpm coverage` (completo): 2570 tests OK y 1 fallo en `tests/unit/fixtures.test.ts` («se generan los 25 ficheros…»). Ese mismo fichero pasa solo (17/17); el fallo parece una carrera al generar fixtures compartidos mientras otros agentes ejecutan a la vez. No lo he tocado.
+- Dudas o cosas que no he podido hacer:
+  - Decisiones menores que tomo y el líder puede revisar: si una lectura sustituye a otra mientras carga las voces, `startReading` devuelve `'started'`; si falla al empezar, devuelve `'unavailable'` con el aviso «No se ha podido leer en voz alta.»; sin documento devuelve `'empty'`.
+  - `speak` con una voz que no es local (o inexistente) llama a `onError('voice-unavailable')` sin hablar.
+  - Lo cambiado en esta ficha antes de mi trabajo (línea «> 2026-10-19 (líder)…») no lo he tocado.
+  - Queda pendiente la interfaz (PDF-114). No he creado `index.ts` porque la ficha no lo pide.
+  - Pendiente de decidir por el líder: que `pnpm lint` y `pnpm coverage` pasen requiere que se arregle `diff.test.ts` y se estabilice `fixtures.test.ts`.
