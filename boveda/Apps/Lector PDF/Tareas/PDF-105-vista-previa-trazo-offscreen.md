@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-105
 titulo: Vista previa del trazo en OffscreenCanvas (fuera del Commit del compositor)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad, calidad-profesional]
@@ -77,3 +77,13 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Decisiones: [[ADR-0018-vista-previa-del-t
 ### [revisor] ronda 1 — 2026-10-19 — APROBADO
 Lint y typecheck en 0; test unitario de `ink-preview` en verde. Diff mínimo y fiel a la ficha; el lienzo se remonta por trazo (`setInkActive` false/true), así que `transferControlToOffscreen` no se llama dos veces. Test cubre transferencia, dimensiones dpr y que el elemento no cambia. E2E 15/15 y contraste 10/10 anotados por el programador (no re-ejecutados).
 1. (opcional) `ink-preview.ts` — si `getContext('2d')` devolviera `null` tras transferir, el reintento por frame lanzaría; caso prácticamente imposible.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Paso 1 anotado, sin `return;` | OK | Registro del programador (10/10); `git diff HEAD~1` de src solo con tipo y offscreen |
+| 3 tandas «2 000 eventos» | 15/15 | `e2e --project=chromium-perf --no-deps --repeat-each=5` ×3 → 5 passed ×3 (3.3 min c/u); e2e sin cambios |
+| e2e ink/trazo/dibujo | OK | `--project=chromium -g "trazo\|dibujo\|Dibujo\|ink"` → 15 passed |
+| lint, typecheck, tests | OK | 0 avisos, 0 errores; 197 ficheros, 2375 tests en verde |
+| Sin waitForTimeout/skip/only | OK | grep vacío |
+Tests añadidos: ninguno (el `it` del programador cubre el criterio).
