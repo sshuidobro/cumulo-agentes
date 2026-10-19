@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-094
 titulo: Sesiones de documento - núcleo de pestañas (suspender y reanudar)
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-090, PDF-046]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
 actualizado: 2026-10-19
@@ -100,3 +100,9 @@ export function hasAnyUnsavedChanges(): boolean;     // activa (hasUnsavedChange
   5. Solo se eliminan al cambiar las pestañas en estado `loading` (como dice la ficha). Una pestaña vacía que se cancela se cierra explícitamente en `openRequested`.
   6. Escritorio (Tauri) no probado; solo web.
 
+
+### [revisor] ronda 1 — 2026-10-19 — CAMBIOS
+Lint OK, `pnpm --filter lector-pdf typecheck` OK, `pnpm coverage` OK (2626 tests). `pnpm typecheck` raíz falla en `packages/platform` (SharedArrayBuffer): no tocado por este commit, preexistente (avisar al líder).
+1. `apps/lector-pdf/src/state/document-actions.ts` (`openRequested`/`runOpen`, rama `dedupe`) — si se reutilizó una pestaña vacía o en error (`reuse`) y la carga resulta ser gemela de otra, tras activar la gemela queda una pestaña vacía sobrante (la ficha pide cerrar la pestaña nueva) — cerrarla y añadir un test (`document-tabs.test.ts`, caso del `fingerprint` con pestaña activa vacía).
+2. `runOpen` — la coincidencia usa solo `fingerprint`, sin `file.size`: documentarlo en el comentario. (opcional)
+3. Para el líder (no bloquea, la ficha lo manda): abrir otro documento descarta sin aviso las anotaciones sin guardar hasta PDF-100/101, aunque la pestaña seguiría marcada `dirty`. Decidir si se mantiene la pregunta hasta entonces.
