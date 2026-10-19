@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-057
 titulo: Formas y sellos - modelo, apariencias y escritura
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-039]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -98,3 +98,9 @@ export interface StampAnnotation extends Base { readonly type: 'stamp'; readonly
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/`: `shapes.ts` (nuevo), `model.ts`, `appearance.ts`, `to-pdf.ts`, `commands.ts`, `comment-list.ts`, `import.ts` (solo el tipo `ImportedType` excluye las formas; sin cambio de comportamiento), `index.ts`; `apps/lector-pdf/src/ui/messages.ts`, `ui/viewer/annotation-shapes.tsx`, `ui/viewer/AnnotationLayer.tsx` (`zoneLabel`: «Flecha»); tests: `tests/unit/annotations/{shapes,shapes-interop}.test.ts` (nuevos), `appearance`, `to-pdf`, `model`, `draft`, `factories`, `tests/ui/annotation-layer.test.tsx`, `tests/support/standard-annotations.ts` (el conjunto estándar sigue siendo los seis tipos).
+- Qué he hecho: modelo `square`/`circle`/`line`/`polygon`/`stamp` con validación (`isShapeValid`), fábricas y cajas; apariencias con los operadores de la ficha (la punta se calcula con `arrowWings`, compartida por apariencia y UI); claves PDF (`/BS`, `/IC`, `/L`, `/LE`, `/IT`, `/Vertices`, `/Name`) y etiquetas; dibujo SVG y zonas. Tests de operadores exactos, caja `/BBox`, determinismo, interoperabilidad qpdf + pdf.js.
+- Comandos ejecutados y resultado: `pnpm lint` sin errores; `pnpm typecheck` sin errores; `pnpm coverage` código 0, 228 ficheros y 2761 tests en verde, `shapes.ts` 100 % líneas (96,8 % ramas); `pnpm perf`: en la primera pasada fallaron `compare.perf` (46 ms frente a 30 ms) y `search.perf` (1066 ms frente a 1000 ms) con la carga de la máquina a 5,3 por otros agentes; repetidos en aislado pasan (34/34 de perf en la segunda pasada).
+- Dudas o cosas que no he podido hacer: no he hecho commit (lo pide el usuario: hay otros programadores con cambios sin confirmar en el árbol). Para importar las formas (PDF-107) `ImportedType` queda excluido de forma explícita; PDF-107 deberá quitar esa exclusión. El sello de `shapes.ts` expone `stampTextBox` (posición del texto) además de lo que pide la ficha, usado por la apariencia y la UI.
