@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-124
 titulo: Organizar - estado, acciones, guardado encadenado y escrituras de documento
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-053, PDF-118, PDF-119, PDF-101]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -124,3 +124,12 @@ Tests añadidos: ninguno. Rendimiento: no aplica.
 
 ### [revisor] ronda 2 — 2026-10-19 — APROBADO
 - Los cambios de tests (`findByRole` por el `React.lazy` de Sidebar y CommentToolbar, más el test de `assembleAnyway`) mantienen las aserciones y son deterministas. Tests de sidebar, comment-toolbar, organize-actions, save-actions y unsaved-guard: 62/62. Lint y typecheck rojos solo en ficheros ajenos (`create-security.test.ts`, `object-copier.ts`).
+
+### [tester] ronda 2 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| Batería completa + cobertura | OK | `vitest run --coverage` (directorio propio, `coverage/` ocupado por otro proceso): código 0; líneas 98.6 % |
+| Regresión sidebar / comment-toolbar | Resuelta | 3 ejecuciones seguidas de los 5 ficheros afectados: 62/62 |
+| Criterios funcionales (plan, resaltado encadenado, Ctrl+S, deshacer, cancelar, error, pestañas, `writeDocument` replace) | OK | `organize-actions.test.ts` (13 casos), `save-actions.test.ts:261`, `unsaved-guard` |
+Tests añadidos: ninguno. Rendimiento: no aplica.
