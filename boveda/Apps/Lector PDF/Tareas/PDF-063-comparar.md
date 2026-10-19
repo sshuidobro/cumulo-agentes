@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-063
 titulo: Comparar dos PDFs - núcleo de diferencias de texto
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-022]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]

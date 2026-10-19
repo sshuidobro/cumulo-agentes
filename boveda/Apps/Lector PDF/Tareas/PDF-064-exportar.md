@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-064
 titulo: Exportar a imágenes y texto - núcleo y render
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-022]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
