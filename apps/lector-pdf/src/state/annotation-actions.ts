@@ -205,17 +205,21 @@ function linkedController(signal: AbortSignal | null): AbortController {
  */
 function scanFrom(current: Session, from: number): void {
   current.reader
-    .then((opened) => scanAnnotations(current.pdf.doc, {
-      from,
-      signal: current.stop.signal,
-      fallbackDate: nowIso(),
-      reader: opened,
-      onBatch: (pages) => {
-        if (session !== current || current.stop.signal.aborted) return;
-        mergePages(current.imported, pages);
-        current.imported += pages.length;
-      },
-    }))
+    .then((opened) => {
+      // Una sesión suspendida (cambio de pestaña) mientras se abría el lector no empieza a escanear.
+      if (current.stop.signal.aborted) return 'cancelled';
+      return scanAnnotations(current.pdf.doc, {
+        from,
+        signal: current.stop.signal,
+        fallbackDate: nowIso(),
+        reader: opened,
+        onBatch: (pages) => {
+          if (session !== current || current.stop.signal.aborted) return;
+          mergePages(current.imported, pages);
+          current.imported += pages.length;
+        },
+      });
+    })
     .then((outcome) => {
       if (session !== current || outcome !== 'done') return;
       useAnnotations.setState({ scan: 'done' });

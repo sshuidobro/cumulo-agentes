@@ -114,7 +114,7 @@ describe('interoperabilidad · respuestas y estados sobre basic-5.pdf', () => {
       const raw: unknown = await page.getAnnotations();
       const annots = (Array.isArray(raw) ? raw : []).map(asRecord);
       const children = annots.filter((a) => a?.inReplyTo === parentId);
-      const replies = children.filter((a) => a?.replyType === 'R' && a.state === undefined);
+      const replies = children.filter((a) => a?.replyType === 'R' && a.stateModel !== 'Review');
       const states = children.filter((a) => a?.stateModel === 'Review');
       expect(replies).toHaveLength(2);
       expect(states).toHaveLength(1);

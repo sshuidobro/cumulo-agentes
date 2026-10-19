@@ -8,7 +8,7 @@ import type { ByteSource } from '@suite/platform';
 import { err, ok, type AppError, type Result } from '@suite/shared';
 import { inflateSync } from 'fflate';
 import { buildAppearance } from '../annotations/appearance';
-import { isEmptyDiff, type AnnotationDiff } from '../annotations/diff';
+import type { AnnotationDiff } from '../annotations/diff';
 import { parseRef } from '../annotations/import';
 import type { Annotation, PdfObjRef } from '../annotations/model';
 import { annotationDict, popupDict, updatedDict } from '../annotations/to-pdf';
@@ -111,7 +111,8 @@ export async function openForSave(source: ByteSource, password?: string): Promis
 async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> {
   const { source, reader, diff, now } = input;
   const fields = input.fields ?? [];
-  if (isEmptyDiff(diff) && fields.length === 0) {
+  const writable = writableAdded(diff);
+  if (writable.length === 0 && diff.modified.length === 0 && diff.removed.length === 0 && fields.length === 0) {
     return { delta: new Uint8Array(0), expectedSize: source.size, written: new Map() };
   }
 
@@ -121,7 +122,7 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
 
   // 1. Números de objeto: anotación, apariencia y popup (solo notas) por cada añadida; apariencia por cada modificada.
   let next = reader.xref.size;
-  const numbered = writableAdded(diff).map((a) => {
+  const numbered = writable.map((a) => {
     const annot = ref(next++);
     const ap = ref(next++);
     const popup = a.type === 'note' ? ref(next++) : null;

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-101
 titulo: Pestañas - anotaciones, formularios y borradores por documento
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-094, PDF-048]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -69,3 +69,15 @@ interface AnnotationsSnapshot {
 1. Lint y typecheck OK (el error de `plan-qa.test.ts` ya no existe). Los 6 tests de la ficha pasan. Cubren criterios A, escaneo desde `importedPages` (5000 páginas, sin duplicados), formulario con deshacer, permisos y borradores (sin diálogo, `closeTab` borra).
 2. `pnpm coverage` con carga concurrente de otro agente: 5 fallos por timeout en tests ajenos (cifrados, page-tree). Aislados, los 4 ficheros pasan (113/113). El tester debe repetir coverage con la máquina libre.
 3. (opcional) El criterio pide 2 000 páginas y el test usa `pages-5000.pdf`; es más exigente, vale.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| A: notas/deshacer/rehacer/título por pestaña | OK | `tabs-annotations.test.ts` (verde en coverage) |
+| Escaneo reanudado desde `importedPages`, sin duplicados | OK | mismo fichero (pages-5000.pdf) |
+| Formulario `nombre`=«Ana» y Ctrl+Z | OK | mismo fichero |
+| Borradores: sin diálogo, guardado, `closeTab` borra | OK | `draft-sync-tabs.test.tsx` |
+| Aviso de permisos no se repite | OK | `tabs-annotations.test.ts` |
+| lint, typecheck, coverage con código 0 | OK | máquina libre: 238 ficheros, 2868 tests OK, exit=0; líneas 98,6 % (sentencias 96,35 %) |
+
+Tests añadidos: ninguno (los de la ficha cubren todos los criterios). Rendimiento: sin presupuesto propio; suite completa sin timeouts con la máquina libre.

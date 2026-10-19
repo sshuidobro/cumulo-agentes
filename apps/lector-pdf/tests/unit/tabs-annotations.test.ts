@@ -3,6 +3,7 @@ import { createStorageStore } from '@suite/platform';
 import type * as AnnotationsImportModule from '../../src/engine/annotations-import';
 import type { PDFDocumentProxy } from '../../src/engine';
 import { closeDocument, openRequested, registerDocumentParticipant } from '../../src/state/document-actions';
+import { useChoice } from '../../src/state/choice';
 import {
   addAnnotation,
   getEffective,
@@ -16,6 +17,7 @@ import { useForms } from '../../src/state/form-store';
 import { initServices } from '../../src/state/services';
 import { activateTab, closeTab, resetTabsForTests, useTabs } from '../../src/state/tabs';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
+import { msg } from '../../src/ui/messages';
 import { securityMsg } from '../../src/ui/messages-security';
 import { createFakePlatform, openedFile } from '../helpers/fake-platform';
 import { fixtureSource, nodeAssetBase } from '../helpers/pdfjs-node';
@@ -91,7 +93,7 @@ function countNotices(): { readonly count: () => number; readonly stop: () => vo
   let last: number | null = null;
   const stop = useViewer.subscribe((s) => {
     const id = s.notice?.id ?? null;
-    if (id !== null && id !== last) { count += 1; console.log('DBG notice', id, s.notice?.text); }
+    if (id !== null && id !== last) count += 1;
     last = id;
   });
   return { count: () => count, stop };
@@ -115,10 +117,22 @@ beforeEach(() => {
   setTitle.mockClear();
 });
 
+/**
+ * Cierra todas las pestañas descartando los cambios: un documento con cambios sin guardar pregunta antes de cerrarse,
+ * y sin respuesta la promesa de `closeTab` nunca se resuelve.
+ */
+async function closeAllTabsDiscarding(): Promise<void> {
+  for (const tab of [...useTabs.getState().tabs]) {
+    const closing = closeTab(tab.id);
+    useChoice.getState().active?.options.find((o) => o.label === msg.discard)?.pick();
+    await closing;
+  }
+}
+
 afterEach(async () => {
   gate.active = false;
   gate.open?.();
-  for (const tab of [...useTabs.getState().tabs]) await closeTab(tab.id);
+  await closeAllTabsDiscarding();
   await closeDocument();
   resetTabsForTests();
 });
@@ -211,10 +225,10 @@ describe('pestañas · anotaciones', () => {
       expect(useViewer.getState().notice?.text).toBe(securityMsg.annotateAnyway);
       expect(notices.count()).toBe(1);
 
-      await openRequested(fileAt('basic-5.pdf'));
+      // B no puede ser basic-5.pdf: comparte huella con este PDF y la app lo trataría como la misma pestaña.
+      await openRequested(fileAt('links.pdf'));
       await waitUntil(() => useAnnotations.getState().scan === 'done');
       activateTab(a);
-      console.log('DBG after activate', useTabs.getState().activeId, a, useViewer.getState().permissions.annotate);
 
       addAnnotation(newAnnotation('suite-2', 'note'));
       expect(notices.count()).toBe(1);
