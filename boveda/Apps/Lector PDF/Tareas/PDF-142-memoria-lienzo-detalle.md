@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-142
 titulo: Memoria del lienzo base con zoom alto (385 MB > 300 MB)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, formatos-ofimatica]

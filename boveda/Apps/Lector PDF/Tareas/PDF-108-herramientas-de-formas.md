@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-108
 titulo: Herramientas Rectángulo, Elipse, Línea y Flecha en la barra Comentar
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-057, PDF-101, PDF-050, PDF-051, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
