@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-114
 titulo: Leer en voz alta - menú, barra de lectura, atajos y resaltado de la frase
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-067, PDF-050, PDF-051, PDF-112]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -64,3 +64,6 @@ El usuario lanza «Leer esta página» o «Leer hasta el final» desde el menú 
   6. **Fragmentos**: la página 1 de `basic-5.pdf` sale como un solo fragmento («Página 1 de 5 marcador-1 El veloz…»), porque el segmentador no corta entre renglones sin signo de fin de frase. Eso viene de PDF-067, no lo he cambiado.
   7. **Pantalla completa**: la barra se muestra también en pantalla completa (la ficha no lo pide, y la lectura sigue siendo controlable con teclado).
   8. El criterio «velocidad 1,5× ... al recargar» se verifica con el E2E; «axe» y «tema oscuro» también (la barra). El punto manual con voz española real queda en el Manual para el usuario; no bloquea.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+0 bloqueantes. Tester: repetir e2e completo con la máquina en reposo (@perf falló por CPU ocupada).
