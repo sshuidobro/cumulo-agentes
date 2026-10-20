@@ -3,7 +3,7 @@ tipo: manual
 app: pdf
 estado: vigente
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-20
 tags: [manual, pdf]
 ---
 
