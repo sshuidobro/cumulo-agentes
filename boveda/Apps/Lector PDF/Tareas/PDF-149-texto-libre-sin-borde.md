@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-149
 titulo: Texto libre sin borde (campo borderless en el modelo)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica]
@@ -56,3 +56,20 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 6) · Decisiones: [[ADR-0036-ana
 - Qué he hecho: campo `borderless?: true` en `FreeTextAnnotation` con validación `isBorderlessValid` (solo texto libre) y su uso en `isAnnotation`; `NewFreeTextInput.borderless` que se copia solo si es `true`; `freeTextDrawing` y `FreeTextShape` omiten el borde si `borderless`. Casos nuevos en los tests existentes (sin tocar los previos).
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK (tras corregir tipado en un test de borrador); `pnpm coverage` código 0, 307 ficheros y 3981 tests pasados, líneas 98,33 %.
 - Dudas o cosas que no he podido hacer: ninguna.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- lint, typecheck y coverage con código 0 (líneas 98,33 
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- lint, typecheck y coverage con código 0 (líneas 98,33 %). Todos los criterios cubiertos con tests que fallarían si se rompen; sin cambios fuera de alcance. 0 problemas.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| isAnnotation acepta/rechaza borderless | OK | `tests/unit/annotations/model.test.ts:159-165` |
+| freeTextDrawing sin `re S`/`RG` con borderless; con ellos sin él | OK | `appearance.test.ts:208-223` |
+| FreeTextShape sin rect con trazo | OK | `tests/ui/freetext-editor.test.tsx:299-305` |
+| newFreeTextAnnotation (clave ausente sin él) | OK | `freetext.test.ts:123-138` |
+| Borrador de recuperación | OK | `draft.test.ts:85-95` |
+| lint, typecheck, coverage | OK | sin fallos; líneas 98,33 % |
+
+Tests añadidos: ninguno (cobertura de los criterios ya suficiente). Rendimiento: no aplica.

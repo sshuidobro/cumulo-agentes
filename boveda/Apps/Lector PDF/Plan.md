@@ -231,7 +231,7 @@ Orden (sin dos fichas en paralelo sobre el mismo fichero): **ola A** en paralelo
 | [[PDF-097-pantalla-completa]] | Modo pantalla completa (lectura y presentación) | PDF-050, COM-017 | pendiente |
 | [[PDF-098-plan-lienzo-detalle]] | Zoom hasta 6 400 % y cálculo de la zona de detalle | — | pendiente |
 | [[PDF-051-lienzo-de-detalle]] | Lienzo de detalle para zoom alto | PDF-098, PDF-050 | pendiente |
-| [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148 | pendiente |
+| [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148, PDF-150 | pendiente |
 | [[PDF-148-contrasena-sin-reabrir]] | Pedir la contraseña sin reabrir: sondeo previo + `onPassword` ([[ADR-0043-contrasena-sin-reabrir]], revisado) | — | pendiente |
 
 Orden: pueden adelantarse durante la it. 3 (núcleo puro o paquetes sin choques): PDF-096, PDF-098, PDF-091 (tras PDF-040), PDF-092, PDF-102, COM-015 → COM-016 → COM-017 (tras COM-014; las cuatro de Comun tocan `types.ts` y van en serie). Tras PDF-090: PDF-093 ∥ PDF-046 ∥ PDF-049 → PDF-047 ∥ PDF-048 (tras PDF-046) ∥ PDF-050 (tras PDF-049) → PDF-094 ∥ PDF-097 ∥ PDF-051 → PDF-100 ∥ PDF-101 → PDF-095 → PDF-099.
@@ -275,7 +275,8 @@ Detalladas el 2026-10-19 ([[ADR-0028-reescribir-pdfs]] a [[ADR-0040-firma-digita
 | [[PDF-110-xfdf-nucleo]] | XFDF - parser XML seguro, exportar e importar comentarios (núcleo) | PDF-058 | pendiente |
 | [[PDF-111-xfdf-interfaz]] | Exportar e importar comentarios en XFDF desde el panel | PDF-110, PDF-116, COM-018, PDF-108 | pendiente |
 | [[PDF-059-anadir-texto-imagen]] | Añadir texto e imagen al contenido de la página - núcleo (aplanar) | PDF-052, PDF-058, PDF-110 | pendiente |
-| [[PDF-130-anadir-texto-imagen-interfaz]] | Añadir texto e imagen - barra «Editar» y herramientas | PDF-059, PDF-129, PDF-115, PDF-116 | pendiente |
+| [[PDF-149-texto-libre-sin-borde]] | Texto libre sin borde (`borderless` en el modelo) | — | pendiente |
+| [[PDF-130-anadir-texto-imagen-interfaz]] | Añadir texto e imagen - barra «Editar» y herramientas | PDF-059, PDF-129, PDF-115, PDF-116, PDF-149 | pendiente |
 | [[PDF-060-proteger]] | Proteger - crear el cifrado AES-256 (R6) y los permisos (núcleo) | PDF-052, PDF-047 | pendiente |
 | [[PDF-131-reescribir-documento]] | Reescribir el documento completo (con o sin cifrado nuevo) | PDF-060, PDF-121 | pendiente |
 | [[PDF-132-proteger-interfaz]] | Proteger con contraseña y quitar protección - interfaz | PDF-131, PDF-130 | pendiente |
@@ -304,6 +305,8 @@ Detalladas el 2026-10-19 ([[ADR-0028-reescribir-pdfs]] a [[ADR-0040-firma-digita
 | [[PDF-114-leer-en-voz-alta-interfaz]] | Leer en voz alta - menú, barra de lectura, atajos y resaltado de la frase | PDF-067, PDF-050, PDF-051, PDF-112 | pendiente |
 | [[PDF-141-e2e-rojos-en-head]] | Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD (prioritaria, accionable ya) | — | pendiente |
 | [[PDF-142-memoria-lienzo-detalle]] | Regresión de memoria del lienzo de detalle con zoom alto (385 MB > 300 MB); bisectar y corregir (accionable ya) | — | pendiente |
+| [[PDF-150-exportar-cancelar-a-mitad]] | Arreglar «Cancelar» a mitad de la exportación (E2E @perf rojo en HEAD; accionable ya) | — | pendiente |
+| [[PDF-151-colocar-firma-queda-seleccionada]] | La firma/imagen recién colocada queda seleccionada con su tirador (accionable ya) | — | pendiente |
 
 **Orden y paralelo.** Ya accionables en paralelo (sin choques de ficheros): **PDF-053**, **PDF-118**, **PDF-120**, **PDF-060**, **PDF-133** (además de las de formas, comparar, exportar y voz ya detalladas). Cadenas del núcleo: PDF-053 → PDF-119 → PDF-121 (con PDF-120) → PDF-122 → PDF-123 → PDF-054/PDF-055; PDF-060 + PDF-121 → PDF-131; PDF-059 → PDF-061 y PDF-062 → PDF-135 → PDF-136; PDF-066 → PDF-138; PDF-143 → PDF-144 → PDF-145 (editar texto, [[ADR-0042-editar-texto-linea-simple]]). Las fichas de interfaz van **en serie** porque tocan `App.tsx`, `DocumentMenu.tsx` y `organizeMsg`: PDF-114 → PDF-125 → PDF-126 → PDF-127 → PDF-128 → PDF-129 → PDF-130 → PDF-132 → PDF-134 → PDF-137 → PDF-139 → PDF-147 (PDF-146, solo estado, puede ir en paralelo a PDF-139 cuando estén PDF-145 y PDF-137). Todas las operaciones pesadas van en el Worker de [[PDF-118-worker-operaciones]] ([[ADR-0034-operaciones-en-worker]]).
 

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -188,3 +188,15 @@ Reglas:
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 1. Pasos 6a, 6b y 7a-7c aplicados tal como están en la ficha (diff de `App.tsx` limpio, solo diferido de componentes). `pnpm --filter lector-pdf build` OK: arranque 599 276 B (máx. 600 000). typecheck OK; eslint de `apps/lector-pdf/src` y `tests` sin errores.
 2. (opcional, limpieza) `apps/lector-pdf/dist-prog-129/` es una salida de build ignorada por git pero no por ESLint: `pnpm lint` en la raíz falla con 14 068 errores mientras exista. Borrarla antes de que el tester ejecute `pnpm lint` (añadirla a `ignores` en `eslint.config.*` si se vuelve a usar `LECTOR_E2E_OUTDIR`).
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck | OK | `pnpm lint` y `pnpm typecheck` sin errores |
+| coverage | OK | `pnpm coverage`: Statements 95,04 %, Lines 98,33 % |
+| build + bundle:check | OK | Arranque 599 276 B (máx. 600 000) |
+| E2E completo | OK | `pnpm --filter lector-pdf e2e`: 355/355 (chromium + chromium-perf), código 0 |
+| 3 imágenes A4, orden tras «Bajar», JPEG intacto, PNG corrupto, 20 JPEG sin long tasks, axe + tema oscuro + teclado | OK | `tests/e2e/images-pdf.spec.ts` (4 pruebas) dentro de los 355 |
+| Unit (límites, cancelar, revoke) y UI | OK | `images-pdf-actions.test.ts` e `images-dialog.test.tsx` dentro de coverage |
+
+Tests añadidos: ninguno (la cobertura de la ficha ya era suficiente). Rendimiento: sin long tasks > 100 ms con 20 JPEG de ~2 MB.
