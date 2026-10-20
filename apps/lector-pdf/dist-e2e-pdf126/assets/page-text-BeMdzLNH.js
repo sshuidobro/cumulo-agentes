@@ -1,3 +1,0 @@
-function e(e){let t=new Int32Array(e.length+1),n=[],r=0;return e.forEach((e,i)=>{t[i]=r,n.push(e.str),r+=e.str.length,e.hasEOL&&!/\s$/u.test(e.str)&&(n.push(`
-`),r+=1)}),t[e.length]=r,{raw:n.join(``),itemStarts:t}}function t(e,t){let n=e.itemStarts.length-1;if(n<=0)return{item:0,offset:0};let r=0,i=n-1;for(;r<i;){let n=r+i+1>>>1;(e.itemStarts[n]??0)<=t?r=n:i=n-1}return{item:r,offset:t-(e.itemStarts[r]??0)}}export{t as n,e as t};
-//# sourceMappingURL=page-text-BeMdzLNH.js.map
