@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-134
 titulo: OCR - diálogo «Reconocer texto», progreso y guardado
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-061, PDF-133, PDF-132]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, ocr, ui]
 ---
 
@@ -69,3 +69,14 @@ export function cancelOcr(): void;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/engine/ocr-page.ts` (nuevo: `recognizePage`, `pageHasText`), `apps/lector-pdf/src/state/ocr-actions.ts` (nuevo: `runOcr`, `cancelOcr`, `useOcrDialog`, `OCR_OPTIONS_PREF`), `apps/lector-pdf/src/ui/messages-ocr.ts` (nuevo), `apps/lector-pdf/src/ui/ocr/OcrDialog.tsx` y `OcrDialog.module.css` (nuevos, `lazy` en `App.tsx`), `apps/lector-pdf/src/ui/App.tsx` (+8 líneas), `apps/lector-pdf/src/ui/toolbar/DocumentMenu.tsx` (+8 líneas), tests `tests/unit/ocr-page.test.ts`, `tests/unit/ocr-actions.test.ts`, `tests/ui/ocr-dialog.test.tsx`, `tests/e2e/ocr.spec.ts`.
+- Qué he hecho: diálogo «Reconocer texto (OCR)…» (páginas, idioma, omitir con texto, aviso de privacidad) que reconoce a 300 ppp con el motor local, muestra progreso «Reconociendo página X de Y…» con Cancelar y escribe la capa como incremento (`ocr-layer` + `writeDocument` append). Avisos de «ya tiene texto», «no se ha reconocido texto», error del motor (nada escrito) y confirmación a partir de 50 páginas.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` exit 0 (314 ficheros, 4059 tests); `pnpm --filter lector-pdf e2e` exit 0 (371 passed, incluidas las 4 pruebas de OCR y el `@perf` en `chromium-perf`); `pnpm --filter lector-pdf build` + `bundle:check`: arranque 572 209 B (máximo de la ficha 575 000; antes 544 998, el aumento no es solo de esta ficha: el módulo propio pesa ~5 kB en el chunk `ocr-actions`).
+- Dudas o cosas que no he podido hacer:
+  1. Corregido en esta ronda: `createOcrEngine` recibía `assetBaseUrl` (carpeta `pdfjs/`) y los recursos OCR están en `ocr/` de la raíz; ahora se pasa `new URL('./', document.baseURI)`. Lo detectó el E2E (SyntaxError al cargar el worker).
+  2. Decisiones de defecto que tomo sin preguntar (revisar): «Omitir páginas que ya tienen texto» marcado por defecto; idioma por defecto Español; OCR no comprueba el permiso de copia (la ficha no lo pide).
+  3. En la web el resultado se descarga y el documento abierto sigue siendo el original (comportamiento de Guardar en web). El E2E reabre la copia descargada para comprobar la búsqueda.
+  4. El escaneo previo de «omitir con texto» se hace antes de mostrar el progreso (no hay barra durante ese paso).
+  5. No verificado: tema oscuro en E2E (solo variables CSS del tema) y escalado 125-150 %.
