@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: pendiente
+estado: cambios-pedidos
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -185,3 +185,18 @@ if (password === undefined) {
 - `bundle:check` 627 248 > 600 000: carga diferida de `password-probe` con `import()`, presupuesto sin cambios. Paso 5b; nota en [[ADR-0043-contrasena-sin-reabrir]].
 - Rendimiento: 2,43 en una sola repetición, sin números de las demás → no hay base para cambiar el umbral. Se mide con calentamiento descartado, medianas de 5 y reporter JSON para tener el desglose de las 3. Umbral ≤ 1,5 sin cambios. Paso 5c.
 - Ficha a `pendiente`, `intentos: 0`.
+
+### [programador] ronda 4 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/unit/document-actions.test.ts` (5a: test «dos aperturas seguidas», nombre y última aserción; ningún otro cambiado), `apps/lector-pdf/src/state/document-actions.ts` (5b: `needsUserPassword` cargado con `import()` desde `../core/pdf/password-probe`; se quita el import estático), `apps/lector-pdf/tests/e2e/iteration4-performance.spec.ts` (5c: `OPEN_RUNS = 5` y par de calentamiento descartado; umbral 1,5 y medida sin cambios).
+- Qué he hecho: 5a y 5b aplicados. Build con `bundle:check` en verde: 598 188 B (máximo 600 000). 5c aplicado y medido con el reporter JSON en 3 repeticiones: el criterio (a) **no** se cumple en las repeticiones 1 y 2, así que la ficha queda en `cambios-pedidos` y no hago commit.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf build`: código 0, 598 188 B.
+  - `pnpm lint`: código 0. `pnpm typecheck`: sin errores.
+  - `pnpm coverage`: 305 ficheros, 3949 tests en verde, líneas 98,33 %.
+  - `pnpm --filter lector-pdf exec playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3 --reporter=json`: 11 pasados, 1 fallido en 2 de 3 repeticiones (la (a)). Código 1.
+  - `pnpm --filter lector-pdf exec playwright test --project=chromium -g "contraseña|cifrad|iteration4"`: 28 pasados, código 0.
+- Tabla (a), 5 aperturas por repetición, medianas. Sin cifrar / cifrado / razón. Desglose cifrado: hasta diálogo / tras «Abrir»:
+  - Rep. 1: 436, 451, 448, 427, 444 (mediana 444) / 622, 1110, 602, 1126, 1108 (mediana 1108) / **2,50** (fallo). Desglose: 177/445, 187/923, 177/425, 201/926, 178/930.
+  - Rep. 2: 446, 460, 441, 441, 448 (mediana 446) / 1151, 714, 1090, 591, 624 (mediana 714) / **1,60** (fallo). Desglose: 183/968, 215/498, 165/924, 176/415, 193/431.
+  - Rep. 3: 456, 452, 438, 474, 454 (mediana 454) / 618, 624, 1125, 595, 1106 (mediana 624) / 1,38 (pasa). Desglose: 178/440, 195/429, 198/927, 179/415, 175/931.
+- Dudas o cosas que no he podido hacer: el hasta-diálogo se mantiene en ~180 ms (< 100 ms esperado no se cumple). Tras «Abrir» la apertura alterna entre ~420-440 ms (como sin cifrar) y ~925 ms, en ambas mitades de cada repetición; la mediana cae en una u otra según la repetición. Parece ruido o un segundo análisis dentro del worker, pero no lo he investigado. No he tocado umbral ni medida. Para el líder: decidir si repetir la medición en reposo o revisar ADR-0043/PDF-099 (a).

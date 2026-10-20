@@ -128,7 +128,7 @@ describe('openDocument', () => {
     expect(dims?.height(1)).toBe(612);
   });
 
-  it('con dos aperturas seguidas (A lenta, B rápida) acaba con B y destruye el documento de A', async () => {
+  it('con dos aperturas seguidas (A lenta, B rápida) acaba con B y no deja vivo ningún documento de A', async () => {
     const slow = gatedSource(fixtureSource('basic-5.pdf'));
     const openingA = openDocument(openedFile('basic-5.pdf', slow.source));
     await openDocument(openedFile('sizes-mixed.pdf', fixtureSource('sizes-mixed.pdf')));
@@ -140,8 +140,8 @@ describe('openDocument', () => {
     expect(state.status).toBe('ready');
     expect(state.file?.name).toBe('sizes-mixed.pdf');
     expect(state.pdf?.numPages).toBe(6);
-    expect(spies.destroyed).toContain(0);
-    expect(spies.destroyed).not.toContain(1);
+    const alive = Array.from({ length: spies.calls }, (_, i) => i).filter((i) => !spies.destroyed.includes(i));
+    expect(alive).toHaveLength(1); // solo el de B
   });
 
   it('un PDF corrupto deja el estado de error con el mensaje en español', async () => {

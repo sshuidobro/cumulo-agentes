@@ -1,4 +1,4 @@
-import { createLogger, type AppError, type Result } from '@suite/shared';
+import { createLogger, err, type AppError, type Result } from '@suite/shared';
 import { platformError, type FileFilter, type OpenedFile } from '@suite/platform';
 import { initialExpanded } from '../core/outline';
 import { getOutline } from '../engine/outline';
@@ -204,14 +204,27 @@ async function runOpen(
     if (seq !== openSeq) return;
     useViewer.setState({ loadProgress: total > 0 ? Math.min(1, loaded / total) : null });
   };
-  // Una sola carga: si el PDF está cifrado, pdf.js pide la contraseña sobre la misma tarea (ADR-0043).
-  const result = await loadPdf(file.source, {
-    assetBaseUrl,
-    signal: controller.signal,
-    onProgress,
-    ...(opts?.password === undefined ? {} : { password: opts.password }),
-    requestPassword: (incorrect) => (seq === openSeq ? askPassword(file.name, incorrect) : Promise.resolve(null)),
-  });
+  // Sondeo previo (ADR-0043): si hace falta contraseña de usuario, se pide antes de cargar, una sola vez.
+  let password = opts?.password;
+  let cancelledBeforeLoad = false;
+  if (password === undefined) {
+    const { needsUserPassword } = await import('../core/pdf/password-probe');
+    if (await needsUserPassword(file.source)) {
+      const answer = seq === openSeq ? await askPassword(file.name, false) : null;
+      password = answer ?? undefined;
+      cancelledBeforeLoad = answer === null;
+    }
+  }
+  // Una sola carga: si la contraseña previa no vale, pdf.js vuelve a pedirla sobre la misma tarea (ADR-0043).
+  const result = cancelledBeforeLoad
+    ? err(pdfError('cancelled'))
+    : await loadPdf(file.source, {
+      assetBaseUrl,
+      signal: controller.signal,
+      onProgress,
+      ...(password === undefined ? {} : { password }),
+      requestPassword: (incorrect) => (seq === openSeq ? askPassword(file.name, incorrect) : Promise.resolve(null)),
+    });
 
   if (seq !== openSeq) {
     // Una apertura posterior ha tomado el relevo: este resultado se descarta sin tocar el store.

@@ -164,6 +164,15 @@ describe('openDocument con contraseña (PDF-046)', () => {
     expect(JSON.stringify(prefsSet.mock.calls)).not.toContain(USER);
   });
 
+  it('abrir un PDF solo con contraseña de propietario no muestra el diálogo (PDF-148, sondeo)', async () => {
+    vi.mocked(loadPdf).mockClear();
+    await openDocument(openedFile('encrypted-owner-only.pdf', fixtureSource('encrypted-owner-only.pdf')));
+
+    expect(usePasswordPrompt.getState().request).toBeNull();
+    expect(useViewer.getState().status).toBe('ready');
+    expect(loadPdf).toHaveBeenCalledTimes(1);
+  });
+
   it('con contraseña incorrecta y luego correcta, el cifrado se carga una sola vez (PDF-148)', async () => {
     vi.mocked(loadPdf).mockClear();
     const opening = openDocument(openedFile(AES128, fixtureSource(AES128)));

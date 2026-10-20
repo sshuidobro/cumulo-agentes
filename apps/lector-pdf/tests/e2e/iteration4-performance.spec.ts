@@ -39,7 +39,7 @@ const CIPHER_NAME = 'pages-1000-aes256.pdf';
 const CIPHER_ARGS = ['--encrypt', USER, OWNER, '256', '--'] as const;
 
 const OPEN_RATIO_MAX = 1.5;
-const OPEN_RUNS = 3;
+const OPEN_RUNS = 5;
 const SAVE_NOTE_BUDGET_MS = 2_000;
 const NOTE_TEXT = 'Nota de rendimiento';
 const TAB_CHANGES = 20;
@@ -160,6 +160,9 @@ test(
     const plainPath = fixture(PLAIN_NAME);
     const plain: number[] = [];
     const encrypted: FirstPageTiming[] = [];
+    // Calentamiento descartado: la primera apertura sin cifrar sale más lenta y el chunk del sondeo se descarga la primera vez.
+    await timeToFirstPage(page, plainPath);
+    await timeToFirstPage(page, cipher, USER);
     for (let run = 0; run < OPEN_RUNS; run++) {
       plain.push((await timeToFirstPage(page, plainPath)).ms);
       encrypted.push(await timeToFirstPage(page, cipher, USER));
