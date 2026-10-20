@@ -87,6 +87,23 @@ export function stampTextBox(
   };
 }
 
+/**
+ * Centro del sello `name` desplazado lo justo para que su caja quede dentro de `pageBox` (PDF-115). Si el sello es más
+ * ancho o alto que la página, queda centrado en ese eje.
+ */
+export function stampCenterInside(name: StampName, center: readonly [number, number], pageBox: RectPt): [number, number] {
+  const [x1, y1, x2, y2] = stampRectAt(name, 0, 0);
+  const hw = (x2 - x1) / 2;
+  const hh = (y2 - y1) / 2;
+  return [fitAxis(center[0], pageBox[0], pageBox[2], hw), fitAxis(center[1], pageBox[1], pageBox[3], hh)];
+}
+
+/** Coordenada `v` acotada para que `[v - half, v + half]` quede en `[lo, hi]`; centrada si no cabe. */
+function fitAxis(v: number, lo: number, hi: number, half: number): number {
+  if (hi - lo < 2 * half) return (lo + hi) / 2;
+  return Math.min(Math.max(v, lo + half), hi - half);
+}
+
 export const STAMP_HEIGHT_PT = 36;
 export const STAMP_FONT_SIZE_PT = 18;
 /** Margen horizontal total del sello alrededor del texto, en puntos. */

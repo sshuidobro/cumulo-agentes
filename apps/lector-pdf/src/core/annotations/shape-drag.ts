@@ -97,3 +97,57 @@ export function resizeBoxRect(r: RectPt, dx: number, dh: number): RectPt {
   const height = Math.max(MIN_SHAPE_PT, y2 - y1 + dh);
   return [x1, y2 - height, x1 + width, y2];
 }
+
+/** Distancia en píxeles de la pantalla para cerrar un polígono haciendo clic cerca del primer vértice (PDF-115). */
+export const POLYGON_CLOSE_PX = 8;
+/** Radio del polígono por defecto del teclado (PDF-115), en puntos. */
+const DEFAULT_POLYGON_RADIUS_PT = 48;
+/** Lados del polígono por defecto: un pentágono regular. */
+const DEFAULT_POLYGON_SIDES = 5;
+
+/** Punto recortado a `page`. */
+export function clipPointToPage(x: number, y: number, page: RectPt): readonly [number, number] {
+  return [clamp(x, page[0], page[2]), clamp(y, page[1], page[3])];
+}
+
+/**
+ * Vértices tras un clic en (x, y) de un polígono en curso (PDF-115). El punto se recorta a la página. Si hay al menos
+ * tres vértices y el clic está a `closePt` o menos del primero, el polígono se cierra: `closed` y los vértices no cambian.
+ * Un clic a `closePt` o menos del último vértice (p. ej. el primer clic de un doble clic) no añade nada. En otro caso,
+ * añade el vértice.
+ */
+export function addPolygonVertex(
+  vertices: readonly number[],
+  x: number,
+  y: number,
+  closePt: number,
+  page: RectPt,
+): { readonly vertices: readonly number[]; readonly closed: boolean } {
+  const [px, py] = clipPointToPage(x, y, page);
+  const n = vertices.length;
+  if (n >= 6 && Math.hypot(px - (vertices[0] ?? 0), py - (vertices[1] ?? 0)) <= closePt) {
+    return { vertices, closed: true };
+  }
+  if (n >= 2 && Math.hypot(px - (vertices[n - 2] ?? 0), py - (vertices[n - 1] ?? 0)) <= closePt) {
+    return { vertices, closed: false };
+  }
+  return { vertices: [...vertices, px, py], closed: false };
+}
+
+/**
+ * Polígono por defecto para el teclado (PDF-115): pentágono regular de radio `DEFAULT_POLYGON_RADIUS_PT` centrado en
+ * (`cx`, `cy`), con el primer vértice arriba, recortado a la página.
+ */
+export function defaultPolygon(cx: number, cy: number, page: RectPt): readonly number[] {
+  const vertices: number[] = [];
+  for (let i = 0; i < DEFAULT_POLYGON_SIDES; i++) {
+    const angle = Math.PI / 2 + (i * 2 * Math.PI) / DEFAULT_POLYGON_SIDES;
+    const [x, y] = clipPointToPage(
+      cx + DEFAULT_POLYGON_RADIUS_PT * Math.cos(angle),
+      cy + DEFAULT_POLYGON_RADIUS_PT * Math.sin(angle),
+      page,
+    );
+    vertices.push(x, y);
+  }
+  return vertices;
+}

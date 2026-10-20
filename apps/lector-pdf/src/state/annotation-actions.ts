@@ -9,6 +9,7 @@ import {
 import { setFieldCommand } from '../core/forms/commands';
 import { annotationsOfPage, effectiveAnnotations } from '../core/annotations/effective';
 import { dependentIds } from '../core/annotations/replies';
+import { STAMP_NAMES, type StampName } from '../core/annotations/shapes';
 import type { ForeignAnnotation, ImportedPage } from '../core/annotations/import';
 import {
   EMPTY_EDITS,
@@ -74,7 +75,7 @@ interface IndexedPage {
 /** Herramientas de color que ya existían: sus colores guardados son obligatorios en la preferencia. */
 const LEGACY_COLOR_TOOLS: readonly ColorTool[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
 /** Todas las herramientas de color; las formas (PDF-108) pueden faltar en una preferencia antigua. */
-const COLOR_TOOLS: readonly ColorTool[] = [...LEGACY_COLOR_TOOLS, 'square', 'circle', 'line', 'arrow'];
+const COLOR_TOOLS: readonly ColorTool[] = [...LEGACY_COLOR_TOOLS, 'square', 'circle', 'line', 'arrow', 'polygon'];
 
 /** Clave de cada preferencia (el almacén ya antepone el prefijo de la app). */
 const PREF = {
@@ -84,6 +85,7 @@ const PREF = {
   shapeWidth: 'shapeWidth',
   fontSize: 'fontSize',
   commentBarOpen: 'commentBarOpen',
+  pendingStamp: 'pendingStamp',
 } as const;
 
 /** Sesión de un documento: se descarta entera al cerrarlo. */
@@ -146,13 +148,17 @@ useAnnotations.subscribe((next, prev) => {
 /** Lee las preferencias de anotación de la app. Lo que no sea válido toma su valor por defecto. */
 function preferenceState(
   prefs: KeyValueStore,
-): Pick<AnnotationState, 'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen'> {
+): Pick<
+  AnnotationState,
+  'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen' | 'pendingStamp'
+> {
   const author = prefs.get(PREF.author, isString);
   const colors = prefs.get(PREF.colors, isColorRecord);
   const inkWidth = prefs.get(PREF.inkWidth, oneOf(INK_WIDTHS));
   const shapeWidth = prefs.get(PREF.shapeWidth, oneOf(INK_WIDTHS));
   const fontSize = prefs.get(PREF.fontSize, oneOf(FONT_SIZES));
   const commentBarOpen = prefs.get(PREF.commentBarOpen, isBoolean);
+  const pendingStamp = prefs.get(PREF.pendingStamp, oneOf(STAMP_NAMES));
   return {
     author: author === null ? DEFAULT_AUTHOR : normalizeAuthor(author),
     // Lo guardado manda; las herramientas que la preferencia no trae (formas, PDF-108) toman su color por defecto.
@@ -161,6 +167,7 @@ function preferenceState(
     shapeWidth: shapeWidth ?? DEFAULT_INK_WIDTH,
     fontSize: fontSize ?? DEFAULT_FONT_SIZE,
     commentBarOpen: commentBarOpen ?? false,
+    pendingStamp: pendingStamp ?? 'Approved',
   };
 }
 
@@ -261,6 +268,7 @@ export function endAnnotationSession(): void {
     fontSize: prev.fontSize,
     author: prev.author,
     commentBarOpen: prev.commentBarOpen,
+    pendingStamp: prev.pendingStamp,
   });
 }
 
@@ -292,7 +300,10 @@ interface AnnotationsSnapshot {
   readonly memo: { readonly baseline: AnnotationState['baseline']; readonly edits: AnnotationEdits; readonly result: ReadonlyMap<string, Annotation> } | null;
   readonly pageMemo: ReadonlyMap<number, { readonly version: number; readonly items: readonly Annotation[] }>;
   /** Estado del store sin las preferencias (estas son globales y no se guardan aquí). */
-  readonly state: Omit<AnnotationState, 'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen'>;
+  readonly state: Omit<
+    AnnotationState,
+    'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen' | 'pendingStamp'
+  >;
   /** Páginas ya importadas por el escaneo de la sesión. */
   readonly importedPages: number;
   /** Había un escaneo completo desde el panel (PDF-036) en curso. */
@@ -344,6 +355,7 @@ const annotationsParticipant: TabParticipant<AnnotationsSnapshot> = {
       inkWidth: live.inkWidth,
       fontSize: live.fontSize,
       commentBarOpen: live.commentBarOpen,
+      pendingStamp: live.pendingStamp,
     });
     const saved = snapshot.session;
     if (saved === null) {
@@ -979,6 +991,12 @@ export function selectedInk(): InkAnnotation | undefined {
   return current?.type === 'ink' ? current : undefined;
 }
 
+/** Sello elegido en «Sello» (PDF-115): se guarda como preferencia; lo coloca la herramienta `stamp`. */
+export function rememberPendingStamp(name: StampName): void {
+  prefs().set(PREF.pendingStamp, name);
+  useAnnotations.setState({ pendingStamp: name });
+}
+
 /** Grosor de las formas nuevas (PDF-108): se guarda como preferencia y lo usan las herramientas de forma. */
 export function rememberShapeWidth(width: AnnotationState['shapeWidth']): void {
   prefs().set(PREF.shapeWidth, width);
@@ -1042,7 +1060,7 @@ function isBoolean(v: unknown): v is boolean {
   return typeof v === 'boolean';
 }
 
-function oneOf<T extends number>(allowed: readonly T[]): (v: unknown) => v is T {
+function oneOf<T extends number | string>(allowed: readonly T[]): (v: unknown) => v is T {
   const list: readonly unknown[] = allowed;
   return (v: unknown): v is T => list.includes(v);
 }

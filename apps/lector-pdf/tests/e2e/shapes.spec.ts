@@ -14,7 +14,8 @@ import {
   visiblePart,
   zoneOf,
 } from './annotations-kit.ts';
-import { qpdfCheck } from '../support/qpdf.ts';
+import { qpdfCheck, run } from '../support/qpdf.ts';
+import { readFileSync } from 'node:fs';
 import { liveAnnotations } from './annotations-live.ts';
 
 /**
@@ -149,6 +150,73 @@ test('rectangulo, elipse, linea y flecha: dibujar, deshacer y rehacer, mover, re
       message: 'un píxel rojo en el borde del rectángulo guardado',
     })
     .toBe(true);
+});
+
+/** Abre «Sello» y elige la entrada con ese nombre visible (p. ej. «APROBADO»). */
+async function chooseStampEntry(page: Page, label: string): Promise<void> {
+  const bar = page.getByRole('toolbar', { name: 'Comentar' });
+  await bar.getByRole('button', { name: 'Sello', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: label, exact: true }).click();
+}
+
+test('poligono y sellos: dibujar, colocar y redimensionar, guardar, reabrir y seguir editandolos', async ({ page }, testInfo) => {
+  await openFixtureWithDownloads(page, 'basic-5.pdf');
+  await waitPageRendered(page, 1);
+
+  // Polígono: tres clics y un doble clic en el cuarto vértice (el primer clic del doble clic no duplica el vértice).
+  await pickTool(page, 'Polígono');
+  await page.mouse.click((await at(page, 0.2, 0.15)).x, (await at(page, 0.2, 0.15)).y);
+  await page.mouse.click((await at(page, 0.4, 0.15)).x, (await at(page, 0.4, 0.15)).y);
+  await page.mouse.click((await at(page, 0.4, 0.3)).x, (await at(page, 0.4, 0.3)).y);
+  await page.mouse.dblclick((await at(page, 0.2, 0.3)).x, (await at(page, 0.2, 0.3)).y);
+  await expect(zoneOf(page, 1, 'Polígono')).toHaveCount(1);
+
+  // Dos sellos: «APROBADO» y «NO APROBADO», cada uno con un clic.
+  await chooseStampEntry(page, 'APROBADO');
+  await page.mouse.click((await at(page, 0.2, 0.5)).x, (await at(page, 0.2, 0.5)).y);
+  await chooseStampEntry(page, 'NO APROBADO');
+  await page.mouse.click((await at(page, 0.6, 0.5)).x, (await at(page, 0.6, 0.5)).y);
+  await expect(zoneOf(page, 1, 'Sello')).toHaveCount(2);
+
+  // Redimensionar el primer sello con su tirador: la proporción se mantiene.
+  const first = zoneOf(page, 1, 'Sello').first();
+  await first.focus();
+  await page.keyboard.press(' ');
+  const before = await first.boundingBox();
+  const grip = await pageFrame(page, 1).getByRole('button', { name: 'Cambiar tamaño' }).boundingBox();
+  if (before === null || grip === null) throw new Error('falta el sello o su tirador');
+  await dragBetween(page, { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 }, { x: grip.x + grip.width / 2 + 60, y: grip.y + grip.height / 2 + 20 });
+  await expect.poll(async () => (await first.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 20);
+  const after = await first.boundingBox();
+  if (after === null) throw new Error('el sello redimensionado no tiene caja');
+  expect(after.width / after.height).toBeCloseTo(before.width / before.height, 1);
+
+  // Guardar: qpdf valida el fichero y el aspecto del sello lleva su texto.
+  const saved = await saveWithCtrlS(page, testInfo, 'basic-5-poligono-sellos.pdf');
+  const check = qpdfCheck(saved);
+  expect(check.code, check.output).toBe(0);
+  const qdf = testInfo.outputPath('basic-5-poligono-sellos-qdf.pdf');
+  const decoded = run(['--qdf', '--object-streams=disable', saved, qdf]);
+  expect(decoded.status, decoded.stderr).toBeLessThanOrEqual(3);
+  expect(readFileSync(qdf, 'latin1')).toContain('(APROBADO) Tj');
+
+  // Reabrir: el panel lista el polígono y los dos sellos, y siguen siendo editables.
+  const reopened = await openInNewPage(page, saved);
+  await openCommentsPanel(reopened);
+  await expect(reopened.getByRole('option', { name: optionName(`Polígono de ${AUTHOR}, página 1`) })).toHaveCount(1);
+  await expect(reopened.getByRole('option', { name: optionName(`Sello de ${AUTHOR}, página 1`) })).toHaveCount(2);
+
+  const polygon = zoneOf(reopened, 1, 'Polígono');
+  const polygonBox = await polygon.boundingBox();
+  await polygon.focus();
+  await reopened.keyboard.press(' ');
+  await reopened.keyboard.press('Shift+ArrowRight');
+  if (polygonBox === null) throw new Error('el polígono reabierto no tiene caja');
+  await expect.poll(async () => (await polygon.boundingBox())?.x ?? 0).toBeGreaterThan(polygonBox.x + 5);
+
+  await zoneOf(reopened, 1, 'Sello').first().focus();
+  await reopened.keyboard.press('Delete');
+  await expect(zoneOf(reopened, 1, 'Sello')).toHaveCount(1);
 });
 
 test('dibujar un rectángulo con la herramienta activa deja su vista previa; Escape durante el arrastre no crea nada', async ({ page }) => {

@@ -1,5 +1,15 @@
-import { DEFAULT_LINE_PT, dragBox, dragLine } from '../core/annotations/shape-drag';
-import { lineRect, newBoxShape, newLineShape, resizeBox, verticesRect } from '../core/annotations/shapes';
+import { DEFAULT_LINE_PT, defaultPolygon, dragBox, dragLine } from '../core/annotations/shape-drag';
+import {
+  lineRect,
+  newBoxShape,
+  newLineShape,
+  newPolygonShape,
+  newStamp,
+  resizeBox,
+  stampCenterInside,
+  verticesRect,
+  type StampName,
+} from '../core/annotations/shapes';
 import type { BoxShapeAnnotation, LineShapeAnnotation, PolygonAnnotation, RectPt, Rgb } from '../core/annotations/model';
 import { keyboardSignatureCenter } from '../core/signature/signature';
 import {
@@ -7,6 +17,7 @@ import {
   getEffective,
   newAnnotationId,
   nowIso,
+  rememberPendingStamp,
   rememberShapeWidth,
   select,
   setTool,
@@ -15,8 +26,10 @@ import {
 import { useAnnotations, type AnnotationState, type AnnotationTool } from './annotation-store';
 import { useViewer } from './viewer-store';
 
-/** Herramientas que crean una forma (PDF-108). */
+/** Herramientas que crean una forma arrastrando (PDF-108). */
 export type ShapeTool = 'square' | 'circle' | 'line' | 'arrow';
+/** Lo que se crea con teclado en la página actual: una forma (PDF-108), un polígono por defecto o un sello (PDF-115). */
+export type KeyboardShapeTool = ShapeTool | 'polygon' | 'stamp';
 
 const SHAPE_TOOLS: ReadonlySet<AnnotationTool> = new Set<AnnotationTool>(['square', 'circle', 'line', 'arrow']);
 
@@ -46,6 +59,55 @@ export function createBox(pageIndex: number, kind: 'square' | 'circle', rect: Re
 }
 
 /**
+ * Añade un polígono cerrado con esos vértices (`[x0, y0, x1, y1, ...]`) en la página `pageIndex`, con el color de su
+ * herramienta y el grosor de formas. Lo selecciona y devuelve su id. La herramienta sigue activa (PDF-115).
+ */
+export function createPolygon(pageIndex: number, vertices: readonly number[]): string {
+  const { colors, shapeWidth, author } = useAnnotations.getState();
+  const polygon = newPolygonShape({
+    id: newAnnotationId(),
+    pageIndex,
+    vertices,
+    width: shapeWidth,
+    color: colors.polygon,
+    author,
+    now: nowIso(),
+  });
+  addAnnotation(polygon);
+  select(polygon.id);
+  return polygon.id;
+}
+
+/**
+ * Elige el sello de «Sello» (PDF-115): lo guarda como preferencia y activa la herramienta `stamp`. El siguiente clic en
+ * la página lo coloca.
+ */
+export function chooseStamp(name: StampName): void {
+  rememberPendingStamp(name);
+  setTool('stamp');
+}
+
+/**
+ * Coloca el sello pendiente centrado en `center` (puntos PDF) de la página `pageIndex`, desplazado para que quede dentro
+ * de `pageBox`. Lo selecciona, devuelve la herramienta a «ninguna» (como la firma) y devuelve su id.
+ */
+export function placeStamp(pageIndex: number, center: readonly [number, number], pageBox: RectPt): string {
+  const { pendingStamp, author } = useAnnotations.getState();
+  const stamp = newStamp({
+    id: newAnnotationId(),
+    pageIndex,
+    name: pendingStamp,
+    center: stampCenterInside(pendingStamp, center, pageBox),
+    author,
+    now: nowIso(),
+  });
+  addAnnotation(stamp);
+  setTool('none');
+  select(stamp.id);
+  return stamp.id;
+}
+
+/**
  * Añade una línea (o flecha si `arrow`) en la página `pageIndex` con el color de su herramienta y el grosor de formas.
  * La selecciona y devuelve su id. La herramienta sigue activa.
  */
@@ -67,11 +129,11 @@ export function createLine(pageIndex: number, points: readonly [number, number, 
 }
 
 /**
- * Teclado (PDF-108): forma por defecto centrada en el punto que indica `keyboardSignatureCenter` (con la página
- * entera visible) de la página actual. La selecciona y devuelve la herramienta a «ninguna». Devuelve su id, o `null`
- * si no hay documento o no hay página actual.
+ * Teclado (PDF-108, PDF-115): forma por defecto (o el polígono por defecto, o el sello pendiente) centrada en el punto
+ * que indica `keyboardSignatureCenter` (con la página entera visible) de la página actual. La selecciona y devuelve la
+ * herramienta a «ninguna». Devuelve su id, o `null` si no hay documento o no hay página actual.
  */
-export function addShapeFromKeyboard(tool: ShapeTool): string | null {
+export function addShapeFromKeyboard(tool: KeyboardShapeTool): string | null {
   const { dims, currentPage, currentYFraction, rotation } = useViewer.getState();
   if (dims === null || currentPage >= dims.count) return null;
   const i = currentPage;
@@ -79,14 +141,12 @@ export function addShapeFromKeyboard(tool: ShapeTool): string | null {
   const height = dims.height(i);
   const [cx, cy] = keyboardSignatureCenter(width, height, (dims.rotation(i) + rotation) % 360, currentYFraction, 1);
   const page: RectPt = [0, 0, width, height];
-  const id =
-    tool === 'line' || tool === 'arrow'
-      ? createLine(
-          i,
-          dragLine(cx - DEFAULT_LINE_PT / 2, cy, cx + DEFAULT_LINE_PT / 2, cy, false, page),
-          tool === 'arrow',
-        )
-      : createBox(i, tool, dragBox(cx, cy, cx, cy, false, page));
+  if (tool === 'stamp') return placeStamp(i, [cx, cy], page);
+  let id: string;
+  if (tool === 'polygon') id = createPolygon(i, defaultPolygon(cx, cy, page));
+  else if (tool === 'line' || tool === 'arrow')
+    id = createLine(i, dragLine(cx - DEFAULT_LINE_PT / 2, cy, cx + DEFAULT_LINE_PT / 2, cy, false, page), tool === 'arrow');
+  else id = createBox(i, tool, dragBox(cx, cy, cx, cy, false, page));
   setTool('none');
   return id;
 }
@@ -142,11 +202,12 @@ export function setShapeColor(color: Rgb): void {
 }
 
 /**
- * Cambia el cuadro de un rectángulo o una elipse (tirador, PDF-108). Solo esos tipos; sin cambio real no crea entrada.
+ * Cambia el cuadro de un rectángulo, una elipse o un sello (tirador, PDF-108, PDF-115). Solo esos tipos; sin cambio real
+ * no crea entrada. El sello llega ya con su proporción (la calcula el tirador con `resizeKeepingAspect`).
  */
 export function resizeShape(id: string, rect: RectPt): void {
   const current = getEffective().get(id);
-  if (current?.type !== 'square' && current?.type !== 'circle') return;
+  if (current?.type !== 'square' && current?.type !== 'circle' && current?.type !== 'stamp') return;
   if (current.rect.every((v, i) => v === rect[i])) return;
   updateAnnotation(resizeBox(current, rect), 'cambiar tamaño');
 }

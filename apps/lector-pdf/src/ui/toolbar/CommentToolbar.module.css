@@ -7,3 +7,10 @@
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
 }
+
+/* Ayuda del polígono en curso (PDF-115): texto corto que sigue a los botones. */
+.hint {
+  margin: 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}

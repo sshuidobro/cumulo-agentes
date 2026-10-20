@@ -18,7 +18,13 @@ export type PdfErrorCode =
   | 'split-no-bookmarks'
   | 'split-too-big'
   | 'not-protected'
-  | 'owner-password-required';
+  | 'owner-password-required'
+  | 'p12-wrong-password'
+  | 'p12-invalid'
+  | 'p12-no-key'
+  | 'p12-unsupported-key'
+  | 'sign-encrypted'
+  | 'sign-too-big';
 
 export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
@@ -39,6 +45,12 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'split-too-big': 'Las partes ocupan demasiado para guardarlas juntas: divide un rango más pequeño.',
   'not-protected': 'Este PDF no tiene contraseña.',
   'owner-password-required': 'Para quitar la protección hace falta la contraseña de permisos.',
+  'p12-wrong-password': 'La contraseña del certificado no es correcta.',
+  'p12-invalid': 'El fichero no es un certificado .p12 o .pfx válido.',
+  'p12-no-key': 'El certificado no incluye la clave privada.',
+  'p12-unsupported-key': 'Solo se admiten certificados con clave RSA.',
+  'sign-encrypted': 'No se puede firmar un PDF protegido con contraseña: quita la protección antes.',
+  'sign-too-big': 'La firma no cabe en el espacio reservado para ella.',
 };
 
 /** Crea un error de PDF con mensaje en español. `cause` conserva el error original para diagnóstico. */

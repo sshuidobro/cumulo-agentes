@@ -58,6 +58,17 @@ export class DeltaWriter {
     this.write(serializeIndirect(num, gen, out));
   }
 
+  /**
+   * Escribe un objeto ya serializado (`num gen obj … endobj`) tal cual, sin cifrar. Devuelve el offset
+   * **relativo al delta** en que empieza. Lo usa la firma digital, que necesita conocer las posiciones.
+   */
+  raw(num: number, gen: number, bytes: Uint8Array): number {
+    const at = this.length;
+    this.offsets.set(num, { offset: this.offset, gen });
+    this.write(bytes);
+    return at;
+  }
+
   toBytes(): Uint8Array {
     const out = new Uint8Array(this.length);
     let at = 0;
