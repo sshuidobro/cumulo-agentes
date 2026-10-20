@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-138
 titulo: Firma digital - validar las firmas de un PDF (núcleo)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-066]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, firma, seguridad, nucleo]
 ---
 
