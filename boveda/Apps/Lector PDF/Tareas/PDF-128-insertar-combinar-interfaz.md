@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-128
 titulo: Insertar desde archivo y combinar archivos - interfaz
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-055, PDF-127, COM-019]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -96,3 +96,6 @@ Comprobado: lint, typecheck y coverage OK (98,3 % líneas); bundle:check OK (591
 - Qué he hecho: atendido el comentario 1 del revisor. Sin cambios de CSS: axe no encuentra violaciones en el diálogo ni en la vista con tema oscuro, así que no hizo falta corregir contrastes.
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf e2e -- tests/e2e/insert-combine.spec.ts` 7/7 OK (incluye claro y oscuro); `pnpm lint` OK; `pnpm typecheck` OK.
 - Dudas o cosas que no he podido hacer: el comentario 2 (opcional) sobre `iteration4-performance.spec.ts` no se ha tocado en esta ronda; no está relacionado con esta ficha.
+
+### [revisor] ronda 2 — 2026-10-20 — APROBADO
+Lint y typecheck OK; `insert-combine.spec.ts` 7/7 (axe y teclado en claro y oscuro con `prefers-color-scheme` verificado). Comentario 1 resuelto. El fallo previo de `iteration4-performance.spec.ts` (AES-256) no pertenece a esta ficha (PDF-148 lo trata); el tester debe confirmarlo.
