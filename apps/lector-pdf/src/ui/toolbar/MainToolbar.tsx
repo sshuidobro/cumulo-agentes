@@ -1,8 +1,9 @@
 import { IconButton } from '../kit/IconButton';
 import { MenuButton } from '../kit/MenuButton';
-import { IconAppearance, IconComment, IconFormFields, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
+import { IconAppearance, IconComment, IconEdit, IconFormFields, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
 import { SignatureMenu } from '../signature/SignatureMenu';
 import { msg } from '../messages';
+import { editMsg } from '../messages-edit';
 import { printMsg } from '../messages-print';
 import { securityMsg } from '../messages-security';
 import { formMsg } from '../messages-forms';
@@ -14,7 +15,7 @@ import { ViewMenu } from './ViewMenu';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
-import { chooseSignature, redo, setCommentBarOpen, setTool, undo } from '../../state/annotation-actions';
+import { chooseSignature, redo, setCommentBarOpen, setEditBarOpen, setTool, undo } from '../../state/annotation-actions';
 import { useAnnotations, type AnnotationTool } from '../../state/annotation-store';
 import { save, saveAs, useSaving } from '../../state/save-actions';
 import { services } from '../../state/services';
@@ -38,6 +39,11 @@ function toggleCommentBar(open: boolean, annotationTool: AnnotationTool): void {
   }
 }
 
+/** Abre o cierra la barra «Editar» (PDF-130). Al cerrarla se deja la herramienta de «Editar» (no queda ninguna activa). */
+function toggleEditBar(open: boolean): void {
+  setEditBarOpen(!open);
+}
+
 /** Barra principal: abrir, deshacer/rehacer, zoom y giro de la vista. Lo de documento se activa con uno abierto. */
 export function MainToolbar() {
   const { platform } = services();
@@ -46,6 +52,7 @@ export function MainToolbar() {
   const undoState = useAnnotations((s) => s.undo);
   const annotationTool = useAnnotations((s) => s.tool);
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
+  const editBarOpen = useAnnotations((s) => s.editBarOpen);
   const tool = useViewer((s) => s.tool);
   const history = useViewer((s) => s.historyState);
   const sidebar = useViewer((s) => s.sidebar);
@@ -163,6 +170,14 @@ export function MainToolbar() {
           onClick={() => { toggleCommentBar(commentBarOpen, annotationTool); }}
         >
           <IconComment />
+        </IconButton>
+        <IconButton
+          label={editMsg.editButton}
+          pressed={editBarOpen}
+          disabled={!ready}
+          onClick={() => { toggleEditBar(editBarOpen); }}
+        >
+          <IconEdit />
         </IconButton>
         <SignatureMenu onPick={chooseSignature} disabled={!ready} />
         {hasFields && (

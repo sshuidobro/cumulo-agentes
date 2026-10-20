@@ -53,6 +53,7 @@ const PrintDialog = lazy(() => import('./print/PrintDialog').then((m) => ({ defa
 const ExportDialog = lazy(() => import('./export/ExportDialog').then((m) => ({ default: m.ExportDialog })));
 // Barra de comentarios y panel lateral (PDF-140): no se muestran al arrancar, se cargan al abrirlos.
 const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) => ({ default: m.CommentToolbar })));
+const EditToolbar = lazy(() => import('./toolbar/EditToolbar').then((m) => ({ default: m.EditToolbar })));
 const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m.Sidebar })));
 // Comparación de dos PDFs (PDF-112): la vista solo se carga al comparar.
 const CompareView = lazy(() => import('./compare/CompareView').then((m) => ({ default: m.CompareView })));
@@ -146,6 +147,7 @@ export function App() {
   const numPages = useViewer((s) => s.pdf?.numPages ?? null);
   const tool = useAnnotations((s) => s.tool);
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
+  const editBarOpen = useAnnotations((s) => s.editBarOpen);
   const notice = useViewer((s) => s.notice);
   const sidebar = useViewer((s) => s.sidebar);
   const propertiesOpen = usePropertiesDialog((s) => s.open);
@@ -191,6 +193,11 @@ export function App() {
       {chrome && status === 'ready' && commentBarOpen && (
         <Suspense fallback={null}>
           <CommentToolbar />
+        </Suspense>
+      )}
+      {chrome && status === 'ready' && editBarOpen && (
+        <Suspense fallback={null}>
+          <EditToolbar />
         </Suspense>
       )}
       <IoErrorBanner />

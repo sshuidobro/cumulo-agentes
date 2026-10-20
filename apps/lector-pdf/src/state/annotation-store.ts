@@ -20,6 +20,9 @@ import {
 } from '../core/annotations/palette';
 
 /**
+ * `page-text` y `page-image` (PDF-130): texto e imagen que se aplican como contenido de la página al guardar. La
+ * imagen pendiente de colocar es la misma `pendingSignature` que la firma.
+ *
  * `signature`: la firma elegida se coloca con un clic o con Intro (PDF-043). No tiene color propio. `stamp` (PDF-115):
  * el sello pendiente se coloca con un clic o con Intro; su color lo fija el nombre. `polygon` (PDF-115): cada clic añade
  * un vértice.
@@ -38,8 +41,11 @@ export type AnnotationTool =
   | 'arrow'
   | 'polygon'
   | 'signature'
-  | 'stamp';
-export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature' | 'stamp'>;
+  | 'stamp'
+  | 'page-text'
+  | 'page-image';
+/** Herramientas con color propio. `page-image` no tiene: la imagen trae sus colores (PDF-130). */
+export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature' | 'stamp' | 'page-image'>;
 export type ScanState = 'idle' | 'scanning' | 'done' | 'lazy';
 
 /**
@@ -72,7 +78,7 @@ export interface AnnotationState {
   /** Anotación cuya ventana emergente de comentario está abierta (PDF-033), o ninguna. */
   readonly openPopupId: string | null;
   readonly tool: AnnotationTool;
-  /** Firma elegida con «Firmar» y pendiente de colocar (herramienta `signature`), o ninguna (PDF-043). */
+  /** Firma elegida con «Firmar» (herramienta `signature`) o imagen elegida con «Añadir imagen» (`page-image`, PDF-130), pendiente de colocar; o ninguna (PDF-043). */
   readonly pendingSignature: SignatureArt | null;
   /** Sello elegido en «Sello» (PDF-115): el que se coloca con la herramienta `stamp`. Es preferencia global. */
   readonly pendingStamp: StampName;
@@ -85,6 +91,8 @@ export interface AnnotationState {
   readonly fontSize: (typeof FONT_SIZES)[number];
   readonly author: string;
   readonly commentBarOpen: boolean;
+  /** Barra «Editar» abierta (PDF-130). Como «Comentar», no se guarda entre sesiones. */
+  readonly editBarOpen: boolean;
   /** Sube cuando cambian las anotaciones de una página (para redibujar). */
   readonly pageVersion: ReadonlyMap<number, number>;
 }
@@ -122,6 +130,7 @@ export function initialAnnotationState(): AnnotationState {
     fontSize: DEFAULT_FONT_SIZE,
     author: DEFAULT_AUTHOR,
     commentBarOpen: false,
+    editBarOpen: false,
     pageVersion: new Map(),
   };
 }

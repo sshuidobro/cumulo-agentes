@@ -380,6 +380,17 @@ export function IconWarning() {
   );
 }
 
+/** Imagen con montaña y sol: «Añadir imagen» (PDF-130). */
+export function IconPageImage() {
+  return (
+    <Svg>
+      <rect x="3" y="4" width="14" height="12" rx="1.5" />
+      <path d="M4 14l3.5-3.5 2.5 2.5 2-2L16 14" />
+      <circle cx="13" cy="7.5" r="1.2" />
+    </Svg>
+  );
+}
+
 export function IconSignature() {
   return (
     <Svg>
