@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -44,3 +44,35 @@ Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias p
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/iteration4-performance.spec.ts` (nuevo), `apps/lector-pdf/tests/e2e/iteration4-a11y.spec.ts` (nuevo), `apps/lector-pdf/tests/support/interop-samples.ts` (tres muestras cifradas). `iteration4-flow.spec.ts` ya existía (PDF-126) y pasa sin cambios.
+- Qué he hecho: (1) flujo E2E verificado: pasa; `qpdf --check` sobre el guardado. (2) Perf de (a) a (c) en `iteration4-performance.spec.ts`: cifrado AES-256 de 1 000 páginas con `qpdfEncrypt`, en un directorio temporal ASCII (la ruta con «≤» del título hacía que el selector de Chromium no abriera el fichero). (3) Accesibilidad: 6 vistas × 2 temas = 12 comprobaciones de axe, todas en verde. (4) `interop:samples` añade `cifrado-anotado-aes256.pdf`, `cifrado-anotado-rc4.pdf` (RC4 128 con `--allow-weak-crypto`, necesario en qpdf) y `cifrado-formulario.pdf`; `qpdf --check --password=usuario` = 0 en las tres.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf e2e` sobre `chromium` (todas las no @perf): **310 pasan, 0 fallos** (incluye `iteration4-flow` 1/1 y `iteration4-a11y` 12/12).
+  - `e2e --project=chromium-perf --no-deps` (todas las @perf): **33 pasan, 1 falla**: la (a) de `iteration4-performance`. Las de PDF-022, PDF-039, PDF-050, PDF-090 y PDF-095 pasan.
+  - `pnpm --filter lector-pdf typecheck`: 0. `eslint --max-warnings 0` sobre los ficheros de esta ficha: 0. `pnpm lint` de la raíz **falla** por `apps/lector-pdf/dist-e2e-full/` (salida de build de otra ejecución en curso que ESLint recorre); no es de esta ficha.
+  - `pnpm coverage`: 0. Líneas 98,33 %, sentencias 95,04 %, ramas 89,74 %, funciones 97,9 %.
+  - `pnpm --filter lector-pdf build`: 0. Arranque 591 191 bytes de 600 000: no hace falta diferir `@noble/*`.
+  - Repeticiones `--repeat-each=3`: **no lanzadas**, porque (a) está en rojo.
+- Medidas (ms; presupuesto; valor en una ronda de `chromium-perf`; entre paréntesis, la ronda anterior):
+
+| Medida | Presupuesto | Valor |
+|---|---|---|
+| (a) abrir `pages-1000.pdf` sin cifrar, ×3 | — | 1036, 437, 435 (mediana 437) (479 en la otra ronda) |
+| (a) abrir cifrado AES-256, ×3 | — | 1452, 886, 1361 (mediana 1361) (1424) |
+| (a) razón de medianas cifrado / sin cifrar | ≤ 1,5 | **3,12** (2,98) → **FALLA** |
+| (b) guardar una nota en el cifrado | < 2 000 | 98 (96) |
+| (c) cambio de pestaña, p95 de 20 cambios | ≤ 500 | 92; long tasks 0 |
+| (c) cambio a doble página en el cifrado | ≤ 200 | 190 (154) |
+| Long tasks en el cambio de pestaña | ≤ 200 | 0 |
+
+- Causa de (a), medida aparte: el cifrado tarda ~440 ms hasta que aparece «Contraseña necesaria» (la app abre el fichero sin contraseña primero) y ~400 ms más tras escribirla (abrirlo y pintar p1). Un sin cifrar tarda ~440 ms en total. Si el reloj empezara al aparecer el diálogo, la razón sería ~0,9. Medir así es una decisión de criterio, no la tomo yo.
+- Dudas o cosas que no he podido hacer:
+  1. **Pregunta para el líder**: ¿se optimiza el flujo de contraseña para no abrir el documento dos veces (cambio de producto, PDF-046), o se cambia la definición de la medida (p. ej. desde que aparece el diálogo)? Hasta decidirlo, la ficha queda `bloqueada`.
+  2. Las repeticiones ×3 no están hechas (ver arriba).
+  3. Lista manual para Adobe (para el Manual; las muestras están en `apps/lector-pdf/interop-samples/`, sin versionar). Contraseña de usuario en las tres: «usuario».
+     - `cifrado-anotado-aes256.pdf` (AES-256): resaltado, nota, subrayado, tachado, texto libre, tinta y dos firmas (dibujada e imagen). Comprobar: pide contraseña; las anotaciones se ven y se pueden seleccionar; no hay aviso de reparación.
+     - `cifrado-anotado-rc4.pdf` (RC4 128 bits): el mismo contenido. Comprobar lo mismo.
+     - `cifrado-formulario.pdf` (AES-256): `form-full.pdf` relleno con los valores del criterio 1 de PDF-042. Comprobar: los campos muestran sus valores.
+  4. No he tocado ficheros de PDF-127 (`App.tsx`, `DocumentMenu.tsx`, `OrganizeToolbar.tsx`, `messages-organize.ts`, `extract-actions.ts`), que tienen cambios sin confirmar de otro agente. Tampoco los cambios sin confirmar de PDF-126 y PDF-145 en la bóveda.
