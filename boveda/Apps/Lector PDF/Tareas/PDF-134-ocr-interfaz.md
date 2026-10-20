@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-134
 titulo: OCR - diálogo «Reconocer texto», progreso y guardado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-061, PDF-133, PDF-132]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, ocr, ui]
 ---
 
