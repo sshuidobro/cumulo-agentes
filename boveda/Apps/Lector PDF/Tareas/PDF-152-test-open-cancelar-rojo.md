@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-152
 titulo: Arreglar el test rojo «Cancelar aborta la carga» de open.test.tsx
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, pruebas-calidad]
@@ -33,3 +33,5 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] · Origen: commit b0ec064 (PDF-148); detecta
 
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 Sin problemas. El commit a6e5842 solo toca el helper `holdLoad` (una línea: si la señal ya está abortada, resuelve `cancelled`, igual que `engine/load.ts:72`). Las expectativas del test no cambian, no hay skip ni `.only`. `open.test.tsx` pasa 10/10.
+
+- Tester: PASA (cobertura 4059 tests OK, lint y typecheck verdes). Hecha.
