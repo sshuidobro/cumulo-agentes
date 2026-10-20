@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-149
 titulo: Texto libre sin borde (campo borderless en el modelo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica]
@@ -56,3 +56,8 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 6) · Decisiones: [[ADR-0036-ana
 - Qué he hecho: campo `borderless?: true` en `FreeTextAnnotation` con validación `isBorderlessValid` (solo texto libre) y su uso en `isAnnotation`; `NewFreeTextInput.borderless` que se copia solo si es `true`; `freeTextDrawing` y `FreeTextShape` omiten el borde si `borderless`. Casos nuevos en los tests existentes (sin tocar los previos).
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK (tras corregir tipado en un test de borrador); `pnpm coverage` código 0, 307 ficheros y 3981 tests pasados, líneas 98,33 %.
 - Dudas o cosas que no he podido hacer: ninguna.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- lint, typecheck y coverage con código 0 (líneas 98,33 
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- lint, typecheck y coverage con código 0 (líneas 98,33 %). Todos los criterios cubiertos con tests que fallarían si se rompen; sin cambios fuera de alcance. 0 problemas.
