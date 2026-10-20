@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-117
 titulo: Comparar - páginas lado a lado con cambios resaltados y superposición
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-112]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, comparar, ui]
 ---
 
@@ -46,3 +46,9 @@ Al seleccionar un cambio, la vista de comparación pinta la página de cada docu
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/ui/compare/ComparePages.tsx` (nuevo), `apps/lector-pdf/src/ui/compare/ComparePages.module.css` (nuevo), `apps/lector-pdf/src/ui/compare/CompareView.tsx` y `.module.css`, `apps/lector-pdf/src/core/compare/marks.ts` y `change-index.ts` (nuevos), `apps/lector-pdf/src/ui/messages-compare.ts`, `apps/lector-pdf/src/ui/theme.css`, tests `apps/lector-pdf/tests/unit/compare/marks.test.ts`, `apps/lector-pdf/tests/ui/compare-pages.test.tsx`, `apps/lector-pdf/tests/e2e/compare.spec.ts`.
+- Qué he hecho: la vista de comparación pinta el cambio seleccionado en dos columnas (lienzo + capa de texto oculta para medir; resaltados rojo/verde/amarillo por palabra) o en superposición (`difference` sobre un lienzo visible, con B dibujada fuera del DOM). Botones «Cambio anterior/siguiente» y Alt+Flecha arriba/abajo; selector «Lado a lado / Superposición» con `aria-pressed`. Cada selección nueva cancela el dibujo anterior (`AbortController`) y libera los lienzos.
+- Comandos ejecutados y resultado: `pnpm install` (el worktree no tenía `node_modules`); `pnpm lint` limpio; `pnpm typecheck` sin errores; `pnpm coverage` exit 0, sin tests fallidos (Statements 95,23 %, Lines 98,49 %); E2E `compare.spec.ts` en `chromium` 5/5 y `@perf` en `chromium-perf` 1/1 (la primera vez falló por «máquina no está en reposo» con otra batería en marcha; en la repetición pasó). Full `pnpm --filter lector-pdf e2e`: 300 pasadas y 2 fallos en `chromium-perf` (export «Cancelar» a mitad; viewer «scroll continuo»): uno por «máquina no está en reposo» y el otro por `toBeHidden` con la CPU ocupada por otras sesiones; repetidos a solas, los dos pasan.
+- Dudas o cosas que no he podido hacer: (1) la escala del lienzo usa `planCanvas` (tope de píxeles y de `devicePixelRatio`) en vez de `printScale`, que está pensado para DPI de impresión; mismo resultado práctico, avísame si se quiere `printScale`. (2) Cualquier cambio de selección vuelve a dibujar la página aunque sea la misma (la clave es el índice del cambio), para cumplir «cambiar de selección cancela el anterior». (3) Los resaltados solo se muestran en lado a lado; la superposición no los dibuja. (4) E2E: el servidor de pruebas usa `LECTOR_E2E_PORT` porque el puerto 4173 lo usaba otra sesión.

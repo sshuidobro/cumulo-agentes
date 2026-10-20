@@ -13,6 +13,10 @@
   --color-focus: #0a58ca;
   --color-viewer-bg: #d1d1d6;
   --color-danger: #b3261e;
+  /* Resaltados de la comparación (PDF-117): eliminado, añadido y sustituido; se pintan al 35 %. */
+  --compare-removed: #d93025;
+  --compare-added: #188038;
+  --compare-replaced: #f9ab00;
   /* Papel de las páginas (no cambia con el tema) y su texto secundario (número de página). */
   --color-paper: #ffffff;
   --color-paper-text: #55555c;
@@ -36,6 +40,9 @@
     --color-focus: #7cb8ff;
     --color-viewer-bg: #111113;
     --color-danger: #ff8a80;
+    --compare-removed: #f28b82;
+    --compare-added: #81c995;
+    --compare-replaced: #fdd663;
     --form-highlight: rgb(204 215 255 / 55%);
     --shadow-page: 0 1px 3px rgb(0 0 0 / 0.7);
   }
@@ -54,6 +61,9 @@
   --color-focus: #7cb8ff;
   --color-viewer-bg: #111113;
   --color-danger: #ff8a80;
+  --compare-removed: #f28b82;
+  --compare-added: #81c995;
+  --compare-replaced: #fdd663;
   --form-highlight: rgb(204 215 255 / 55%);
   --shadow-page: 0 1px 3px rgb(0 0 0 / 0.7);
 }
@@ -71,6 +81,10 @@
   --color-focus: #0a58ca;
   --color-viewer-bg: #d1d1d6;
   --color-danger: #b3261e;
+  /* Resaltados de la comparación (PDF-117): eliminado, añadido y sustituido; se pintan al 35 %. */
+  --compare-removed: #d93025;
+  --compare-added: #188038;
+  --compare-replaced: #f9ab00;
   --form-highlight: rgb(204 215 255 / 55%);
   --shadow-page: 0 1px 3px rgb(0 0 0 / 0.3);
 }
