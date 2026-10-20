@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-127
 titulo: Extraer y dividir - diálogos, progreso y guardado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-054, PDF-126, COM-018]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -84,3 +84,9 @@ export function cancelDocOp(): void;
   2. Los huecos «imported» (PDF-128, aún no implementada) deshabilitan «Extraer» igual que los «blank», no solo los en blanco que pide la ficha.
   3. El progreso reutiliza `organizeMsg.progressExtract` («Copiando páginas: X de Y…») también para dividir.
   4. Los fallos del `tsc` y los ficheros `tests/e2e/iteration4-*.spec.ts` y `zz-debug-tmp.spec.ts` no son de esta ficha; no los he tocado.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+Lint y typecheck sin errores; 22 tests unit/UI y 6 e2e de la ficha en verde. Criterios cubiertos y sin salirse del alcance.
+1. (opcional) `src/state/extract-actions.ts` / `OrganizeToolbar.tsx` — el extraer desde Organizar ignora los giros del plan (duda 1 del programador): el líder debería decidir si la op `extract` de PDF-054 acepta giros (ficha aparte).
+2. (opcional) `progressExtract` se reutiliza para dividir: texto propio «Dividiendo…» sería más claro.
+3. (opcional) `OrganizeToolbar.tsx:42` — los huecos `imported` también deshabilitan «Extraer»; revisar al llegar PDF-128.

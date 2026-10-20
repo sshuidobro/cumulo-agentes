@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-145
 titulo: Editar texto - aplicar las líneas editadas y operaciones del Worker (núcleo)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-144]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -61,16 +61,16 @@ export async function buildTextEditUpdate(input: EditTextInput): Promise<Result<
 5. Tests `tests/unit/edit-text/apply.test.ts` (pdf.js `loadPdf` en Node, `qpdfCheck` y `run` de `tests/support/qpdf.ts`, `pdftotext` por `node:child_process`) y `tests/unit/doc-ops/edit-text-op.test.ts`.
 
 ## Criterios de aceptación
-- [ ] **Criterio original**: `basic-5.pdf`, página índice 1, `hint` `[71, 674, 500, 687]`, texto «Texto de búsqueda en la hoja dos.» → op `'edit-text'`; `pdftotext` de la página 2 contiene «Texto de búsqueda en la hoja dos.» y no «la página dos»; la salida de `qpdf --qdf --object-streams=disable` no contiene `gina dos`.
-- [ ] pdf.js `getTextContent()` de la página 2: el ítem nuevo tiene `transform[4]` = 72 ± 0,5, `transform[5]` = 676 ± 0,5 y altura 18 ± 0,1; los ítems de las líneas 720 y 698 conservan su `transform` exacto; `getAnnotations()` igual que antes.
-- [ ] La página 2 tiene en `/Resources /Font` un `SuiteEd` con `/BaseFont /Helvetica`; dos ediciones en páginas 1 y 3 con la misma fuente → un solo objeto de fuente nuevo en el fichero.
-- [ ] Texto `''` → la línea desaparece de `pdftotext` y no se escribe `BT` nuevo.
-- [ ] Color: línea con `0 0 1 rg` → el contenido nuevo tiene `0 0 1 rg` antes de su `Tj`. Fuente `Georgia-Bold` → recurso con `/BaseFont /Times-Bold`.
-- [ ] «Hola 😀» → `edit-text-invalid` y nada escrito; `hint` que ya no tiene texto → `edit-line-missing`.
-- [ ] `encrypted-aes-256.pdf` (`usuario`) → resultado cifrado, abre con `usuario`, contiene el texto nuevo y no el viejo; `qpdf --check --password=usuario` 0.
-- [ ] El resultado es una reescritura completa (una sola xref, sin `/Prev`); `qpdf --check` 0 en todos los casos.
-- [ ] `'edit-text-probe'` sobre la línea de `basic-5.pdf` → `{ line }` con `origin` `[72, 676]`; sobre una zona vacía → `{ issue: 'no-text' }`.
-- [ ] Cobertura ≥ 90 % en `src/core/edit-text/apply.ts` y `src/core/doc-ops/ops/edit-text.ts`. `pnpm lint && pnpm typecheck && pnpm coverage` con código 0.
+- [x] **Criterio original**: `basic-5.pdf`, página índice 1, `hint` `[71, 674, 500, 687]`, texto «Texto de búsqueda en la hoja dos.» → op `'edit-text'`; `pdftotext` de la página 2 contiene «Texto de búsqueda en la hoja dos.» y no «la página dos»; la salida de `qpdf --qdf --object-streams=disable` no contiene `gina dos`.
+- [x] pdf.js `getTextContent()` de la página 2: el ítem nuevo tiene `transform[4]` = 72 ± 0,5, `transform[5]` = 676 ± 0,5 y altura 18 ± 0,1; los ítems de las líneas 720 y 698 conservan su `transform` exacto; `getAnnotations()` igual que antes.
+- [x] La página 2 tiene en `/Resources /Font` un `SuiteEd` con `/BaseFont /Helvetica`; dos ediciones en páginas 1 y 3 con la misma fuente → un solo objeto de fuente nuevo en el fichero.
+- [x] Texto `''` → la línea desaparece de `pdftotext` y no se escribe `BT` nuevo.
+- [x] Color: línea con `0 0 1 rg` → el contenido nuevo tiene `0 0 1 rg` antes de su `Tj`. Fuente `Georgia-Bold` → recurso con `/BaseFont /Times-Bold`.
+- [x] «Hola 😀» → `edit-text-invalid` y nada escrito; `hint` que ya no tiene texto → `edit-line-missing`.
+- [x] `encrypted-aes-256.pdf` (`usuario`) → resultado cifrado, abre con `usuario`, contiene el texto nuevo y no el viejo; `qpdf --check --password=usuario` 0.
+- [x] El resultado es una reescritura completa (una sola xref, sin `/Prev`); `qpdf --check` 0 en todos los casos.
+- [x] `'edit-text-probe'` sobre la línea de `basic-5.pdf` → `{ line }` con `origin` `[72, 676]`; sobre una zona vacía → `{ issue: 'no-text' }`.
+- [x] Cobertura ≥ 90 % en `src/core/edit-text/apply.ts` y `src/core/doc-ops/ops/edit-text.ts`. `pnpm lint && pnpm typecheck && pnpm coverage` con código 0.
 
 ## Fuera de alcance
 - Interfaz ([[PDF-146-editar-texto-estado]], [[PDF-147-editar-texto-interfaz]]). Reflujo, fuente original, editar texto dentro de Form XObjects o girado.
@@ -83,3 +83,16 @@ export async function buildTextEditUpdate(input: EditTextInput): Promise<Result<
 - Qué he hecho: `buildTextEditUpdate` agrupa ediciones por página, localiza cada línea con `locateLine`, quita sus glifos con `removeGlyphs` y escribe un único `/Contents` Flate con el texto nuevo (fuente estándar compartida por incremento, `SuiteEd` por página). Ops `edit-text-probe` y `edit-text` (reescritura completa con `keepEncryption`). Un `RangeError` se propaga sin convertirlo en error de usuario.
 - Comandos ejecutados y resultado: `pnpm lint` OK. `pnpm typecheck` OK en `apps/lector-pdf`. `pnpm coverage`: 299 ficheros y 3889 tests en verde; `edit-text/apply.ts` 97,4 % líneas / 91,9 % ramas; `doc-ops/ops/edit-text.ts` 100 % líneas / 94,3 % ramas. No he ejecutado `qpdf` fuera de los tests (los tests lo usan y pasan).
 - Dudas o cosas que no he podido hacer: en el árbol de trabajo hay cambios ajenos sin commitear (`OrganizeView`, `OrganizeCell`, `grid.ts`, `PDF-126`) que en un momento hicieron fallar `typecheck` (`OrganizeView.tsx`, `onPointerDown`); no los he tocado y el commit incluye solo mis ficheros. Los criterios de aceptación están cubiertos por los tests, pero las casillas de la ficha no las he marcado (lo hará el tester). Caso «ediciones con página sin diccionario» cubierto solo de forma parcial (rama `PdfSyntaxError`).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint, typecheck y los 67 tests de edit-text/op en verde. La cobertura (97,4 % y 100 %) la reporta el programador con la suite completa.
+- `apply.ts` sigue la ficha: validación con `RangeError`, un objeto de fuente por incremento, `SuiteEd` por página, un único flujo Flate, delta vacío sin ediciones y cancelación entre páginas.
+- (opcional) `apply.ts:105`: la comprobación de área 0 no detecta una caja con ancho o alto negativo; no bloquea.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Todos los criterios de aceptación (original, posición/transform, SuiteEd y fuente única, texto vacío, color/Georgia-Bold, errores, AES-256, reescritura completa, probe) | OK | `apply.test.ts` y `edit-text-op.test.ts` en verde, con `qpdf`/`pdftotext` reales |
+| Lint, typecheck, `pnpm coverage` | OK | código 0; global 98,33 % líneas; `apply.ts` 97,4 %, `ops/edit-text.ts` 100 % |
+
+Tests añadidos: ninguno (los existentes cubren cada criterio). Rendimiento: no aplica. Observación no bloqueante del revisor: `hint` con ancho o alto negativo no se rechaza.

@@ -3,8 +3,8 @@ tipo: tarea
 id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
-estado: bloqueada
-depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142]
+estado: pendiente
+depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
@@ -14,7 +14,7 @@ tags: [tarea, pdf, iteracion-4, e2e, rendimiento, accesibilidad]
 
 # PDF-099 · E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0016-e2e-long-tasks-en-serie]] · [[ADR-0022-pdf-cifrados]] · [[ADR-0023-pestanas-y-recientes]] · [[ADR-0024-modos-de-pagina]] · [[ADR-0025-lienzo-de-detalle]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0016-e2e-long-tasks-en-serie]] · [[ADR-0022-pdf-cifrados]] · [[ADR-0023-pestanas-y-recientes]] · [[ADR-0024-modos-de-pagina]] · [[ADR-0025-lienzo-de-detalle]] · [[ADR-0043-contrasena-sin-reabrir]]
 
 ## Objetivo
 Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias pestañas, modos de vista, zoom alto, anotar, guardar, reabrir desde recientes) estable, presupuestos sin regresión, accesibilidad sin incidencias graves y muestras cifradas para comprobar en Adobe.
@@ -25,7 +25,7 @@ Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias p
 
 ## Qué hay que hacer
 1. `tests/e2e/iteration4-flow.spec.ts`: abrir `encrypted-aes-256.pdf` (contraseña «usuario») y `basic-5.pdf` desde OPFS (dos pestañas); en el cifrado, «Doble página», resaltar texto de la p2 y añadir una nota; cambiar a `basic-5.pdf`, zoom 3 200 % y volver a 100 %; volver al cifrado: el resaltado sigue sin guardar; Ctrl+S; cerrar ambas pestañas; reabrir el cifrado desde «Recientes» → pide contraseña, abre en la página donde estaba y muestra las anotaciones; `qpdf --check --password=usuario` del descargado con código 0.
-2. `tests/e2e/iteration4-performance.spec.ts` (`@perf`): (a) abrir un cifrado AES-256 de 1 000 páginas (generado con `qpdfEncrypt` sobre el fixture de rendimiento) hasta la p1 pintada ≤ 1,5 × el tiempo del mismo sin cifrar; (b) guardar una anotación en él < 2 s; (c) cambio de pestaña (de PDF-095) y modos (de PDF-050) siguen en presupuesto; (d) los presupuestos de PDF-022, PDF-039 y PDF-090 siguen en verde (no se tocan sus pruebas).
+2. `tests/e2e/iteration4-performance.spec.ts` (`@perf`): (a) abrir un cifrado AES-256 de 1 000 páginas (generado con `qpdfEncrypt` sobre el fixture de rendimiento) hasta la p1 pintada ≤ 1,5 × el tiempo del mismo sin cifrar, restando el intervalo en que el diálogo de contraseña espera al usuario (de visible a clic en «Abrir»; [[ADR-0043-contrasena-sin-reabrir]], la medida la deja hecha [[PDF-148-contrasena-sin-reabrir|PDF-148]]); (b) guardar una anotación en él < 2 s; (c) cambio de pestaña (de PDF-095) y modos (de PDF-050) siguen en presupuesto; (d) los presupuestos de PDF-022, PDF-039 y PDF-090 siguen en verde (no se tocan sus pruebas).
 3. `tests/e2e/iteration4-a11y.spec.ts`: axe (`serious`/`critical` = 0) con: diálogo de contraseña (con error), barra de pestañas con 3 documentos, menú «Vista», menú «Abrir recientes», propiedades › Seguridad, pantalla completa; en tema claro y oscuro.
 4. `pnpm --filter lector-pdf interop:samples` añade `cifrado-anotado-aes256.pdf` y `cifrado-anotado-rc4.pdf` (contraseña «usuario», con resaltado, nota y firma) y `cifrado-formulario.pdf` (`form-full.pdf` cifrado y relleno) en `apps/lector-pdf/interop-samples/` (ignorada por git); el Registro incluye la lista manual para Adobe (el líder la copia al Manual).
 5. Repetir: `e2e --project=chromium --repeat-each=3` y `e2e --project=chromium-perf --no-deps --repeat-each=3`.
@@ -76,3 +76,8 @@ Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias p
      - `cifrado-anotado-rc4.pdf` (RC4 128 bits): el mismo contenido. Comprobar lo mismo.
      - `cifrado-formulario.pdf` (AES-256): `form-full.pdf` relleno con los valores del criterio 1 de PDF-042. Comprobar: los campos muestran sus valores.
   4. No he tocado ficheros de PDF-127 (`App.tsx`, `DocumentMenu.tsx`, `OrganizeToolbar.tsx`, `messages-organize.ts`, `extract-actions.ts`), que tienen cambios sin confirmar de otro agente. Tampoco los cambios sin confirmar de PDF-126 y PDF-145 en la bóveda.
+
+### [lider] replanificación — 2026-10-20
+- Decisión: se **optimiza** el flujo ([[ADR-0043-contrasena-sin-reabrir]]): la contraseña se pide sobre la misma carga de pdf.js (`loadingTask.onPassword`), sin segundo `getDocument`. Ficha nueva [[PDF-148-contrasena-sin-reabrir]]; esta depende de ella.
+- La medida (a) se precisa (no se relaja): se resta el tiempo en que el diálogo espera al usuario. Presupuesto sigue ≤ 1,5 ×.
+- Al retomar: lo ya hecho (flow, a11y, muestras, perf b-c) se conserva; falta (a) en verde, las repeticiones ×3 y `pnpm lint` de la raíz (si `dist-e2e-full/` sigue apareciendo, comprobar que está en los `ignores` de ESLint; si no, añadirlo).
