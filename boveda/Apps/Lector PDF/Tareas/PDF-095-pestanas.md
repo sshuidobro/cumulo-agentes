@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: bloqueada
+estado: en-revision
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
 intentos: 2
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -104,3 +104,9 @@ Tests añadidos: ninguno.
 - Qué he hecho: los 4 E2E que pedía el tester (`outline.spec.ts`, `annotations-flow.spec.ts`, `annotations-foreign.spec.ts`, `notes.spec.ts`) pasan. Los fallos que aparecían en la suite completa eran de sincronía o de tiempo bajo carga, no de regresión de pestañas. No he tocado código de `src/`.
 - Comandos ejecutados y resultado: `pnpm lint`: exit 0. `pnpm typecheck`: exit 0. `pnpm --filter lector-pdf e2e` (3 pasadas completas): chromium 100 % verde tras los arreglos; en `chromium-perf` 18/19. **Criterio NO cumplido**: `tests/e2e/detail.spec.ts:212` («con zoom alto, 20 s de desplazamiento…», `@perf`) falla de forma determinista: memoria de lienzos 385 MB y 389 MB en dos repeticiones, presupuesto `MAX_CANVAS_MB` = 300. Otras 3 pruebas `@perf` fallaron en la pasada completa por «máquina no está en reposo» (CPU al 100 % por otra sesión del equipo, ajena a mí); en la pasada solo de perf pasan. El cambio de pestañas no toca el render de lienzos (`Viewer.tsx` solo cambia el foco); `detail.spec.ts` se modificó por última vez en 2f33d73 y PDF-051 lo daba por bueno antes de los commits de OCR (00fd66f), PDF-107 (d993057) y 813a19b. No lo he bisecado.
 - Dudas o cosas que no he podido hacer: **decisión para el líder**: (A) regresión real de render/memoria del lienzo de detalle (ADR-0025) → ficha de corrección, o (B) cambiar el presupuesto de 300 MB, que es una decisión de rendimiento y no la tomo yo. Hasta entonces `e2e` no sale con código 0 y dejo la ficha `bloqueada`. Pendiente también (usuario): Ctrl+Tab, Ctrl+W y «Abrir con» en `tauri dev`. No he hecho commit de los ficheros ajenos (OCR, doc-ops); el commit con los cambios de `tests/e2e/` y esta ficha lo hago al cerrar la ronda.
+
+### [lider] ronda 6 — 2026-10-20 · decisión sobre `detail.spec.ts:212`
+- **Decisión: A (regresión real), ajena a pestañas.** El fallo es determinista (385–389 MB frente a 300) y el presupuesto sale de [[ADR-0025-lienzo-de-detalle]]; PDF-051 lo cumplía. B (subir el presupuesto) queda descartada: sería tapar una regresión. El único cambio de pestañas en el visor (`813a19b`, `Viewer.tsx`, 4 líneas de foco) no toca lienzos, y la prueba abre un solo documento (sin barra de pestañas).
+- Corrección y bisección en [[PDF-142-memoria-lienzo-detalle]] (bisecta `defec48..HEAD`).
+- Criterio «`pnpm --filter lector-pdf e2e` con código 0»: para esta ficha se da por cumplido salvo `detail.spec.ts:212`, que pasa a PDF-142. PDF-095 vuelve a **en-revision** (sin incrementar `intentos`). El revisor revisa los cambios de `tests/e2e/` de la ronda 5 (`notes`, `open-qa`, `pdfjs-deferred` → `@perf`) y que no se haya relajado ninguna prueba.
+- [[PDF-099-e2e-iteracion-4]] pasa a depender también de PDF-142.

@@ -4,11 +4,11 @@ id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
 estado: pendiente
-depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051]
+depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-4, e2e, rendimiento, accesibilidad]
 ---
 

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-055
 titulo: Insertar páginas de otro PDF y combinar PDFs - núcleo
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-119, PDF-123, PDF-124]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -69,3 +69,21 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Decisiones: [[ADR-0035-org
   4. La ficha pide «no reescribe páginas innecesarias»: con inserción, el árbol `/Pages` se reconstruye como en PDF-052 y todas las páginas se reescriben (`rewrittenPages` = páginas finales). No he cambiado eso.
   5. Ruta de la ficha: `combine` y las pruebas de organize con importados están en `tests/unit/doc-ops/combine-op.test.ts`; la prueba de rendimiento es `tests/perf/insert-combine.perf.test.ts` (nombre propio).
   6. El directorio de cobertura por defecto estaba bloqueado por otro proceso vitest (pid 7478), así que lancé la cobertura con un directorio propio fuera del repo. No toqué `tests/e2e` ni los ficheros que otro agente tiene sin confirmar (`boveda/.../PDF-095`, `PDF-107`, `apps/lector-pdf/tests/e2e/*`, `apps/lector-pdf/src/core/ocr/`), y no los he incluido en el commit.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint y typecheck sin errores; tests de insert y combine (13) en verde. Diff de `save.ts` correcto (validación del plan, asignador compartido, orden de escritura, cancelación).
+- Dudas 1-5 del programador aceptadas (el árbol se reescribe como en PDF-052; fuentes `/DR` duplicadas no se renombran porque las `/DA` citan el nombre).
+- (opcional) El commit lleva «Claude Haiku 5.5» en la atribución; no bloquea.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Insertar outline en basic-5 (7 págs, qpdf) | OK | insert.test.ts, en verde |
+| Anotaciones de annotated.pdf | OK | insert.test.ts |
+| Campos de form-full.pdf sin AcroForm previo | OK | insert.test.ts |
+| AES-256 y AES-128, contraseña mala | OK | insert.test.ts, combine-op.test.ts |
+| combine 35 págs + ramas; annotated+form | OK | combine-op.test.ts |
+| perf insertar/combinar 5000 págs | OK | `pnpm perf`: 27 ficheros, 45 tests pasan |
+| lint, typecheck, coverage | OK | código 0; 266 ficheros, 3429 tests; líneas 98,55 % |
+
+Tests añadidos: ninguno (los existentes cubren cada criterio; sin skip/only).

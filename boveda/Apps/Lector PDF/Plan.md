@@ -4,7 +4,7 @@ app: pdf
 estado: en-curso
 iteracion: 3
 creado: 2026-10-17
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [plan, pdf]
 ---
 
@@ -224,14 +224,14 @@ Orden (sin dos fichas en paralelo sobre el mismo fichero): **ola A** en paralelo
 | [[PDF-094-sesiones-de-documento]] | Sesiones de documento - núcleo de pestañas (suspender y reanudar) | PDF-090, PDF-046 | pendiente |
 | [[PDF-100-pestanas-historial-busqueda-posicion]] | Pestañas - historial, búsqueda, posición y panel lateral por documento | PDF-094 | pendiente |
 | [[PDF-101-pestanas-anotaciones-formularios-borradores]] | Pestañas - anotaciones, formularios y borradores por documento | PDF-094, PDF-048 | pendiente |
-| [[PDF-095-pestanas]] | Barra de pestañas y atajos para varios documentos | PDF-100, PDF-101, PDF-049, PDF-097 | pendiente |
+| [[PDF-095-pestanas]] | Barra de pestañas y atajos para varios documentos | PDF-100, PDF-101, PDF-049, PDF-097 | en-revision |
 | [[PDF-096-layout-doble-pagina]] | Layout de doble página (pares y con portada) | — | pendiente |
 | [[PDF-102-modo-de-vista-estado]] | Modo de vista - estado, preferencia y navegación por filas | PDF-096 | pendiente |
 | [[PDF-050-modos-de-pagina]] | Modos de página en el visor y menú «Vista» | PDF-102, PDF-049 | pendiente |
 | [[PDF-097-pantalla-completa]] | Modo pantalla completa (lectura y presentación) | PDF-050, COM-017 | pendiente |
 | [[PDF-098-plan-lienzo-detalle]] | Zoom hasta 6 400 % y cálculo de la zona de detalle | — | pendiente |
 | [[PDF-051-lienzo-de-detalle]] | Lienzo de detalle para zoom alto | PDF-098, PDF-050 | pendiente |
-| [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051 | pendiente |
+| [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142 | pendiente |
 
 Orden: pueden adelantarse durante la it. 3 (núcleo puro o paquetes sin choques): PDF-096, PDF-098, PDF-091 (tras PDF-040), PDF-092, PDF-102, COM-015 → COM-016 → COM-017 (tras COM-014; las cuatro de Comun tocan `types.ts` y van en serie). Tras PDF-090: PDF-093 ∥ PDF-046 ∥ PDF-049 → PDF-047 ∥ PDF-048 (tras PDF-046) ∥ PDF-050 (tras PDF-049) → PDF-094 ∥ PDF-097 ∥ PDF-051 → PDF-100 ∥ PDF-101 → PDF-095 → PDF-099.
 
@@ -297,6 +297,7 @@ Detalladas el 2026-10-19 ([[ADR-0028-reescribir-pdfs]] a [[ADR-0040-firma-digita
 | [[PDF-067-leer-en-voz-alta]] | Leer en voz alta - frases, voces y motor de lectura | PDF-022 | hecha |
 | [[PDF-114-leer-en-voz-alta-interfaz]] | Leer en voz alta - menú, barra de lectura, atajos y resaltado de la frase | PDF-067, PDF-050, PDF-051, PDF-112 | pendiente |
 | [[PDF-141-e2e-rojos-en-head]] | Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD (prioritaria, accionable ya) | — | pendiente |
+| [[PDF-142-memoria-lienzo-detalle]] | Regresión de memoria del lienzo de detalle con zoom alto (385 MB > 300 MB); bisectar y corregir (accionable ya) | — | pendiente |
 
 **Orden y paralelo.** Ya accionables en paralelo (sin choques de ficheros): **PDF-053**, **PDF-118**, **PDF-120**, **PDF-060**, **PDF-133** (además de las de formas, comparar, exportar y voz ya detalladas). Cadenas del núcleo: PDF-053 → PDF-119 → PDF-121 (con PDF-120) → PDF-122 → PDF-123 → PDF-054/PDF-055; PDF-060 + PDF-121 → PDF-131; PDF-059 → PDF-061 y PDF-062 → PDF-135 → PDF-136; PDF-066 → PDF-138. Las fichas de interfaz van **en serie** porque tocan `App.tsx`, `DocumentMenu.tsx` y `organizeMsg`: PDF-114 → PDF-125 → PDF-126 → PDF-127 → PDF-128 → PDF-129 → PDF-130 → PDF-132 → PDF-134 → PDF-137 → PDF-139. Todas las operaciones pesadas van en el Worker de [[PDF-118-worker-operaciones]] ([[ADR-0034-operaciones-en-worker]]).
 

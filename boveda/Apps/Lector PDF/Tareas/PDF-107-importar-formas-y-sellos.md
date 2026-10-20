@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-107
 titulo: Importar formas y sellos del fichero como editables
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-057, PDF-101, PDF-104]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, anotaciones]
 ---
 
@@ -77,3 +77,14 @@ export async function promoteShapes(reader: ObjectReader, page: ImportedPage, fa
 Lint y typecheck OK; tests de `tests/unit/annotations` 496 OK. Diff de `import-shapes.ts` y `annotations-import.ts` conforme a la ficha (promoción antes de `readStampNames`, sin lector no cambia, nunca lanza).
 Las 4 decisiones del programador se confirman (conservadoras, coherentes con ADR-0029: lo que no encaja sigue ajeno): `/Border` con patrón de trazo sigue ajena; `/BE` no diccionario sigue ajena; `/CA` se acota a [0,1] como `import.ts` (`clamp01`); `/CreationDate` inválida da `created: null` sin dejar la forma ajena.
 Los E2E fallidos en base (anotados por el programador) quedan para el tester con el mismo criterio.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint, typecheck, coverage | OK | lint/typecheck sin errores; coverage global líneas 98,63 % |
+| Cobertura `import-shapes.ts` ≥ 90 % | 99,26 % | `coverage-summary.json` |
+| Ida y vuelta, `annotated.pdf`, formas que siguen ajenas, mover + qpdf, sin lector | OK | tests de `import-shapes.test.ts` y `shapes-interop.test.ts` dentro de coverage verde |
+| `pnpm perf` | 43/43 OK | sin regresión en `annotations-import.perf` |
+| E2E | 259 OK, 6 fallos | 5 ya fallan en la base (annotations-flow, annotations-foreign, notes, outline, tabs); `render` «annotated» falló bajo carga y pasa aislado (1.0 s). 16 sin ejecutar por dependencia de proyecto. Ninguno relacionado con formas |
+Rendimiento: perf sin regresión. Tests añadidos: ninguno (los del programador cubren los criterios).
+Pendiente para la iteración 6: los 5 E2E rotos en base.

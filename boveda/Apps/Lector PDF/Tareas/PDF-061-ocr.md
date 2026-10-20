@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-061
 titulo: OCR - capa de texto invisible por incremento (núcleo)
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-059, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, ocr, nucleo]
 ---
 
@@ -73,3 +73,30 @@ export async function buildOcrUpdate(input: OcrLayerInput): Promise<Result<{ rea
 
 ### [líder] detalle — 2026-10-19
 - Ficha detallada con [[ADR-0038-ocr-local-tesseract]] (motor decidido por el líder: tesseract.js 7, local). Se parte en capa de texto (aquí), motor ([[PDF-133-ocr-motor]]) e interfaz ([[PDF-134-ocr-interfaz]]). El criterio original (escaneado de 3 páginas buscable, sin red) pasa a PDF-134.
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/ocr/text-layer.ts` (nuevo), `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (op `'ocr-layer'`), `apps/lector-pdf/tests/unit/ocr/text-layer.test.ts` (nuevo), `apps/lector-pdf/tests/unit/doc-ops/ocr-layer-op.test.ts` (nuevo).
+- Qué he hecho: `ocrOperators` (orientación según `rotate`, `3 Tr`, escala `Tz` acotada a [10, 1000], escape de `()\` y octal para bytes no ASCII) y `buildOcrUpdate` (una fuente Helvetica `HELV_FONT` por incremento, recurso `SuiteOcr` libre por página, páginas sin palabras omitidas, delta vacío si no hay nada). Op `'ocr-layer'` en `DOC_OPS` con fuente 0. Los criterios de aceptación tienen test: operadores, pdf.js (texto extraíble y cajas en rotación 0 y 90 con error ≤ 1 pt), qpdf con `encrypted-aes-256.pdf` y `usuario`, escapes y «?».
+- Comandos ejecutados y resultado: `pnpm lint` OK · `pnpm typecheck` OK · `pnpm coverage` exit 0 (todo el suite verde; 95,48 % sentencias globales) · `text-layer.ts`: 98,7 % líneas, 97,77 % sentencias.
+- Dudas o cosas que no he podido hacer:
+  - No he hecho commit: `apps/lector-pdf/src/core/doc-ops/ops/index.ts` contiene además cambios de otra ficha en curso (`organize` con `importedPasswords`, op de combinar); commitearlo entero mezclaría trabajo ajeno. Pendiente de commit cuando el líder lo coordine.
+  - Tomo tres decisiones no escritas en la ficha, para revisar: (1) índice repetido en `pages` → `organize-invalid` (evita escribir dos veces la misma página); (2) caja mal formada (x0 ≥ x1, y0 ≥ y1 o no finita) lanza `RangeError` dentro de `ocrOperators` (bug de quien prepara las palabras; `buildOcrUpdate` lo devuelve como `save-unreadable`); (3) sin `index.ts` en `core/ocr/` porque la ficha solo nombra `text-layer.ts`.
+  - El código `organize-invalid` dice «No se pueden reorganizar las páginas» y es confuso para OCR. Lo he usado porque la ficha lo pide; conviene un código propio (`ocr-invalid`) en una ficha posterior.
+  - No he tocado `tests/e2e`.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint, typecheck y tests de la ficha (30) en verde. Cumple criterios y las tres decisiones del programador son razonables. Sin problemas bloqueantes.
+- (opcional) Código propio `ocr-invalid` en lugar de `organize-invalid`, como ya apunta el programador.
+- Nota: el commit sigue pendiente (`ops/index.ts` mezcla trabajo de otra ficha).
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Operadores (rot 0 y 90) | OK | tests `text-layer.test.ts` en verde |
+| basic-5 + pdf.js texto / invisible | OK | idem |
+| Cajas ≤ 1 pt (0 y 90) | OK | idem |
+| AES-256 + qpdf | OK | idem |
+| WinAnsi «?» y escapes | OK | idem |
+| Cobertura, lint, typecheck | OK | `text-layer.ts` 98,7 % líneas; 266 ficheros / 3429 tests verdes; lint y typecheck sin errores |
+
+Tests añadidos: ninguno. Rendimiento: no aplica. Nota: `pnpm coverage` por defecto chocó con otro proceso vitest (directorio en uso); ejecutado con directorio propio.
