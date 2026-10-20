@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-135
 titulo: Redactar - aplicar (texto, imágenes enteras, anotaciones, página en imagen) y reescritura
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-062, PDF-131]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -76,3 +76,8 @@ export async function buildRedactionUpdate(input: RedactInput): Promise<Result<{
 - Qué he hecho: `planRedaction` y `buildRedactionUpdate` según la ficha; el texto se sustituye glifo a glifo por ajustes de `TJ`, las imágenes enteras y las anotaciones que tocan la zona salen, las páginas no medibles (fuente Type3, sin medir, contenido roto, formularios o imágenes que cruzan la zona) van como imagen. La op `redact` concatena el delta y reescribe con `rewriteDocument` conservando el cifrado.
 - Comandos y resultado: `pnpm typecheck` OK. `pnpm coverage` (con `--coverage.reportsDirectory` propio, porque otro vitest tenía el directorio `coverage/` bloqueado): 283 ficheros, 3697 tests OK, `apply.ts` 97,5 % líneas. `pnpm lint`: mis ficheros limpios; falla solo por `tests/unit/compare-actions.test.ts:2` (`OpenedFile` sin usar), fichero de otra ficha en curso que no he tocado.
 - Dudas o cosas que no he podido hacer: (1) `unmeasured` no tiene caja: en una página con zonas, cualquier operación no medida la convierte en imagen (conservador). (2) El contenido original va envuelto en `q`/`Q` antes de los rectángulos negros; si no, un `cm` del original desplazaría las zonas. (3) `annotated.pdf` no tiene nota `/Text`: uso el resaltado con su `/Popup` como «nota». (4) pdftotext elimina el espacio inicial de la línea: la comprobación de «de 5» va sobre el contenido (`Tj`/`TJ`). (5) Las imágenes parciales quedan como imagen (`partialImages: []`) hasta PDF-136. (6) No he hecho commit (lo pediste así).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm lint` y `pnpm typecheck` sin errores. Tests de redact y organize: 135 OK; `apply.ts` 97,5 % líneas (96 % sentencias).
+- Todos los criterios tienen test (basic-5, posición ±0,5 pt con pdf.js, imagen entera sin objeto, annotated, Type3 raster, AES-256, sin /Prev).
+- (opcional) `apply.ts` son 499 líneas; valorar partirlo cuando entre PDF-136.
