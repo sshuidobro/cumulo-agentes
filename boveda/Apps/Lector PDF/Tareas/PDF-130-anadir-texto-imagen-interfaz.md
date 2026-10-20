@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-130
 titulo: Añadir texto e imagen - barra «Editar» y herramientas
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-059, PDF-129, PDF-115, PDF-116, PDF-149]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -82,3 +82,18 @@ Un botón «Editar» en la barra principal abre la barra «Editar» con dos herr
 - E2E `exportar pages-5000 › «Cancelar» a mitad` verificado: falla igual en `81934f0` (sin PDF-130, worktree limpio) y en HEAD; es **real y preexistente** (el botón «Cancelar» del diálogo de progreso no llega a pulsarse), no flaky ni causado por esta ficha. Debe abrirse ficha propia en export; hasta entonces `e2e` no da código 0.
 - (opcional) El tema oscuro y Escape-sale-de-herramienta no tienen test E2E propio; el axe solo cubre el tema claro.
 - (opcional) Duda 2 del programador (clic de colocación deselecciona la firma/imagen) conviene anotarla como ficha aparte.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin avisos |
+| Coverage | OK | `pnpm coverage`: líneas 98,33 %, sin tests rojos |
+| E2E texto (guardar, buscar, copiar, no en comentarios) | OK | `edit-content.spec.ts` pasa |
+| E2E imagen (redimensionar, Ctrl+Z, guardar, no es anotación) | OK | ídem |
+| E2E recuperación tras recarga | OK | ídem |
+| Axe (tema claro) | OK | ídem |
+| Unit flatten/borderless/textColor | OK | `page-content-actions.test.ts` en coverage |
+| `pnpm --filter lector-pdf e2e` código 0 | EXCEPCIÓN | 358 pasan, 1 falla: `export.spec.ts:194` «Cancelar» a mitad (@perf). Preexistente (revisor lo verificó en `81934f0`), sin relación con PDF-130 |
+- Huecos menores (no bloquean): Escape como salida de herramienta y tema oscuro sin E2E propio; el clic de colocación deselecciona la imagen (preexistente en firma).
+- Pedido al líder: abrir ficha propia para el fallo de export @perf (hasta entonces e2e no da 0).
+Tests añadidos: ninguno. Rendimiento: no aplica.
