@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-142
 titulo: Memoria del lienzo base con zoom alto (385 MB > 300 MB)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, formatos-ofimatica]
@@ -72,3 +72,17 @@ Que `tests/e2e/detail.spec.ts:212` (`@perf`) pase **sin tocar** `MAX_CANVAS_MB =
 
 ### [lider] replanificación — 2026-10-20
 - No es regresión: falla igual en `defec48`. Causa: lienzos base capados a 128 MiB en 3 páginas montadas. Arreglo: `planBaseCanvas` con tope de 32 MiB en modo detalle (enmienda de [[ADR-0025-lienzo-de-detalle]]). Ficha reescrita; `pendiente`, intentos 0.
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: ninguno de código. `planBaseCanvas` / `CAPPED_BASE_PIXELS` (`apps/lector-pdf/src/core/canvas-size.ts`), el uso en `apps/lector-pdf/src/ui/viewer/PageView.tsx:115` y los tests unitarios de `apps/lector-pdf/tests/unit/canvas-size.test.ts` ya estaban en HEAD (commit `93599db`). Verificados contra los criterios; sin cambios. Solo esta ficha (estado y Registro).
+- Qué he hecho: comprobado paso 1 a 3 contra la ficha (unitarios de `planBaseCanvas` en verde, tope de 32 MiB aplicado). Medida la prueba `@perf` con una copia temporal del spec que sustituye la aserción de MB por un `console.log` (copia borrada después). `detail.spec.ts` sin cambios (`git diff` vacío).
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf exec vitest run tests/unit/canvas-size.test.ts`: 13/13 OK.
+  - `detail.spec.ts:212` en `chromium-perf --no-deps --repeat-each=3`: 3/3 OK (21,5 s cada una, sin long tasks > 100 ms).
+  - Valores de MB (copia con log): 96,11 / 96,11 / 96,11 MB (límite 300). Antes en `defec48` eran 385,43 MB.
+  - `detail.spec.ts`, `tabs-performance.spec.ts`, `render.spec.ts`, `performance.spec.ts` en `chromium-perf`: 8/8 OK.
+  - `pnpm lint`: OK (código 0).
+  - `pnpm coverage`: 2.ª ejecución 271 ficheros, 3531 tests, código 0. La 1.ª falló 2 tests de `tests/ui/comment-toolbar.test.tsx` (flaky: el fichero pasa solo, 14/14).
+  - `pnpm typecheck`: **código 1**. Errores **ajenos a esta ficha** (PDF-108 en curso): `src/ui/viewer/ShapeSketch.tsx`, `src/ui/viewer/use-shape-tool.ts`, `BoxShapeAnnotation` y `tests/ui/shape-tool.test.tsx(207,81)`.
+  - `pnpm --filter lector-pdf e2e`: código 1. 262 OK; 5 fallidos: `shapes.spec.ts:72` y `zz-debug-shapes.spec.ts` (3 variantes, fichero sin rastrear de PDF-108); `encrypted-save.spec.ts` (intermitente: en un run falló la firma, en otro «formularios cifrados»; el fichero aislado pasa 7/8). Ninguno de estos está asignado a PDF-141 por nombre.
+- Dudas o cosas que no he podido hacer: el criterio de typecheck y e2e en verde depende del trabajo en curso de PDF-108 (no lo he tocado). Cuando ese trabajo esté listo, conviene relanzar `pnpm typecheck` y el e2e completo. El flaky de `encrypted-save` (y el de `comment-toolbar` en cobertura) merece anotarse en PDF-141. No hay commit propio de código porque no había cambios de código que commitear.
