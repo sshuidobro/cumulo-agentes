@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: pendiente
+estado: cambios-pedidos
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -74,3 +74,17 @@ Abrir un PDF cifrado hace **un solo** `getDocument`: la tarea de carga de pdf.js
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/engine/load.ts`, `apps/lector-pdf/src/state/document-actions.ts`, `apps/lector-pdf/tests/unit/load-password.test.ts` (nuevo), `apps/lector-pdf/tests/unit/document-password.test.ts`, `apps/lector-pdf/tests/ui/open.test.tsx` y `apps/lector-pdf/tests/ui/compare-pages.test.tsx` (solo añaden `password: null` al literal de `LoadedPdf`, que ahora lo exige el tipo), `apps/lector-pdf/tests/e2e/iteration4-performance.spec.ts`.
+- Qué he hecho: `loadPdf` pasa `requestPassword` a `loadingTask.onPassword` (una sola carga; `LoadedPdf.password` guarda la contraseña usada) y `runOpen` hace una única llamada; se borran el bucle `while` y `isPasswordError`. En `iteration4-performance.spec.ts` la medida (a) resta el tiempo de diálogo visible hasta «Abrir» (ADR-0043) y anota el desglose. Tests: 5 casos nuevos de `load-password.test.ts` y el caso «una sola carga» en `document-password.test.ts`.
+- Comandos ejecutados y resultado:
+  - `pnpm lint` y `pnpm typecheck`: código 0.
+  - `pnpm coverage`: 302 ficheros, 3917 tests en verde, líneas 98,33 %.
+  - `playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3`: (a) falla en las 3 repeticiones; el resto de tests de ese spec pasan (9 de 12).
+  - `pnpm --filter lector-pdf e2e --project=chromium -g "contraseña|cifrad|iteration4"`: 27 pasados, código 0.
+  - Tabla (a), ms, 3 aperturas por repetición. Sin cifrar / cifrado / razón / desglose cifrado (hasta diálogo; tras «Abrir»):
+    - Rep. 1: 510, 439, 434 (mediana 439) / 843, 852, 830 (mediana 843) / 1,92 / 429+414, 424+428, 414+416
+    - Rep. 2: 510, 438, 442 (mediana 442) / 855, 839, 838 (mediana 839) / 1,90 / 447+408, 434+405, 430+409
+    - Rep. 3: 507, 435, 446 (mediana 446) / 887, 842, 862 (mediana 862) / 1,93 / 474+413, 435+407, 431+431
+- Dudas o cosas que no he podido hacer: el presupuesto (a) ≤ 1,5 no se cumple (razón ≈ 1,9 en las tres repeticiones). Según la ficha no he tocado el presupuesto y dejo la ficha en `cambios-pedidos`. Para el líder: el tramo hasta el diálogo (~430 ms) ya cuesta lo mismo que abrir sin cifrar entero (~440 ms); el sobrecoste está tras «Abrir» (~410 ms), así que la lectura adicional ocurre después de la contraseña. No he investigado la causa. Nota: la ficha pide dejar en `en-revision` al terminar, pero su propio criterio manda `cambios-pedidos` si la razón sigue > 1,5; he seguido el criterio.

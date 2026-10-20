@@ -96,9 +96,6 @@ export function currentPassword(): string | null {
   return session?.password ?? null;
 }
 
-function isPasswordError(code: string): boolean {
-  return code === 'password-required' || code === 'password-incorrect';
-}
 
 function showError(error: AppError, name: string | null): void {
   useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, status: 'error', error, loadingName: name });
@@ -207,31 +204,14 @@ async function runOpen(
     if (seq !== openSeq) return;
     useViewer.setState({ loadProgress: total > 0 ? Math.min(1, loaded / total) : null });
   };
-  let password: string | undefined = opts?.password;
-  let result = await loadPdf(file.source, {
+  // Una sola carga: si el PDF está cifrado, pdf.js pide la contraseña sobre la misma tarea (ADR-0043).
+  const result = await loadPdf(file.source, {
     assetBaseUrl,
     signal: controller.signal,
     onProgress,
-    ...(password === undefined ? {} : { password }),
+    ...(opts?.password === undefined ? {} : { password: opts.password }),
+    requestPassword: (incorrect) => (seq === openSeq ? askPassword(file.name, incorrect) : Promise.resolve(null)),
   });
-
-  while (!result.ok && isPasswordError(result.error.code)) {
-    const entered = await askPassword(file.name, result.error.code === 'password-incorrect');
-    if (seq !== openSeq) {
-      // Otra apertura o cierre ha tomado el relevo mientras se pedía la contraseña.
-      await closeOpened(file);
-      return;
-    }
-    if (entered === null) {
-      // Cancelado por el usuario: estado vacío, sin mensaje de error (igual que cancelar una apertura).
-      if (opening === controller) opening = null;
-      useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, dimsVersion: useViewer.getState().dimsVersion });
-      await closeOpened(file);
-      return;
-    }
-    password = entered;
-    result = await loadPdf(file.source, { assetBaseUrl, signal: controller.signal, onProgress, password });
-  }
 
   if (seq !== openSeq) {
     // Una apertura posterior ha tomado el relevo: este resultado se descarta sin tocar el store.
@@ -296,7 +276,7 @@ async function runOpen(
   const stopListening = loaded.onIoError((error) => {
     if (session?.pdf === loaded) useViewer.setState({ ioError: error });
   });
-  session = { file, pdf: loaded, stopListening, scan, password: password ?? null };
+  session = { file, pdf: loaded, stopListening, scan, password: loaded.password };
 
   expectRestore(opts?.restore ?? null);
   useViewer.setState({

@@ -68,14 +68,20 @@ function cipherPath(): string {
   return cipherFile;
 }
 
-/** Escribe la contraseña en el diálogo «Contraseña necesaria» y la confirma con Intro. */
-async function typePassword(page: Page, password: string): Promise<void> {
+/**
+ * Escribe la contraseña en el diálogo «Contraseña necesaria» y la confirma con «Abrir». Devuelve (ms) el intervalo
+ * desde que el diálogo es visible hasta el clic: es tiempo del usuario, y la medida de PDF-099 (a) lo resta (ADR-0043).
+ */
+async function typePassword(page: Page, password: string): Promise<number> {
   const dialog = page.getByRole('dialog', { name: securityMsg.title });
   await expect(dialog).toBeVisible();
+  const waitingFrom = await pageNow(page);
   const field = dialog.getByRole('textbox', { name: securityMsg.field });
   await field.fill(password);
-  await field.press('Enter');
+  await dialog.getByRole('button', { name: securityMsg.open }).click();
+  const waited = (await pageNow(page)) - waitingFrom;
   await expect(dialog).toBeHidden();
+  return waited;
 }
 
 /** Carga la app limpia y abre `path` con el selector de la web; con `password`, la escribe cuando la pida. */
@@ -86,14 +92,30 @@ async function openFile(page: Page, path: string, password?: string): Promise<vo
   await expectViewerReady(page);
 }
 
-/** Tiempo (ms) desde que el fichero llega al selector hasta que la p1 está pintada (la contraseña se escribe antes). */
-async function timeToFirstPage(page: Page, path: string, password?: string): Promise<number> {
+/**
+ * Tiempo (ms) desde que el fichero llega al selector hasta que la p1 está pintada, sin el tiempo que el diálogo de
+ * contraseña espera al usuario (ADR-0043).
+ */
+interface FirstPageTiming {
+  /** Tiempo ajustado (ms) hasta la p1 pintada, sin la espera del usuario. */
+  readonly ms: number;
+  /** Desglose: ms desde el fichero elegido hasta que el diálogo es visible (`null` sin contraseña). */
+  readonly toDialog: number | null;
+}
+
+async function timeToFirstPage(page: Page, path: string, password?: string): Promise<FirstPageTiming> {
   await page.goto('/');
   const started = await pageNow(page);
   await page.locator('[data-testid=open-input]').setInputFiles(path);
-  if (password !== undefined) await typePassword(page, password);
+  let toDialog: number | null = null;
+  let userWait = 0;
+  if (password !== undefined) {
+    await expect(page.getByRole('dialog', { name: securityMsg.title })).toBeVisible();
+    toDialog = (await pageNow(page)) - started;
+    userWait = await typePassword(page, password);
+  }
   await waitPageRendered(page, 1);
-  return (await pageNow(page)) - started;
+  return { ms: (await pageNow(page)) - started - userWait, toDialog };
 }
 
 /** Mediana de una lista de números (no vacía). */
@@ -137,15 +159,19 @@ test(
     const cipher = cipherPath();
     const plainPath = fixture(PLAIN_NAME);
     const plain: number[] = [];
-    const encrypted: number[] = [];
+    const encrypted: FirstPageTiming[] = [];
     for (let run = 0; run < OPEN_RUNS; run++) {
-      plain.push(await timeToFirstPage(page, plainPath));
+      plain.push((await timeToFirstPage(page, plainPath)).ms);
       encrypted.push(await timeToFirstPage(page, cipher, USER));
     }
-    const ratio = median(encrypted) / median(plain);
+    const encryptedMs = encrypted.map((timing) => timing.ms);
+    const ratio = median(encryptedMs) / median(plain);
+    const breakdown = encrypted
+      .map((timing) => `hasta diálogo ${(timing.toDialog ?? 0).toFixed(0)} ms, tras «Abrir» ${(timing.ms - (timing.toDialog ?? 0)).toFixed(0)} ms`)
+      .join('; ');
     recordMeasure(
       testInfo,
-      `abrir ${PLAIN_NAME} sin cifrar: ${plain.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(plain).toFixed(0)}); cifrado AES-256: ${encrypted.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(encrypted).toFixed(0)}); razón de medianas ${ratio.toFixed(2)} (presupuesto ≤ ${String(OPEN_RATIO_MAX)})`,
+      `abrir ${PLAIN_NAME} sin cifrar: ${plain.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(plain).toFixed(0)}); cifrado AES-256: ${encryptedMs.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(encryptedMs).toFixed(0)}); razón de medianas ${ratio.toFixed(2)} (presupuesto ≤ ${String(OPEN_RATIO_MAX)}); desglose cifrado: ${breakdown}`,
     );
     expect(ratio).toBeLessThanOrEqual(OPEN_RATIO_MAX);
   },
