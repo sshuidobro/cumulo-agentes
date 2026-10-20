@@ -84,8 +84,12 @@ describe('TabBar: estado de cada pestaña', () => {
     const user = userEvent.setup();
     setTabs([tab('a', 'basic-5.pdf'), tab('b', 'links.pdf')], 'a');
     render(<TabBar />);
-    const close = screen.getByRole('button', { name: tabsMsg.closeNamed('links.pdf') });
+    const close = screen.getByTitle(tabsMsg.closeNamed('links.pdf'));
+    expect(close).toHaveAttribute('aria-hidden', 'true');
     expect(close).toHaveAttribute('tabindex', '-1');
+    expect(screen.queryByRole('button', { name: tabsMsg.closeNamed('links.pdf') })).not.toBeInTheDocument();
+    expect(tabEl('links.pdf')).toHaveAttribute('aria-keyshortcuts', 'Delete');
+    expect(within(screen.getByRole('tablist')).queryAllByRole('button')).toHaveLength(0);
     await user.click(close);
     expect(useTabs.getState().tabs.map((t) => t.title)).toEqual(['basic-5.pdf']);
     expect(useTabs.getState().activeId).toBe('a');
