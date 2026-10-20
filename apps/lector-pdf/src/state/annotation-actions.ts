@@ -71,13 +71,17 @@ interface IndexedPage {
   readonly page: ImportedPage;
 }
 
-const COLOR_TOOLS: readonly ColorTool[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
+/** Herramientas de color que ya existían: sus colores guardados son obligatorios en la preferencia. */
+const LEGACY_COLOR_TOOLS: readonly ColorTool[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
+/** Todas las herramientas de color; las formas (PDF-108) pueden faltar en una preferencia antigua. */
+const COLOR_TOOLS: readonly ColorTool[] = [...LEGACY_COLOR_TOOLS, 'square', 'circle', 'line', 'arrow'];
 
 /** Clave de cada preferencia (el almacén ya antepone el prefijo de la app). */
 const PREF = {
   author: 'annotationAuthor',
   colors: 'annotationColors',
   inkWidth: 'inkWidth',
+  shapeWidth: 'shapeWidth',
   fontSize: 'fontSize',
   commentBarOpen: 'commentBarOpen',
 } as const;
@@ -140,16 +144,21 @@ useAnnotations.subscribe((next, prev) => {
 });
 
 /** Lee las preferencias de anotación de la app. Lo que no sea válido toma su valor por defecto. */
-function preferenceState(prefs: KeyValueStore): Pick<AnnotationState, 'author' | 'colors' | 'inkWidth' | 'fontSize' | 'commentBarOpen'> {
+function preferenceState(
+  prefs: KeyValueStore,
+): Pick<AnnotationState, 'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen'> {
   const author = prefs.get(PREF.author, isString);
   const colors = prefs.get(PREF.colors, isColorRecord);
   const inkWidth = prefs.get(PREF.inkWidth, oneOf(INK_WIDTHS));
+  const shapeWidth = prefs.get(PREF.shapeWidth, oneOf(INK_WIDTHS));
   const fontSize = prefs.get(PREF.fontSize, oneOf(FONT_SIZES));
   const commentBarOpen = prefs.get(PREF.commentBarOpen, isBoolean);
   return {
     author: author === null ? DEFAULT_AUTHOR : normalizeAuthor(author),
-    colors: colors ?? { ...DEFAULT_TOOL_COLORS },
+    // Lo guardado manda; las herramientas que la preferencia no trae (formas, PDF-108) toman su color por defecto.
+    colors: { ...DEFAULT_TOOL_COLORS, ...colors },
     inkWidth: inkWidth ?? DEFAULT_INK_WIDTH,
+    shapeWidth: shapeWidth ?? DEFAULT_INK_WIDTH,
     fontSize: fontSize ?? DEFAULT_FONT_SIZE,
     commentBarOpen: commentBarOpen ?? false,
   };
@@ -248,6 +257,7 @@ export function endAnnotationSession(): void {
     ...initialAnnotationState(),
     colors: prev.colors,
     inkWidth: prev.inkWidth,
+    shapeWidth: prev.shapeWidth,
     fontSize: prev.fontSize,
     author: prev.author,
     commentBarOpen: prev.commentBarOpen,
@@ -282,7 +292,7 @@ interface AnnotationsSnapshot {
   readonly memo: { readonly baseline: AnnotationState['baseline']; readonly edits: AnnotationEdits; readonly result: ReadonlyMap<string, Annotation> } | null;
   readonly pageMemo: ReadonlyMap<number, { readonly version: number; readonly items: readonly Annotation[] }>;
   /** Estado del store sin las preferencias (estas son globales y no se guardan aquí). */
-  readonly state: Omit<AnnotationState, 'author' | 'colors' | 'inkWidth' | 'fontSize' | 'commentBarOpen'>;
+  readonly state: Omit<AnnotationState, 'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen'>;
   /** Páginas ya importadas por el escaneo de la sesión. */
   readonly importedPages: number;
   /** Había un escaneo completo desde el panel (PDF-036) en curso. */
@@ -969,6 +979,12 @@ export function selectedInk(): InkAnnotation | undefined {
   return current?.type === 'ink' ? current : undefined;
 }
 
+/** Grosor de las formas nuevas (PDF-108): se guarda como preferencia y lo usan las herramientas de forma. */
+export function rememberShapeWidth(width: AnnotationState['shapeWidth']): void {
+  prefs().set(PREF.shapeWidth, width);
+  useAnnotations.setState({ shapeWidth: width });
+}
+
 export function setFontSize(size: AnnotationState['fontSize']): void {
   prefs().set(PREF.fontSize, size);
   useAnnotations.setState({ fontSize: size });
@@ -1035,10 +1051,13 @@ function isRgb(v: unknown): v is Rgb {
   return Array.isArray(v) && v.length === 3 && v.every((c) => typeof c === 'number' && c >= 0 && c <= 1);
 }
 
-/** Un color por herramienta de color; si falta alguno, la preferencia entera no vale. */
-function isColorRecord(v: unknown): v is Record<ColorTool, Rgb> {
+/**
+ * Colores guardados: las herramientas de antes deben estar todas (si falta alguna, la preferencia entera no vale); las
+ * formas pueden faltar, y las que estén deben ser colores válidos.
+ */
+function isColorRecord(v: unknown): v is Partial<Record<ColorTool, Rgb>> {
   if (!isRecord(v)) return false;
-  return COLOR_TOOLS.every((tool) => isRgb(v[tool]));
+  return LEGACY_COLOR_TOOLS.every((tool) => isRgb(v[tool])) && COLOR_TOOLS.every((tool) => v[tool] === undefined || isRgb(v[tool]));
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
