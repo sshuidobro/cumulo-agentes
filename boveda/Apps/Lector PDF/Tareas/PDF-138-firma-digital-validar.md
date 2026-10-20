@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-138
 titulo: Firma digital - validar las firmas de un PDF (núcleo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-066]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -81,3 +81,8 @@ export async function verifySignatures(source: ByteSource, reader: ObjectReader)
   4. `/ByteRange` con `a ≠ 0` o que no sean 4 enteros → `invalid` (interpretación de «[0 b c d]»).
   5. Sin probar: PDF cifrado. El lector descifra también `/Contents`, así que la firma saldría `unknown`; no hay test.
   6. `pageIndex`: se toma de `/P` del widget (o del primer hijo). Campos con hijos sin cubrir por tests.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm lint` y `pnpm typecheck` OK. `pnpm coverage`: 3696/3697 tests; el único fallo (`protect-ops.test.ts`, timeout de 5 s bajo carga) pasa solo (11/11), no es de esta ficha. `verify.test.ts` 26/26; `verify.ts` 95,7 % de líneas; pdfsig contrastado en valid/invalid.
+1. (opcional) `verify.ts:213` — no se comprueba que el hueco `[b, c)` coincida con la posición de `/Contents` (defensa contra «signature wrapping»); valdría un criterio en una ficha futura.
+2. (opcional) Dudas del programador 1-4 aceptadas como interpretación razonable; documentar ECDSA sin `signedAttrs` → `unknown` en el Manual. Falta test de PDF cifrado (duda 5) y de campos con `/Kids` (duda 6), recomendable en PDF-139.
