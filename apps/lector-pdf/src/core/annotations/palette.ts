@@ -28,6 +28,10 @@ export const DEFAULT_TOOL_COLORS = {
   note: YELLOW,
   freetext: RED,
   ink: RED,
+  square: RED,
+  circle: RED,
+  line: RED,
+  arrow: RED,
 } as const satisfies Record<string, Rgb>;
 
 /** Grosores de trazo permitidos (pt). */

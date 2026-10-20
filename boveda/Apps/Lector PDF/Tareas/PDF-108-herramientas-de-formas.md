@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-108
 titulo: Herramientas Rectángulo, Elipse, Línea y Flecha en la barra Comentar
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-057, PDF-101, PDF-050, PDF-051, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, anotaciones, ui]
 ---
 
@@ -84,3 +84,14 @@ export function useShapeTool(pageIndex: number, viewport: PageViewport, pageBoun
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/shape-drag.ts` (nuevo), `src/state/shape-actions.ts` (nuevo), `src/ui/viewer/use-shape-tool.ts` (nuevo), `src/ui/viewer/ShapeSketch.tsx` (nuevo), `src/core/annotations/palette.ts`, `src/state/annotation-store.ts`, `src/state/annotation-actions.ts` (preferencias `shapeWidth`, `isColorRecord` tolerante, `rememberShapeWidth`), `src/ui/viewer/AnnotationLayer.tsx`, `src/ui/toolbar/CommentToolbar.tsx`, `src/ui/icons.tsx`, `src/ui/messages.ts`, `src/ui/viewer/Viewer.module.css`; tests: `tests/unit/annotations/shape-drag.test.ts`, `tests/unit/annotations/shape-actions.test.ts`, `tests/ui/shape-tool.test.tsx`, `tests/e2e/shapes.spec.ts`, `tests/e2e/annotations-a11y.spec.ts` (caso de tema oscuro), `tests/ui/comment-toolbar.test.tsx` (ver dudas).
+- Qué he hecho: geometría pura de arrastre (caja, línea con Mayús a 45°, tirador) y acciones de forma (crear, teclado, grosor, color, tamaño) sobre la pila de deshacer común; cuatro botones tras «Dibujar» con el arrastre en la capa (Escape cancela), menú «Color» y «Grosor» que actúan sobre la forma seleccionada, tirador de rectángulo y elipse, y preferencia de grosor de formas. Las preferencias antiguas sin colores de formas cargan rojo sin perder los demás colores.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` exit 0 (272 ficheros, 3542 tests en verde); `pnpm e2e` (lector-pdf, incluido `@perf` en `chromium-perf`) 285 passed, exit 0; `shapes.spec.ts` (E2E y `@perf` sobre `pages-5000.pdf`) en verde. Puerto y build propios (`LECTOR_E2E_PORT=4291`, `LECTOR_E2E_OUTDIR=dist-shapes`) porque el 4173 lo ocupaba otro proceso; el directorio de build se borró al terminar.
+- Dudas o cosas que no he podido hacer:
+  - Criterio tomado al implementar: con Mayús, si el lado menor del arrastre queda por debajo de `MIN_SHAPE_PT`, se usa la caja por defecto (la ficha solo lo fijaba para arrastres pequeños en ambos ejes).
+  - `tests/ui/comment-toolbar.test.tsx`: dos tests usaban «Dibujar» como último control de la barra (Fin, ←). Ahora el último es «Flecha»; cambié solo esa aserción, no la lógica del foco itinerante.
+  - El título del E2E va sin tildes: con tildes en la carpeta de salida, el fichero guardado no llega a la pestaña nueva con `setInputFiles`. Es una limitación del test, no de la app; conviene vigilarla en otros specs con títulos acentuados que reabran ficheros.
+  - Con una forma seleccionada, «Color» cambia solo esa forma (no el color por defecto de la herramienta), como indica la ficha; el color por defecto se cambia con la herramienta sin selección.
+  - No he hecho el Manual (lo escribe el líder al cerrar la iteración).

@@ -86,3 +86,16 @@ test('panel con nota, respuesta y estado: sin violaciones serious ni critical (P
 
   expect(await seriousViolations(page, testInfo, 'panel de comentarios con respuesta')).toEqual([]);
 });
+
+test.describe('herramientas de forma con tema oscuro (PDF-108)', () => {
+  test.use({ colorScheme: 'dark' });
+
+  test('barra «Comentar» con «Rectángulo» activo: sin violaciones serious ni critical', async ({ page }, testInfo) => {
+    await openWithDownloads(page, fixture('basic-5.pdf'));
+    await pickTool(page, 'Rectángulo');
+    await expect(page.getByRole('toolbar', { name: 'Comentar' })).toBeVisible();
+    expect(await page.evaluate(() => window.matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true);
+
+    expect(await seriousViolations(page, testInfo, 'barra Comentar con forma, tema oscuro')).toEqual([]);
+  });
+});

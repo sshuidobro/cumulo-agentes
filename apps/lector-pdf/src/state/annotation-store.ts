@@ -19,7 +19,19 @@ import {
 } from '../core/annotations/palette';
 
 /** `signature`: la firma elegida se coloca con un clic o con Intro (PDF-043). No tiene color propio. */
-export type AnnotationTool = 'none' | 'highlight' | 'underline' | 'strikeout' | 'note' | 'freetext' | 'ink' | 'signature';
+export type AnnotationTool =
+  | 'none'
+  | 'highlight'
+  | 'underline'
+  | 'strikeout'
+  | 'note'
+  | 'freetext'
+  | 'ink'
+  | 'square'
+  | 'circle'
+  | 'line'
+  | 'arrow'
+  | 'signature';
 export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature'>;
 export type ScanState = 'idle' | 'scanning' | 'done' | 'lazy';
 
@@ -59,6 +71,8 @@ export interface AnnotationState {
   readonly editing: FreeTextEditing | null;
   readonly colors: Readonly<Record<ColorTool, Rgb>>;
   readonly inkWidth: (typeof INK_WIDTHS)[number];
+  /** Grosor de los rectángulos, elipses, líneas y flechas nuevos (PDF-108). */
+  readonly shapeWidth: (typeof INK_WIDTHS)[number];
   readonly fontSize: (typeof FONT_SIZES)[number];
   readonly author: string;
   readonly commentBarOpen: boolean;
@@ -94,6 +108,7 @@ export function initialAnnotationState(): AnnotationState {
     editing: null,
     colors: { ...DEFAULT_TOOL_COLORS },
     inkWidth: DEFAULT_INK_WIDTH,
+    shapeWidth: DEFAULT_INK_WIDTH,
     fontSize: DEFAULT_FONT_SIZE,
     author: DEFAULT_AUTHOR,
     commentBarOpen: false,

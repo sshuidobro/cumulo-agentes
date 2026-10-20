@@ -54,7 +54,11 @@
 
 .viewer[data-tool='note'] .annotationLayer,
 .viewer[data-tool='freetext'] .annotationLayer,
-.viewer[data-tool='ink'] .annotationLayer {
+.viewer[data-tool='ink'] .annotationLayer,
+.viewer[data-tool='square'] .annotationLayer,
+.viewer[data-tool='circle'] .annotationLayer,
+.viewer[data-tool='line'] .annotationLayer,
+.viewer[data-tool='arrow'] .annotationLayer {
   pointer-events: auto;
   cursor: crosshair;
 }
@@ -65,8 +69,12 @@
   cursor: copy;
 }
 
-/* Con «Dibujar», el dedo traza en vez de desplazar la página (PDF-035). */
-.viewer[data-tool='ink'] .annotationLayer {
+/* Con «Dibujar» o una forma, el dedo traza en vez de desplazar la página (PDF-035, PDF-108). */
+.viewer[data-tool='ink'] .annotationLayer,
+.viewer[data-tool='square'] .annotationLayer,
+.viewer[data-tool='circle'] .annotationLayer,
+.viewer[data-tool='line'] .annotationLayer,
+.viewer[data-tool='arrow'] .annotationLayer {
   touch-action: none;
 }
 

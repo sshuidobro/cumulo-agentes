@@ -259,6 +259,40 @@ export function IconInk() {
   );
 }
 
+/** Rectángulo, elipse, línea y flecha de la barra «Comentar» (PDF-108). */
+export function IconSquare() {
+  return (
+    <Svg>
+      <rect x="3.5" y="5" width="13" height="10" />
+    </Svg>
+  );
+}
+
+export function IconCircle() {
+  return (
+    <Svg>
+      <ellipse cx="10" cy="10" rx="6.5" ry="5" />
+    </Svg>
+  );
+}
+
+export function IconLine() {
+  return (
+    <Svg>
+      <path d="M4 16 16 4" />
+    </Svg>
+  );
+}
+
+export function IconArrow() {
+  return (
+    <Svg>
+      <path d="M4 16 15.5 4.5" />
+      <path d="M9.5 4.5h6v6" />
+    </Svg>
+  );
+}
+
 export function IconColor() {
   return (
     <Svg>
