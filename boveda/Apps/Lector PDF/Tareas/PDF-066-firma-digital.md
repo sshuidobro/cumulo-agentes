@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-066
 titulo: Firma digital - abrir certificado PKCS#12 y firmar PAdES B-B por incremento (núcleo)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-043, PDF-052, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
