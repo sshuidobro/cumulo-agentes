@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-132
 titulo: Proteger con contraseña y quitar protección - interfaz
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-131, PDF-130]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -114,3 +114,14 @@ El presupuesto **no** sube ([[ADR-0041-presupuesto-arranque-600kb]]). Lo hecho e
 - `pnpm lint` y `pnpm typecheck` OK. `protect-actions`, `protect-dialog` y `split` en verde (65/66).
 - `split-names.ts` sin imports. El arranque queda en 565 531 B, dato del programador y dentro del límite.
 - El único fallo, `tests/ui/open.test.tsx` «Cancelar…», es de PDF-148 (`b0ec064`) y no depende de esta ficha. No cuenta contra ella. Hay que asignarlo aparte.
+
+### [tester] ronda 5 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| coverage | 4035/4036; único rojo ajeno: `tests/ui/open.test.tsx` «Cancelar aborta la carga» (PDF-148, se arregla en PDF-152) | `pnpm coverage` |
+| E2E protect (apertura AES-256/qpdf, solo restricciones, resaltado, tema oscuro+axe, Esc, quitar protección) | 7/7 | `playwright test tests/e2e/protect.spec.ts --project=chromium` |
+| bundle:check | 565 531 B (≤ 575 000) | `pnpm --filter lector-pdf build` |
+| `split-names.ts` sin imports | OK | `grep -n "^import"` vacío |
+- Nota: el E2E de `encrypted-aes-256.pdf` comprueba que con permisos completos la contraseña de usuario basta (no pide la de permisos); el flujo «pide permisos» se cubre con `encrypted-owner-only.pdf`. Coherente con PDF-131.
+- No ejecutada la suite E2E completa, solo la del spec de esta ficha.
