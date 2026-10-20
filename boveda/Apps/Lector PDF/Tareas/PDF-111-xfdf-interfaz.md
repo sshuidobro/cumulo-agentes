@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-111
 titulo: Exportar e importar comentarios en XFDF desde el panel
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-110, PDF-116, COM-018, PDF-108]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
