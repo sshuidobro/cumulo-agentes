@@ -279,6 +279,38 @@ export function createWebPlatform(
     return readImported(file, maxBytes);
   };
 
+  const importFiles = async (
+    filters: readonly FileFilter[],
+    maxBytesEach: number,
+    maxCount: number,
+  ): Promise<Result<readonly ImportedFile[] | null>> => {
+    const picker = env.showOpenFilePicker;
+    let files: readonly File[] | null;
+    try {
+      if (picker === undefined) {
+        files = await env.pickManyWithInput(toAcceptAttribute(filters));
+      } else {
+        const handles = await picker({ types: toAcceptTypes(filters), excludeAcceptAllOption: false, multiple: true });
+        files = await Promise.all(handles.map((handle) => handle.getFile()));
+      }
+    } catch (cause) {
+      // Cancelar el selector no es un error.
+      return errorName(cause) === 'AbortError' ? ok(null) : failure(cause);
+    }
+    if (files === null || files.length === 0) return ok(null);
+    // Se comprueban número y tamaños antes de leer ningún contenido.
+    if (files.length > maxCount || files.some((file) => file.size > maxBytesEach)) return err(platformError('out-of-range'));
+    try {
+      const imported = await Promise.all(files.map(async (file): Promise<ImportedFile> => ({
+        name: file.name,
+        bytes: new Uint8Array(await file.arrayBuffer()),
+      })));
+      return ok(imported);
+    } catch (cause) {
+      return failure(cause);
+    }
+  };
+
   const toRecentFile = (record: RecentRecord): RecentFile => ({
     id: record.id,
     name: record.name,
@@ -348,6 +380,7 @@ export function createWebPlatform(
     exportFile,
 
     importFile,
+    importFiles,
 
     saveAs,
 

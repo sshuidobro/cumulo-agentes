@@ -249,6 +249,49 @@ pub async fn suite_open_dialog<R: Runtime>(
     }
 }
 
+/// Registra varias rutas ya existentes. Si una falla, libera las ya registradas y devuelve el error.
+fn register_all(registry: &FileRegistry, paths: &[PathBuf]) -> Result<Vec<FileInfo>, CommandError> {
+    let mut infos: Vec<FileInfo> = Vec::with_capacity(paths.len());
+    for path in paths {
+        match register_existing(registry, path) {
+            Ok(info) => infos.push(info),
+            Err(error) => {
+                for info in &infos {
+                    registry.unregister(&info.token);
+                }
+                return Err(CommandError::from(error));
+            }
+        }
+    }
+    Ok(infos)
+}
+
+/// Diálogo de abrir con selección múltiple: devuelve los ficheros elegidos (o `null` si se cancela).
+/// Sin `remember` (o con `Some(true)`) los anota en recientes; con `Some(false)` no toca recientes.
+#[tauri::command]
+pub async fn suite_open_dialog_multiple<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, SuitePlatformState>,
+    filters: Vec<FileFilterDto>,
+    remember: Option<bool>,
+) -> Result<Option<Vec<FileInfoDto>>, CommandError> {
+    let dialog = apply_filters(app.dialog().file(), &filters);
+    let Some(picked) = dialog.blocking_pick_files() else {
+        return Ok(None);
+    };
+    let paths = picked
+        .into_iter()
+        .map(picked_path)
+        .collect::<Result<Vec<PathBuf>, CommandError>>()?;
+    let infos = register_all(&state.registry, &paths)?;
+    if should_remember(remember) {
+        for info in &infos {
+            add_to_recents(&app, &state, Path::new(&info.path), Some(info.size));
+        }
+    }
+    Ok(Some(infos.into_iter().map(FileInfoDto::from).collect()))
+}
+
 /// Diálogo de guardar como: devuelve el destino elegido (o `null` si se cancela).
 #[tauri::command]
 pub async fn suite_save_dialog<R: Runtime>(
@@ -430,6 +473,7 @@ pub fn register_os_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<PathBuf>) {
 pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         suite_open_dialog,
+        suite_open_dialog_multiple,
         suite_save_dialog,
         suite_read_range,
         suite_file_info,
@@ -454,6 +498,47 @@ mod tests {
         assert!(should_remember(None));
         assert!(should_remember(Some(true)));
         assert!(!should_remember(Some(false)));
+    }
+
+    #[test]
+    fn register_all_registra_todas_las_rutas_en_orden() {
+        let dir = std::env::temp_dir().join(format!("suite-register-all-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("crear directorio temporal");
+        let a = dir.join("a.xfdf");
+        let b = dir.join("b.xfdf");
+        std::fs::write(&a, b"aa").expect("crear a");
+        std::fs::write(&b, b"bbb").expect("crear b");
+        let registry = FileRegistry::new();
+
+        let infos = register_all(&registry, &[a.clone(), b.clone()]).expect("registrar");
+        let _ = std::fs::remove_dir_all(&dir);
+
+        assert_eq!(infos.len(), 2);
+        assert_eq!(infos[0].name, "a.xfdf");
+        assert_eq!(infos[0].size, 2);
+        assert_eq!(infos[1].name, "b.xfdf");
+        assert_eq!(infos[1].size, 3);
+        assert!(registry.path(&infos[0].token).is_ok());
+        assert!(registry.path(&infos[1].token).is_ok());
+    }
+
+    #[test]
+    fn register_all_con_un_fallo_libera_los_ya_registrados() {
+        let dir = std::env::temp_dir().join(format!("suite-register-fail-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("crear directorio temporal");
+        let a = dir.join("a.xfdf");
+        std::fs::write(&a, b"aa").expect("crear a");
+        let missing = dir.join("no-existe.xfdf");
+        let registry = FileRegistry::new();
+
+        let result = register_all(&registry, &[a.clone(), missing]);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        assert!(result.is_err());
+        // El primer fichero se registró (token "t1") antes del fallo: debe haberse liberado.
+        assert!(registry.path("t1").is_err());
     }
 
     #[test]

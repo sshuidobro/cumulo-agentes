@@ -251,6 +251,29 @@ export function createTauriPlatform(
       }
     },
 
+    async importFiles(filters: readonly FileFilter[], maxBytesEach: number, maxCount: number): Promise<Result<readonly ImportedFile[] | null>> {
+      let dtos: FileInfoDto[] | null;
+      try {
+        dtos = await api.invoke<FileInfoDto[] | null>('suite_open_dialog_multiple', { filters, remember: false });
+      } catch (cause) {
+        return err(platformError(mapCode(errorCode(cause)), cause));
+      }
+      if (dtos === null) return ok(null);
+      try {
+        if (dtos.length > maxCount || dtos.some((dto) => dto.size > maxBytesEach)) return err(platformError('out-of-range'));
+        const imported: ImportedFile[] = [];
+        for (const dto of dtos) {
+          imported.push({ name: dto.name, bytes: await toOpened(api, dto).source.read(0, dto.size) });
+        }
+        return ok(imported);
+      } catch (cause) {
+        return err(platformError(cause instanceof PlatformIoError ? cause.code : mapCode(errorCode(cause)), cause));
+      } finally {
+        // Se cierran todos los tokens, también si falla la lectura o se rechaza por tamaño.
+        await Promise.all(dtos.map((dto) => closeQuietly(api, dto.token)));
+      }
+    },
+
     async closeFile(file: OpenedFile): Promise<void> {
       await api.invoke<boolean>('suite_close', { token: file.token });
     },
