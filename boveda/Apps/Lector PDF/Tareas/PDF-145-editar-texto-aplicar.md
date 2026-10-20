@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-145
 titulo: Editar texto - aplicar las líneas editadas y operaciones del Worker (núcleo)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-144]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -77,3 +77,9 @@ export async function buildTextEditUpdate(input: EditTextInput): Promise<Result<
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/edit-text/apply.ts` (nuevo), `apps/lector-pdf/src/core/edit-text/index.ts`, `apps/lector-pdf/src/core/errors.ts` (`edit-line-missing`, `edit-text-invalid`), `apps/lector-pdf/src/core/doc-ops/ops/edit-text.ts` (nuevo), `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (registro en `DOC_OPS`), `apps/lector-pdf/tests/unit/edit-text/apply.test.ts` (nuevo), `apps/lector-pdf/tests/unit/doc-ops/edit-text-op.test.ts` (nuevo).
+- Qué he hecho: `buildTextEditUpdate` agrupa ediciones por página, localiza cada línea con `locateLine`, quita sus glifos con `removeGlyphs` y escribe un único `/Contents` Flate con el texto nuevo (fuente estándar compartida por incremento, `SuiteEd` por página). Ops `edit-text-probe` y `edit-text` (reescritura completa con `keepEncryption`). Un `RangeError` se propaga sin convertirlo en error de usuario.
+- Comandos ejecutados y resultado: `pnpm lint` OK. `pnpm typecheck` OK en `apps/lector-pdf`. `pnpm coverage`: 299 ficheros y 3889 tests en verde; `edit-text/apply.ts` 97,4 % líneas / 91,9 % ramas; `doc-ops/ops/edit-text.ts` 100 % líneas / 94,3 % ramas. No he ejecutado `qpdf` fuera de los tests (los tests lo usan y pasan).
+- Dudas o cosas que no he podido hacer: en el árbol de trabajo hay cambios ajenos sin commitear (`OrganizeView`, `OrganizeCell`, `grid.ts`, `PDF-126`) que en un momento hicieron fallar `typecheck` (`OrganizeView.tsx`, `onPointerDown`); no los he tocado y el commit incluye solo mis ficheros. Los criterios de aceptación están cubiertos por los tests, pero las casillas de la ficha no las he marcado (lo hará el tester). Caso «ediciones con página sin diccionario» cubierto solo de forma parcial (rama `PdfSyntaxError`).
