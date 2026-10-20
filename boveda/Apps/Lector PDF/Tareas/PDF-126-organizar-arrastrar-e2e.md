@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-126
 titulo: Organizar - arrastrar y soltar, e2e y rendimiento
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-125]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -55,3 +55,5 @@ Reordenar arrastrando miniaturas (una o varias seleccionadas) con indicador de i
 - Qué he hecho: retomado el trabajo previo (arrastre con punteros, `insertionIndex`, Alt+Inicio/Fin, anuncio, E2E y @perf ya estaban). Los dos E2E de `organize.spec.ts` (outline y links) fallaban al reabrir: el título con «»/acentos rompía la ruta del guardado en la pestaña nueva; títulos a ASCII. `iteration4-flow` fallaba (no es de esta ficha, pero rompe `pnpm e2e`): (1) tras cambiar de pestaña con el ratón el foco queda en la barra (PDF-095), el test exigía el foco del visor; (2) Ctrl+W se ignoraba porque `tabsLocked()` veía el guardado aún en curso; (3) con una sola pestaña la barra se oculta, así que el test esperaba una pestaña que ya no existe.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (exit 0; cobertura de líneas 98,33 %); `pnpm --filter lector-pdf e2e organize*` 5/5 OK y `organize.perf.spec.ts` (chromium-perf) OK; `iteration4-flow` 4/4 repeticiones OK; `pnpm --filter lector-pdf e2e` completo: 322 passed, exit 0.
 - Dudas o cosas que no he podido hacer: (a) Ctrl+W no siempre cierra pestaña justo después de Ctrl+S si el guardado sigue en curso: el test ahora espera al botón «Guardar» habilitado, pero conviene que el tester mire si es un fallo de UX (el atajo se ignora sin aviso). (b) Los ficheros `dist-firma/` y `dist-qa049/` siguen committeados en git; no los he tocado. (c) No he revisado la cobertura por módulo de `organize/grid.ts` más allá de que el test unitario de `insertionIndex` pasa.
+
+- Revisor: APROBADO (coordinador actualiza estado a en-test). Obs.: dist-* trackeados en git; Ctrl+W ignorado durante guardado (valorar UX).
