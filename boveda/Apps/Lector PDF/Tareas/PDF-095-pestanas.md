@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: cambios-pedidos
+estado: bloqueada
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
 intentos: 2
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -98,3 +98,9 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 
 Fallos (todos en `apps/lector-pdf`, `playwright test <fichero> --project=chromium`): `outline.spec.ts:64` (abre `compressed.pdf` y luego `informe.pdf` con `openFile`; en la 2.ª apertura el panel/pestaña «Marcadores» no aparece, timeout 60 s en `openBookmarks`: ahora el 2.º fichero abre pestaña nueva y F4 alterna el panel), `annotations-flow.spec.ts:94`, `annotations-foreign.spec.ts:72`, `notes.spec.ts:91`. Probable causa: tests que asumían reemplazo de documento o reabrir el mismo fichero; con pestañas se activa la existente o se abre otra. Hay que adaptar esos tests (o el código si es regresión real) y dejar `e2e` en verde.
 Tests añadidos: ninguno.
+
+### [programador] ronda 5 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/notes.spec.ts` (Ctrl+Z: el texto se escribe con `fill` en vez de teclear letra a letra; la agrupación de deshacer es por ventana de tiempo y con la CPU ocupada partía «hola» en dos); `apps/lector-pdf/tests/e2e/open-qa.spec.ts` (arrastrar: se repite el «dragenter» hasta que aparece la superposición, porque el componente registra sus escuchas en un efecto que puede acabar después de `goto`); `apps/lector-pdf/tests/e2e/pdfjs-deferred.spec.ts` (presupuesto de tiempo → `@perf`, como manda ADR-0016). El resto de cambios de `tests/e2e/` (`helpers.ts` con `showSidebarTab`, `outline`, `annotations-kit`, `render`, `performance`) era trabajo previo y lo he dejado tal cual.
+- Qué he hecho: los 4 E2E que pedía el tester (`outline.spec.ts`, `annotations-flow.spec.ts`, `annotations-foreign.spec.ts`, `notes.spec.ts`) pasan. Los fallos que aparecían en la suite completa eran de sincronía o de tiempo bajo carga, no de regresión de pestañas. No he tocado código de `src/`.
+- Comandos ejecutados y resultado: `pnpm lint`: exit 0. `pnpm typecheck`: exit 0. `pnpm --filter lector-pdf e2e` (3 pasadas completas): chromium 100 % verde tras los arreglos; en `chromium-perf` 18/19. **Criterio NO cumplido**: `tests/e2e/detail.spec.ts:212` («con zoom alto, 20 s de desplazamiento…», `@perf`) falla de forma determinista: memoria de lienzos 385 MB y 389 MB en dos repeticiones, presupuesto `MAX_CANVAS_MB` = 300. Otras 3 pruebas `@perf` fallaron en la pasada completa por «máquina no está en reposo» (CPU al 100 % por otra sesión del equipo, ajena a mí); en la pasada solo de perf pasan. El cambio de pestañas no toca el render de lienzos (`Viewer.tsx` solo cambia el foco); `detail.spec.ts` se modificó por última vez en 2f33d73 y PDF-051 lo daba por bueno antes de los commits de OCR (00fd66f), PDF-107 (d993057) y 813a19b. No lo he bisecado.
+- Dudas o cosas que no he podido hacer: **decisión para el líder**: (A) regresión real de render/memoria del lienzo de detalle (ADR-0025) → ficha de corrección, o (B) cambiar el presupuesto de 300 MB, que es una decisión de rendimiento y no la tomo yo. Hasta entonces `e2e` no sale con código 0 y dejo la ficha `bloqueada`. Pendiente también (usuario): Ctrl+Tab, Ctrl+W y «Abrir con» en `tauri dev`. No he hecho commit de los ficheros ajenos (OCR, doc-ops); el commit con los cambios de `tests/e2e/` y esta ficha lo hago al cerrar la ronda.
