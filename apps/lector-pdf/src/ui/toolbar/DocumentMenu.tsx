@@ -2,8 +2,10 @@ import { MenuButton } from '../kit/MenuButton';
 import { IconMore } from '../icons';
 import { formatShortcut } from '../shortcuts';
 import { printMsg } from '../messages-print';
+import { exportMsg } from '../messages-export';
 import { propertiesMsg } from '../messages-properties';
 import { openPrintDialog } from '../../state/print-actions';
+import { openExportDialog } from '../../state/export-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -13,6 +15,7 @@ export function DocumentMenu() {
   const { platform } = services();
   const ready = useViewer((s) => s.status === 'ready');
   const printAllowed = useViewer((s) => s.permissions.print);
+  const copyAllowed = useViewer((s) => s.permissions.copy);
   return (
     <MenuButton
       label={propertiesMsg.moreActions}
@@ -30,6 +33,12 @@ export function DocumentMenu() {
           shortcut: formatShortcut('print', platform.isMac),
           disabled: !printAllowed,
           onSelect: () => { openPrintDialog(); },
+        },
+        {
+          kind: 'action',
+          label: exportMsg.menuItem,
+          disabled: !copyAllowed,
+          onSelect: () => { openExportDialog(); },
         },
       ]}
     >
