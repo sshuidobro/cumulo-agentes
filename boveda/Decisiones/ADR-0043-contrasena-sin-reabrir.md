@@ -43,3 +43,7 @@ Hecho (Registro de [[PDF-148-contrasena-sin-reabrir|PDF-148]], ronda 2): pdf.js 
 **Decisión revisada: A + C.** `runOpen` llama a `needsUserPassword(source)`; si es `true`, pide la contraseña **antes** de `getDocument` y la pasa como `password` → un solo análisis en pdf.js. `onPassword` (A) se mantiene para la contraseña incorrecta (reanálisis aceptable: es un error del usuario) y como red si el sondeo falla (fichero dañado, cifrado no soportado por `core/pdf` → `false`, pdf.js decide). Los PDF con solo contraseña de propietario no piden nada (la vacía abre como usuario).
 
 Medida y presupuesto de PDF-099 (a) **sin cambios** (≤ 1,5 ×, restando el tiempo del diálogo).
+
+## Nota 2026-10-20 · carga diferida del sondeo
+- `needsUserPassword` se importa con `import('../core/pdf/password-probe')` dentro de `runOpen`, no de forma estática: el import estático del barril `core/pdf` subía el arranque a 627 248 B (> 600 000, [[PDF-148-contrasena-sin-reabrir]]). Mismo patrón que `core/pdf/incremental` en `save-actions.ts`. El presupuesto de arranque no se toca.
+- La medida de PDF-099 (a) usa 1 par de calentamiento descartado y medianas de 5 aperturas; umbral ≤ 1,5 × sin cambios.

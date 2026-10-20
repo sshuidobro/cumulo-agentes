@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: cambios-pedidos
+estado: pendiente
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -91,6 +91,40 @@ const result = cancelledBeforeLoad
 - Nuevo `tests/unit/password-probe.test.ts` (fixtures con `fixtureSource`): `encrypted-aes-256.pdf` y `encrypted-aes-128.pdf` → `true`; `encrypted-owner-only.pdf` → `false`; un PDF sin cifrar del catálogo → `false`; `ByteSource` con bytes `'no es un pdf'` → `false` sin lanzar.
 - En `document-password.test.ts` (añadir, sin cambiar los existentes): abrir `encrypted-owner-only.pdf` no muestra el diálogo (`usePasswordPrompt` sigue cerrado) y el caso «mala y luego buena» sigue llamando a `loadPdf` **una** vez.
 
+## Replanificación (líder, 2026-10-20) · paso 5: test, bundle y medición
+Lo hecho en las rondas 1-3 **se conserva**.
+
+5a. **Test «dos aperturas seguidas»** (`tests/unit/document-actions.test.ts:130-145`): autorizado a cambiarlo. El comportamiento nuevo es correcto (A se cancela antes de cargar). No se toca `runOpen` por esto. Sustituir el nombre y las dos últimas aserciones:
+```ts
+it('con dos aperturas seguidas (A lenta, B rápida) acaba con B y no deja vivo ningún documento de A', async () => {
+  // ... mismo arranque y mismas aserciones de status, file.name y numPages ...
+  const alive = Array.from({ length: spies.calls }, (_, i) => i).filter((i) => !spies.destroyed.includes(i));
+  expect(alive).toHaveLength(1); // solo el de B
+});
+```
+No cambiar ningún otro test existente.
+
+5b. **Bundle** (`bundle:check` 627 248 > 600 000): el presupuesto **no** se sube. En `state/document-actions.ts` quitar `import { needsUserPassword } from '../core/pdf';` y, dentro de `runOpen`, en la condición del sondeo:
+```ts
+if (password === undefined) {
+  const { needsUserPassword } = await import('../core/pdf/password-probe');
+  if (await needsUserPassword(file.source)) { /* lo mismo que ahora */ }
+}
+```
+(mismo patrón que `core/pdf/incremental` en `save-actions.ts:153`). Comprobar que `password-probe.ts` solo importa de `./object-reader` y `./objects` (no del barril).
+
+5c. **Medición** en `tests/e2e/iteration4-performance.spec.ts`, test «cifrado AES-256… p1 pintada ≤ 1,5 ×»:
+- `OPEN_RUNS = 5`.
+- Antes del bucle, un par de calentamiento descartado: `await timeToFirstPage(page, plainPath); await timeToFirstPage(page, cipher, USER);` (la 1.ª apertura sin cifrar sale ~510 ms frente a ~440 y el chunk del sondeo se descarga la primera vez).
+- `recordMeasure` sigue antes del `expect` (ya lo está). Umbral `OPEN_RATIO_MAX = 1.5` **sin cambios**, sobre medianas.
+- Para ver los números de las 3 repeticiones aunque pasen: `pnpm --filter lector-pdf exec playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3 --reporter=json > /tmp/perf148.json` y copiar al Registro el `description` de las anotaciones `medida` del test (a) de las 3 repeticiones (sin cifrar, cifrado, razón, desglose).
+
+### Criterios añadidos (paso 5)
+- [ ] `tests/unit/document-actions.test.ts` en verde con el test de 5a; ningún otro test existente cambiado.
+- [ ] `pnpm --filter lector-pdf build` (incluye `bundle:check`) con código 0 y arranque ≤ 600 000 B; anotar los bytes en el Registro.
+- [ ] (a) pasa en las 3 repeticiones (razón de medianas de 5 ≤ 1,5) con la tabla y el desglose de las 3 en el Registro. Si alguna falla: no tocar umbral ni medida, anotar los números y dejar `cambios-pedidos` para el líder.
+- [ ] Ejecutados de nuevo y con código 0: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter lector-pdf e2e --project=chromium -g "contraseña|cifrad|iteration4"`.
+
 ## Criterios de aceptación
 - [ ] Los 9 casos existentes de `document-password.test.ts` y `password-dialog.test.tsx`, `tab-actions.test.ts`, `compare-actions.test.ts` siguen en verde sin cambiar sus aserciones.
 - [ ] Los 5 casos nuevos de `load-password.test.ts` y el de «una sola llamada» pasan.
@@ -145,3 +179,9 @@ const result = cancelledBeforeLoad
   - **Para el líder (decisión, no la tomo yo):** el test de `document-actions.test.ts` (líneas 130-145) asume que A llega a cargarse y se destruye. Opciones: (1) actualizar su aserto a «A nunca se carga y no queda ningún documento vivo que no sea B» (cambio de un test existente, decisión del líder); (2) que el sondeo no bloquee la cancelación de A (p. ej. comprobar `signal.aborted` antes de `loadPdf`, que ya ocurre: no lo veo como arreglo sin cambiar el comportamiento). No he modificado ese test.
   - (a) no cumple el presupuesto en la repetición 2 (2,43) y no tengo medianas ni desglose completos. Hace falta repetir la medición con el desglose (hasta diálogo / tras «Abrir») antes de decidir sobre ADR-0043 o PDF-099 (a).
   - Dejo la ficha en `cambios-pedidos`, no en `en-revision`, porque hay un test rojo y un criterio de rendimiento incumplido.
+
+### [lider] replanificación 2 — 2026-10-20
+- Test «dos aperturas seguidas»: se actualiza (opción 1). Cancelar A antes de cargar es el comportamiento correcto; el invariante real es «no queda vivo ningún documento de A». Paso 5a.
+- `bundle:check` 627 248 > 600 000: carga diferida de `password-probe` con `import()`, presupuesto sin cambios. Paso 5b; nota en [[ADR-0043-contrasena-sin-reabrir]].
+- Rendimiento: 2,43 en una sola repetición, sin números de las demás → no hay base para cambiar el umbral. Se mide con calentamiento descartado, medianas de 5 y reporter JSON para tener el desglose de las 3. Umbral ≤ 1,5 sin cambios. Paso 5c.
+- Ficha a `pendiente`, `intentos: 0`.
