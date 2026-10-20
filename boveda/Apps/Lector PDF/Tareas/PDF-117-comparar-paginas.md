@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-117
 titulo: Comparar - páginas lado a lado con cambios resaltados y superposición
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-112]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -56,3 +56,9 @@ Al seleccionar un cambio, la vista de comparación pinta la página de cada docu
 ### [revisor] ronda 1 — 2026-10-20 — CAMBIOS
 1. `tests/e2e/compare.spec.ts:150-190`: E2E de superposición inestable; esperar a que el dibujo esté listo (`expect.poll` sobre píxeles no negros o marca `data-ready`) antes de leer píxeles.
 2. `pnpm lint` raíz falla por copias en `.claude/worktrees/**`: añadir ese patrón a los ignores de ESLint y comprobar que termina con 0.
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/compare.spec.ts`, `eslint.config.js`, esta ficha.
+- Qué he hecho: (1) el E2E de superposición espera con `expect.poll` a que aparezca color en el lienzo antes de leer el píxel de esquina; el dibujo es síncrono tras los renders, así que no hace falta cambiar el componente. (2) Añadido `.claude/worktrees/**` a los `ignores` de `eslint.config.js`.
+- Comandos ejecutados y resultado: `pnpm lint` exit 0; `pnpm typecheck` exit 0; `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>/cov` exit 0 (291 ficheros, 3750 tests, All files: Statements 95, Lines 98.32); E2E `compare.spec.ts` en `chromium` 5/5.
+- Dudas o cosas que no he podido hacer: (a) `pnpm coverage` falló con «directorio de cobertura en uso por otro proceso Vitest (pid 907)», otra sesión tiene `coverage/` bloqueado; no he matado ese proceso y he usado un directorio de informe propio. (b) No he relanzado el E2E `@perf` ni el `e2e` completo (la CPU está compartida con otras sesiones y la prueba `@perf` exige reposo).
