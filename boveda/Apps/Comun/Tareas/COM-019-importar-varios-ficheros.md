@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-019
 titulo: Platform.importFiles - elegir varios ficheros a la vez
 app: comun
-estado: en-revision
+estado: hecha
 depende_de: [COM-018]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -63,3 +63,17 @@ importFiles(filters: readonly FileFilter[], maxBytesEach: number, maxCount: numb
   - `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>/cov`: OK, líneas 98.31 %. Se usó otro directorio porque `pnpm coverage` lo tenía bloqueado otro proceso vitest (pid 1735) en ese momento.
   - `pnpm typecheck` (raíz): FALLA en `apps/lector-pdf` (`src/core/doc-ops/ops/index.ts`, `src/core/redact/apply.ts`, `tests/unit/redact/apply.test.ts`: `imageReplacements` y `u0`/`v0` posiblemente `undefined`). No son mis ficheros: hay cambios sin commit de otro trabajo en esos ficheros (redact). Mis cambios no introducen errores de tipos.
 - Dudas o cosas que no he podido hacer: (1) Nombre del DTO: la ficha pide `OpenedDto`; he reutilizado `FileInfoDto` (mismo formato). (2) Tests de Rust de la ficha: se han añadido sobre `register_all`, no sobre el comando completo (el diálogo no es testeable sin la app). (3) No commiteo los cambios de redact de otros trabajos: el commit incluye solo los ficheros de COM-019.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint y tests de `@suite/platform` (263) en verde; diff cumple los criterios (web con picker e input, comprobación previa de número y tamaños, Tauri con `remember: false` y tokens cerrados en `finally`, Rust con liberación en fallo parcial).
+- El fallo de `pnpm typecheck` en `apps/lector-pdf` (redact) viene de cambios sin commit ajenos a esta ficha; no bloquea.
+- (opcional) `register_all` se prueba, pero el comando completo no (el diálogo no es testeable sin app): aceptable.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Web (picker, input, orden, recientes, cancelar, maxCount) | OK | `platform-web-import-many.test.ts` (7 tests) en verde |
+| Tauri (`remember:false`, tokens cerrados también con error E/S) | OK | `import-many-tauri.test.ts` (6 tests) en verde |
+| cargo fmt / clippy -D warnings / test | OK | código 0 |
+| lint / typecheck / coverage | OK | líneas 98.31 % |
+Tests añadidos: ninguno (la cobertura existente basta). Rendimiento: no aplica.

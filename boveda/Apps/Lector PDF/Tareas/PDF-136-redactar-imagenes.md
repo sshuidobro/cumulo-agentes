@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-136
 titulo: Redactar - imágenes parcialmente cubiertas sin convertir la página
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-135]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -72,3 +72,16 @@ export interface PartialImage {
   - La prueba del JPEG usa `DeviceRGB` (el canvas de `@napi-rs/canvas` no genera JPEG en gris). Con `/ColorSpace` `ICCBased` o imágenes no `DeviceGray`/`DeviceRGB` la página va como imagen.
   - Consecuencia de «unir las zonas de todos los usos»: si una imagen aparece dos veces y un uso cae entero en la zona, los píxeles de esa zona se ponen a negro también en el otro uso (sobreredacción, nunca fuga). Lo dejo tal cual está escrito en la ficha.
   - El criterio de «cabe entera» usa la caja envolvente del cuadrilátero, como en PDF-135.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+Lint, typecheck y tests de redact OK. Criterios cubiertos por tests; sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Flate RGB cuarto superior a 0, resto igual, conserva texto | OK | `images.test.ts` «pone a negro solo los píxeles…» |
+| JPEG compartido: pág. 1 nuevo, pág. 2 original | OK | test «la página con la zona usa un objeto nuevo…» |
+| Girada 90° o /SMask → raster | OK | tests líneas 256 y 265 |
+| pixelRects con desplazamiento y escala no uniforme | OK | test línea 276 |
+| lint, typecheck, coverage | OK | sin errores; líneas 98,31 % |
+Tests añadidos: ninguno (los 9 existentes cubren los criterios). Rendimiento: no aplica.
