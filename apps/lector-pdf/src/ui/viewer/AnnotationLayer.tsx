@@ -5,6 +5,7 @@ import {
   type Annotation,
   type AnnotationType,
   type BoxShapeAnnotation,
+  isFlattened,
   type FreeTextAnnotation,
   type RectPt,
   type SignatureAnnotation,
@@ -36,6 +37,7 @@ import {
 import { useAnnotations } from '../../state/annotation-store';
 import { resizeShape } from '../../state/shape-actions';
 import { msg } from '../messages';
+import { editMsg } from '../messages-edit';
 import { annotationOutline, cssColor } from './annotation-geometry';
 import { AnnotationShape, ZoneShape } from './annotation-shapes';
 import { FreeTextEditor } from './FreeTextEditor';
@@ -232,7 +234,7 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
    */
   function beginPointer(event: PointerEvent<SVGGElement>, a: Annotation): void {
     const tool = useAnnotations.getState().tool;
-    if (event.button !== 0 || tool === 'note' || tool === 'ink' || tool === 'signature') return;
+    if (event.button !== 0 || tool === 'note' || tool === 'ink' || tool === 'signature' || tool === 'page-image') return;
     select(a.id);
     if (!MOVABLE.has(a.type)) return;
     event.preventDefault();
@@ -273,7 +275,7 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
    */
   function beginFreeTextCreate(event: PointerEvent<SVGSVGElement>): void {
     const state = useAnnotations.getState();
-    if (event.button !== 0 || state.tool !== 'freetext') return;
+    if (event.button !== 0 || (state.tool !== 'freetext' && state.tool !== 'page-text')) return;
     // Con un editor abierto, el clic solo confirma su texto (lo hace la pérdida de foco); no crea otro cuadro.
     if (state.editing !== null) return;
     // Un clic sobre una anotación o sobre su tirador es de esa anotación, no de una nueva.
@@ -351,12 +353,13 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   }
 
   /**
-   * Herramienta «Firmar» (PDF-043): un clic en la página coloca la firma pendiente centrada en el punto, la selecciona
-   * y devuelve la herramienta a «ninguna».
+   * Herramienta «Firmar» (PDF-043) o «Añadir imagen» (PDF-130): un clic en la página coloca la firma o la imagen
+   * pendiente centrada en el punto, la selecciona y devuelve la herramienta a «ninguna».
    */
   function createSignatureAt(event: PointerEvent<SVGSVGElement>): void {
     const state = useAnnotations.getState();
-    if (event.button !== 0 || state.tool !== 'signature' || state.pendingSignature === null) return;
+    const placing = state.tool === 'signature' || state.tool === 'page-image';
+    if (event.button !== 0 || !placing || state.pendingSignature === null) return;
     event.preventDefault();
     const box = event.currentTarget.getBoundingClientRect();
     const [x = 0, y = 0] = viewport.convertToPdfPoint(event.clientX - box.left, event.clientY - box.top);
@@ -650,7 +653,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
                       else openPopup(a.id);
                     }}
                   >
-                    {a.contents !== '' && <title>{Array.from(a.contents).slice(0, TOOLTIP_CHARS).join('')}</title>}
+                    {isFlattened(a) ? (
+                      <title>{editMsg.pendingContent}</title>
+                    ) : (
+                      a.contents !== '' && <title>{Array.from(a.contents).slice(0, TOOLTIP_CHARS).join('')}</title>
+                    )}
                     <ZoneShape a={view} />
                     <rect
                       x={outline[0]}

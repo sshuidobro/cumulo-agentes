@@ -54,6 +54,7 @@
 
 .viewer[data-tool='note'] .annotationLayer,
 .viewer[data-tool='freetext'] .annotationLayer,
+.viewer[data-tool='page-text'] .annotationLayer,
 .viewer[data-tool='ink'] .annotationLayer,
 .viewer[data-tool='square'] .annotationLayer,
 .viewer[data-tool='circle'] .annotationLayer,
@@ -66,6 +67,7 @@
 
 /* Con «Firmar», un clic en la página coloca la firma pendiente (PDF-043); con «Sello», el sello elegido (PDF-115). */
 .viewer[data-tool='signature'] .annotationLayer,
+.viewer[data-tool='page-image'] .annotationLayer,
 .viewer[data-tool='stamp'] .annotationLayer {
   pointer-events: auto;
   cursor: copy;

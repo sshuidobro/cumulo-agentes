@@ -72,7 +72,7 @@ interface Selection {
 }
 
 /** Destino de «Color»: una herramienta de color, o la forma seleccionada (PDF-108). */
-type ColorTarget = ColorTool | 'shape';
+export type ColorTarget = ColorTool | 'shape';
 /** Destino de «Grosor»: el dibujo a mano alzada (PDF-035) o las formas (PDF-108). */
 type WidthTarget = 'ink' | 'shape';
 
@@ -98,7 +98,7 @@ function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTarget 
   if (selection.text) return 'freetext';
   if (selection.ink) return 'ink';
   if (selection.shape !== null) return 'shape';
-  return tool === 'none' || tool === 'signature' || tool === 'stamp' ? null : tool;
+  return tool === 'none' || tool === 'signature' || tool === 'stamp' || tool === 'page-image' ? null : tool;
 }
 
 /** A qué afecta «Grosor»: el dibujo o la forma seleccionados, o la herramienta activa. `null` si ninguna aplica. */
@@ -140,7 +140,7 @@ function swatchOf([r, g, b]: Rgb): string {
   return `rgb(${String(Math.round(r * 255))} ${String(Math.round(g * 255))} ${String(Math.round(b * 255))})`;
 }
 
-function colorEntries(
+export function colorEntries(
   target: ColorTarget | null,
   colors: Readonly<Record<ColorTool, Rgb>>,
   shapeColor: Rgb | null,
@@ -160,7 +160,7 @@ function colorEntries(
  * El color de «Texto» llega también al texto libre seleccionado (PDF-034), el de «Dibujar», al dibujo seleccionado
  * (PDF-035) y «Color» con una forma seleccionada, a esa forma (PDF-108); el resto de herramientas, solo a su herramienta.
  */
-function applyColor(target: ColorTarget, rgb: Rgb): void {
+export function applyColor(target: ColorTarget, rgb: Rgb): void {
   if (target === 'freetext') setFreeTextColor(rgb);
   else if (target === 'ink') setInkColor(rgb);
   else if (target === 'shape') setShapeColor(rgb);
@@ -195,7 +195,7 @@ function widthEntries(target: WidthTarget, inkWidth: (typeof INK_WIDTHS)[number]
   }));
 }
 
-function fontSizeEntries(fontSize: (typeof FONT_SIZES)[number]): readonly MenuEntry[] {
+export function fontSizeEntries(fontSize: (typeof FONT_SIZES)[number]): readonly MenuEntry[] {
   return FONT_SIZES.map((size): MenuEntry => ({
     kind: 'radio',
     label: msg.pointSize(size),
