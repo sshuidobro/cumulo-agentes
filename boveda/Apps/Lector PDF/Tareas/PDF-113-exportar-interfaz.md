@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-113
 titulo: Exportar - diálogo, progreso, permisos y guardado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-064, COM-018, PDF-048, PDF-095, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, exportar, ui]
 ---
 
