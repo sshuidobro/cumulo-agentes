@@ -6,7 +6,7 @@ import { readPageRotations, type PageRotation, type PageSlot } from '../../pdf/p
 import type { SaveSlot } from '../../organize/plan';
 import { buildOrganizeUpdate } from '../../organize/save';
 import { buildZip, MAX_ZIP_BYTES } from '../../export/plan';
-import { buildNewDocument } from '../../pdf/new-document';
+import { buildNewDocument, type NewDocumentPart } from '../../pdf/new-document';
 import type { ObjectReader } from '../../pdf/object-reader';
 import type { NewSecurityInput, PermissionChoice } from '../../pdf/crypto';
 import { PERMISSION_FLAG } from '../../permissions';
@@ -54,6 +54,8 @@ interface OrganizeArgs {
   readonly password: string | null;
   readonly slots: readonly SaveSlot[];
   readonly now: string;
+  /** Contraseña de cada PDF importado (fuentes 1..k), en orden; `null` si no tiene. */
+  readonly importedPasswords: readonly (string | null)[];
 }
 
 const SAVE_SLOT_KINDS: readonly string[] = ['original', 'blank', 'imported'];
@@ -79,21 +81,34 @@ function parseOrganizeArgs(args: unknown): OrganizeArgs {
   }
   if (!Array.isArray(slots) || !slots.every(isSaveSlotLike)) throw new TypeError('organize: el plan no es una lista de huecos.');
   if (typeof now !== 'string') throw new TypeError('organize: la fecha debe ser texto.');
-  return { password, slots: slots as readonly SaveSlot[], now };
+  // Sin `importedPasswords` no hay PDF importados (la vista Organizar de PDF-053 no los envía).
+  const importedPasswords = 'importedPasswords' in args ? args.importedPasswords : [];
+  if (!Array.isArray(importedPasswords) || !importedPasswords.every((p) => p === null || typeof p === 'string')) {
+    throw new TypeError('organize: las contraseñas importadas deben ser texto o null.');
+  }
+  return { password, slots: slots as readonly SaveSlot[], now, importedPasswords: importedPasswords as readonly (string | null)[] };
 }
 
 /** Escribe el plan de páginas como un incremento sobre el documento (fuente 0, con los cambios sin guardar ya encadenados). */
 const organize: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
-  const { password, slots, now } = parseOrganizeArgs(args);
+  const { password, slots, now, importedPasswords } = parseOrganizeArgs(args);
   const source = ctx.sources[0];
   if (source === undefined) throw new RangeError('organize: falta el documento (fuente 0).');
+  if (ctx.sources.length - 1 !== importedPasswords.length) throw new RangeError('organize: una contraseña por PDF importado (bug).');
   if (ctx.signal.aborted) return err(pdfError('cancelled'));
   const opened = await openForSave(source, password ?? undefined);
   if (!opened.ok) return opened;
+  const imported: ObjectReader[] = [];
+  for (const [index, importedSource] of ctx.sources.slice(1).entries()) {
+    const reader = await openForSave(importedSource, importedPasswords[index] ?? undefined);
+    if (!reader.ok) return reader;
+    imported.push(reader.value);
+  }
   const built = await buildOrganizeUpdate({
     source,
     reader: opened.value,
     slots,
+    imported,
     now,
     signal: ctx.signal,
     onProgress: (done, total) => {
@@ -102,6 +117,61 @@ const organize: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> =>
   });
   if (!built.ok) return built;
   return ok({ delta: built.value.delta });
+};
+
+interface CombineArgs {
+  readonly parts: readonly { readonly password: string | null; readonly title: string }[];
+  readonly now: string;
+}
+
+/** Igual que `parseOrganizeArgs`: un argumento mal formado es un bug de la app. */
+function parseCombineArgs(args: unknown): CombineArgs {
+  if (typeof args !== 'object' || args === null || !('parts' in args) || !('now' in args)) {
+    throw new TypeError('combine: argumentos no válidos.');
+  }
+  const { parts, now } = args;
+  if (!Array.isArray(parts)) throw new TypeError('combine: las partes deben ser una lista.');
+  for (const part of parts) {
+    if (typeof part !== 'object' || part === null || !('password' in part) || !('title' in part)) {
+      throw new TypeError('combine: cada parte necesita contraseña y título.');
+    }
+    if (part.password !== null && typeof part.password !== 'string') throw new TypeError('combine: la contraseña debe ser texto o null.');
+    if (typeof part.title !== 'string') throw new TypeError('combine: el título debe ser texto.');
+  }
+  if (typeof now !== 'string') throw new TypeError('combine: la fecha debe ser texto.');
+  return { parts: parts as CombineArgs['parts'], now };
+}
+
+/**
+ * Un PDF nuevo con todas las páginas de cada fuente (una parte por fuente, en orden), con una rama del índice por
+ * parte (PDF-055). Las páginas van con su giro efectivo.
+ */
+const combine: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const { parts, now } = parseCombineArgs(args);
+  if (ctx.sources.length !== parts.length) throw new RangeError('combine: una fuente por parte (bug).');
+  if (ctx.signal.aborted) return err(pdfError('cancelled'));
+  const newParts: NewDocumentPart[] = [];
+  for (const [index, part] of parts.entries()) {
+    const source = ctx.sources[index];
+    if (source === undefined) throw new RangeError('combine: falta una fuente (bug).');
+    const opened = await openForSave(source, part.password ?? undefined);
+    if (!opened.ok) return opened;
+    const rotations = await readPageRotations(opened.value);
+    if (!rotations.ok) return rotations;
+    const pages: PageSlot[] = rotations.value.map((rotate, page) => ({ source: page, rotate }));
+    newParts.push({ reader: opened.value, pages, title: part.title });
+  }
+  const built = await buildNewDocument({
+    parts: newParts,
+    outline: 'branches',
+    now,
+    signal: ctx.signal,
+    onProgress: (done, total) => {
+      ctx.progress(done, total);
+    },
+  });
+  if (!built.ok) return built;
+  return ok({ bytes: built.value.bytes, pageCount: built.value.pageCount });
 };
 
 interface ImagesToPdfArgs {
@@ -486,6 +556,7 @@ const rewrite: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => 
 export const DOC_OPS: DocOpRegistry = {
   'page-rotations': pageRotations,
   organize,
+  combine,
   'images-to-pdf': imagesToPdf,
   extract,
   split,
