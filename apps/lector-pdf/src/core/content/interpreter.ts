@@ -15,6 +15,13 @@ export interface GlyphBox {
   readonly op: number; // índice en ops
   readonly code: number; // índice del código dentro de la operación (en TJ, contando todos sus strings en orden)
   readonly quad: Quad;
+  /** Bytes que ocupa el código en su cadena (1 o 2). */
+  readonly length: number;
+  /**
+   * Número de un `TJ` que equivale al avance de este glifo (`-(w0 + (Tc + Tw') · 1000 / Tfs)`, PDF-135). `null` si
+   * `Tfs` es 0 y no se puede expresar.
+   */
+  readonly shift: number | null;
 }
 export interface ImageBox {
   readonly op: number;
@@ -123,8 +130,9 @@ export async function interpretPage(reader: ObjectReader, page: PdfDict): Promis
       while (i < bytes.length) {
         const value = codeAt(bytes, i, font.bytesPerCode);
         const width = font.width(value.code);
-        glyphs.push({ op: index, code, quad: glyphQuad(machine, text, font, width) });
         const wordSpace = font.bytesPerCode === 1 && value.code === SPACE_CODE ? text.wordSpacing : 0;
+        const shift = text.fontSize === 0 ? null : -(width + ((text.charSpacing + wordSpace) * GLYPH_SCALE) / text.fontSize);
+        glyphs.push({ op: index, code, quad: glyphQuad(machine, text, font, width), length: value.length, shift });
         const tx = (width / GLYPH_SCALE * text.fontSize + text.charSpacing + wordSpace) * text.horizontalScale;
         moveText(machine, tx, 0);
         code += 1;

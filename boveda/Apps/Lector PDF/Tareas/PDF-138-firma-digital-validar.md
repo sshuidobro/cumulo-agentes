@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-138
 titulo: Firma digital - validar las firmas de un PDF (núcleo)
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-066]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, firma, seguridad, nucleo]
 ---
 
@@ -69,3 +69,31 @@ export async function verifySignatures(source: ByteSource, reader: ObjectReader)
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/signature/digital/verify.ts` (nuevo), `digital/index.ts` (exporta `verifySignatures`), `src/core/doc-ops/ops/signature.ts` y `ops/index.ts` (op `'verify-signatures'`), `tests/unit/signature/verify.test.ts` (nuevo, 26 tests), `tests/support/certs.ts` (certificado y clave RSA y EC en PEM para `openssl`). No he tocado `p12.ts`, `forms-cleanup.ts` ni los ficheros de PDF-112/PDF-135.
+- Qué he hecho: validación por campo `/FT /Sig` con `/V` (FT y V heredados, nombre completo), `/ByteRange`, `messageDigest`, firma RSA con forge y ECDSA con WebCrypto (DER a P1363), `changedAfter` ignorando blancos finales, y cada firma rota aislada como `unknown`. El firmante se lee del ASN.1 del CMS porque `forge.pki.certificateFromAsn1` no admite claves EC; el test comprueba que coincide con `openP12`.
+- Comandos ejecutados y resultado: `vitest run tests/unit/signature/verify.test.ts` 26/26 OK. Cobertura de `verify.ts` 95,7 % de líneas. `pnpm typecheck` y `pnpm lint`: sin errores en mis ficheros. Errores ajenos: typecheck en `src/core/redact/apply.ts` y `tests/unit/redact/apply.test.ts`; lint en `tests/unit/compare-actions.test.ts` y `tests/unit/redact/apply.test.ts`. `pnpm coverage` completo: 282 ficheros OK; fallan 14 tests de `tests/unit/redact/apply.test.ts` y 1 fichero más ajeno. Por eso el comando completo no sale con código 0 (criterio pendiente hasta que esos ficheros estén verdes).
+- Dudas o cosas que no he podido hacer:
+  1. ECDSA sin `signedAttrs` → `unknown` («Tipo de firma no admitido»): WebCrypto no verifica un resumen ya calculado. La ficha no lo dice; confirmar.
+  2. Sin `signedAttrs` con RSA, el resumen se calcula con el algoritmo de la firma (`sha*WithRSA`) y no con `digestAlgorithm`; es lo que exige CMS, pero la ficha habla del algoritmo del SignerInfo.
+  3. Solo se valida el primer SignerInfo; `sid` por SubjectKeyIdentifier → `unknown`.
+  4. `/ByteRange` con `a ≠ 0` o que no sean 4 enteros → `invalid` (interpretación de «[0 b c d]»).
+  5. Sin probar: PDF cifrado. El lector descifra también `/Contents`, así que la firma saldría `unknown`; no hay test.
+  6. `pageIndex`: se toma de `/P` del widget (o del primer hijo). Campos con hijos sin cubrir por tests.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm lint` y `pnpm typecheck` OK. `pnpm coverage`: 3696/3697 tests; el único fallo (`protect-ops.test.ts`, timeout de 5 s bajo carga) pasa solo (11/11), no es de esta ficha. `verify.test.ts` 26/26; `verify.ts` 95,7 % de líneas; pdfsig contrastado en valid/invalid.
+1. (opcional) `verify.ts:213` — no se comprueba que el hueco `[b, c)` coincida con la posición de `/Contents` (defensa contra «signature wrapping»); valdría un criterio en una ficha futura.
+2. (opcional) Dudas del programador 1-4 aceptadas como interpretación razonable; documentar ECDSA sin `signedAttrs` → `unknown` en el Manual. Falta test de PDF cifrado (duda 5) y de campos con `/Kids` (duda 6), recomendable en PDF-139.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Casos de la ficha (válido, byte cambiado, incremento posterior, ECDSA openssl, sha1) | OK | `verify.test.ts` 26/26 dentro de `pnpm coverage` |
+| pdfsig coincide en valid/invalid | OK | tests con `pdfsig` (líneas 170, 181, 220, 240) |
+| Sin firmas y `form-full.pdf` → `ok([])` | OK | test línea 308 |
+| Cobertura `verify.ts` ≥ 90 % | OK | 95,71 % líneas |
+| lint, typecheck, coverage con código 0 | OK | lint y typecheck limpios; coverage exit=0, 283 ficheros, 3697/3697 tests |
+
+Sin tests añadidos. Pendientes recomendados (no bloquean): PDF cifrado y campos con `/Kids` (PDF-139), según el revisor.

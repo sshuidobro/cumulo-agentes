@@ -4,8 +4,10 @@ import { formatShortcut } from '../shortcuts';
 import { printMsg } from '../messages-print';
 import { exportMsg } from '../messages-export';
 import { propertiesMsg } from '../messages-properties';
+import { compareMsg } from '../messages-compare';
 import { openPrintDialog } from '../../state/print-actions';
 import { openExportDialog } from '../../state/export-actions';
+import { startCompare } from '../../state/compare-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -33,6 +35,11 @@ export function DocumentMenu() {
           shortcut: formatShortcut('print', platform.isMac),
           disabled: !printAllowed,
           onSelect: () => { openPrintDialog(); },
+        },
+        {
+          kind: 'action',
+          label: compareMsg.menuItem,
+          onSelect: () => { void startCompare(); },
         },
         {
           kind: 'action',

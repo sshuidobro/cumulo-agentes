@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-135
 titulo: Redactar - aplicar (texto, imágenes enteras, anotaciones, página en imagen) y reescritura
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-062, PDF-131]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, seguridad, edicion, nucleo]
 ---
 
@@ -70,3 +70,24 @@ export async function buildRedactionUpdate(input: RedactInput): Promise<Result<{
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/redact/apply.ts` (nuevo), `apps/lector-pdf/tests/unit/redact/apply.test.ts` (nuevo, 30 tests), `apps/lector-pdf/src/core/organize/forms-cleanup.ts` (extraído `removeWidgetRefs`; `updateAcroForm` lo usa), `apps/lector-pdf/src/core/content/interpreter.ts` (`GlyphBox` con `length` y `shift`, para el `TJ` equivalente), `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (ops `redact-plan` y `redact`).
+- Qué he hecho: `planRedaction` y `buildRedactionUpdate` según la ficha; el texto se sustituye glifo a glifo por ajustes de `TJ`, las imágenes enteras y las anotaciones que tocan la zona salen, las páginas no medibles (fuente Type3, sin medir, contenido roto, formularios o imágenes que cruzan la zona) van como imagen. La op `redact` concatena el delta y reescribe con `rewriteDocument` conservando el cifrado.
+- Comandos y resultado: `pnpm typecheck` OK. `pnpm coverage` (con `--coverage.reportsDirectory` propio, porque otro vitest tenía el directorio `coverage/` bloqueado): 283 ficheros, 3697 tests OK, `apply.ts` 97,5 % líneas. `pnpm lint`: mis ficheros limpios; falla solo por `tests/unit/compare-actions.test.ts:2` (`OpenedFile` sin usar), fichero de otra ficha en curso que no he tocado.
+- Dudas o cosas que no he podido hacer: (1) `unmeasured` no tiene caja: en una página con zonas, cualquier operación no medida la convierte en imagen (conservador). (2) El contenido original va envuelto en `q`/`Q` antes de los rectángulos negros; si no, un `cm` del original desplazaría las zonas. (3) `annotated.pdf` no tiene nota `/Text`: uso el resaltado con su `/Popup` como «nota». (4) pdftotext elimina el espacio inicial de la línea: la comprobación de «de 5» va sobre el contenido (`Tj`/`TJ`). (5) Las imágenes parciales quedan como imagen (`partialImages: []`) hasta PDF-136. (6) No he hecho commit (lo pediste así).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm lint` y `pnpm typecheck` sin errores. Tests de redact y organize: 135 OK; `apply.ts` 97,5 % líneas (96 % sentencias).
+- Todos los criterios tienen test (basic-5, posición ±0,5 pt con pdf.js, imagen entera sin objeto, annotated, Type3 raster, AES-256, sin /Prev).
+- (opcional) `apply.ts` son 499 líneas; valorar partirlo cuando entre PDF-136.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| Batería completa | OK | `vitest run`: 283 ficheros, 3697 tests OK (con cobertura, 4 timeouts por carga, p. ej. page-tree pages-5000; repetidos sin cobertura: todo verde) |
+| Criterios 1-7 (basic-5, posición, imagen entera, annotated, Type3 raster, AES-256, sin /Prev) | OK | `tests/unit/redact/apply.test.ts` (30 tests) verdes |
+| Cobertura apply.ts | 97,54 % líneas | vitest coverage text |
+Tests añadidos: ninguno. Rendimiento: no aplica.
+Nota: `pnpm coverage` estándar choca con otro vitest que bloquea `coverage/`; usé directorio propio.

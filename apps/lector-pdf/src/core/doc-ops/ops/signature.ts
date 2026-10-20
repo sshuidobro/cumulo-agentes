@@ -89,4 +89,29 @@ const signPdf: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => 
   return ok({ delta: built.value.delta });
 };
 
-export { p12Info, signPdf };
+interface VerifyArgs {
+  readonly password: string | null;
+}
+
+function parseVerifyArgs(args: unknown): VerifyArgs {
+  if (typeof args !== 'object' || args === null || !('password' in args)) {
+    throw new TypeError('verify-signatures: argumentos no válidos.');
+  }
+  const { password } = args;
+  if (password !== null && typeof password !== 'string') throw new TypeError('verify-signatures: la contraseña debe ser texto o null.');
+  return { password };
+}
+
+/** Valida las firmas del PDF (PDF-138): quién firmó, cuándo, si es íntegra y si hubo cambios después. */
+const verifySignaturesOp: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const { password } = parseVerifyArgs(args);
+  const source = ctx.sources[0];
+  if (source === undefined) throw new RangeError('verify-signatures: falta el documento (fuente 0).');
+  if (ctx.signal.aborted) return err(pdfError('cancelled'));
+  const opened = await openForSave(source, password ?? undefined);
+  if (!opened.ok) return opened;
+  const { verifySignatures } = await import('../../signature/digital');
+  return verifySignatures(source, opened.value);
+};
+
+export { p12Info, signPdf, verifySignaturesOp };
