@@ -60,17 +60,84 @@ Abrir un PDF cifrado hace **un solo** `getDocument`: la tarea de carga de pdf.js
    - Nuevo `apps/lector-pdf/tests/unit/load-password.test.ts` (pdf.js real, fixture `encrypted-aes-256.pdf` con el mismo helper que `document-password.test.ts`): (i) `requestPassword` devuelve «usuario» → `ok`, `password === 'usuario'`, llamado una vez con `false`; (ii) primero «mala» y luego «usuario» → llamado con `false` y luego `true`, `ok`; (iii) devuelve `null` → `err` con código `cancelled`; (iv) sin `requestPassword` → `err` `password-required` (como hoy); (v) abortar el `signal` mientras `requestPassword` está pendiente → `cancelled`.
    - En `document-password.test.ts` añadir un caso: espiar `loadPdf` con `vi.mock` parcial de `../../src/engine` (`loadPdf: vi.fn(actual.loadPdf)`) y comprobar que abrir el cifrado con contraseña incorrecta y luego correcta llama a `loadPdf` **una** vez.
 
+## Replanificación (líder, 2026-10-20) · paso 4: sondear antes de abrir
+Lo hecho en la ronda 1 (pasos 1-3) **se conserva**. pdf.js reanaliza el documento tras `update(p)` (ver [[ADR-0043-contrasena-sin-reabrir]], «Revisión»), así que se pide la contraseña **antes** de `getDocument` cuando se sabe que hace falta.
+
+4a. Nuevo `apps/lector-pdf/src/core/pdf/password-probe.ts` (≤ 25 líneas) y exportarlo en `src/core/pdf/index.ts`:
+```ts
+/** `true` solo si el PDF tiene /Encrypt y la contraseña vacía no lo abre como usuario ni propietario. Nunca lanza. */
+export async function needsUserPassword(src: ByteSource): Promise<boolean> {
+  try { await ObjectReader.open(src); return false; }
+  catch (e) { return e instanceof PdfSyntaxError && e.message === 'wrong-password'; }
+}
+```
+Cualquier otro error (dañado, `encryption-unsupported`) → `false`: decide pdf.js, que sigue teniendo `onPassword` como red.
+
+4b. `state/document-actions.ts` → `runOpen`, justo antes de `const result = await loadPdf(...)`:
+```ts
+let password = opts?.password;
+if (password === undefined && (await needsUserPassword(file.source))) {
+  const answer = seq === openSeq ? await askPassword(file.name, false) : null;
+  password = answer ?? undefined;
+  cancelledBeforeLoad = answer === null;
+}
+const result = cancelledBeforeLoad
+  ? err(pdfError('cancelled'))
+  : await loadPdf(file.source, { ...lo de ahora, con `password` local en lugar de `opts?.password` });
+```
+(`cancelledBeforeLoad` es un `let` booleano a `false`; `err` de `@suite/shared`.) El resto de `runOpen` no cambia: la comprobación `seq !== openSeq` posterior ya cubre «abrir otro fichero mientras se pide». `requestPassword` se mantiene para la contraseña incorrecta.
+
+4c. Tests:
+- Nuevo `tests/unit/password-probe.test.ts` (fixtures con `fixtureSource`): `encrypted-aes-256.pdf` y `encrypted-aes-128.pdf` → `true`; `encrypted-owner-only.pdf` → `false`; un PDF sin cifrar del catálogo → `false`; `ByteSource` con bytes `'no es un pdf'` → `false` sin lanzar.
+- En `document-password.test.ts` (añadir, sin cambiar los existentes): abrir `encrypted-owner-only.pdf` no muestra el diálogo (`usePasswordPrompt` sigue cerrado) y el caso «mala y luego buena» sigue llamando a `loadPdf` **una** vez.
+
+## Replanificación (líder, 2026-10-20) · paso 5: test, bundle y medición
+Lo hecho en las rondas 1-3 **se conserva**.
+
+5a. **Test «dos aperturas seguidas»** (`tests/unit/document-actions.test.ts:130-145`): autorizado a cambiarlo. El comportamiento nuevo es correcto (A se cancela antes de cargar). No se toca `runOpen` por esto. Sustituir el nombre y las dos últimas aserciones:
+```ts
+it('con dos aperturas seguidas (A lenta, B rápida) acaba con B y no deja vivo ningún documento de A', async () => {
+  // ... mismo arranque y mismas aserciones de status, file.name y numPages ...
+  const alive = Array.from({ length: spies.calls }, (_, i) => i).filter((i) => !spies.destroyed.includes(i));
+  expect(alive).toHaveLength(1); // solo el de B
+});
+```
+No cambiar ningún otro test existente.
+
+5b. **Bundle** (`bundle:check` 627 248 > 600 000): el presupuesto **no** se sube. En `state/document-actions.ts` quitar `import { needsUserPassword } from '../core/pdf';` y, dentro de `runOpen`, en la condición del sondeo:
+```ts
+if (password === undefined) {
+  const { needsUserPassword } = await import('../core/pdf/password-probe');
+  if (await needsUserPassword(file.source)) { /* lo mismo que ahora */ }
+}
+```
+(mismo patrón que `core/pdf/incremental` en `save-actions.ts:153`). Comprobar que `password-probe.ts` solo importa de `./object-reader` y `./objects` (no del barril).
+
+5c. **Medición** en `tests/e2e/iteration4-performance.spec.ts`, test «cifrado AES-256… p1 pintada ≤ 1,5 ×»:
+- `OPEN_RUNS = 5`.
+- Antes del bucle, un par de calentamiento descartado: `await timeToFirstPage(page, plainPath); await timeToFirstPage(page, cipher, USER);` (la 1.ª apertura sin cifrar sale ~510 ms frente a ~440 y el chunk del sondeo se descarga la primera vez).
+- `recordMeasure` sigue antes del `expect` (ya lo está). Umbral `OPEN_RATIO_MAX = 1.5` **sin cambios**, sobre medianas.
+- Para ver los números de las 3 repeticiones aunque pasen: `pnpm --filter lector-pdf exec playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3 --reporter=json > /tmp/perf148.json` y copiar al Registro el `description` de las anotaciones `medida` del test (a) de las 3 repeticiones (sin cifrar, cifrado, razón, desglose).
+
+### Criterios añadidos (paso 5)
+- [ ] `tests/unit/document-actions.test.ts` en verde con el test de 5a; ningún otro test existente cambiado.
+- [ ] `pnpm --filter lector-pdf build` (incluye `bundle:check`) con código 0 y arranque ≤ 600 000 B; anotar los bytes en el Registro.
+- [ ] (a) pasa en las 3 repeticiones (razón de medianas de 5 ≤ 1,5) con la tabla y el desglose de las 3 en el Registro. Si alguna falla: no tocar umbral ni medida, anotar los números y dejar `cambios-pedidos` para el líder.
+- [ ] Ejecutados de nuevo y con código 0: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter lector-pdf e2e --project=chromium -g "contraseña|cifrad|iteration4"`.
+
 ## Criterios de aceptación
 - [ ] Los 9 casos existentes de `document-password.test.ts` y `password-dialog.test.tsx`, `tab-actions.test.ts`, `compare-actions.test.ts` siguen en verde sin cambiar sus aserciones.
 - [ ] Los 5 casos nuevos de `load-password.test.ts` y el de «una sola llamada» pasan.
 - [ ] La contraseña no aparece en el logger (el caso existente de `document-password.test.ts` lo cubre) ni en `LoadOptions`/errores serializados.
+- [ ] `password-probe.test.ts` (5 casos) y los 2 casos nuevos de `document-password.test.ts` pasan; un PDF con solo contraseña de propietario abre sin diálogo.
+- [ ] La contraseña no se registra en ningún `log.*` de `password-probe.ts` ni de `runOpen`.
 - [ ] `pnpm --filter lector-pdf exec playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3` (tras la puerta de reposo, sin otras baterías): la (a) da razón de medianas ≤ 1,5 en las 3. La (a) se mide como dice [[ADR-0043-contrasena-sin-reabrir]]: se resta el intervalo desde que el diálogo es visible hasta el clic en «Abrir» (dos `performance.now()` en el test). Anotar en el Registro la tabla: sin cifrar, cifrado, razón (×3).
-- [ ] Si tras el cambio la razón sigue > 1,5: no tocar el presupuesto; anotar el desglose (hasta diálogo / tras «Abrir») y dejar la ficha en `cambios-pedidos` con la nota para el líder.
+- [ ] Anotar el desglose (hasta diálogo / tras «Abrir») en el Registro. Esperado: hasta diálogo < 100 ms y tras «Abrir» ≈ sin cifrar. Si la razón sigue > 1,5, no tocar el presupuesto: anotar el desglose y pasar a `cambios-pedidos` con nota para el líder.
 - [ ] `pnpm --filter lector-pdf e2e --project=chromium -g "contraseña|cifrad|iteration4"` con código 0.
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` con código 0.
 
 ## Fuera de alcance
-- `compare-actions.ts` y `print-source.ts` (siguen sin `requestPassword`). Cambios en el diálogo o los textos. El resto de PDF-099.
+- `compare-actions.ts` y `print-source.ts` (siguen sin `requestPassword` ni sondeo). Parchear pdf.js. Cambios en el diálogo o los textos. El resto de PDF-099.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
@@ -94,3 +161,42 @@ Abrir un PDF cifrado hace **un solo** `getDocument`: la tarea de carga de pdf.js
 - Qué he hecho: he revisado la causa del sobrecoste tras «Abrir» en el worker de pdf.js 6.4.299 (`node_modules/.pnpm/pdfjs-dist@6.4.299/.../pdf.worker.mjs`, `setupDoc`/`onFailure`, líneas ~64355-64400). Al recibir la contraseña, pdf.js hace `pdfManager.updatePassword(password)` y después `pdfManagerReady()` → `loadDocument(false)`: vuelve a parsear el documento (catálogo, xref, árbol de páginas) en el worker. Por tanto la app ya hace una sola `getDocument`, pero **pdf.js repite el análisis dentro de la misma tarea**. La premisa de [[ADR-0043-contrasena-sin-reabrir]] («una sola lectura de xref») no se cumple con esta versión de pdf.js.
 - Comandos ejecutados y resultado: ninguno nuevo; los datos son los de la ronda 1 (razón 1,90-1,93, presupuesto 1,5 sin tocar).
 - Dudas o cosas que no he podido hacer: para cumplir ≤ 1,5 hace falta una decisión del líder. Opciones que veo, sin elegir ninguna: (1) parchear o envolver el comportamiento del worker de pdf.js (fuera de lo que la ficha permite); (2) revisar ADR-0043 y, si procede, redefinir la medida de PDF-099 (a) (decisión de producto/medida, no del programador); (3) aceptar el coste y dejar PDF-099 (a) como deuda. No he tocado el presupuesto. Dejo la ficha en `cambios-pedidos` porque su criterio de aceptación lo exige mientras la razón sea > 1,5; no la paso a `en-revision` como pedía el mensaje de entrada, para no enviar al revisor una ficha con un criterio incumplido.
+
+### [lider] replanificación — 2026-10-20
+- Causa confirmada: pdf.js 6.4.299 reanaliza tras `updatePassword`. Descartado parchear el worker y relajar el umbral (motivos en [[ADR-0043-contrasena-sin-reabrir]], «Revisión»).
+- Decisión: A + C. Se añade el paso 4 (sondeo `needsUserPassword` con `ObjectReader.open` ya existente) y sus criterios. Presupuesto de PDF-099 (a) sin cambios (≤ 1,5 ×).
+- Ficha a `pendiente`, `intentos: 0`. Lo hecho en la ronda 1 se conserva.
+
+### [programador] ronda 3 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/password-probe.ts` (nuevo, paso 4a), `apps/lector-pdf/src/core/pdf/index.ts` (exporta `needsUserPassword`), `apps/lector-pdf/src/state/document-actions.ts` (paso 4b: sondeo antes de `loadPdf`, `cancelledBeforeLoad`, import de `err` y `needsUserPassword`), `apps/lector-pdf/tests/unit/password-probe.test.ts` (nuevo, 5 casos), `apps/lector-pdf/tests/unit/document-password.test.ts` (caso nuevo «owner-only sin diálogo y una sola carga»; los existentes sin cambios).
+- Qué he hecho: el sondeo `needsUserPassword` (ObjectReader.open, solo `wrong-password` = true) decide si se pide la contraseña antes de `loadPdf`; `loadPdf` se llama una vez con la contraseña ya dada, y `requestPassword` queda para la contraseña incorrecta. Compilan lint y typecheck; los 5 casos del sondeo y los de `document-password`, `load-password`, `password-dialog`, `tab-actions` y `compare-actions` pasan.
+- Comandos ejecutados y resultado:
+  - `pnpm lint` y `pnpm typecheck`: código 0.
+  - `pnpm coverage` (con `--coverage.reportsDirectory` propio: otro vitest tenía el directorio bloqueado): 3949 tests, 3948 en verde. **Falla 1**: `tests/unit/document-actions.test.ts` > «con dos aperturas seguidas (A lenta, B rápida)…», falla de forma determinista (también al ejecutarlo solo). Causa: con el sondeo, A queda bloqueada en `needsUserPassword` (lee a través de la fuente con puerta); B toma el relevo y aborta A; al liberarse la puerta, `loadPdf` ve `signal.aborted` (`engine/load.ts` línea 72) y devuelve `cancelled` sin cargar, así que A nunca crea documento y el aserto `destroyed` contiene 0 no se cumple. El comportamiento para el usuario es correcto (no hay fuga), pero el test encodifica el orden antiguo.
+  - `playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3`: 11 pasados, 1 fallido. Falla (a) en la repetición 2: razón de medianas **2,43** (presupuesto ≤ 1,5). Las repeticiones 1 y 3 de (a) pasan, pero no he capturado sus números ni el desglose (el log de Playwright solo muestra el fallo).
+  - No he ejecutado `e2e --project=chromium -g "contraseña|cifrad|iteration4"` ni `pnpm lint` tras el último cambio de tests (los de `document-actions` no se tocaron).
+- Dudas o cosas que no he podido hacer:
+  - **Para el líder (decisión, no la tomo yo):** el test de `document-actions.test.ts` (líneas 130-145) asume que A llega a cargarse y se destruye. Opciones: (1) actualizar su aserto a «A nunca se carga y no queda ningún documento vivo que no sea B» (cambio de un test existente, decisión del líder); (2) que el sondeo no bloquee la cancelación de A (p. ej. comprobar `signal.aborted` antes de `loadPdf`, que ya ocurre: no lo veo como arreglo sin cambiar el comportamiento). No he modificado ese test.
+  - (a) no cumple el presupuesto en la repetición 2 (2,43) y no tengo medianas ni desglose completos. Hace falta repetir la medición con el desglose (hasta diálogo / tras «Abrir») antes de decidir sobre ADR-0043 o PDF-099 (a).
+  - Dejo la ficha en `cambios-pedidos`, no en `en-revision`, porque hay un test rojo y un criterio de rendimiento incumplido.
+
+### [lider] replanificación 2 — 2026-10-20
+- Test «dos aperturas seguidas»: se actualiza (opción 1). Cancelar A antes de cargar es el comportamiento correcto; el invariante real es «no queda vivo ningún documento de A». Paso 5a.
+- `bundle:check` 627 248 > 600 000: carga diferida de `password-probe` con `import()`, presupuesto sin cambios. Paso 5b; nota en [[ADR-0043-contrasena-sin-reabrir]].
+- Rendimiento: 2,43 en una sola repetición, sin números de las demás → no hay base para cambiar el umbral. Se mide con calentamiento descartado, medianas de 5 y reporter JSON para tener el desglose de las 3. Umbral ≤ 1,5 sin cambios. Paso 5c.
+- Ficha a `pendiente`, `intentos: 0`.
+
+### [programador] ronda 4 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/unit/document-actions.test.ts` (5a: test «dos aperturas seguidas», nombre y última aserción; ningún otro cambiado), `apps/lector-pdf/src/state/document-actions.ts` (5b: `needsUserPassword` cargado con `import()` desde `../core/pdf/password-probe`; se quita el import estático), `apps/lector-pdf/tests/e2e/iteration4-performance.spec.ts` (5c: `OPEN_RUNS = 5` y par de calentamiento descartado; umbral 1,5 y medida sin cambios).
+- Qué he hecho: 5a y 5b aplicados. Build con `bundle:check` en verde: 598 188 B (máximo 600 000). 5c aplicado y medido con el reporter JSON en 3 repeticiones: el criterio (a) **no** se cumple en las repeticiones 1 y 2, así que la ficha queda en `cambios-pedidos` y no hago commit.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf build`: código 0, 598 188 B.
+  - `pnpm lint`: código 0. `pnpm typecheck`: sin errores.
+  - `pnpm coverage`: 305 ficheros, 3949 tests en verde, líneas 98,33 %.
+  - `pnpm --filter lector-pdf exec playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3 --reporter=json`: 11 pasados, 1 fallido en 2 de 3 repeticiones (la (a)). Código 1.
+  - `pnpm --filter lector-pdf exec playwright test --project=chromium -g "contraseña|cifrad|iteration4"`: 28 pasados, código 0.
+- Tabla (a), 5 aperturas por repetición, medianas. Sin cifrar / cifrado / razón. Desglose cifrado: hasta diálogo / tras «Abrir»:
+  - Rep. 1: 436, 451, 448, 427, 444 (mediana 444) / 622, 1110, 602, 1126, 1108 (mediana 1108) / **2,50** (fallo). Desglose: 177/445, 187/923, 177/425, 201/926, 178/930.
+  - Rep. 2: 446, 460, 441, 441, 448 (mediana 446) / 1151, 714, 1090, 591, 624 (mediana 714) / **1,60** (fallo). Desglose: 183/968, 215/498, 165/924, 176/415, 193/431.
+  - Rep. 3: 456, 452, 438, 474, 454 (mediana 454) / 618, 624, 1125, 595, 1106 (mediana 624) / 1,38 (pasa). Desglose: 178/440, 195/429, 198/927, 179/415, 175/931.
+- Dudas o cosas que no he podido hacer: el hasta-diálogo se mantiene en ~180 ms (< 100 ms esperado no se cumple). Tras «Abrir» la apertura alterna entre ~420-440 ms (como sin cifrar) y ~925 ms, en ambas mitades de cada repetición; la mediana cae en una u otra según la repetición. Parece ruido o un segundo análisis dentro del worker, pero no lo he investigado. No he tocado umbral ni medida. Para el líder: decidir si repetir la medición en reposo o revisar ADR-0043/PDF-099 (a).

@@ -232,7 +232,7 @@ Orden (sin dos fichas en paralelo sobre el mismo fichero): **ola A** en paralelo
 | [[PDF-098-plan-lienzo-detalle]] | Zoom hasta 6 400 % y cálculo de la zona de detalle | — | pendiente |
 | [[PDF-051-lienzo-de-detalle]] | Lienzo de detalle para zoom alto | PDF-098, PDF-050 | pendiente |
 | [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148 | pendiente |
-| [[PDF-148-contrasena-sin-reabrir]] | Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir ([[ADR-0043-contrasena-sin-reabrir]]) | — | pendiente |
+| [[PDF-148-contrasena-sin-reabrir]] | Pedir la contraseña sin reabrir: sondeo previo + `onPassword` ([[ADR-0043-contrasena-sin-reabrir]], revisado) | — | pendiente |
 
 Orden: pueden adelantarse durante la it. 3 (núcleo puro o paquetes sin choques): PDF-096, PDF-098, PDF-091 (tras PDF-040), PDF-092, PDF-102, COM-015 → COM-016 → COM-017 (tras COM-014; las cuatro de Comun tocan `types.ts` y van en serie). Tras PDF-090: PDF-093 ∥ PDF-046 ∥ PDF-049 → PDF-047 ∥ PDF-048 (tras PDF-046) ∥ PDF-050 (tras PDF-049) → PDF-094 ∥ PDF-097 ∥ PDF-051 → PDF-100 ∥ PDF-101 → PDF-095 → PDF-099.
 
