@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-065
 titulo: Editar texto existente - decidir alcance
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-052, PDF-135]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, edicion, investigacion, decision-usuario]
 ---
 
@@ -54,3 +54,9 @@ Por detallar cuando el usuario responda (ADR nuevo y fichas).
 ### [coordinador] decisión del usuario — 2026-10-19
 - Sergio eligió la **opción A · Línea simple** (19:06 UTC): doble clic en una línea y reescribirla con una fuente estándar parecida (Helvetica/Times/Courier), sin recolocar el texto si se alarga.
 - Siguiente paso, para el **líder**: escribir el ADR de alcance y desglosar las fichas nuevas reutilizando «Redactar» ([[PDF-135-redactar-aplicar]]) y «Añadir texto»; después marcar esta ficha como `sustituida` enlazando las nuevas. No es una ficha para el programador tal cual.
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: esta ficha (estado y Registro). Sin cambios de código.
+- Qué he hecho: he leído la ficha. No es implementable tal cual: su propio texto dice que el alcance se detalla tras la respuesta del usuario, que falta el ADR de alcance y que las fichas de implementación se crean después («Por detallar»). La decisión del usuario (opción A, anotada el 2026-10-19) está registrada, pero no hay especificación de API, ficheros ni criterios técnicos que implementar.
+- Comandos ejecutados y resultado: no aplica (sin cambios de código; no ejecuto lint, typecheck ni tests).
+- Dudas o cosas que no he podido hacer: el líder debe escribir el ADR de alcance y desglosar las fichas nuevas (reutilizando PDF-135 y PDF-059) y marcar esta ficha como `sustituida`. Antes de implementar la parte A deben estar `hecha` PDF-052 y PDF-135.
