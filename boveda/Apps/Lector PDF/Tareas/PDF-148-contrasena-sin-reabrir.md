@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -278,3 +278,16 @@ const OPEN_OVERHEAD_MAX_MS = 350;
 - No se optimiza ahora: el único margen sería un sondeo que no lea la xref entera (unos 100 ms como mucho). No compensa el riesgo de un segundo parser del tráiler.
 - Decisión: presupuesto absoluto, sobrecoste ≤ 350 ms (medianas). Sigue detectando con holgura la regresión de reabrir (≥ 400 ms). Paso 7. Actualizados [[ADR-0043-contrasena-sin-reabrir]] y [[PDF-099-e2e-iteracion-4]].
 - Ficha a `pendiente`, `intentos: 0`.
+
+### [programador] ronda 7 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/iteration4-performance.spec.ts` (paso 7a-7c: `OPEN_OVERHEAD_MAX_MS = 350` sustituye a `OPEN_RATIO_MAX`; título, cabecera y `recordMeasure` con sobrecoste y razón; `expect(overhead)`). La ficha pasa de `pendiente` a `en-revision`.
+- Qué he hecho: paso 7 aplicado tal cual. Las rondas 1-6 ya estaban en el historial; la 6 (esperas `raf`) no se ha tocado. Sin cambios en `OPEN_RUNS`, calentamiento ni resta del tiempo de usuario.
+- Comandos ejecutados y resultado:
+  - `playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3 --reporter=json`: la (a) **pasa en las 3 repeticiones**. Otros dos `@perf` (pestaña y doble página, en la repetición 1 y 2) fallaron por «La máquina no está en reposo» (CPU 59-83 %), ajeno a (a). Tabla (a), medianas de 5 aperturas, sin cifrar / cifrado / sobrecoste / razón. Desglose cifrado: hasta diálogo / tras «Abrir»:
+    - Rep. 1: 347 / 586 / **239** / 1,69. Desglose: 165/417, 135/408, 168/418, 174/515, 194/635.
+    - Rep. 2: 348 / 636 / **288** / 1,83. Desglose: 187/632, 187/458, 190/430, 151/436, 166/470.
+    - Rep. 3: 387 / 699 / **313** / 1,81. Desglose: 249/658, 221/589, 181/513, 202/497, 121/367.
+  - `playwright test --project=chromium -g "contraseña|cifrad|iteration4"`: 28 pasados, código 0.
+  - `pnpm typecheck`: código 0. `pnpm coverage`: 307 ficheros, 3974 tests en verde, líneas 98,33 %, código 0.
+  - `pnpm lint`: **código 1**, pero por un fichero ajeno a esta ficha: 14 068 errores en `apps/lector-pdf/dist-prog-129/assets/*.js` (carpeta de build de otro trabajo en curso, PDF-129; no está en git). No la he borrado. Con `pnpm exec eslint --max-warnings 0` sobre `tests/e2e/iteration4-performance.spec.ts`, `src`, `tests/unit` y `tests/ui`: código 0.
+- Dudas o cosas que no he podido hacer: el criterio «`pnpm lint` código 0» solo se cumple si se retira `dist-prog-129/` del árbol (o se excluye de ESLint); lo decide el líder. Los números de (a) cumplen el presupuesto de 350 ms en las 3 repeticiones, pero la (a) de la repetición 1 se midió con otros `@perf` en otra pasada, así que conviene repetirla en reposo si el revisor lo pide. Commit: solo los dos ficheros de esta ficha (no incluyo el `PDF-129` ficha que está modificada por otro agente).
