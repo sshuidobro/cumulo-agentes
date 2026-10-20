@@ -116,8 +116,7 @@ test('«Añadir imagen»: colocar, redimensionar, deshacer el tamaño, guardar; 
   await expect(pendingZones(page)).toHaveCount(1);
   await expect(pendingZones(page).locator('title')).toHaveText(editMsg.pendingContent);
 
-  // Tras colocarla, el clic que la pone se considera de fondo y la deselecciona: se selecciona con un clic en ella.
-  await pendingZones(page).click();
+  // Tras colocarla, queda seleccionada con su tirador (PDF-151): se redimensiona sin clic extra.
   const handle = pageFrame(page, 1).locator('[data-resize-id]');
   await expect(handle).toHaveCount(1);
   const outline = pendingZones(page).locator('rect').last();

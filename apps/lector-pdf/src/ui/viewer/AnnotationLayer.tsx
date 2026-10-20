@@ -361,6 +361,8 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     const placing = state.tool === 'signature' || state.tool === 'page-image';
     if (event.button !== 0 || !placing || state.pendingSignature === null) return;
     event.preventDefault();
+    // El clic que coloca no debe llegar al visor, que deseleccionaría la firma recién puesta (PDF-151).
+    event.stopPropagation();
     const box = event.currentTarget.getBoundingClientRect();
     const [x = 0, y = 0] = viewport.convertToPdfPoint(event.clientX - box.left, event.clientY - box.top);
     const [x1, y1, x2, y2] = pageBoundsPt();

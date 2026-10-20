@@ -196,7 +196,8 @@ test.describe('exportar pages-5000.pdf (@perf)', () => {
 
     const dialog = await openExport(page);
     await dialog.getByRole('radio', { name: exportMsg.rangePages, exact: true }).check();
-    await dialog.getByRole('textbox', { name: exportMsg.rangeField }).fill('1-20');
+    // 200 páginas: con 20 la exportación terminaba (≈0,4 s) antes de que Playwright pulsara «Cancelar».
+    await dialog.getByRole('textbox', { name: exportMsg.rangeField }).fill('1-200');
     let downloaded = false;
     page.once('download', () => { downloaded = true; });
     await dialog.getByRole('button', { name: exportMsg.export, exact: true }).click();

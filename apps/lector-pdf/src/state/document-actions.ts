@@ -258,7 +258,9 @@ async function runOpen(
   }
 
   const pageMode = await readPageMode(loaded);
-  const permissions = permissionsFrom(await readPermissions(loaded.doc));
+  // Un PDF cifrado devuelve sus banderas de `/P`; sin cifrado, `null` (PDF-132).
+  const flags = await readPermissions(loaded.doc);
+  const permissions = permissionsFrom(flags);
 
   if (seq !== openSeq) {
     await loaded.destroy();
@@ -301,6 +303,7 @@ async function runOpen(
     dimsVersion: useViewer.getState().dimsVersion + 1,
     sidebar: sidebarForOpenedDocument(pageMode),
     permissions,
+    encrypted: flags !== null,
   });
   platform.setTitle(windowTitle(file.name, false));
   startAnnotationSession(loaded, scan.signal, file.source);
