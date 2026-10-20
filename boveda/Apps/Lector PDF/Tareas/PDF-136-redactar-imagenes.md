@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-136
 titulo: Redactar - imágenes parcialmente cubiertas sin convertir la página
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-135]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -75,3 +75,13 @@ export interface PartialImage {
 
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 Lint, typecheck y tests de redact OK. Criterios cubiertos por tests; sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Flate RGB cuarto superior a 0, resto igual, conserva texto | OK | `images.test.ts` «pone a negro solo los píxeles…» |
+| JPEG compartido: pág. 1 nuevo, pág. 2 original | OK | test «la página con la zona usa un objeto nuevo…» |
+| Girada 90° o /SMask → raster | OK | tests líneas 256 y 265 |
+| pixelRects con desplazamiento y escala no uniforme | OK | test línea 276 |
+| lint, typecheck, coverage | OK | sin errores; líneas 98,31 % |
+Tests añadidos: ninguno (los 9 existentes cubren los criterios). Rendimiento: no aplica.
