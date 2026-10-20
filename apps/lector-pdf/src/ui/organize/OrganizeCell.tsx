@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type MouseEvent } from 'react';
+import { memo, useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { createLogger } from '@suite/shared';
 import { planCanvas } from '../../core/canvas-size';
 import type { PageDimsTable } from '../../core/page-dims';
@@ -57,6 +57,8 @@ export interface OrganizeCellProps {
   readonly selected: boolean;
   readonly onSelect: (index: number, event: MouseEvent<HTMLDivElement>) => void;
   readonly onOpen: (index: number) => void;
+  /** Inicio de un posible arrastre (botón principal pulsado sobre la celda). */
+  readonly onPointerDown: (index: number, event: PointerEvent<HTMLDivElement>) => void;
 }
 
 /**
@@ -74,6 +76,7 @@ export const OrganizeCell = memo(function OrganizeCell({
   selected,
   onSelect,
   onOpen,
+  onPointerDown,
 }: OrganizeCellProps) {
   const doc = useViewer((s) => s.pdf?.doc ?? null);
   const dims = useViewer((s) => s.dims);
@@ -162,6 +165,9 @@ export const OrganizeCell = memo(function OrganizeCell({
       data-rendered={rendered ? 'true' : undefined}
       className={frameClass}
       style={{ top, left, width: cell, height }}
+      onPointerDown={(event) => {
+        onPointerDown(index, event);
+      }}
       onClick={(event) => {
         onSelect(index, event);
       }}

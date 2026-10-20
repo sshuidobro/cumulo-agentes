@@ -52,7 +52,9 @@ export type ShortcutId =
   | 'organize-rotate-right'
   | 'organize-delete'
   | 'organize-move-left'
-  | 'organize-move-right';
+  | 'organize-move-right'
+  | 'organize-move-first'
+  | 'organize-move-last';
 
 /** Registro único de atajos de la app (COM-011). */
 export const shortcuts = new ShortcutRegistry<ShortcutId>([
@@ -105,6 +107,8 @@ export const shortcuts = new ShortcutRegistry<ShortcutId>([
   { id: 'organize-delete', chords: ['Delete'], description: organizeMsg.delete },
   { id: 'organize-move-left', chords: [], description: organizeMsg.moveLeft },
   { id: 'organize-move-right', chords: [], description: organizeMsg.moveRight },
+  { id: 'organize-move-first', chords: ['Alt+Home'], description: organizeMsg.moveFirst },
+  { id: 'organize-move-last', chords: ['Alt+End'], description: organizeMsg.moveLast },
 ]);
 
 /** Atajo de una acción formateado para mostrar (p. ej. «Ctrl+O»); vacío si no tiene. */

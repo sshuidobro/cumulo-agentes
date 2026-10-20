@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-126
 titulo: Organizar - arrastrar y soltar, e2e y rendimiento
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-125]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]

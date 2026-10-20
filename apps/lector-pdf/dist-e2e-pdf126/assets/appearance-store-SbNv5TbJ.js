@@ -1,0 +1,2 @@
+import{M as e}from"./notice-Bl0rWbo2.js";var t=[`system`,`light`,`dark`],n=`system`;function r(e){return typeof e==`string`&&t.includes(e)}var i=e()(()=>({theme:n,nightMode:!1}));export{n,r,i as t};
+//# sourceMappingURL=appearance-store-SbNv5TbJ.js.map
