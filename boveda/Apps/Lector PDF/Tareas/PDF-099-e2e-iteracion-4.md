@@ -4,7 +4,7 @@ id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
 estado: en-curso
-depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148]
+depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148, PDF-150]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
@@ -84,3 +84,6 @@ Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias p
 
 ### [lider] replanificación 2 — 2026-10-20
 - El presupuesto de (a) pasa de una razón (≤ 1,5 ×) a un valor absoluto: sobrecoste ≤ 350 ms sobre las medianas, sin el tiempo del usuario. Motivo: el coste que queda es fijo (derivar la clave AES-256 y leer la xref). Ver [[ADR-0043-contrasena-sin-reabrir]], «Revisión 2». El spec lo cambia [[PDF-148-contrasena-sin-reabrir]] (paso 7).
+
+### [lider] dependencia nueva — 2026-10-20
+- Añadida [[PDF-150-exportar-cancelar-a-mitad]]: el criterio «`e2e` con código 0» no se puede cumplir mientras falle `export.spec.ts` «Cancelar» a mitad (preexistente, detectado en PDF-130).
