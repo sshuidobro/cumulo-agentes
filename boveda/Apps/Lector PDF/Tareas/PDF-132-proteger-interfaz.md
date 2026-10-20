@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-132
 titulo: Proteger con contraseña y quitar protección - interfaz
 app: pdf
-estado: bloqueada
+estado: pendiente
 depende_de: [PDF-131, PDF-130]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -79,3 +79,19 @@ export async function removeProtection(): Promise<SaveResult>;
   1. **Decisión para el líder (bloquea el criterio de `bundle:check`)**: el arranque ya superaba el presupuesto antes de esta ficha. Hay que elegir entre subir el presupuesto de `tests/bundle/bundle-budget.ts` (`ENTRY_JS_BUDGET_BYTES`) o recortar código del arranque en otra ficha. No lo cambio yo.
   2. Desviación menor: `protectDocument` detecta firmas con `doc.getSignatures()` (solo las firmadas) en vez de `getFieldObjects` como dice la ficha. Es el mismo criterio y el test de firmas ya está cubierto.
   3. Un proceso ajeno (otro agente) tiene borrados en el árbol 469 ficheros versionados de `apps/lector-pdf/dist-firma/`, `dist-qa049/` y similares. No los he tocado ni restaurado; el commit de esta ronda incluye solo mis dos ficheros.
+
+## Replanificación (líder, 2026-10-20) · paso 6: sacar `split` del arranque
+El presupuesto **no** sube ([[ADR-0041-presupuesto-arranque-600kb]]). Lo hecho en las rondas 1-2 se conserva; falta solo esto.
+
+**Causa medida.** `src/state/extract-actions.ts` (estático en `App.tsx`) importa `extractFileName` y `splitZipName` de `src/core/organize/split.ts`, que arrastra `ObjectCopier`, `page-tree`, `serialize` y, por ahí, `crypt-rules` (RC4/AES): ~45 KB que solo usa el Worker. Probado por el líder en un worktree: con el cambio de abajo el arranque baja de **610 071 B a 565 171 B**.
+
+6. Crear `src/core/organize/split-names.ts` **sin ningún `import`**, y mover ahí (cortar de `split.ts`, mismo código y comentarios):
+   - `export type SplitMode`, `export const SPLIT_SIZES_MB`, `export function extractFileName`, `export function splitZipName`, `export function splitPartNames`.
+   - En `split.ts`: `import type { SplitMode } from './split-names';` si lo usa internamente, y `export { SPLIT_SIZES_MB, extractFileName, splitPartNames, splitZipName, type SplitMode } from './split-names';` para no romper `core/doc-ops/ops/index.ts` ni `tests/unit/organize/split.test.ts`.
+   - Cambiar el import a `split-names` en `src/state/extract-actions.ts`, `src/ui/organize/ExtractDialog.tsx` y `src/ui/organize/SplitDialog.tsx`.
+   - No tocar `tests/bundle/bundle-budget.ts`.
+
+**Criterio añadido.**
+- [ ] `pnpm --filter lector-pdf build` y `bundle:check`: arranque ≤ 575 000 B (dato en el Registro).
+- [ ] `grep -n "^import" apps/lector-pdf/src/core/organize/split-names.ts` no devuelve nada.
+- [ ] `tests/unit/organize/split.test.ts` sigue en verde sin cambios.
