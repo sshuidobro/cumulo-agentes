@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-115
 titulo: Herramientas Polígono y Sello en la barra Comentar
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-108, PDF-107]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, anotaciones, ui]
 ---
 
@@ -58,3 +58,19 @@ export function defaultPolygon(cx: number, cy: number, page: RectPt): readonly n
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/annotations/{shape-drag,shapes,palette}.ts`; `src/state/{annotation-store,annotation-actions,shape-actions}.ts`; `src/ui/viewer/{use-shape-tool.ts,ShapeSketch.tsx,AnnotationLayer.tsx,Viewer.module.css}`; `src/ui/toolbar/{CommentToolbar.tsx,CommentToolbar.module.css}`; `src/ui/{kit/MenuButton.tsx,messages.ts,icons.tsx}`; tests `tests/unit/annotations/{polygon-stamp.test.ts (nuevo),shape-actions.test.ts}`, `tests/ui/{shape-tool.test.tsx,comment-toolbar.test.tsx}`, `tests/e2e/shapes.spec.ts`; `boveda/Apps/Lector PDF/Manual.md`.
+- Qué he hecho: herramientas «Polígono» (clics, cierre por clic cerca del primero, doble clic o Intro; Esc descarta; Retroceso quita un vértice; cambiar de herramienta descarta) y «Sello» (menú con los 14 sellos, preferencia `pendingStamp`, un clic o Intro coloca el sello, tirador con proporción). Teclado: `addShapeFromKeyboard` acepta `polygon` y `stamp`. Sellos y polígonos quedan editables tras guardar y reabrir.
+- Comandos ejecutados y resultado: `pnpm coverage` → código 0 (279 ficheros, 3621 tests; cobertura de `core/annotations/shape-drag.ts` y `shapes.ts` al 100 %). `pnpm --filter lector-pdf e2e` → código 0 (295/295). `pnpm lint` y `pnpm typecheck` en la raíz fallan por ficheros ajenos al alcance: `src/core/signature/digital/p12.ts` (tipos, typecheck) y `src/core/signature/digital/sign-pdf.ts` (`DeltaWriter` sin usar, lint). Ni lint ni typecheck marcan nada en los ficheros de esta ficha (`eslint` y `tsc` filtrados a mis ficheros: limpio).
+- Dudas o cosas que no he podido hacer:
+  1. `addPolygonVertex` ignora un clic a ≤ `closePt` del último vértice (no es de la ficha; lo pedí para que el primer clic del doble clic no duplique el vértice).
+  2. El doble clic cierra el polígono con el evento `dblclick` de la capa, no con `detail` de `pointerdown` (en navegador el `detail` de `pointerdown` no es fiable como contador de clics).
+  3. La ayuda «polygonHint» se muestra mientras la herramienta «Polígono» esté activa, no solo durante el trazado.
+  4. Un sello que sobresale de la página se desplaza para quedar dentro (`stampCenterInside`, nuevo en `shapes.ts`); no se recorta.
+  5. Tras crear un polígono la herramienta sigue activa (como las formas de PDF-108); la ficha no lo dice.
+  6. El título del E2E es sin tildes: con «polígono» en el título, la carpeta de salida de Playwright tenía tildes y la reapertura en la pestaña nueva no cargaba el fichero en este entorno. Sin tildes, pasa.
+  7. `tests/ui/comment-toolbar.test.tsx` daba por último control «Flecha»; ahora es «Sello». Solo cambié esa expectativa, no el resto del test.
+  8. `MenuButton`: `onSelect` recibe `fromKeyboard` (compatible hacia atrás).
+  9. Comprobación en Adobe (no bloquea): añadida como punto 7 de «Comprobación manual en Adobe Acrobat Reader» del Manual, y las descripciones del Polígono y del Sello en «Comentar».
+  10. No he hecho commit (indicación del usuario); el árbol tiene cambios ajenos en `DocumentMenu.tsx`, `PDF-066`, `PDF-113`, `sign-pdf`, etc.
