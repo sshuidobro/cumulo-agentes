@@ -158,25 +158,34 @@ test('images-200: al recorrer las 20 primeras páginas, las visibles se dibujan 
 test('annotated: la página 1 muestra el resaltado amarillo del fichero', async ({ page }) => {
   await openFixture(page, 'annotated.pdf');
   await expect(page.locator(`${pageSelector(0)}[data-rendered="true"]`)).toBeVisible();
-  // `data-rendered` se marca aunque el lienzo aún mida 0 px (la página se dibujó antes de conocer sus medidas);
-  // se espera a que se redibuje con tamaño antes de leer sus píxeles.
+  // `data-rendered` se marca aunque el lienzo aún mida 0 px (la página se dibujó antes de conocer sus medidas)
+  // y el lienzo se sustituye al redibujar con tamaño. Por eso se sondea el propio conteo de píxeles amarillos,
+  // en una sola lectura sobre el lienzo vigente: leer el ancho en una llamada y los píxeles en otra puede
+  // caer entre dos lienzos (el anterior ya liberado a 0 px) y romper la prueba bajo carga.
   const canvas = page.locator(`${pageSelector(0)} canvas`);
-  await expect.poll(() => canvas.evaluate((el) => (el as HTMLCanvasElement).width)).toBeGreaterThan(0);
+  const countYellow = (): Promise<number> =>
+    canvas.evaluate((canvas) => {
+      const cv = canvas as HTMLCanvasElement;
+      if (cv.width === 0 || cv.height === 0) return 0;
+      const ctx = cv.getContext('2d');
+      if (ctx === null) return -1;
+      const { data } = ctx.getImageData(0, 0, cv.width, cv.height);
+      let count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i] ?? 0;
+        const g = data[i + 1] ?? 0;
+        const b = data[i + 2] ?? 0;
+        if (r > 230 && g > 200 && b < 120) count++;
+      }
+      return count;
+    });
 
-  const yellow = await canvas.evaluate((canvas) => {
-    const cv = canvas as HTMLCanvasElement;
-    const ctx = cv.getContext('2d');
-    if (ctx === null) return -1;
-    const { data } = ctx.getImageData(0, 0, cv.width, cv.height);
-    let count = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i] ?? 0;
-      const g = data[i + 1] ?? 0;
-      const b = data[i + 2] ?? 0;
-      if (r > 230 && g > 200 && b < 120) count++;
-    }
-    return count;
-  });
+  let yellow = 0;
+  await expect
+    .poll(async () => {
+      yellow = await countYellow();
+      return yellow;
+    })
+    .toBeGreaterThan(100);
   test.info().annotations.push({ type: 'pixeles-amarillos', description: String(yellow) });
-  expect(yellow).toBeGreaterThan(100);
 });
