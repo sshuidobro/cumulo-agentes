@@ -1,2 +1,0 @@
-import{M as e}from"./notice-Bl0rWbo2.js";var t=e()(()=>({open:!1}));function n(){t.setState({open:!0})}function r(){t.setState({open:!1})}export{n,t as r,r as t};
-//# sourceMappingURL=properties-store-BoNMpBAK.js.map
