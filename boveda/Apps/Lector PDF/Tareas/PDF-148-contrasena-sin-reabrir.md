@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -291,3 +291,22 @@ const OPEN_OVERHEAD_MAX_MS = 350;
   - `pnpm typecheck`: código 0. `pnpm coverage`: 307 ficheros, 3974 tests en verde, líneas 98,33 %, código 0.
   - `pnpm lint`: **código 1**, pero por un fichero ajeno a esta ficha: 14 068 errores en `apps/lector-pdf/dist-prog-129/assets/*.js` (carpeta de build de otro trabajo en curso, PDF-129; no está en git). No la he borrado. Con `pnpm exec eslint --max-warnings 0` sobre `tests/e2e/iteration4-performance.spec.ts`, `src`, `tests/unit` y `tests/ui`: código 0.
 - Dudas o cosas que no he podido hacer: el criterio «`pnpm lint` código 0» solo se cumple si se retira `dist-prog-129/` del árbol (o se excluye de ESLint); lo decide el líder. Los números de (a) cumplen el presupuesto de 350 ms en las 3 repeticiones, pero la (a) de la repetición 1 se midió con otros `@perf` en otra pasada, así que conviene repetirla en reposo si el revisor lo pide. Commit: solo los dos ficheros de esta ficha (no incluyo el `PDF-129` ficha que está modificada por otro agente).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm lint` y `pnpm typecheck`: código 0 (el lint global ya no falla tras borrar `dist-prog-129`). Tests de `load-password`, `password-probe`, `document-password` y `document-actions`: 38 en verde. `password-probe.ts` solo importa de `./object-reader` y `./objects`; el sondeo se carga con `import()` (bundle).
+- El cambio del commit 948a145 (spec de rendimiento) aplica exactamente 7a-7c; umbral absoluto 350 ms, medianas sin el tiempo del usuario.
+- (opcional) El tester debe repetir la (a) en reposo, porque la repetición 1 del programador se midió con otros `@perf` en marcha.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| `pnpm lint`, `pnpm typecheck` | OK | código 0 |
+| `pnpm coverage` | OK | 307 ficheros, 3974 tests en verde, líneas 98,33 % |
+| (a) sobrecoste ≤ 350 ms, 3 repeticiones, en reposo | OK | `playwright ... chromium-perf --no-deps --repeat-each=3`: 12/12 pasan, código 0 |
+
+Medición (a), medianas de 5 (ms), sin cifrar / cifrado / sobrecoste / razón:
+- Rep. 1: 317 / 604 / 286 / 1,90 (diálogo/tras Abrir: 182/496, 207/397, 150/448, 164/412, 162/528)
+- Rep. 2: 273 / 544 / 272 / 2,00 (145/399, 139/350, 130/429, 122/460, 114/382)
+- Rep. 3: 296 / 521 / 226 / 1,76 (147/374, 130/384, 130/392, 148/490, 139/363)
+
+Resto del spec: guardar nota 99-105 ms, cambio de pestaña p95 78-109 ms, doble página 128-156 ms. Sin fallos de reposo. No se ejecutó de nuevo la e2e `-g` (sin cambios de código desde la ronda 7).

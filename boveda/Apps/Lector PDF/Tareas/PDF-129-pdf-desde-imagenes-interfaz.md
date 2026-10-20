@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: cambios-pedidos
+estado: pendiente
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -97,6 +97,39 @@ En `EmptyState.tsx` y `DocumentMenu.tsx`, sustituir las dos lambdas `void import
 - [ ] Siguen en verde: `tests/ui/images-dialog.test.tsx`, los tests de extraer, dividir y combinar, y `pnpm --filter lector-pdf e2e --project=chromium -g "imágenes|extraer|dividir|combinar"`.
 - [ ] Todos los criterios de aceptación de arriba repetidos y con código 0. Después, commit y ficha a `en-revision`.
 
+## Replanificación 2 (líder, 2026-10-20) · paso 7: diferir tres componentes más
+El presupuesto **sigue sin subir** ([[ADR-0041-presupuesto-arranque-600kb]]). Lo hecho en los pasos 6a y 6b se conserva. El líder lo ha medido en una copia: con 7a + 7b + 7c el arranque queda en **599 276 B**. Solo se cambia `src/ui/App.tsx`, con el mismo patrón de `DocOpJobProgress` (6b).
+
+7a. **Barra de lectura en voz alta** (solo se ve mientras se lee):
+- Quitar `import { ReadAloudBar } from './read-aloud/ReadAloudBar';`.
+- Junto a los demás `lazy`: `const ReadAloudBar = lazy(() => import('./read-aloud/ReadAloudBar').then((m) => ({ default: m.ReadAloudBar })));`
+- En el componente: `const readAloudActive = useReadAloud((s) => s.status !== 'idle');` (`useReadAloud` ya está importado).
+- Sustituir `<ReadAloudBar />` por `{readAloudActive && (<Suspense fallback={null}><ReadAloudBar /></Suspense>)}`.
+
+7b. **Progreso de exportación** (solo durante una exportación):
+- Quitar `import { ExportProgress } from './export/ExportProgress';`.
+- `const ExportProgress = lazy(() => import('./export/ExportProgress').then((m) => ({ default: m.ExportProgress })));`
+- Ampliar la importación existente: `import { useExportDialog, useExportJob } from '../state/export-actions';`
+- `const exportRunning = useExportJob((s) => s.job.status === 'running');`
+- Sustituir `<ExportProgress />` por `{exportRunning && (<Suspense fallback={null}><ExportProgress /></Suspense>)}`.
+
+7c. **Progreso de impresión** (solo mientras se preparan las páginas):
+- Quitar `import { PrintProgress } from './print/PrintProgress';`.
+- `const PrintProgress = lazy(() => import('./print/PrintProgress').then((m) => ({ default: m.PrintProgress })));`
+- Ampliar la importación existente: `import { openPrintDialog, usePrintDialog, usePrintJob } from '../state/print-actions';`
+- `const printPreparing = usePrintJob((s) => s.job.status === 'preparing');`
+- Sustituir `<PrintProgress />` por `{printPreparing && (<Suspense fallback={null}><PrintProgress /></Suspense>)}`.
+
+Reglas:
+- `ReadAloudBar.tsx`, `ExportProgress.tsx` y `PrintProgress.tsx` no cambian.
+- Si un test de `tests/ui/print-dialog.test.tsx`, `export-dialog.test.tsx`, `read-aloud-bar.test.tsx` o `app*.test.tsx` busca la barra o el progreso con `getBy…` justo después de lanzar la acción, se cambia **solo** a `await findBy…` con la misma consulta. No se cambia ninguna otra aserción.
+- Si tras 7a-7c el arranque sigue por encima de 600 000 B, no toques el presupuesto: anota los bytes y deja la ficha en `cambios-pedidos`.
+
+### Criterios añadidos (paso 7)
+- [ ] `pnpm --filter lector-pdf build` con código 0 y el arranque ≤ 600 000 B (esperado unos 599 300 B). Anotar los bytes en el Registro.
+- [ ] E2E en verde: `pnpm --filter lector-pdf e2e --project=chromium -g "imprim|export|voz|imágenes|extraer|dividir|combinar"`.
+- [ ] Siguen valiendo todos los criterios anteriores (lint, typecheck, coverage, e2e completo). Después, commit y ficha a `en-revision`.
+
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
 
@@ -133,3 +166,8 @@ En `EmptyState.tsx` y `DocumentMenu.tsx`, sustituir las dos lambdas `void import
 - Dudas o cosas que no he podido hacer:
   1. **Presupuesto de bundle (bloquea la ficha).** Según el paso 6c, la ficha queda en `cambios-pedidos` para el líder. Con 6a y 6b el arranque sigue 580 B por encima del máximo. Para cumplirlo hay que decidir entre subir `ENTRY_JS_BUDGET_BYTES` (ADR-0041 lo prohíbe sin decisión del usuario) o diferir más código. Esto último no lo he hecho porque no está en la ficha.
   2. El criterio «`pnpm --filter lector-pdf build` con código 0» no se cumple, así que no pongo la ficha en `en-revision`.
+
+### [lider] replanificación 2 — 2026-10-20
+- 600 580 B > 600 000. No se sube el presupuesto: [[ADR-0041-presupuesto-arranque-600kb]] es una decisión del usuario y hay código fácil de diferir. Medido en una copia: diferir `ReadAloudBar` (−450 B), `ExportProgress` (−368 B) y `PrintProgress` (−486 B) deja el arranque en 599 276 B. Paso 7.
+- Margen escaso (724 B). La siguiente ficha que añada código al arranque debe diferir algo más; candidatos para [[PDF-140-presupuesto-de-arranque]] o una ficha nueva: `PasswordDialog`, `ChoiceDialog` y el uso estático de `core/organize/split` desde `state/extract-actions.ts` (trozo `split` de 12,9 KB en el arranque).
+- Ficha a `pendiente`, `intentos: 0`.
