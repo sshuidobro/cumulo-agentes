@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-055
 titulo: Insertar páginas de otro PDF y combinar PDFs - núcleo
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-119, PDF-123, PDF-124]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-5, organizar, nucleo]
 ---
 
@@ -57,3 +57,15 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Decisiones: [[ADR-0035-org
 
 ### [líder] detalle — 2026-10-19
 - Ficha detallada con [[ADR-0035-organizar-en-la-app]]: núcleo aquí, interfaz en [[PDF-128-insertar-combinar-interfaz]]. Dependencias nuevas: PDF-119, PDF-123 y PDF-124 (la op `organize`), en lugar de PDF-053.
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/form-copy.ts` (nuevo: `copyFieldRoots`, `applyFieldEdits`), `apps/lector-pdf/src/core/pdf/new-document-forms.ts` (usa `copyFieldRoots`), `apps/lector-pdf/src/core/organize/forms-cleanup.ts` (`updateAcroForm`; `removePageWidgets` es ahora un envoltorio con el mismo comportamiento), `apps/lector-pdf/src/core/organize/save.ts` (`imported`, validación del plan, copia de páginas importadas y sus formularios), `apps/lector-pdf/src/core/doc-ops/ops/index.ts` (`organize` con `importedPasswords`; op `combine`), `apps/lector-pdf/tests/unit/organize/insert.test.ts`, `apps/lector-pdf/tests/unit/doc-ops/combine-op.test.ts`, `apps/lector-pdf/tests/perf/insert-combine.perf.test.ts`.
+- Qué he hecho: extraigo la lógica de raíces de campo a `form-copy.ts` y la reutilizo en `FormsBuilder`, sin cambio de comportamiento. `buildOrganizeUpdate` acepta PDF importados (un copiador por documento con el mismo asignador, formularios añadidos a `/AcroForm` en el mismo incremento). La op `organize` abre los importados con su contraseña y la op `combine` crea el PDF con una rama de índice por parte.
+- Comandos ejecutados y resultado: `pnpm lint` sin errores. `pnpm typecheck` sin errores. `pnpm coverage` (con `--coverage.reportsDirectory` propio): código 0, 266 ficheros, 3429 tests pasan. Módulos tocados: `save.ts` 98,8 % líneas, `form-copy.ts` 93,6 %, `new-document-forms.ts` 100 %. `pnpm perf` (solo `insert-combine.perf.test.ts`, en la raíz): los dos asserts pasan; el test completo tarda 4,1 s (insertar 5 000 páginas: calentamiento + 3 pasadas) y 7,6 s (combinar 2 × 5 000: calentamiento + 3 pasadas), así que la mejor pasada queda por debajo de 3 s y 4 s. Los criterios de inserción (7 páginas, qpdf, anotaciones, formularios, cifrado AES-256 y AES-128, contraseña incorrecta) y de `combine` (35 páginas, ramas, anotaciones y campos) tienen test automático.
+- Dudas o cosas que no he podido hacer:
+  1. `copyFieldRoots` tiene la firma de la ficha más un cuarto parámetro opcional `edits` (lista de cambios a `/Kids` y `/V`). Sin él no hay dónde dejar esos cambios, porque los objetos copiados se escriben después con `writer.object`. Lo aplica `applyFieldEdits` sobre los objetos ya volcados.
+  2. `importedPasswords` es opcional en la op `organize` (si falta, `[]`). La UI actual (`src/state/organize-actions.ts`) envía `organize` sin ese campo y no debe romperse hasta que llegue PDF-128.
+  3. Fuentes de `/DR` del importado: si el destino ya tiene una fuente con el mismo nombre, no se añade (no la renombro, porque las `/DA` de los campos copiados citan el nombre original). Es una interpretación de «con nombre libre» que conviene revisar.
+  4. La ficha pide «no reescribe páginas innecesarias»: con inserción, el árbol `/Pages` se reconstruye como en PDF-052 y todas las páginas se reescriben (`rewrittenPages` = páginas finales). No he cambiado eso.
+  5. Ruta de la ficha: `combine` y las pruebas de organize con importados están en `tests/unit/doc-ops/combine-op.test.ts`; la prueba de rendimiento es `tests/perf/insert-combine.perf.test.ts` (nombre propio).
+  6. El directorio de cobertura por defecto estaba bloqueado por otro proceso vitest (pid 7478), así que lancé la cobertura con un directorio propio fuera del repo. No toqué `tests/e2e` ni los ficheros que otro agente tiene sin confirmar (`boveda/.../PDF-095`, `PDF-107`, `apps/lector-pdf/tests/e2e/*`, `apps/lector-pdf/src/core/ocr/`), y no los he incluido en el commit.
