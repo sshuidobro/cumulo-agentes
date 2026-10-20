@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { propertiesMsg } from '../../src/ui/messages-properties.ts';
 import { securityMsg } from '../../src/ui/messages-security.ts';
@@ -57,11 +59,17 @@ function qpdf(args: readonly string[]): { readonly status: number; readonly out:
   return { status: result.status ?? -1, out: `${result.stdout}${result.stderr}` };
 }
 
-/** Pulsa «Proteger» del diálogo y guarda la descarga resultante. */
+/**
+ * Pulsa «Proteger» del diálogo y guarda la descarga resultante. La carpeta es solo ASCII: Chromium no acepta
+ * `setInputFiles` con rutas que contengan caracteres como «» (el título del test de «solo restricciones» los tiene).
+ */
 async function protectAndDownload(page: Page, testInfo: TestInfo, outName: string): Promise<string> {
   const download = page.waitForEvent('download');
   await protectDialog(page).getByRole('button', { name: securityMsg.protect, exact: true }).click();
-  return storeDownload(await download, testInfo, outName);
+  const dir = mkdtempSync(join(tmpdir(), `pdf132-${testInfo.testId}-`));
+  const path = join(dir, outName);
+  await (await download).saveAs(path);
+  return path;
 }
 
 /** Violaciones de axe con impacto grave o crítico, con el diálogo abierto. */
