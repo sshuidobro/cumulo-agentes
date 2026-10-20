@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-130
 titulo: Añadir texto e imagen - barra «Editar» y herramientas
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-059, PDF-129, PDF-115, PDF-116, PDF-149]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -76,3 +76,9 @@ Un botón «Editar» en la barra principal abre la barra «Editar» con dos herr
   3. «Editar» no se guarda entre sesiones (como «Comentar» sí); queda como estado de la ventana. Lo he elegido así porque la ficha no lo dice.
   4. El color de «Añadir texto» cambia la herramienta, no el texto ya seleccionado. Lo he dejado así por la misma razón.
 
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm lint` y `pnpm typecheck` OK; tests nuevos (unit + UI) 18/18 OK. Diff acorde a la ficha, sin nada fuera de alcance; el aviso `modifyAnyway` va por separado del de comentar, `flatten`/`borderless` solo en las herramientas nuevas.
+- E2E `exportar pages-5000 › «Cancelar» a mitad` verificado: falla igual en `81934f0` (sin PDF-130, worktree limpio) y en HEAD; es **real y preexistente** (el botón «Cancelar» del diálogo de progreso no llega a pulsarse), no flaky ni causado por esta ficha. Debe abrirse ficha propia en export; hasta entonces `e2e` no da código 0.
+- (opcional) El tema oscuro y Escape-sale-de-herramienta no tienen test E2E propio; el axe solo cubre el tema claro.
+- (opcional) Duda 2 del programador (clic de colocación deselecciona la firma/imagen) conviene anotarla como ficha aparte.
