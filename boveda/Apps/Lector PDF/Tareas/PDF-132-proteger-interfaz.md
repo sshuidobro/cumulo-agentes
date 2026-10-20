@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-132
 titulo: Proteger con contraseña y quitar protección - interfaz
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-131, PDF-130]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -109,3 +109,8 @@ El presupuesto **no** sube ([[ADR-0041-presupuesto-arranque-600kb]]). Lo hecho e
 - Dudas o cosas que no he podido hacer:
   1. `pnpm coverage` no sale con código 0 por el fallo de `open.test.tsx` previo a esta ficha. Bloquea el último criterio hasta que se arregle en PDF-148 o en una ficha nueva.
   2. No he ejecutado la suite E2E completa, solo los specs de protección, división/extracción y organizar.
+
+### [revisor] ronda 4 — 2026-10-20 — APROBADO
+- `pnpm lint` y `pnpm typecheck` OK. `protect-actions`, `protect-dialog` y `split` en verde (65/66).
+- `split-names.ts` sin imports. El arranque queda en 565 531 B, dato del programador y dentro del límite.
+- El único fallo, `tests/ui/open.test.tsx` «Cancelar…», es de PDF-148 (`b0ec064`) y no depende de esta ficha. No cuenta contra ella. Hay que asignarlo aparte.
