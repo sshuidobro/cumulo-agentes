@@ -5,9 +5,11 @@ import { printMsg } from '../messages-print';
 import { exportMsg } from '../messages-export';
 import { propertiesMsg } from '../messages-properties';
 import { compareMsg } from '../messages-compare';
+import { organizeMsg } from '../messages-organize';
 import { openPrintDialog } from '../../state/print-actions';
 import { openExportDialog } from '../../state/export-actions';
 import { startCompare } from '../../state/compare-actions';
+import { openOrganize } from '../../state/organize-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -40,6 +42,12 @@ export function DocumentMenu() {
           kind: 'action',
           label: compareMsg.menuItem,
           onSelect: () => { void startCompare(); },
+        },
+        {
+          kind: 'action',
+          label: organizeMsg.menuItem,
+          disabled: !ready,
+          onSelect: () => { void openOrganize(); },
         },
         {
           kind: 'action',

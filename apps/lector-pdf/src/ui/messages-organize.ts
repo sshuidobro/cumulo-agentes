@@ -23,4 +23,36 @@ export const organizeMsg = {
   undoLabel: (label: string): string => `Deshacer ${label}`,
   /** Nombre de «Rehacer» con la última acción deshecha. */
   redoLabel: (label: string): string => `Rehacer ${label}`,
+  /** Cierra la vista (botón de la barra y de error). */
+  close: 'Cerrar',
+  /** Nombre de «Deshacer» sin nada que deshacer. */
+  undo: 'Deshacer',
+  /** Nombre de «Rehacer» sin nada que rehacer. */
+  redo: 'Rehacer',
+  /** Barra de herramientas de la vista. */
+  toolbar: 'Herramientas de organizar',
+  rotateLeft: 'Girar a la izquierda',
+  rotateRight: 'Girar a la derecha',
+  delete: 'Eliminar páginas',
+  insertBlank: 'Insertar página en blanco',
+  /** Opciones del menú de «Insertar página en blanco». */
+  before: 'Antes de la selección',
+  after: 'Después de la selección',
+  /** Descripción de los atajos Alt+← y Alt+→ (mover la selección). */
+  moveLeft: 'Mover la selección a la izquierda',
+  moveRight: 'Mover la selección a la derecha',
+  /** Selector de tamaño de miniatura. */
+  thumbSize: 'Tamaño de miniatura',
+  /** Texto de una opción del selector de tamaño (ancho en px CSS). */
+  cellSize: (px: number): string => `${String(px)} px`,
+  /** Resumen de la barra: total de páginas y seleccionadas. */
+  count: (pages: number, selected: number): string =>
+    `${String(pages)} ${pages === 1 ? 'página' : 'páginas'} · ${String(selected)} ${selected === 1 ? 'seleccionada' : 'seleccionadas'}`,
+  /** Posición original de una página movida (etiqueta de la celda). */
+  was: (n: number): string => `(antes ${String(n)})`,
+  /** Nombre accesible de la celda: «Página n», con «, girada 90°» si tiene giro. */
+  pageOption: (n: number, rotation: number): string =>
+    rotation === 0 ? `Página ${String(n)}` : `Página ${String(n)}, girada ${String(rotation)}°`,
+  /** Mientras se guarda y aún no se sabe cuántas páginas van. */
+  savingStart: 'Guardando…',
 };

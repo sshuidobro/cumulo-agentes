@@ -95,6 +95,15 @@ export function IconRotateLeft() {
   );
 }
 
+export function IconInsertPage() {
+  return (
+    <Svg>
+      <path d="M5 2.5h6l3.5 3.5v11.5H5z" />
+      <path d="M10 8v5M7.5 10.5h5" />
+    </Svg>
+  );
+}
+
 export function IconRotateRight() {
   return (
     <Svg>

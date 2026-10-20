@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-125
 titulo: Organizar - vista de cuadrícula con selección, teclado y barra
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-124, PDF-114]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-5, organizar, ui]
 ---
 
@@ -61,3 +61,10 @@ export function neighbour(m: GridMetrics, count: number, index: number, key: 'Ar
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/organize/grid.ts` (nuevo: `gridMetrics`, `visibleCells`, `neighbour`, `fitBox`, constantes); `src/ui/organize/OrganizeView.tsx`, `OrganizeView.module.css`, `OrganizeCell.tsx`, `OrganizeToolbar.tsx` (nuevos); `src/ui/App.tsx` (vista lazy que sustituye al visor; deshacer/rehacer y atajos del visor apagados con la vista abierta); `src/ui/toolbar/DocumentMenu.tsx` (entrada «Organizar páginas…»); `src/ui/shortcuts.ts` (5 ids nuevos); `src/ui/messages-organize.ts` (textos de la vista); `src/ui/icons.tsx` (`IconInsertPage`). Tests: `tests/unit/organize/grid.test.ts` (24 casos), `tests/ui/organize-view.test.tsx` (8 casos).
+- Qué he hecho: cuadrícula virtualizada (listbox con `aria-activedescendant`, máximo 12 filas montadas) con selección por ratón y teclado, giros, borrado, Alt+flechas, inserción en blanco, deshacer/rehacer, tamaño, guardado con progreso y cancelación, error y cierre con aviso. Miniaturas por la cola de render con el giro absoluto del hueco.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `npx vitest run --coverage` (raíz, directorio de informes propio): 294 ficheros, 3797 tests OK, código 0 (una primera pasada dio un timeout de 5 s en `page-tree.test.ts` PDF-052 con la máquina cargada; relanzado solo, 18/18, y la pasada completa siguiente fue verde). Cobertura de `grid.ts`: 100 % líneas. `vite build` a un directorio de la sesión (no `dist/`, para no interferir con el E2E ajeno) y `check-bundle`: arranque 539 292 bytes, presupuesto 600 000 OK.
+- Dudas o cosas que no he podido hacer: (1) **Atajos**: el registro rechaza atajos duplicados y `Alt+←/→` (atrás/adelante) y `Retroceso` (pantalla completa) ya están usados. Por eso `organize-move-left` y `organize-move-right` van con `chords: []` y la cuadrícula atiende Alt+flechas y Retroceso directamente; `organize-delete` tiene solo `Supr`. Revisar si el líder prefiere otra solución. (2) La ficha pide `setDocOpsRunner(inProcessDocOps())` con `basic-5.pdf`: en jsdom no se puede (los fixtures usan `import.meta.url` y pdf.js necesita Node). El test usa una operación falsa que devuelve los giros de basic-5 (5 páginas, sin girar). (3) **axe** no se ha ejecutado: `axe-core` solo llega como dependencia de `@axe-core/playwright` (raíz), no del app; queda para el E2E del tester. (4) Criterio «Ctrl+] anuncia girada 90°»: el giro actúa sobre la selección (sin selección no hace nada, sin volver al foco); el test pulsa Inicio antes. (5) Decisiones menores que tomé: tamaño de miniatura por defecto 180 px (el selector no se guarda); al abrir, el primer hueco tiene foco sin selección; `pageOption(n, rotation)` recibe el giro para la frase «girada N°»; el tamaño de una página se intercambia si el giro del hueco es 90 o 270, igual que en `insertBlank`. (6) `visibleCells` corta en 12 filas: con un viewport muy alto (más de ~12 filas) las filas de abajo no se montan.
+

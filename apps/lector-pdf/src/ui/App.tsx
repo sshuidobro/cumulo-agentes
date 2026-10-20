@@ -38,6 +38,8 @@ import { openPrintDialog, usePrintDialog } from '../state/print-actions';
 import { useCompare } from '../state/compare-actions';
 import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
 import { useExportDialog } from '../state/export-actions';
+import { useOrganize } from '../state/organize-store';
+import { organizeRedo, organizeUndo } from '../state/organize-actions';
 import { useViewer } from '../state/viewer-store';
 import { useTabs } from '../state/tabs';
 import { closeActiveTab, stepTab } from '../state/tab-actions';
@@ -54,6 +56,8 @@ const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) =>
 const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m.Sidebar })));
 // Comparación de dos PDFs (PDF-112): la vista solo se carga al comparar.
 const CompareView = lazy(() => import('./compare/CompareView').then((m) => ({ default: m.CompareView })));
+// Organizar páginas (PDF-125): sustituye al visor mientras está abierta; se carga al abrirla.
+const OrganizeView = lazy(() => import('./organize/OrganizeView').then((m) => ({ default: m.OrganizeView })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -141,14 +145,16 @@ export function App() {
   const exportOpen = useExportDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
+  const organizeOpen = useOrganize((s) => s.open);
 
+  // Con «Organizar páginas» abierta, deshacer/rehacer son los de la vista y los atajos del visor no actúan
+  // (la vista atiende sus propios atajos, PDF-125).
   // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
   useShortcuts({
     open: () => void pickAndOpen(),
-    undo,
-    redo,
+    ...(organizeOpen ? { undo: organizeUndo, redo: organizeRedo } : { undo, redo }),
     ...(fullscreen ? FULLSCREEN_SHORTCUTS : tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
-    ...(status === 'ready' ? VIEW_SHORTCUTS : {}),
+    ...(status === 'ready' && !organizeOpen ? VIEW_SHORTCUTS : {}),
     ...TAB_SHORTCUTS,
   });
 
@@ -182,14 +188,20 @@ export function App() {
             <div className={styles.srOnly} data-testid="document-ready">
               {msg.pageCount(numPages)}
             </div>
-            <div className={styles.body}>
-              {chrome && sidebar !== 'none' && (
-                <Suspense fallback={null}>
-                  <Sidebar />
-                </Suspense>
-              )}
-              <Viewer />
-            </div>
+            {organizeOpen ? (
+              <Suspense fallback={null}>
+                <OrganizeView />
+              </Suspense>
+            ) : (
+              <div className={styles.body}>
+                {chrome && sidebar !== 'none' && (
+                  <Suspense fallback={null}>
+                    <Sidebar />
+                  </Suspense>
+                )}
+                <Viewer />
+              </div>
+            )}
             <SelectionActions />
             <SearchBar />
             <ReadAloudBar />
