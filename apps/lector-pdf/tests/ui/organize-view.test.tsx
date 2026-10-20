@@ -221,6 +221,23 @@ describe('Organizar páginas · vista (PDF-125)', () => {
     expect(screen.getByRole('button', { name: organizeMsg.delete })).toHaveAttribute('title', expect.stringContaining(organizeMsg.delete));
     expect(screen.getByRole('button', { name: organizeMsg.undo })).toBeDisabled();
   });
+
+  it('todos los botones de icono de la barra tienen aria-label y title no vacíos', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await openFromMenu(user);
+
+    const toolbar = screen.getByRole('toolbar', { name: organizeMsg.toolbar });
+    // Los botones de icono no llevan texto; «Guardar» y «Cerrar» sí, y se excluyen.
+    const iconButtons = within(toolbar)
+      .getAllByRole('button')
+      .filter((button) => button.textContent === '');
+    expect(iconButtons).toHaveLength(6); // girar izq./der., eliminar, insertar en blanco, deshacer, rehacer
+    for (const button of iconButtons) {
+      expect(button.getAttribute('aria-label')?.trim()).toBeTruthy();
+      expect(button.getAttribute('title')?.trim()).toBeTruthy();
+    }
+  });
 });
 
 describe('Organizar páginas · estados de la vista (PDF-125)', () => {

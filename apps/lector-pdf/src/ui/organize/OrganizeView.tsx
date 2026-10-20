@@ -234,6 +234,7 @@ export function OrganizeView(): ReactElement {
 
   return (
     <div className={styles.view}>
+      <h1 className={styles.heading}>{organizeMsg.title}</h1>
       {editable && <OrganizeToolbar cellSize={cellSize} onCellSize={setCellSize} />}
       <div
         ref={listRef}

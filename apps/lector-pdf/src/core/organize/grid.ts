@@ -39,8 +39,9 @@ export function gridMetrics(viewportWidth: number, count: number, cell: number):
 }
 
 /**
- * Índices (inclusive) de las celdas que deben estar montadas: las filas que tocan la franja visible del scroll,
- * más `overscanRows` filas a cada lado y como mucho `GRID_MAX_MOUNTED_ROWS` filas.
+ * Índices (inclusive) de las celdas que deben estar montadas: las filas que tocan la franja visible del scroll
+ * más `overscanRows` filas a cada lado. Si eso supera `GRID_MAX_MOUNTED_ROWS` filas, se recorta primero el margen
+ * (nunca una fila visible); solo si el viewport por sí solo muestra más filas que el tope se montan todas las visibles.
  * `last` puede pasar del último hueco en la última fila incompleta: el llamador lo recorta a `count - 1`.
  * Sin filas devuelve `{ first: 0, last: -1 }`.
  */
@@ -55,13 +56,20 @@ export function visibleCells(
   const height = Math.max(0, Number.isFinite(viewportHeight) ? viewportHeight : 0);
   const overscan = Math.max(0, Math.floor(overscanRows));
   const bottom = top + height;
-  const firstVisibleRow = Math.floor(top / m.rowHeight);
-  const lastVisibleRow = Math.floor(Math.max(bottom - 1, top) / m.rowHeight);
-  const firstRow = Math.min(Math.max(firstVisibleRow - overscan, 0), m.rows - 1);
-  const lastRow = Math.min(
-    Math.min(lastVisibleRow + overscan, m.rows - 1),
-    firstRow + GRID_MAX_MOUNTED_ROWS - 1,
-  );
+  const lastRowIndex = m.rows - 1;
+  const firstVisibleRow = Math.min(Math.floor(top / m.rowHeight), lastRowIndex);
+  const lastVisibleRow = Math.min(Math.floor(Math.max(bottom - 1, top) / m.rowHeight), lastRowIndex);
+  let firstRow = Math.max(firstVisibleRow - overscan, 0);
+  let lastRow = Math.min(lastVisibleRow + overscan, lastRowIndex);
+  let excess = lastRow - firstRow + 1 - GRID_MAX_MOUNTED_ROWS;
+  if (excess > 0) {
+    const trimTop = Math.min(excess, firstVisibleRow - firstRow);
+    firstRow += trimTop;
+    excess -= trimTop;
+  }
+  if (excess > 0) {
+    lastRow -= Math.min(excess, lastRow - lastVisibleRow);
+  }
   return { first: firstRow * m.columns, last: (lastRow + 1) * m.columns - 1 };
 }
 
