@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-066
 titulo: Firma digital - abrir certificado PKCS#12 y firmar PAdES B-B por incremento (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-043, PDF-052, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -96,3 +96,16 @@ export async function buildSignatureUpdate(input: SignInput): Promise<Result<{ r
 - `pnpm typecheck` OK; eslint sobre los ficheros de la ficha 0 errores (no existe `dist-pdf115`). `pnpm coverage`: 3621 pasan, 1 falla `tests/unit/organize/split.test.ts` (5000 páginas, sensible a carga; ajeno, pasa en solitario junto con los 126 tests de firma). Cobertura de `signature/digital/`: 95,2 % sentencias, 99,2 % líneas (ramas 85,5 %).
 - Revisado: `raw` del DeltaWriter, `/ByteRange` y hueco, resumen por bloques, `/AcroForm`/`/Fields`/`/Annots` directos e indirectos, `sign-encrypted`/`sign-too-big`, regla de lint de `node-forge`. Sin problemas bloqueantes.
 - (opcional) `sign-pdf.ts`: `now` inválido llega como `save-unreadable` en vez de un error propio; la rama de ramas de `cms.ts` 74-90 queda sin cubrir.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia (comando / salida) |
+|---|---|---|
+| openP12 AES/3DES/contraseña/basura/vacío/EC | OK | `vitest run tests/unit/signature tests/unit/doc-ops/signature-ops.test.ts` → 9 ficheros, 103 tests OK |
+| cms: openssl cms -verify y atributos sin signingTime | OK | `cms.test.ts` verde (usa openssl real) |
+| basic-5 invisible: pdfsig válido, ETSI.CAdES.detached, qpdf 0 | OK | `sign-pdf.test.ts` con `pdfsig`/`qpdf` reales (instalados) |
+| Visible pág. 2, doble firma, form-full, compressed, cifrado | OK | mismos tests verdes |
+| Cobertura ≥ 90 % en signature/digital | OK | 95,23 % sent., 99,15 % líneas (cms 97,67; p12 93,02; sign-pdf 95,18) |
+| lint / typecheck / coverage | OK | `pnpm lint` 0; `pnpm typecheck` OK; `pnpm coverage` EXIT=0, 279 ficheros, 3622 tests |
+| Comprobación manual Adobe | No ejecutada (del usuario, según ficha) | — |
+Flaky: ninguno en esta ejecución (split.test.ts de 5000 páginas, citado por el revisor, pasó en la batería completa).
+Tests añadidos: ninguno (la cobertura existente cubre los criterios). Rendimiento: no aplica a la ficha.
