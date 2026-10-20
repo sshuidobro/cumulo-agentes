@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-113
 titulo: Exportar - diálogo, progreso, permisos y guardado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-064, COM-018, PDF-048, PDF-095, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -90,3 +90,9 @@ export function cancelExport(): void;
   - El criterio de tema oscuro se comprueba como «fondo del diálogo distinto de blanco» más axe; no hay captura de referencia.
   - `pnpm --filter lector-pdf build` no se ha ejecutado (falla por tipos ajenos), así que el presupuesto se ha medido sobre el `dist` anterior.
   - No he hecho commit (lo pide la instrucción del equipo; el árbol tiene cambios ajenos).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Revisados solo los ficheros de esta ficha. Verificado: vitest de export (15/15), E2E chromium de export (6/6), ESLint sin errores en los ficheros de la ficha, typecheck sin errores en ellos. `lint`/`typecheck`/`coverage` globales fallan por código ajeno (PDF-115, PDF-066), como indica el programador.
+- Núcleo conforme a la ficha: permisos, rango, límite de 1 GB, confirmación con más de 200 páginas, cancelación con `dispose`, recientes intactas, opciones recordadas.
+- (opcional) `MenuButton.tsx` mezcla el cambio `fromKeyboard` de PDF-115 con `disabledReason`: conviene que cada ficha lo incluya en su propio commit.
+- Pendiente para el tester: `@perf` (20 páginas de `pages-5000.pdf`), `bundle:check` tras un build limpio y `lint`/`coverage` globales con el árbol estable.

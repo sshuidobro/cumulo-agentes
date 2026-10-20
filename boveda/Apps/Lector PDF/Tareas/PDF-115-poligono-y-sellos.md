@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-115
 titulo: Herramientas Polígono y Sello en la barra Comentar
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-108, PDF-107]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
 actualizado: 2026-10-20
@@ -74,3 +74,7 @@ export function defaultPolygon(cx: number, cy: number, page: RectPt): readonly n
   8. `MenuButton`: `onSelect` recibe `fromKeyboard` (compatible hacia atrás).
   9. Comprobación en Adobe (no bloquea): añadida como punto 7 de «Comprobación manual en Adobe Acrobat Reader» del Manual, y las descripciones del Polígono y del Sello en «Comentar».
   10. No he hecho commit (indicación del usuario); el árbol tiene cambios ajenos en `DocumentMenu.tsx`, `PDF-066`, `PDF-113`, `sign-pdf`, etc.
+
+### [revisor] ronda 1 — 2026-10-20 — CAMBIOS
+Lint, typecheck y tests de la ficha (576) en verde; criterios cubiertos. Un problema:
+1. `apps/lector-pdf/src/ui/viewer/use-shape-tool.ts:77` — fuga de listener: `onPolygonKey` y `stopPolygon` son funciones nuevas en cada render. El `keydown` se añade en `polygonClick` con la función del render N, pero `finishPolygon` (desde `onDoubleClick` u otro render posterior) llama a un `stopPolygon` de otro render y hace `removeEventListener` con una referencia distinta, así que el listener de captura en `window` queda registrado para siempre (uno por polígono cerrado con doble clic o clic cerca del primero). Hay que guardar la función registrada en un ref (o usar un handler estable vía ref) y quitar exactamente esa. Añade un test que cierre un polígono por doble clic y compruebe, con un espía de `removeEventListener`/`addEventListener`, que no quedan listeners de `keydown` registrados.
