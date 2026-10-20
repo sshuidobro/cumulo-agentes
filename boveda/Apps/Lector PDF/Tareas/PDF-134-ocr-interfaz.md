@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-134
 titulo: OCR - diálogo «Reconocer texto», progreso y guardado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-061, PDF-133, PDF-132]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -80,3 +80,8 @@ export function cancelOcr(): void;
   3. En la web el resultado se descarga y el documento abierto sigue siendo el original (comportamiento de Guardar en web). El E2E reabre la copia descargada para comprobar la búsqueda.
   4. El escaneo previo de «omitir con texto» se hace antes de mostrar el progreso (no hay barra durante ese paso).
   5. No verificado: tema oscuro en E2E (solo variables CSS del tema) y escalado 125-150 %.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- lint y typecheck OK; los 23 tests de OCR (unit, UI) pasan. Cada criterio tiene su test (conversión giro 0/90, motor que falla, cancelar, omitir con texto, sin red, axe, @perf). Motor terminado siempre (`finally`), fuente liberada, nada escrito si falla o se cancela.
+- (opcional) Tema oscuro y escalado 125-150 % sin verificar en E2E (lo admite el programador); el tester debe comprobarlo.
+- (opcional) El escaneo previo de «omitir con texto» no muestra progreso en documentos largos.
