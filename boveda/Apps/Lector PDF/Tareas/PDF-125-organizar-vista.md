@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-125
 titulo: Organizar - vista de cuadrícula con selección, teclado y barra
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-124, PDF-114]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -82,3 +82,17 @@ Lint, typecheck y los 8 ficheros de tests de organize (137 tests) en verde. No h
 - Qué he hecho: (1) Axe: e2e nuevo en tema claro y oscuro, 0 violaciones. Para cumplirlo: la barra principal tenía `header role="toolbar"` (violaba `aria-allowed-role` y `region`, también en el visor) y la vista no tenía encabezado de nivel 1. (2) El test de botones de icono recorre los 6 de la barra y comprueba `aria-label` y `title`. (3) `visibleCells` recorta primero el margen y nunca una fila visible; tests unitarios nuevos. (4) Escape: cubierto por el test de «Escape con cambios» (usa el atajo `cancel-tool`, sin otros usos en la vista).
 - Comandos ejecutados y resultado: `pnpm lint` OK. `pnpm typecheck` falla por `tests/e2e/xfdf.spec.ts` (TS2614, ajeno a esta ficha). `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>` (el directorio por defecto lo ocupaba otro proceso de Vitest): 297 ficheros, 3853 tests OK, código 0; `grid.ts` 100 % de líneas. E2E chromium: `organize-a11y.spec.ts` 2/2 OK e `iteration3-a11y.spec.ts` 8/8 OK. Bundle (`vite build` a un directorio de la sesión + `check-bundle`): 539 348 bytes, presupuesto 600 000 OK.
 - Dudas o cosas que no he podido hacer: (1) `MainToolbar.tsx` es un componente compartido; el cambio de rol era necesario para el criterio axe. El diff sale de 300 líneas por la reindentación del bloque; con `git diff -w` son 3 líneas. (2) Un Prettier con configuración por defecto (el repo no tiene) reformateó 4 de mis ficheros; lo deshice restaurando desde HEAD y reaplicando solo mis cambios. (3) No toqué los cambios ajenos del árbol de trabajo (`winansi.ts`, `CommentsPanel.tsx`, `messages-comments.ts`, PDF-111, XFDF).
+
+### [revisor] ronda 2 — 2026-10-20 — APROBADO
+Lint y typecheck OK; 8 ficheros de tests de organize (141) OK; e2e `organize-a11y.spec.ts` 2/2 (axe claro y oscuro sin violaciones). Los 3 puntos de la ronda 1 resueltos (axe, botones de icono, tope de filas sin recortar las visibles, con tests). El cambio de rol en `MainToolbar.tsx` es mínimo con `git diff -w`. No he lanzado la cobertura completa (el programador reporta verde, 297 ficheros).
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| UI teclado/selección/Supr/Ctrl+Z/Ctrl+]/Alt+→/Ctrl+S/Escape/100 000 huecos | OK | `vitest run tests/ui/organize-view.test.tsx tests/unit/organize`: 8 ficheros, 141 tests OK |
+| Unit grid | OK | incluido arriba (24+ casos, bordes) |
+| axe claro y oscuro | OK | e2e `organize-a11y.spec.ts` 2/2 |
+| bundle | OK | `check-bundle`: 539 348 B (máx. 600 000) |
+| lint / typecheck | OK | código 0 |
+| Batería completa | OK | 297 ficheros, 3853 tests; flakes por carga (timeouts de 5 s en `page-tree.test.ts`, un fallo en `search-actions.test.ts`) ajenos a la ficha; ambos pasan solos y la pasada completa posterior los dejó verdes salvo ese intermitente |
+Nota: `pnpm coverage` choca con el directorio de otro proceso Vitest; usado `--coverage.reportsDirectory` propio. Tests añadidos: ninguno nuevo.

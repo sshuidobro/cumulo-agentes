@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-144
 titulo: Editar texto - localizar la línea editable y elegir la fuente estándar (núcleo)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-143]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -103,3 +103,15 @@ export async function findEditableLine(
 - Qué he hecho: implementado `firstUnmappable`, `standardFontFor`/`standardBaseFont`, `locateLine` y `findEditableLine` según la ficha. Las rutas `src/core/...` se interpretan dentro de `apps/lector-pdf/`. Tests de los criterios: nombres de fuente, `firstUnmappable`, `basic-5.pdf` (35 glifos, origen [72, 676]), no-text, Type3, rotated, invisible, Form XObject, sintaxis rota, estilo Georgia-Bold ×2, Type0 con descriptor de la descendiente, dos fuentes en la misma línea base y entradas no válidas (RangeError).
 - Comandos ejecutados y resultado: `pnpm lint` → 0 avisos. `pnpm typecheck` → 0 errores. `pnpm coverage` → código 0; 297 ficheros y 3853 tests en verde; `src/core/edit-text/`: 93,02 % sentencias, 85,18 % ramas, 99 % líneas.
 - Dudas o cosas que no he podido hacer: (1) decisiones menores no previstas en la ficha: `findEditableLine` devuelve `'unsupported'` si la página no tiene diccionario o si el `Tf` no encuentra su fuente en `/Resources`; `locateLine` normaliza el `hint` (esquinas en cualquier orden). (2) `EditableLine` no lleva `glyphs`, como pide la ficha; si PDF-145 necesita los índices, habrá que ampliar el tipo. (3) Las ramas defensivas inalcanzables (p. ej. `nearestToCenter` sin candidatos) quedan sin cubrir, de ahí el 85 % de ramas. (4) No he tocado PDF-125 ni PDF-111; `PDF-125-organizar-vista.md` tiene una modificación sin confirmar de otro agente que no entra en mi commit.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+Lint, typecheck y coverage en verde (edit-text 93 % sentencias). Algoritmo y reglas de fuente conforme a la ficha; sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint` 0 avisos; `pnpm typecheck` Done |
+| Batería completa | OK | `pnpm coverage`: Statements 95,02 %, Lines 98,33 % |
+| Criterios de fuente, firstUnmappable, basic-5, issues, Georgia-Bold, dos fuentes | OK | `vitest run tests/unit/edit-text tests/unit/annotations`: 35 ficheros, 585 tests en verde |
+| Cobertura edit-text ≥ 90 % | OK | ver coverage-summary.json (93 % sentencias según revisor) |
+Sin `skip`/`only`. Tests añadidos: ninguno (los del programador cubren cada criterio). Rendimiento: no aplica (núcleo puro).
