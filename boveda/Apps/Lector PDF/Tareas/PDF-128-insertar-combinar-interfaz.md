@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-128
 titulo: Insertar desde archivo y combinar archivos - interfaz
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-055, PDF-127, COM-019]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
