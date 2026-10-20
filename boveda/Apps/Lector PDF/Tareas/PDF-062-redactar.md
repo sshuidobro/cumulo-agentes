@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-062
 titulo: Redactar - analizador e intérprete de contenido con cajas de glifos (núcleo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-052, PDF-059]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -103,3 +103,8 @@ export function intersects(q: Quad, rect: readonly [number, number, number, numb
 - Qué he hecho: parser y serializador de contenido (imágenes en línea con `/L` o búsqueda de `EI`), métricas de fuente (simples con `/Widths`, Helvetica, Courier; Type0 Identity-H con `/W` y `/DW`) e intérprete (`q`/`Q`, `cm`, `BT`/`ET`, operadores de texto, `Do` de imagen y de formulario, `BI`) con cajas de glifo, imagen y formulario. Type3, CMap distinta de Identity-H y `Tf` sin fuente quedan en `unmeasured`. Además exporto `pageContentBytes` (para los tests de round-trip) y un `index.ts` del módulo.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (269 ficheros, 3502 tests en verde); cobertura de `src/core/content/` 99,72 % de líneas. Incidencias del entorno: una ejecución de cobertura chocó con otro proceso de vitest que usaba el mismo directorio de informes (pid 23387, ajeno a esta ficha), así que lancé la cobertura con `--coverage.reportsDirectory` propio. Un test de `page-tree.test.ts` (pages-5000) dio timeout de 5 s bajo esa carga, pasó al repetirlo aislado y en la ejecución completa. E2E no se ha ejecutado: la ficha no pide E2E.
 - Dudas o cosas que no he podido hacer: (1) un código WinAnsi sin entrada en la tabla de Helvetica (p. ej. 0x81) mide 1000: decisión mía por «tapar de más», la ficha no lo fija. (2) Si `/L` no cae sobre un `EI` delimitado, se recae en la búsqueda de `EI`. (3) Un byte suelto al final de una cadena de 2 bytes se mide como código de 1 byte. (4) Operandos de tipo incorrecto en operadores de texto o de gráficos lanzan `PdfSyntaxError` (la página se rechaza). (5) No he validado pdf.js frente a Tz, Ts y TJ en otros fixtures distintos de los construidos en el test.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm lint`, `pnpm typecheck` y `pnpm coverage` en verde (código 0). Los 7 criterios cubiertos por tests reales (comparación con pdf.js, `/L` con `EI` en datos, Type0, imagen `[50,600,250,700]`, `PdfSyntaxError`).
+- Fórmulas de `Trm` y avance conformes a ISO 32000-1 §9.4; nada fuera de alcance; núcleo sin React/Tauri.
+- (opcional) `interpreter.ts:386-392` — operandos incorrectos en `cm`/`Tc`… rechazan toda la página; aceptable para PDF-135 (página no soportada), pero valorar tolerancia si aparecen PDF reales con operandos sobrantes.
