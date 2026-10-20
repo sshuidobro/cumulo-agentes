@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-134
 titulo: OCR - diálogo «Reconocer texto», progreso y guardado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-061, PDF-133, PDF-132]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -85,3 +85,15 @@ export function cancelOcr(): void;
 - lint y typecheck OK; los 23 tests de OCR (unit, UI) pasan. Cada criterio tiene su test (conversión giro 0/90, motor que falla, cancelar, omitir con texto, sin red, axe, @perf). Motor terminado siempre (`finally`), fuente liberada, nada escrito si falla o se cancela.
 - (opcional) Tema oscuro y escalado 125-150 % sin verificar en E2E (lo admite el programador); el tester debe comprobarlo.
 - (opcional) El escaneo previo de «omitir con texto» no muestra progreso en documentos largos.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Original (búsqueda, copiar 1.234,56), sin red, cancelar, omitir con texto, teclado/axe | OK | `tests/e2e/ocr.spec.ts` verde en `pnpm --filter lector-pdf e2e` |
+| @perf sin long tasks > 100 ms | OK | `chromium-perf` ocr.spec.ts:157 pasa |
+| Unit giro 0/90 y motor que falla | OK | `pnpm coverage`: lines 98,33 % |
+| bundle:check | OK | Arranque 572209 B (máx. 600000) |
+| lint / typecheck / coverage | OK | exit 0 |
+- Primera pasada E2E: 1 fallo intermitente en `compare.spec.ts:60` (PDF-112, ajeno al OCR, foco bajo carga); segunda pasada completa: 338 passed, 0 fallos.
+- Tema oscuro y escalado 125-150 %: solo variables CSS del tema, sin captura E2E (no bloqueante).
+Tests añadidos: ninguno nuevo. Rendimiento: sin long tasks > 100 ms durante el OCR de una página.
