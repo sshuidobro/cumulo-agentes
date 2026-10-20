@@ -5,6 +5,7 @@ import { printMsg } from './messages-print';
 import { viewMsg } from './messages-view';
 import { tabsMsg } from './messages-tabs';
 import { readAloudMsg } from './messages-read-aloud';
+import { organizeMsg } from './messages-organize';
 
 /** Acciones de la app que tienen atajo. Cada ficha añade las suyas aquí. */
 export type ShortcutId =
@@ -46,7 +47,12 @@ export type ShortcutId =
   | 'read-page'
   | 'read-to-end'
   | 'read-pause'
-  | 'read-stop';
+  | 'read-stop'
+  | 'organize-rotate-left'
+  | 'organize-rotate-right'
+  | 'organize-delete'
+  | 'organize-move-left'
+  | 'organize-move-right';
 
 /** Registro único de atajos de la app (COM-011). */
 export const shortcuts = new ShortcutRegistry<ShortcutId>([
@@ -92,6 +98,13 @@ export const shortcuts = new ShortcutRegistry<ShortcutId>([
   { id: 'read-to-end', chords: ['Mod+Shift+B'], description: readAloudMsg.readToEnd },
   { id: 'read-pause', chords: ['Mod+Shift+C'], description: readAloudMsg.pause },
   { id: 'read-stop', chords: ['Mod+Shift+E'], description: readAloudMsg.stop },
+  // Organizar páginas (PDF-125): solo activos con la vista abierta. Alt+flechas (mover) y Retroceso están
+  // ocupados por «atrás», «adelante» y «pantalla completa» (un atajo por tecla); la cuadrícula los atiende directamente.
+  { id: 'organize-rotate-left', chords: ['Mod+['], description: organizeMsg.rotateLeft },
+  { id: 'organize-rotate-right', chords: ['Mod+]'], description: organizeMsg.rotateRight },
+  { id: 'organize-delete', chords: ['Delete'], description: organizeMsg.delete },
+  { id: 'organize-move-left', chords: [], description: organizeMsg.moveLeft },
+  { id: 'organize-move-right', chords: [], description: organizeMsg.moveRight },
 ]);
 
 /** Atajo de una acción formateado para mostrar (p. ej. «Ctrl+O»); vacío si no tiene. */
