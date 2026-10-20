@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-132
 titulo: Proteger con contraseña y quitar protección - interfaz
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-131, PDF-130]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]

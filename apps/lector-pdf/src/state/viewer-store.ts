@@ -86,6 +86,8 @@ export interface ViewerState {
   readonly outlineExpanded: ReadonlySet<string>;
   /** Permisos del documento abierto (PDF-048). Sin documento o sin restricciones, todo permitido. */
   readonly permissions: DocPermissions;
+  /** El documento abierto está cifrado (PDF-132: habilita «Quitar protección»). */
+  readonly encrypted: boolean;
 }
 
 export const initialViewerState: ViewerState = {
@@ -115,6 +117,7 @@ export const initialViewerState: ViewerState = {
   outline: null,
   outlineExpanded: new Set<string>(),
   permissions: ALL_PERMISSIONS,
+  encrypted: false,
 };
 
 export const useViewer: UseBoundStore<StoreApi<ViewerState>> = create<ViewerState>()(() => initialViewerState);

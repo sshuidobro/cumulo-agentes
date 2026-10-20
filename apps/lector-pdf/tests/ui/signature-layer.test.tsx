@@ -10,6 +10,7 @@ import {
   endAnnotationSession,
   getEffective,
   placeSignatureFromKeyboard,
+  select,
   setTool,
   undo,
 } from '../../src/state/annotation-actions';
@@ -34,8 +35,29 @@ function fakeViewport(): PageViewport {
   } as unknown as PageViewport;
 }
 
+/**
+ * Replica el manejador de `Viewer` (`clearAnnotationSelection`, PDF-151): un clic fuera de una anotación la deselecciona.
+ * Así el test ve el mismo recorrido del `pointerdown` que en la aplicación.
+ */
+function ViewerPointerRoot({ children }: { readonly children: React.ReactNode }) {
+  const clear = (target: EventTarget | null): void => {
+    if (target instanceof Element && target.closest('[data-annot-id]') !== null) return;
+    if (useAnnotations.getState().selectedId !== null) select(null);
+  };
+  return <div onPointerDown={(e) => clear(e.target)}>{children}</div>;
+}
+
 function renderLayer() {
   return render(<AnnotationLayer pageIndex={0} viewport={fakeViewport()} />);
+}
+
+/** Capa dentro del manejador de deselección del visor, como en la aplicación (PDF-151). */
+function renderInViewer() {
+  return render(
+    <ViewerPointerRoot>
+      <AnnotationLayer pageIndex={0} viewport={fakeViewport()} />
+    </ViewerPointerRoot>,
+  );
 }
 
 function zone(id: string): HTMLElement {
@@ -96,6 +118,37 @@ describe('AnnotationLayer · firma (PDF-043)', () => {
     expect(useAnnotations.getState().selectedId).toBe(id);
     expect(useAnnotations.getState().tool).toBe('none');
     expect(useAnnotations.getState().pendingSignature).toBeNull();
+  });
+
+  it('tras colocar con un clic, la firma queda seleccionada con su tirador (PDF-151)', () => {
+    chooseSignature(INK_ART);
+    renderInViewer();
+    fireEvent.pointerDown(layerSvg(), { button: 0, clientX: 200, clientY: 200 });
+
+    const id = onlySignatureId();
+    expect(useAnnotations.getState().selectedId).toBe(id);
+    expect(resizeHandle().getAttribute('data-resize-id')).toBe(id);
+  });
+
+  it('tras colocar una imagen con un clic, queda seleccionada con su tirador (PDF-151)', () => {
+    useAnnotations.setState({ pendingSignature: INK_ART, tool: 'page-image' });
+    renderInViewer();
+    fireEvent.pointerDown(layerSvg(), { button: 0, clientX: 200, clientY: 200 });
+
+    const id = onlySignatureId();
+    expect(useAnnotations.getState().selectedId).toBe(id);
+    expect(resizeHandle().getAttribute('data-resize-id')).toBe(id);
+  });
+
+  it('un clic posterior en zona vacía deselecciona la firma recién colocada (PDF-151)', () => {
+    chooseSignature(INK_ART);
+    renderInViewer();
+    fireEvent.pointerDown(layerSvg(), { button: 0, clientX: 200, clientY: 200 });
+    expect(useAnnotations.getState().selectedId).not.toBeNull();
+
+    setTool('none');
+    fireEvent.pointerDown(layerSvg(), { button: 0, clientX: 400, clientY: 400 });
+    expect(useAnnotations.getState().selectedId).toBeNull();
   });
 
   it('sin firma pendiente, un clic en la página no crea nada', () => {

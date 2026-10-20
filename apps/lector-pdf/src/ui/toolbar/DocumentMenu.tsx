@@ -13,6 +13,8 @@ import { startCompare } from '../../state/compare-actions';
 import { openOrganize } from '../../state/organize-actions';
 import { openCombineDialog } from '../../state/combine-actions';
 import { openExtractDialog, openSplitDialog } from '../../state/extract-actions';
+import { openProtectDialog, removeProtection } from '../../state/protect-actions';
+import { securityMsg } from '../messages-security';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -23,6 +25,7 @@ export function DocumentMenu() {
   const ready = useViewer((s) => s.status === 'ready');
   const printAllowed = useViewer((s) => s.permissions.print);
   const copyAllowed = useViewer((s) => s.permissions.copy);
+  const encrypted = useViewer((s) => s.encrypted);
   return (
     <MenuButton
       label={propertiesMsg.moreActions}
@@ -75,6 +78,19 @@ export function DocumentMenu() {
           disabled: !copyAllowed,
           disabledReason: organizeMsg.extractBlocked,
           onSelect: () => { openSplitDialog(); },
+        },
+        {
+          kind: 'action',
+          label: securityMsg.protectMenu,
+          disabled: !ready,
+          onSelect: () => { openProtectDialog(); },
+        },
+        {
+          kind: 'action',
+          label: securityMsg.unprotectMenu,
+          disabled: !encrypted,
+          disabledReason: securityMsg.unprotectDisabled,
+          onSelect: () => { void removeProtection(); },
         },
         {
           kind: 'action',

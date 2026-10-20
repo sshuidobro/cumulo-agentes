@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-150
 titulo: Arreglar «Cancelar» a mitad de la exportación (E2E @perf rojo en HEAD)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, calidad-profesional]

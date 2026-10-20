@@ -36,6 +36,7 @@ import { useCompare } from '../state/compare-actions';
 import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
 import { useExportDialog, useExportJob } from '../state/export-actions';
 import { useDocOpJob, useExtractDialog } from '../state/extract-actions';
+import { useProtectDialog } from '../state/protect-actions';
 import { useCombineDialog } from '../state/combine-actions';
 import { useImagesDialog } from '../state/images-dialog-store';
 import { useOrganize } from '../state/organize-store';
@@ -67,6 +68,8 @@ const DocOpJobProgress = lazy(() => import('./kit/DocOpProgress').then((m) => ({
 const ReadAloudBar = lazy(() => import('./read-aloud/ReadAloudBar').then((m) => ({ default: m.ReadAloudBar })));
 const ExportProgress = lazy(() => import('./export/ExportProgress').then((m) => ({ default: m.ExportProgress })));
 const PrintProgress = lazy(() => import('./print/PrintProgress').then((m) => ({ default: m.PrintProgress })));
+// Proteger con contraseña (PDF-132): el diálogo solo se carga al abrirlo.
+const ProtectDialog = lazy(() => import('./security/ProtectDialog').then((m) => ({ default: m.ProtectDialog })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -160,6 +163,7 @@ export function App() {
   const printPreparing = usePrintJob((s) => s.job.status === 'preparing');
   const combineOpen = useCombineDialog((s) => s.open);
   const imagesOpen = useImagesDialog((s) => s.open);
+  const protectOpen = useProtectDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
   const organizeOpen = useOrganize((s) => s.open);
@@ -273,6 +277,11 @@ export function App() {
       {imagesOpen && (
         <Suspense fallback={null}>
           <ImagesDialog />
+        </Suspense>
+      )}
+      {protectOpen && (
+        <Suspense fallback={null}>
+          <ProtectDialog />
         </Suspense>
       )}
       {docOpRunning && (

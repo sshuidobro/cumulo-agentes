@@ -9,10 +9,18 @@ export function PasswordDialog() {
   const request = usePasswordPrompt((s) => s.request);
   if (request === null) return null;
   // Con `key` cada intento empieza con el campo vacío y el foco en él.
-  return <PasswordPrompt key={request.id} name={request.name} incorrect={request.incorrect} />;
+  return <PasswordPrompt key={request.id} name={request.name} incorrect={request.incorrect} text={request.text} />;
 }
 
-function PasswordPrompt({ name, incorrect }: { readonly name: string; readonly incorrect: boolean }) {
+function PasswordPrompt({
+  name,
+  incorrect,
+  text,
+}: {
+  readonly name: string;
+  readonly incorrect: boolean;
+  readonly text: string | null;
+}) {
   const [value, setValue] = useState('');
   const [visible, setVisible] = useState(false);
   const fieldId = useId();
@@ -37,7 +45,7 @@ function PasswordPrompt({ name, incorrect }: { readonly name: string; readonly i
         { label: msg.cancel, onClick: cancelPassword },
       ]}
     >
-      <p>{msg.protectedFile(name)}</p>
+      <p>{text ?? msg.protectedFile(name)}</p>
       <div className={styles.field}>
         <label htmlFor={fieldId}>{msg.field}</label>
         <input
