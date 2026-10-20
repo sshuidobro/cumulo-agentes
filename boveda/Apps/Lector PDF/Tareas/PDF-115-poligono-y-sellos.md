@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-115
 titulo: Herramientas Polígono y Sello en la barra Comentar
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-108, PDF-107]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -78,3 +78,9 @@ export function defaultPolygon(cx: number, cy: number, page: RectPt): readonly n
 ### [revisor] ronda 1 — 2026-10-20 — CAMBIOS
 Lint, typecheck y tests de la ficha (576) en verde; criterios cubiertos. Un problema:
 1. `apps/lector-pdf/src/ui/viewer/use-shape-tool.ts:77` — fuga de listener: `onPolygonKey` y `stopPolygon` son funciones nuevas en cada render. El `keydown` se añade en `polygonClick` con la función del render N, pero `finishPolygon` (desde `onDoubleClick` u otro render posterior) llama a un `stopPolygon` de otro render y hace `removeEventListener` con una referencia distinta, así que el listener de captura en `window` queda registrado para siempre (uno por polígono cerrado con doble clic o clic cerca del primero). Hay que guardar la función registrada en un ref (o usar un handler estable vía ref) y quitar exactamente esa. Añade un test que cierre un polígono por doble clic y compruebe, con un espía de `removeEventListener`/`addEventListener`, que no quedan listeners de `keydown` registrados.
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/use-shape-tool.ts`; `apps/lector-pdf/tests/ui/shape-tool.test.tsx`.
+- Qué he hecho: el escuchador de `keydown` del polígono se guarda en un ref (`polygonKey`) y `stopPolygon` quita exactamente ese, así que ya no depende de la función del render en que se llamó. Nuevo test «cerrar un polígono con doble clic no deja escuchadores de teclado registrados» (espías de `addEventListener`/`removeEventListener` sobre `window`; comprueba que cada `keydown` añadido se quita).
+- Comandos ejecutados y resultado: `vitest run tests/ui/shape-tool.test.tsx` → 19/19. `eslint` sobre los ficheros tocados → limpio. `pnpm typecheck` → código 0. `pnpm coverage` (con `--coverage.reportsDirectory` propio: otro proceso de Vitest ocupaba el directorio `coverage/`) → código 0, 279 ficheros, 3622 tests. Una primera pasada tuvo un timeout de 5 s en `commands.test.ts` por la carga de la máquina; en solitario pasa (20/20) y en la pasada final todo pasó. E2E no relanzado en esta ronda (el cambio es interno al hook y el E2E de ronda 1 pasó 295/295).
+- Dudas o cosas que no he podido hacer: ninguna en esta ronda. No he hecho commit (indicación del usuario). Pendiente de la ronda 1: `pnpm lint` de raíz falla por ficheros ajenos a la ficha (`signature/digital/*`).
