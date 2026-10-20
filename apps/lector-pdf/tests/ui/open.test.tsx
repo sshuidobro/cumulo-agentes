@@ -46,9 +46,14 @@ function fakeLoaded(numPages: number): LoadedPdf {
   };
 }
 
-/** Deja la carga pendiente hasta la cancelación: el motor falso responde `cancelled` si se cancela. */
+/**
+ * Deja la carga pendiente hasta la cancelación: el motor falso responde `cancelled` si se cancela.
+ * Igual que el motor real (`engine/load.ts`), una señal ya abortada al llegar la llamada devuelve `cancelled` de inmediato:
+ * la apertura puede cancelarse durante el sondeo previo de contraseña (ADR-0043), antes de que se llame al motor.
+ */
 function holdLoad(): void {
   engine.loadPdf.mockImplementation((_source: unknown, opts: LoadOptions) => new Promise<Result<LoadedPdf>>((resolve) => {
+    if (opts.signal?.aborted) { resolve(err(pdfError('cancelled'))); return; }
     opts.signal?.addEventListener('abort', () => { resolve(err(pdfError('cancelled'))); });
   }));
 }
