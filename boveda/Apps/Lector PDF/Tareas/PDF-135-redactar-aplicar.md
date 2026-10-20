@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-135
 titulo: Redactar - aplicar (texto, imágenes enteras, anotaciones, página en imagen) y reescritura
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-062, PDF-131]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -81,3 +81,13 @@ export async function buildRedactionUpdate(input: RedactInput): Promise<Result<{
 - `pnpm lint` y `pnpm typecheck` sin errores. Tests de redact y organize: 135 OK; `apply.ts` 97,5 % líneas (96 % sentencias).
 - Todos los criterios tienen test (basic-5, posición ±0,5 pt con pdf.js, imagen entera sin objeto, annotated, Type3 raster, AES-256, sin /Prev).
 - (opcional) `apply.ts` son 499 líneas; valorar partirlo cuando entre PDF-136.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| Batería completa | OK | `vitest run`: 283 ficheros, 3697 tests OK (con cobertura, 4 timeouts por carga, p. ej. page-tree pages-5000; repetidos sin cobertura: todo verde) |
+| Criterios 1-7 (basic-5, posición, imagen entera, annotated, Type3 raster, AES-256, sin /Prev) | OK | `tests/unit/redact/apply.test.ts` (30 tests) verdes |
+| Cobertura apply.ts | 97,54 % líneas | vitest coverage text |
+Tests añadidos: ninguno. Rendimiento: no aplica.
+Nota: `pnpm coverage` estándar choca con otro vitest que bloquea `coverage/`; usé directorio propio.
