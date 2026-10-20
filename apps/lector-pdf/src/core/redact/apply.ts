@@ -11,9 +11,9 @@ import {
   intersects,
   interpretPage,
   quadBounds,
+  removeGlyphs,
   serializeContent,
   type ContentOp,
-  type GlyphBox,
   type ImageBox,
   type PageContent,
   type Quad,
@@ -28,7 +28,6 @@ import type { ObjectReader } from '../pdf/object-reader';
 import { catalogRef, createAllocator, type ObjectAllocator } from '../pdf/page-tree';
 import { effectiveResources } from '../pdf/page-content';
 import {
-  bytesString,
   dict,
   dictGet,
   name,
@@ -38,7 +37,6 @@ import {
   type PdfDict,
   type PdfStream,
   type PdfRef,
-  type PdfString,
   type PdfValue,
 } from '../pdf/objects';
 import { toSaveError } from '../pdf/save-error';
@@ -387,25 +385,19 @@ async function textChanges(
   content: PageContent,
   boxes: readonly Box[],
 ): Promise<Result<Record<string, PdfValue | undefined>>> {
-  const glyphsByOp = groupGlyphs(content.glyphs);
   // Solo las imágenes que caben enteras en una zona desaparecen; las parciales se sustituyen (PDF-136).
   const removedImageOps = new Set<number>();
   for (const image of content.images) {
     if (touchesAny(image.quad, boxes) && containedInAny(image.quad, boxes)) removedImageOps.add(image.op);
   }
-
-  const ops: ContentOp[] = [];
   const removedNames: string[] = [];
   for (const [index, op] of content.ops.entries()) {
-    if (removedImageOps.has(index)) {
-      const imageName = op.op === 'Do' ? nameOperand(op) : null;
-      if (imageName !== null) removedNames.push(imageName);
-      continue;
-    }
-    const glyphs = glyphsByOp.get(index);
-    if (glyphs === undefined) ops.push(op);
-    else ops.push(...editText(op, glyphs, boxes));
+    if (!removedImageOps.has(index)) continue;
+    const imageName = op.op === 'Do' ? nameOperand(op) : null;
+    if (imageName !== null) removedNames.push(imageName);
   }
+
+  const ops = removeGlyphs(content, (glyph) => touchesAny(glyph.quad, boxes), removedImageOps);
 
   const remaining = new Set(ops.flatMap((operation): string[] => {
     const used = operation.op === 'Do' ? nameOperand(operation) : null;
@@ -559,94 +551,6 @@ interface AnnotEntry {
   readonly drop: boolean;
 }
 
-/**
- * Operaciones de texto con sus glifos quitados. Sin glifos que toquen una zona, la operación no cambia. Si un glifo
- * no tiene avance expresable (`Tfs` 0), se quita el texto de la operación. `'` y `"` conservan su `T*` (y `Tw`/`Tc`).
- */
-function editText(operation: ContentOp, glyphs: readonly GlyphBox[], boxes: readonly Box[]): readonly ContentOp[] {
-  const removed = glyphs.map((glyph) => touchesAny(glyph.quad, boxes));
-  if (!removed.some((flag) => flag)) return [operation];
-  const prefix = statePrefix(operation);
-  const unexpressible = glyphs.some((glyph, index) => removed[index] === true && glyph.shift === null);
-  if (unexpressible) return prefix;
-  const items = textItems(operation);
-  return [...prefix, { op: 'TJ', operands: [redactItems(items, glyphs, removed)] }];
-}
-
-/** Operaciones que hay que conservar delante de un `TJ` equivalente: `'` → `T*`; `"` → `aw Tw ac Tc T*`. */
-function statePrefix(operation: ContentOp): ContentOp[] {
-  if (operation.op === "'") return [opOf('T*')];
-  if (operation.op === '"') {
-    const [aw = 0, ac = 0] = operation.operands;
-    return [{ op: 'Tw', operands: [aw] }, { op: 'Tc', operands: [ac] }, opOf('T*')];
-  }
-  return [];
-}
-
-/** Cadenas y ajustes de la operación de texto, en orden. `Tj`/`'` tienen una cadena; `"`, la tercera operando. */
-function textItems(operation: ContentOp): readonly PdfValue[] {
-  if (operation.op === 'TJ') {
-    const [items] = operation.operands;
-    return Array.isArray(items) ? items : [];
-  }
-  const index = operation.op === '"' ? 2 : 0;
-  return [operation.operands[index] ?? null];
-}
-
-/**
- * Elementos de `TJ` con los glifos quitados sustituidos por su ajuste; los ajustes vecinos se suman. Los códigos que
- * se quedan van en cadenas del mismo tipo (literal o hexadecimal) que su original.
- */
-function redactItems(items: readonly PdfValue[], glyphs: readonly GlyphBox[], removed: readonly boolean[]): PdfValue[] {
-  const out: PdfValue[] = [];
-  let run: number[] = [];
-  let runHex = false;
-  const flush = (): void => {
-    if (run.length > 0) out.push(bytesString(Uint8Array.from(run), runHex));
-    run = [];
-  };
-  const addNumber = (value: number): void => {
-    flush();
-    const last = out[out.length - 1];
-    if (typeof last === 'number') out[out.length - 1] = last + value;
-    else out.push(value);
-  };
-
-  let index = 0;
-  for (const item of items) {
-    if (typeof item === 'number') {
-      addNumber(item);
-      continue;
-    }
-    if (!isString(item)) continue;
-    let at = 0;
-    while (at < item.bytes.length) {
-      const glyph = glyphs[index];
-      if (glyph === undefined || at + glyph.length > item.bytes.length) throw new RangeError('glifos desalineados con la cadena de texto');
-      if (removed[index] === true) {
-        addNumber(glyph.shift ?? 0);
-      } else {
-        if (run.length === 0) runHex = item.hex;
-        for (const byte of item.bytes.subarray(at, at + glyph.length)) run.push(byte);
-      }
-      at += glyph.length;
-      index += 1;
-    }
-  }
-  flush();
-  return out;
-}
-
-function groupGlyphs(glyphs: readonly GlyphBox[]): Map<number, GlyphBox[]> {
-  const groups = new Map<number, GlyphBox[]>();
-  for (const glyph of glyphs) {
-    const list = groups.get(glyph.op) ?? [];
-    list.push(glyph);
-    groups.set(glyph.op, list);
-  }
-  return groups;
-}
-
 /** Caja de la página en espacio de usuario: `/CropBox` o, si no, `/MediaBox`, heredadas. */
 async function pageBox(reader: ObjectReader, page: PdfDict): Promise<Box | null> {
   for (const key of ['CropBox', 'MediaBox'] as const) {
@@ -708,8 +612,4 @@ function isStream(v: PdfValue | undefined): v is PdfStream {
 
 function isPositiveInteger(v: PdfValue | undefined): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v > 0;
-}
-
-function isString(v: PdfValue | undefined): v is PdfString {
-  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'string';
 }

@@ -376,3 +376,94 @@ describe('quadBounds e intersects', () => {
     expect(intersects(tilted, [11, 11, 12, 12])).toBe(false);
   });
 });
+
+describe('interpretPage: runs de texto (PDF-143)', () => {
+  const opIndex = (content: { readonly ops: readonly { readonly op: string }[] }, operator: string): number =>
+    content.ops.findIndex((op) => op.op === operator);
+
+  it('una operación Tj medida informa de fuente, tamaño, ángulo, origen, relleno y modo', async () => {
+    const result = await interpretOne(onePagePdf('BT /F1 18 Tf 72 676 Td (Hola) Tj ET', helveticaResources));
+    expect(result.runs).toEqual([
+      { op: opIndex(result, 'Tj'), fontResource: 'F1', fontSize: 18, angle: 0, origin: [72, 676], fill: [0, 0, 0], renderMode: 0 },
+    ]);
+  });
+
+  it('el CTM escala el tamaño y el origen', async () => {
+    const result = await interpretOne(onePagePdf('2 0 0 2 10 20 cm BT /F1 18 Tf 72 676 Td (Hola) Tj ET', helveticaResources));
+    const [run] = result.runs;
+    expect(run?.fontSize).toBeCloseTo(36, 9);
+    expect(run?.origin[0]).toBeCloseTo(154, 9);
+    expect(run?.origin[1]).toBeCloseTo(1372, 9);
+  });
+
+  it('el relleno sigue los operadores de color: rg, g, k, cs/scn y su restauración con q/Q', async () => {
+    const result = await interpretOne(
+      onePagePdf(
+        [
+          '0 0 1 rg BT /F1 10 Tf 0 0 Td (a) Tj ET',
+          'BT /F1 10 Tf 0 0 Td 0.5 g (b) Tj ET',
+          'BT /F1 10 Tf 0 0 Td 0 0 0 1 k (c) Tj ET',
+          'BT /F1 10 Tf 0 0 Td 1 0 0 0 k (d) Tj ET',
+          'BT /F1 10 Tf 0 0 Td /Pattern cs /P1 scn (e) Tj ET',
+          'BT /F1 10 Tf 0 0 Td 0 0 1 rg q 1 0 0 rg (f) Tj Q (g) Tj ET',
+        ].join('\n'),
+        helveticaResources,
+      ),
+    );
+    expect(result.runs.map((run) => run.fill)).toEqual([
+      [0, 0, 1],
+      [0.5, 0.5, 0.5],
+      [0, 0, 0],
+      [0, 1, 1],
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 0, 1],
+    ]);
+  });
+
+  it('los componentes de color se fijan a [0, 1] y con operandos no válidos el relleno es negro', async () => {
+    const result = await interpretOne(
+      onePagePdf(
+        'BT /F1 10 Tf 0 0 Td 2 g (a) Tj 0 0 1 rg 0.1 0.2 g (b) Tj ET',
+        helveticaResources,
+      ),
+    );
+    expect(result.runs.map((run) => run.fill)).toEqual([
+      [1, 1, 1],
+      [0, 0, 0],
+    ]);
+  });
+
+  it('Tr fija el modo de representación del texto', async () => {
+    const result = await interpretOne(onePagePdf('BT /F1 10 Tf 0 0 Td 3 Tr (a) Tj ET', helveticaResources));
+    expect(result.runs[0]?.renderMode).toBe(3);
+  });
+
+  it("con el operador ' el origen baja TL antes de mostrar y el run apunta a esa operación", async () => {
+    const result = await interpretOne(onePagePdf("BT 1 0 0 1 72 600 Tm 22 TL /F1 10 Tf (a) ' ET", helveticaResources));
+    expect(result.runs[0]?.origin).toEqual([72, 578]);
+    expect(result.runs[0]?.op).toBe(opIndex(result, "'"));
+  });
+
+  it('con el operador " el origen también baja TL y el run apunta a esa operación', async () => {
+    const result = await interpretOne(onePagePdf('BT 1 0 0 1 72 600 Tm 22 TL /F1 10 Tf 1 2 (a) " ET', helveticaResources));
+    expect(result.runs[0]?.origin).toEqual([72, 578]);
+    expect(result.runs[0]?.op).toBe(opIndex(result, '"'));
+  });
+
+  it('texto girado 90 grados tiene ángulo 90', async () => {
+    const result = await interpretOne(onePagePdf('BT 0 1 -1 0 300 300 Tm /F1 10 Tf (a) Tj ET', helveticaResources));
+    expect(result.runs[0]?.angle).toBeCloseTo(90, 9);
+    expect(result.runs[0]?.origin).toEqual([300, 300]);
+  });
+
+  it('una fuente Type3 no genera run y su operación queda en unmeasured', async () => {
+    const data = onePagePdf('BT /F3 10 Tf 0 0 Td (a) Tj ET', (b) => {
+      const type3 = b.addObject('<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1 1] /FontMatrix [0.001 0 0 0.001 0 0] /CharProcs << >> /Encoding << >> /FirstChar 0 /LastChar 0 /Widths [0] >>');
+      return `<< /Font << /F3 ${String(type3)} 0 R >> >>`;
+    });
+    const result = await interpretOne(data);
+    expect(result.runs).toEqual([]);
+    expect(result.unmeasured).toEqual([opIndex(result, 'Tj')]);
+  });
+});
