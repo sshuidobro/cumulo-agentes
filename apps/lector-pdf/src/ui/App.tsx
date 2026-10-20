@@ -19,6 +19,7 @@ import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
 import { PasswordDialog } from './security/PasswordDialog';
 import { SearchBar, focusSearchField } from './search/SearchBar';
+import { ReadAloudBar } from './read-aloud/ReadAloudBar';
 import { toggleSidebar } from '../state/sidebar-actions';
 import { nextMatch, openSearch, prevMatch } from '../state/search-actions';
 import { useSearch } from '../state/search-store';
@@ -35,6 +36,7 @@ import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen 
 import { openProperties, usePropertiesDialog } from '../state/properties-store';
 import { openPrintDialog, usePrintDialog } from '../state/print-actions';
 import { useCompare } from '../state/compare-actions';
+import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
 import { useExportDialog } from '../state/export-actions';
 import { useViewer } from '../state/viewer-store';
 import { useTabs } from '../state/tabs';
@@ -93,6 +95,14 @@ const VIEW_SHORTCUTS = {
   properties: () => { openProperties(); },
   print: () => { openPrintDialog(); },
   fullscreen: () => { toggleFullscreen(); },
+  // Leer en voz alta (PDF-114). Pausa solo si hay lectura: si no, el atajo no se consume.
+  'read-page': () => { void startReading('page'); },
+  'read-to-end': () => { void startReading('document'); },
+  'read-pause': () => {
+    if (useReadAloud.getState().status === 'idle') return false;
+    togglePause();
+  },
+  'read-stop': () => { stopReading(); },
 } as const;
 
 /** Atajos con la pantalla completa activa (PDF-097). Escape sale antes que «cancelar herramienta». */
@@ -182,6 +192,7 @@ export function App() {
             </div>
             <SelectionActions />
             <SearchBar />
+            <ReadAloudBar />
           </>
         )}
       </main>

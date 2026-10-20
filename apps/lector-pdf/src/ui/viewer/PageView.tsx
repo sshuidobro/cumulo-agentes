@@ -20,6 +20,7 @@ import { AnnotationLayer } from './AnnotationLayer';
 import { LinkLayer } from './LinkLayer';
 import { PageFrame } from './PageFrame';
 import { SearchHighlights } from './SearchHighlights';
+import { ReadAloudHighlight } from './ReadAloudHighlight';
 import { TextLayerView } from './TextLayerView';
 import styles from './Viewer.module.css';
 
@@ -309,6 +310,7 @@ export const PageView = memo(function PageView({
       <div ref={hostRef} className={styles.canvasHost} />
       <div ref={detailHostRef} className={styles.detailHost} />
       <SearchHighlights index={index} zoom={zoom} rotation={rotation} />
+      <ReadAloudHighlight index={index} zoom={zoom} rotation={rotation} />
       <TextLayerView index={index} zoom={zoom} rotation={rotation} />
       {viewport !== null && <AnnotationLayer pageIndex={index} viewport={viewport} />}
       {viewport !== null && hasForms && (
