@@ -41,6 +41,7 @@ import { startReading, stopReading, togglePause, useReadAloud } from '../state/r
 import { useExportDialog } from '../state/export-actions';
 import { useExtractDialog } from '../state/extract-actions';
 import { useCombineDialog } from '../state/combine-actions';
+import { useImagesDialog } from '../state/images-dialog-store';
 import { useOrganize } from '../state/organize-store';
 import { organizeRedo, organizeUndo } from '../state/organize-actions';
 import { useViewer } from '../state/viewer-store';
@@ -64,6 +65,7 @@ const OrganizeView = lazy(() => import('./organize/OrganizeView').then((m) => ({
 const ExtractDialog = lazy(() => import('./organize/ExtractDialog').then((m) => ({ default: m.ExtractDialog })));
 const SplitDialog = lazy(() => import('./organize/SplitDialog').then((m) => ({ default: m.SplitDialog })));
 const CombineDialog = lazy(() => import('./organize/CombineDialog').then((m) => ({ default: m.CombineDialog })));
+const ImagesDialog = lazy(() => import('./organize/ImagesDialog').then((m) => ({ default: m.ImagesDialog })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -151,6 +153,7 @@ export function App() {
   const exportOpen = useExportDialog((s) => s.open);
   const extractDialog = useExtractDialog((s) => s.open);
   const combineOpen = useCombineDialog((s) => s.open);
+  const imagesOpen = useImagesDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
   const organizeOpen = useOrganize((s) => s.open);
@@ -254,6 +257,11 @@ export function App() {
       {combineOpen && (
         <Suspense fallback={null}>
           <CombineDialog />
+        </Suspense>
+      )}
+      {imagesOpen && (
+        <Suspense fallback={null}>
+          <ImagesDialog />
         </Suspense>
       )}
       <DocOpJobProgress />

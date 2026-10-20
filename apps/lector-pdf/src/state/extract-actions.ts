@@ -59,14 +59,19 @@ export const useExtractDialog = create<ExtractDialogState>()(() => ({
   split: DEFAULT_SPLIT,
 }));
 
+/** Texto de progreso: recibe la posición actual (empieza en 1) y el total. */
+export type JobProgressText = (current: number, total: number) => string;
+
 interface DocOpJobState {
   /** Título de la operación en curso, o `null` si no hay ninguna. */
   readonly label: string | null;
   readonly done: number;
   readonly total: number;
+  /** Texto del progreso; `null` = «Copiando páginas…» (por defecto). */
+  readonly progressText: JobProgressText | null;
 }
 
-const IDLE_JOB: DocOpJobState = { label: null, done: 0, total: 0 };
+const IDLE_JOB: DocOpJobState = { label: null, done: 0, total: 0, progressText: null };
 
 /** Progreso de la operación de documento en curso (extraer o dividir). Lo lee `DocOpJobProgress`. */
 export const useDocOpJob = create<DocOpJobState>()(() => IDLE_JOB);
@@ -112,11 +117,11 @@ function canStartFromDocument(): boolean {
 let activeController: AbortController | null = null;
 
 /** Reserva el progreso para una operación nueva; `null` si ya hay otra en curso. */
-export function beginJob(label: string): AbortController | null {
+export function beginJob(label: string, progressText: JobProgressText | null = null): AbortController | null {
   if (activeController !== null) return null;
   const controller = new AbortController();
   activeController = controller;
-  useDocOpJob.setState({ label, done: 0, total: 0 });
+  useDocOpJob.setState({ label, done: 0, total: 0, progressText });
   return controller;
 }
 
