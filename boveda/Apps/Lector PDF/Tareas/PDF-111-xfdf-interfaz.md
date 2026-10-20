@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-111
 titulo: Exportar e importar comentarios en XFDF desde el panel
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-110, PDF-116, COM-018, PDF-108]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -67,3 +67,14 @@ export async function importComments(): Promise<'imported' | 'cancelled' | 'fail
 - lint y typecheck OK; 9 unit de `xfdf-actions` OK; cada criterio tiene test (unit y E2E «sin pérdidas»). Lógica, errores, menú accesible y deshabilitado sin comentarios correctos.
 1. (opcional) `apps/lector-pdf/src/state/xfdf-actions.ts:46` — con `downloaded` no hay aviso; sería coherente avisar también «Comentarios exportados.» (la ficha solo lo pide para `saved`).
 2. (opcional) `tests/e2e/xfdf.spec.ts:145` — la comprobación de Recientes es débil (lista vacía); el tester puede reforzarla abriendo antes un fichero reciente.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit export/import/errores (3 criterios) | OK | `pnpm coverage`: todos los tests verdes; líneas 98,33 % |
+| E2E «sin pérdidas» | OK | `xfdf.spec.ts` 2/2 |
+| Exportar no toca «Recientes» | OK, reforzado | nuevo `tests/e2e/xfdf-recientes.spec.ts`: recientes reales (OPFS + IndexedDB), exporta y tras recargar siguen `['basic-5.pdf','links.pdf']` |
+| Menú accesible / exportar deshabilitado | OK | `xfdf.spec.ts` test 1 |
+| lint, typecheck, coverage, e2e | OK | código 0; e2e 315 passed (9,8 min) |
+Opcional no bloqueante: avisar «Comentarios exportados.» también con `downloaded`.
+Tests añadidos: `apps/lector-pdf/tests/e2e/xfdf-recientes.spec.ts`. Rendimiento: tests `@perf` verdes.
