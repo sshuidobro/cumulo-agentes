@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-143
 titulo: Editar texto - estilo de cada operación de texto y borrado de glifos reutilizable (núcleo)
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -88,3 +88,7 @@ export function removeGlyphs(
 - Qué he hecho: el intérprete guarda relleno (`fill`), fuente (`fontResource`) y `Tr`, con los operadores de color (valores fijados a [0, 1]) y un `TextRun` por operación de texto medida en `PageContent.runs`. `removeGlyphs` se movió de `apply.ts` a `remove-glyphs.ts` sin cambiar su lógica; `textChanges` lo usa y se borró `editText` de `apply.ts`.
 - Comandos ejecutados y resultado: `pnpm --filter lector-pdf exec vitest run tests/unit/content tests/unit/redact` → 6 ficheros, 124 tests en verde. `pnpm lint` → limpio. `pnpm typecheck` → limpio. `pnpm coverage` → código 0, 3767 tests en verde; `interpreter.ts` 99,57 % líneas, `remove-glyphs.ts` 100 % líneas. `git diff --stat -- apps/lector-pdf/tests/unit/redact` vacío.
 - Dudas o cosas que no he podido hacer: (1) el ejemplo de la ficha da `op: 2` para `BT /F1 18 Tf 72 676 Td (Hola) Tj ET`, pero el índice real del `Tj` en `ops` es 3 (BT 0, Tf 1, Td 2, Tj 3); el test usa el índice real. (2) Los operadores de color con operandos mal formados (p. ej. `0.1 0.2 g`) no lanzan error: el relleno es negro, para no cambiar el comportamiento de redacción en páginas raras. (3) El coverage lo ejecuté mientras otro agente tenía el directorio de cobertura; reintenté tras esperar a que terminara.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint, typecheck y `vitest run tests/unit/content tests/unit/redact` (124 tests) en verde; `git diff` de `tests/unit/redact` vacío. Lógica movida sin cambios; `textChanges` equivalente. Cobertura declarada (99,57 % / 100 %) no relanzada.
+- Nota: el `op: 2` de la ficha era erróneo (índice real 3); el test usa el real, correcto.

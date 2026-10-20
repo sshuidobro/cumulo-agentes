@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-117
 titulo: Comparar - páginas lado a lado con cambios resaltados y superposición
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-112]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -62,3 +62,14 @@ Al seleccionar un cambio, la vista de comparación pinta la página de cada docu
 - Qué he hecho: (1) el E2E de superposición espera con `expect.poll` a que aparezca color en el lienzo antes de leer el píxel de esquina; el dibujo es síncrono tras los renders, así que no hace falta cambiar el componente. (2) Añadido `.claude/worktrees/**` a los `ignores` de `eslint.config.js`.
 - Comandos ejecutados y resultado: `pnpm lint` exit 0; `pnpm typecheck` exit 0; `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>/cov` exit 0 (291 ficheros, 3750 tests, All files: Statements 95, Lines 98.32); E2E `compare.spec.ts` en `chromium` 5/5.
 - Dudas o cosas que no he podido hacer: (a) `pnpm coverage` falló con «directorio de cobertura en uso por otro proceso Vitest (pid 907)», otra sesión tiene `coverage/` bloqueado; no he matado ese proceso y he usado un directorio de informe propio. (b) No he relanzado el E2E `@perf` ni el `e2e` completo (la CPU está compartida con otras sesiones y la prueba `@perf` exige reposo).
+
+### [revisor] ronda 2 — 2026-10-20 — APROBADO
+1. Los dos puntos de la ronda 1 están resueltos: el E2E de superposición espera con `expect.poll` al color antes de leer píxeles, y `eslint.config.js` ignora `.claude/worktrees/**`. `pnpm lint` y `pnpm typecheck` salen limpios y los tests de comparar (57) pasan. El E2E `@perf` y el `e2e` completo quedan para el tester, con la máquina en reposo.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E resaltados lado a lado, superposición, @perf (20 x "Cambio siguiente", max 3 canvas, sin long tasks > 100 ms) | OK | `pnpm --filter lector-pdf e2e`: 310 passed (10,5 min), exit 0, incluye `chromium-perf` con la máquina en reposo |
+| UI cancela render anterior, accesibilidad | OK | `pnpm coverage` exit 0 (Lines 97,64 %, Branches 89,08 %) |
+| lint, typecheck, coverage, e2e | OK | los cuatro con código 0 |
+Tests añadidos: ninguno. Rendimiento: @perf de comparar pasa dentro de presupuesto.

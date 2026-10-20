@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-114
 titulo: Leer en voz alta - menú, barra de lectura, atajos y resaltado de la frase
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-067, PDF-050, PDF-051, PDF-112]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -67,3 +67,19 @@ El usuario lanza «Leer esta página» o «Leer hasta el final» desde el menú 
 
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 0 bloqueantes. Tester: repetir e2e completo con la máquina en reposo (@perf falló por CPU ocupada).
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E Ctrl+Mayús+V, un `.read-aloud-current`, barra desaparece | OK | `read-aloud.spec.ts:83,93` en `pnpm --filter lector-pdf e2e` |
+| E2E leer hasta el final desde p.4 → p.5 | OK | `read-aloud.spec.ts:109` |
+| E2E pausa 300 ms / reanudar / parar | OK | `read-aloud.spec.ts:124` |
+| E2E sin voces locales: deshabilitado y sin `speak` | OK | `read-aloud.spec.ts:150` |
+| E2E velocidad 1,5× y persistencia al recargar | OK | `read-aloud.spec.ts:166` |
+| Teclado, axe, tema oscuro | OK | `read-aloud.spec.ts:186,207` |
+| Manual con voz real | Pendiente del usuario (no bloquea) | Manual.md |
+| `bundle:check` | OK | Arranque 530 959 de 600 000 bytes |
+| lint / typecheck / coverage / e2e con código 0 | OK | lint 0, typecheck OK, coverage 0 (líneas 98,32 %), e2e 310/310 passed (9,6 min, máquina en reposo, incluidos los `@perf`), código 0 |
+
+Sin `test.skip` ni `.only` en los tests de la ficha. Tests añadidos: ninguno (la cobertura de la ficha era suficiente).
+Rendimiento: los `@perf` pasan con la máquina en reposo (abrir basic-5 742 ms, <1 s).
