@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-128
 titulo: Insertar desde archivo y combinar archivos - interfaz
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-055, PDF-127, COM-019]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
 actualizado: 2026-10-20
@@ -85,3 +85,8 @@ export async function combineFiles(): Promise<'saved' | 'downloaded' | 'cancelle
   4. En la web, «Guardar como» descarga y no abre la pestaña: el criterio «se abre una pestaña con 35 páginas» lo cubre el test unitario de la ruta `saved`; el E2E comprueba el PDF descargado (35 páginas, ramas «basic-5» y «outline»).
   5. Tema oscuro: no tengo test específico; queda sin verificar.
   6. Ajustes por axe: los botones de fila van fuera del `listbox`, y la celda importada incluye el nombre del fichero en su nombre accesible.
+
+### [revisor] ronda 1 — 2026-10-20 — CAMBIOS
+Comprobado: lint, typecheck y coverage OK (98,3 % líneas); bundle:check OK (591 097 de 600 000); `insert-combine.spec.ts` 6/6. Lógica de `combine-actions`, `import-pdf` e `insertFromFile` correcta (generación, liberación de `doc`, cancelar, límite 50/512 MB).
+1. `tests/e2e/insert-combine.spec.ts:192` — el criterio «axe sin violaciones en diálogo y vista; tema oscuro» no está cubierto: el test de axe corre solo en tema claro y el programador lo declara «sin verificar» — repetir el test de axe (diálogo «Combinar archivos» y vista Organizar con importado) en claro y oscuro con `page.emulateMedia({ colorScheme })` como en `tests/e2e/organize-a11y.spec.ts:29`, y corregir los contrastes de `CombineDialog.module.css` y del nombre de fichero de `OrganizeCell` si fallan.
+2. (opcional) Ficha, criterio `e2e` con código 0: el fallo de `iteration4-performance.spec.ts` (AES-256 ≤ 1,5×) se dice previo; confirmar en la ronda siguiente que sigue siendo ajeno al cambio o anotarlo para el líder.
