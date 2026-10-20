@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-117
 titulo: Comparar - páginas lado a lado con cambios resaltados y superposición
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-112]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
 actualizado: 2026-10-20
@@ -52,3 +52,7 @@ Al seleccionar un cambio, la vista de comparación pinta la página de cada docu
 - Qué he hecho: la vista de comparación pinta el cambio seleccionado en dos columnas (lienzo + capa de texto oculta para medir; resaltados rojo/verde/amarillo por palabra) o en superposición (`difference` sobre un lienzo visible, con B dibujada fuera del DOM). Botones «Cambio anterior/siguiente» y Alt+Flecha arriba/abajo; selector «Lado a lado / Superposición» con `aria-pressed`. Cada selección nueva cancela el dibujo anterior (`AbortController`) y libera los lienzos.
 - Comandos ejecutados y resultado: `pnpm install` (el worktree no tenía `node_modules`); `pnpm lint` limpio; `pnpm typecheck` sin errores; `pnpm coverage` exit 0, sin tests fallidos (Statements 95,23 %, Lines 98,49 %); E2E `compare.spec.ts` en `chromium` 5/5 y `@perf` en `chromium-perf` 1/1 (la primera vez falló por «máquina no está en reposo» con otra batería en marcha; en la repetición pasó). Full `pnpm --filter lector-pdf e2e`: 300 pasadas y 2 fallos en `chromium-perf` (export «Cancelar» a mitad; viewer «scroll continuo»): uno por «máquina no está en reposo» y el otro por `toBeHidden` con la CPU ocupada por otras sesiones; repetidos a solas, los dos pasan.
 - Dudas o cosas que no he podido hacer: (1) la escala del lienzo usa `planCanvas` (tope de píxeles y de `devicePixelRatio`) en vez de `printScale`, que está pensado para DPI de impresión; mismo resultado práctico, avísame si se quiere `printScale`. (2) Cualquier cambio de selección vuelve a dibujar la página aunque sea la misma (la clave es el índice del cambio), para cumplir «cambiar de selección cancela el anterior». (3) Los resaltados solo se muestran en lado a lado; la superposición no los dibuja. (4) E2E: el servidor de pruebas usa `LECTOR_E2E_PORT` porque el puerto 4173 lo usaba otra sesión.
+
+### [revisor] ronda 1 — 2026-10-20 — CAMBIOS
+1. `tests/e2e/compare.spec.ts:150-190`: E2E de superposición inestable; esperar a que el dibujo esté listo (`expect.poll` sobre píxeles no negros o marca `data-ready`) antes de leer píxeles.
+2. `pnpm lint` raíz falla por copias en `.claude/worktrees/**`: añadir ese patrón a los ignores de ESLint y comprobar que termina con 0.
