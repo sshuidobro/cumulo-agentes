@@ -10,6 +10,7 @@ import { openPrintDialog } from '../../state/print-actions';
 import { openExportDialog } from '../../state/export-actions';
 import { startCompare } from '../../state/compare-actions';
 import { openOrganize } from '../../state/organize-actions';
+import { openCombineDialog } from '../../state/combine-actions';
 import { openExtractDialog, openSplitDialog } from '../../state/extract-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
@@ -49,6 +50,11 @@ export function DocumentMenu() {
           label: organizeMsg.menuItem,
           disabled: !ready,
           onSelect: () => { void openOrganize(); },
+        },
+        {
+          kind: 'action',
+          label: organizeMsg.combine,
+          onSelect: () => { openCombineDialog(); },
         },
         {
           kind: 'action',

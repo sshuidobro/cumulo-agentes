@@ -112,7 +112,7 @@ function canStartFromDocument(): boolean {
 let activeController: AbortController | null = null;
 
 /** Reserva el progreso para una operación nueva; `null` si ya hay otra en curso. */
-function beginJob(label: string): AbortController | null {
+export function beginJob(label: string): AbortController | null {
   if (activeController !== null) return null;
   const controller = new AbortController();
   activeController = controller;
@@ -121,7 +121,7 @@ function beginJob(label: string): AbortController | null {
 }
 
 /** Libera el progreso de `controller` si sigue siendo la operación activa. */
-function endJob(controller: AbortController): void {
+export function endJob(controller: AbortController): void {
   if (activeController !== controller) return;
   activeController = null;
   useDocOpJob.setState(IDLE_JOB);
@@ -139,7 +139,7 @@ export function cancelDocOp(): void {
  * Fuente con los cambios sin guardar (anotaciones y formularios) al final. Si no se pueden calcular, se usa el
  * original y se devuelve `unsaved: true` para avisar.
  */
-async function sourceWithChanges(
+export async function sourceWithChanges(
   file: OpenedFile,
 ): Promise<{ readonly source: ByteSource; readonly unsaved: boolean }> {
   const built = await buildCurrentDelta(file);
@@ -264,7 +264,7 @@ function fail(message: string): DocOpResult {
   return "failed";
 }
 
-function jobOptions(controller: AbortController): RunOptions {
+export function jobOptions(controller: AbortController): RunOptions {
   return {
     signal: controller.signal,
     onProgress: (done: number, total: number) => {

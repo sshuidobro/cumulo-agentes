@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { memorySource, type SaveData } from '@suite/platform';
-import { err, type AppError, type Result } from '@suite/shared';
+import { memorySource, platformError, type SaveData } from '@suite/platform';
+import { err, ok, type AppError, type Result } from '@suite/shared';
 import type { DocOpsClient, RunOptions, SourceInput } from '../../src/core/doc-ops/client';
 import { openForSave } from '../../src/core/pdf';
 import { readPageRotations } from '../../src/core/pdf/page-tree';
@@ -14,6 +14,7 @@ import {
   closeOrganize,
   deleteSelected,
   insertBlank,
+  insertFromFile,
   moveSelected,
   openOrganize,
   organizeRedo,
@@ -29,7 +30,8 @@ import { activateTab, resetTabsForTests, useTabs } from '../../src/state/tabs';
 import { useViewer } from '../../src/state/viewer-store';
 import { openedFile } from '../helpers/fake-platform';
 import { fixtureSource } from '../helpers/pdfjs-node';
-import { answerChoice, CLEAN_TITLE, concat, DIRTY_TITLE, FIXTURE, openFixture, setupSaveHarness, waitForScan } from '../helpers/save-harness';
+import { answerChoice, CLEAN_TITLE, concat, DIRTY_TITLE, FIXTURE, fixtureBytes, openFixture, setupSaveHarness, waitForScan } from '../helpers/save-harness';
+import { cancelPassword, submitPassword, usePasswordPrompt } from '../../src/state/password-prompt';
 import { newAnnotation } from './annotations/factories';
 import { organizeMsg } from '../../src/ui/messages-organize';
 import { useChoice } from '../../src/state/choice';
@@ -335,3 +337,94 @@ describe('organize: cancelación, errores y pestañas', () => {
     expect(organizeDirty()).toBe(true);
   });
 });
+
+describe('organize: insertar desde archivo (PDF-128)', () => {
+  /** Próxima respuesta del diálogo «Insertar desde archivo» con un PDF de `name`. */
+  function pickNext(name: string): void {
+    vi.mocked(h.platform.importFile).mockResolvedValueOnce(ok({ name, bytes: fixtureBytes(name) }));
+  }
+
+  it('basic-5.pdf + outline.pdf después de la 2.ª: 35 huecos, las importadas tras la 2.ª, y el guardado tiene 35 páginas', async () => {
+    await openView();
+    select('o1');
+    pickNext('outline.pdf');
+    await insertFromFile('after');
+
+    const { plan, imported } = useOrganize.getState();
+    expect(plan.slots).toHaveLength(35);
+    expect(plan.slots.slice(2, 32).every((slot) => slot.kind === 'imported')).toBe(true);
+    expect(plan.slots[2]).toMatchObject({ kind: 'imported', doc: 0, source: 0 });
+    expect(plan.slots[31]).toMatchObject({ kind: 'imported', doc: 0, source: 29 });
+    expect(plan.slots[32]?.kind).toBe('original');
+    expect(imported.map((item) => item.name)).toEqual(['outline.pdf']);
+
+    expect(await save()).toBe('saved');
+    const layout = await savedLayout();
+    expect(layout.pages).toBe(35);
+  });
+
+  it('con «Deshacer» tras insertar, las páginas insertadas se quitan y guardar sin ellas deja 5 páginas', async () => {
+    await openView();
+    select('o1');
+    pickNext('outline.pdf');
+    await insertFromFile('after');
+    expect(useOrganize.getState().plan.slots).toHaveLength(35);
+
+    organizeUndo();
+    expect(keysOf(useOrganize.getState().plan)).toEqual(['o0', 'o1', 'o2', 'o3', 'o4']);
+    // Un giro sobre la 1.ª para que haya algo que guardar: el resultado debe seguir teniendo 5 páginas.
+    select('o0');
+    rotateSelected(90);
+    expect(await save()).toBe('saved');
+    expect((await savedLayout()).pages).toBe(5);
+  });
+
+  it('un PDF protegido pide la contraseña; con «usuario» inserta sus páginas legibles', async () => {
+    await openView();
+    pickNext('encrypted-aes-256.pdf');
+    const pending = insertFromFile('after');
+    await vi.waitFor(() => {
+      expect(usePasswordPrompt.getState().request).not.toBeNull();
+    });
+    submitPassword('usuario');
+    await pending;
+
+    const { plan, imported } = useOrganize.getState();
+    expect(plan.slots).toHaveLength(10);
+    expect(imported[0]?.password).toBe('usuario');
+    expect(useViewer.getState().notice).toBeNull();
+  });
+
+  it('cancelar la contraseña no inserta nada', async () => {
+    await openView();
+    pickNext('encrypted-aes-256.pdf');
+    const pending = insertFromFile('after');
+    await vi.waitFor(() => {
+      expect(usePasswordPrompt.getState().request).not.toBeNull();
+    });
+    cancelPassword();
+    await pending;
+
+    expect(useOrganize.getState().plan.slots).toHaveLength(5);
+    expect(useOrganize.getState().imported).toHaveLength(0);
+  });
+
+  it('un fichero que no se puede leer avisa con su nombre y no inserta nada', async () => {
+    await openView();
+    vi.mocked(h.platform.importFile).mockResolvedValueOnce(ok({ name: 'roto.pdf', bytes: new Uint8Array([1, 2, 3]) }));
+    await insertFromFile('after');
+
+    expect(useViewer.getState().notice?.text).toBe(organizeMsg.importFailed('roto.pdf'));
+    expect(useOrganize.getState().plan.slots).toHaveLength(5);
+  });
+
+  it('un fichero demasiado grande avisa y no inserta nada', async () => {
+    await openView();
+    vi.mocked(h.platform.importFile).mockResolvedValueOnce(err(platformError('out-of-range')));
+    await insertFromFile('after');
+
+    expect(useViewer.getState().notice?.text).toBe(organizeMsg.importTooBig);
+    expect(useOrganize.getState().plan.slots).toHaveLength(5);
+  });
+});
+
