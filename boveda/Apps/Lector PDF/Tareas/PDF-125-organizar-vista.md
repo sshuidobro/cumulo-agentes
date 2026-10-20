@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-125
 titulo: Organizar - vista de cuadrícula con selección, teclado y barra
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-124, PDF-114]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
