@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-061
 titulo: OCR - capa de texto invisible por incremento (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-059, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -88,3 +88,15 @@ export async function buildOcrUpdate(input: OcrLayerInput): Promise<Result<{ rea
 - Lint, typecheck y tests de la ficha (30) en verde. Cumple criterios y las tres decisiones del programador son razonables. Sin problemas bloqueantes.
 - (opcional) Código propio `ocr-invalid` en lugar de `organize-invalid`, como ya apunta el programador.
 - Nota: el commit sigue pendiente (`ops/index.ts` mezcla trabajo de otra ficha).
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Operadores (rot 0 y 90) | OK | tests `text-layer.test.ts` en verde |
+| basic-5 + pdf.js texto / invisible | OK | idem |
+| Cajas ≤ 1 pt (0 y 90) | OK | idem |
+| AES-256 + qpdf | OK | idem |
+| WinAnsi «?» y escapes | OK | idem |
+| Cobertura, lint, typecheck | OK | `text-layer.ts` 98,7 % líneas; 266 ficheros / 3429 tests verdes; lint y typecheck sin errores |
+
+Tests añadidos: ninguno. Rendimiento: no aplica. Nota: `pnpm coverage` por defecto chocó con otro proceso vitest (directorio en uso); ejecutado con directorio propio.
