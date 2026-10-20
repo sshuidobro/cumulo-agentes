@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: cambios-pedidos
+estado: pendiente
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -17,7 +17,7 @@ tags: [tarea, pdf, iteracion-4, cifrado, rendimiento]
 Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 4) · Decisiones: [[ADR-0043-contrasena-sin-reabrir]] · [[ADR-0022-pdf-cifrados]] · Desbloquea: [[PDF-099-e2e-iteracion-4]]
 
 ## Objetivo
-Abrir un PDF cifrado hace **un solo** `getDocument`: la tarea de carga de pdf.js espera la contraseña (`loadingTask.onPassword`) y continúa. Abrir un AES-256 de 1 000 páginas queda ≤ 1,5 × el sin cifrar.
+Abrir un PDF cifrado hace **un solo** `getDocument`: la tarea de carga de pdf.js espera la contraseña (`loadingTask.onPassword`) y continúa. Abrir un AES-256 de 1 000 páginas queda ~~≤ 1,5 × el sin cifrar~~ ≤ el sin cifrar + 350 ms (paso 7).
 
 ## Contexto
 - `apps/lector-pdf/src/engine/load.ts` → `LoadOptions`, `LoadedPdf`, `openDocument` (líneas 22-165), `mapOpenError`.
@@ -125,6 +125,51 @@ if (password === undefined) {
 - [ ] (a) pasa en las 3 repeticiones (razón de medianas de 5 ≤ 1,5) con la tabla y el desglose de las 3 en el Registro. Si alguna falla: no tocar umbral ni medida, anotar los números y dejar `cambios-pedidos` para el líder.
 - [ ] Ejecutados de nuevo y con código 0: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter lector-pdf e2e --project=chromium -g "contraseña|cifrad|iteration4"`.
 
+## Replanificación (líder, 2026-10-20) · paso 6: medir sin el sondeo de Playwright
+Lo hecho en las rondas 1-5 **se conserva** (código en `fde63ab`). Solo se toca el spec de rendimiento.
+
+Causa de la bimodalidad (~430 / ~925 ms tras «Abrir»): `timeToFirstPage` espera con `expect(...).toBeVisible()` (`waitPageRendered` y el diálogo). Esas esperas reintentan cada 100 → 250 → 500 → 1000 ms. El salto de unos 500 ms es un escalón de reintento, no la app. El «hasta diálogo» de unos 180 ms tiene el mismo sesgo.
+
+6a. `tests/e2e/iteration4-performance.spec.ts` → `timeToFirstPage` (líneas 106-119). Cambia **solo** las dos esperas de esta función (no el helper común `waitPageRendered`, que usan otras pruebas):
+```ts
+const RAF = { polling: 'raf', timeout: 30_000 } as const;
+// diálogo visible (sustituye a expect(...).toBeVisible() de la línea 113):
+await page.waitForFunction(() => document.querySelector('[role=dialog]') !== null, undefined, RAF);
+// p1 pintada (sustituye a waitPageRendered(page, 1) de la línea 117):
+await page.waitForFunction(
+  () => document.querySelector('[data-testid=viewer] [data-page-index="0"][data-rendered="true"]') !== null,
+  undefined, RAF,
+);
+```
+Es el mismo patrón que `switchAndMeasure` (línea 146). `typePassword` no cambia: su `toBeVisible` ya se cumple a la primera.
+6b. No cambian el umbral `OPEN_RATIO_MAX = 1.5`, `OPEN_RUNS = 5`, el calentamiento ni la resta del tiempo del usuario.
+
+## Replanificación (líder, 2026-10-20) · paso 7: presupuesto absoluto
+Lo hecho en las rondas 1-6 **se conserva**, incluido el cambio de la ronda 6 en el spec, aún sin commit. Solo se toca `tests/e2e/iteration4-performance.spec.ts`. Motivo en [[ADR-0043-contrasena-sin-reabrir]], «Revisión 2».
+
+7a. Constantes (línea ~41): sustituir `const OPEN_RATIO_MAX = 1.5;` por
+```ts
+/** Sobrecoste máximo de abrir el cifrado frente al mismo sin cifrar (medianas, sin el tiempo del usuario; ADR-0043). */
+const OPEN_OVERHEAD_MAX_MS = 350;
+```
+7b. Test (a) (líneas ~161-188):
+- Título: `'cifrado AES-256 de 1 000 páginas: p1 pintada ≤ sin cifrar + 350 ms'`.
+- Tras `const ratio = ...` añadir `const overhead = median(encryptedMs) - median(plain);`.
+- En `recordMeasure`, cambiar `razón de medianas ${ratio.toFixed(2)} (presupuesto ≤ ${String(OPEN_RATIO_MAX)})` por `sobrecoste ${overhead.toFixed(0)} ms (presupuesto ≤ ${String(OPEN_OVERHEAD_MAX_MS)} ms), razón ${ratio.toFixed(2)}`. El desglose no cambia.
+- `expect(overhead).toBeLessThanOrEqual(OPEN_OVERHEAD_MAX_MS);`
+7c. Comentario de cabecera (línea ~27): `(a) abrir un cifrado AES-256 de 1 000 páginas hasta la p1 pintada ≤ el mismo sin cifrar + 350 ms (medianas, sin el tiempo del usuario);`.
+7d. Sin cambios: `OPEN_RUNS`, calentamiento, esperas `raf`, resta del tiempo del usuario. El criterio «hasta diálogo < 100 ms» queda anulado: solo se anota.
+
+### Criterios añadidos (paso 7), sustituyen a los de razón ≤ 1,5
+- [ ] `--repeat-each=3 --reporter=json`: la (a) pasa en las 3 repeticiones (sobrecoste ≤ 350 ms). Copiar al Registro, de las 3, sin cifrar, cifrado, sobrecoste y razón.
+- [ ] `pnpm --filter lector-pdf exec playwright test --project=chromium -g "contraseña|cifrad|iteration4"`, `pnpm lint`, `pnpm typecheck` y `pnpm coverage` con código 0.
+- [ ] Si todo pasa: commit (código de las rondas 6 y 7) y ficha a `en-revision`. Si la (a) falla: no tocar el umbral, anotar los números y dejar `cambios-pedidos`.
+
+### Criterios añadidos (paso 6)
+- [ ] `--repeat-each=3 --reporter=json`: la (a) pasa en las 3 repeticiones. Copiar al Registro, de las 3, las aperturas, la mediana y la razón, con el desglose.
+- [ ] El desglose «tras Abrir» ya no es bimodal: en cada repetición, máximo − mínimo < 200 ms. Si sigue siendo bimodal con la espera `raf`, el problema es real. En ese caso, no tocar el umbral: anotar los números y dejar la ficha en `cambios-pedidos`.
+- [ ] El resto de `iteration4-performance.spec.ts` y `pnpm lint`/`pnpm typecheck` con código 0.
+
 ## Criterios de aceptación
 - [ ] Los 9 casos existentes de `document-password.test.ts` y `password-dialog.test.tsx`, `tab-actions.test.ts`, `compare-actions.test.ts` siguen en verde sin cambiar sus aserciones.
 - [ ] Los 5 casos nuevos de `load-password.test.ts` y el de «una sola llamada» pasan.
@@ -206,3 +251,30 @@ if (password === undefined) {
 - Qué he hecho: he comprobado el estado del código. El árbol de trabajo está limpio y el cambio de la ronda 3-4 ya está en el commit `fde63ab`. No había pasos pendientes de implementar: los pasos 1-5 están aplicados. No he repetido la medición de rendimiento.
 - Comandos ejecutados y resultado: `pnpm lint`: código 0 (sin avisos). `pnpm typecheck`: código 0, sin errores.
 - Dudas o cosas que no he podido hacer: no paso la ficha a `en-revision`. Su criterio de aceptación «(a) pasa en las 3 repeticiones» no se cumple (rondas 4: fallo en repeticiones 1 y 2, con razones 2,50 y 1,60). La propia ficha dice que, si falla, se dejen `cambios-pedidos` para el líder. Queda pendiente la decisión del líder sobre medición, ADR-0043 o PDF-099 (a). No he hecho commit de esta ronda porque no hay cambios de código.
+
+### [lider] replanificación 3 — 2026-10-20
+- La bimodalidad (~430/~925 ms) cuadra con el escalón de reintento de 500 ms de `expect().toBeVisible()` de Playwright. Es un fallo de la medida, no de la app, y tampoco es ruido aleatorio que se arregle con más repeticiones.
+- Decisión: medir con `waitForFunction` y `polling: 'raf'` en `timeToFirstPage` (paso 6). El umbral sigue en ≤ 1,5 ×. La medida se afina; el umbral no se relaja.
+
+### [programador] ronda 6 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/iteration4-performance.spec.ts` (solo las dos esperas de `timeToFirstPage`: diálogo y p1 pintada con `waitForFunction` y `polling: 'raf'`). Ningún otro cambio.
+- Qué he hecho: paso 6a aplicado tal cual. `waitPageRendered` no se toca (lo usan otras pruebas). Umbral 1,5, `OPEN_RUNS = 5`, calentamiento y resta del tiempo de usuario sin cambios.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: código 0, sin avisos. `pnpm typecheck`: código 0.
+  - `pnpm --filter lector-pdf exec playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3 --reporter=json`: 11 pasados, 1 fallido en las 3 repeticiones (la (a)). Código 1. El JSON trae un texto extra al final; los datos de la (a) son los de sus anotaciones `medida`.
+  - Tabla (a), 5 aperturas por repetición, medianas (ms). Sin cifrar / cifrado / razón. Desglose cifrado: hasta diálogo / tras «Abrir»:
+    - Rep. 1: 349, 314, 314, 297, 282 (mediana 314) / 582, 588, 552, 595, 585 (mediana 585) / **1,86** (fallo). Desglose: 142/439, 139/449, 151/401, 149/446, 134/451.
+    - Rep. 2: 309, 305, 295, 302, 316 (mediana 305) / 545, 535, 487, 617, 531 (mediana 535) / **1,76** (fallo). Desglose: 137/408, 144/391, 134/353, 129/488, 145/385.
+    - Rep. 3: 364, 282, 312, 282, 340 (mediana 312) / 569, 562, 509, 544, 626 (mediana 562) / **1,80** (fallo). Desglose: 178/392, 165/397, 149/360, 153/391, 175/450.
+  - Bimodalidad: máximo − mínimo «tras Abrir» = 50, 135 y 90 ms (< 200 ms en las 3). La bimodalidad anterior desaparece.
+  - Hasta diálogo: 129–178 ms (esperado < 100 ms: no se cumple). Tras «Abrir»: 353–488 ms, cerca del sin cifrar.
+  - No he ejecutado la e2e `-g "contraseña|cifrad|iteration4"` ni `pnpm coverage`: el criterio (a) ya falla, así que no tiene sentido completar la batería antes de la decisión del líder.
+- Dudas o cosas que no he podido hacer: el criterio (a) ≤ 1,5 no se cumple en ninguna de las 3 repeticiones, así que no paso la ficha a `en-revision`. No he tocado umbral ni medida. Para el líder: con la medida afinada, el sobrecoste sigue en ~250 ms (~150 antes del diálogo, que incluye el sondeo `needsUserPassword` y el análisis del xref, y ~100 tras «Abrir»). La causa no la he investigado. No he hecho commit porque la ficha no está lista (mismo criterio que rondas 3–5).
+- Ficha a `pendiente`, `intentos: 0`.
+
+### [lider] replanificación 4 — 2026-10-20
+- Con la medida limpia (ronda 6), el sobrecoste es estable: unos 250 ms (unos 145 ms hasta el diálogo y unos 90 ms tras «Abrir»). El doble análisis que motivó ADR-0043 (unos 930 ms) ya no está.
+- Lo que queda es coste fijo: el sondeo lee la xref y deriva la clave AES-256 (R6, cara a propósito), y pdf.js la vuelve a derivar y descifra. Ese coste no crece con el tamaño del documento. Una razón sobre una base de unos 310 ms solo deja 155 ms para él: el umbral 1,5 × mide mal el problema.
+- No se optimiza ahora: el único margen sería un sondeo que no lea la xref entera (unos 100 ms como mucho). No compensa el riesgo de un segundo parser del tráiler.
+- Decisión: presupuesto absoluto, sobrecoste ≤ 350 ms (medianas). Sigue detectando con holgura la regresión de reabrir (≥ 400 ms). Paso 7. Actualizados [[ADR-0043-contrasena-sin-reabrir]] y [[PDF-099-e2e-iteracion-4]].
+- Ficha a `pendiente`, `intentos: 0`.

@@ -107,14 +107,21 @@ async function timeToFirstPage(page: Page, path: string, password?: string): Pro
   await page.goto('/');
   const started = await pageNow(page);
   await page.locator('[data-testid=open-input]').setInputFiles(path);
+  const RAF = { polling: 'raf', timeout: 30_000 } as const;
   let toDialog: number | null = null;
   let userWait = 0;
   if (password !== undefined) {
-    await expect(page.getByRole('dialog', { name: securityMsg.title })).toBeVisible();
+    // diálogo visible: sondeo por rAF en lugar de expect().toBeVisible(), que reintenta cada 100-1000 ms (ADR-0043)
+    await page.waitForFunction(() => document.querySelector('[role=dialog]') !== null, undefined, RAF);
     toDialog = (await pageNow(page)) - started;
     userWait = await typePassword(page, password);
   }
-  await waitPageRendered(page, 1);
+  // p1 pintada: mismo motivo que arriba
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid=viewer] [data-page-index="0"][data-rendered="true"]') !== null,
+    undefined,
+    RAF,
+  );
   return { ms: (await pageNow(page)) - started - userWait, toDialog };
 }
 
