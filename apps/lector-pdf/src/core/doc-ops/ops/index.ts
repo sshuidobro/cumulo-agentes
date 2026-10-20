@@ -5,6 +5,7 @@ import { buildPdfFromImages, type ImageInput, type PageSizeMode } from '../../pd
 import { readPageRotations, type PageRotation, type PageSlot } from '../../pdf/page-tree';
 import type { SaveSlot } from '../../organize/plan';
 import { buildOrganizeUpdate } from '../../organize/save';
+import { buildOcrUpdate, type OcrPage } from '../../ocr/text-layer';
 import { buildZip, MAX_ZIP_BYTES } from '../../export/plan';
 import { buildNewDocument, type NewDocumentPart } from '../../pdf/new-document';
 import type { ObjectReader } from '../../pdf/object-reader';
@@ -552,6 +553,63 @@ const rewrite: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => 
   return ok({ bytes: written.value.bytes });
 };
 
+interface OcrLayerArgs {
+  readonly password: string | null;
+  readonly pages: readonly OcrPage[];
+  readonly now: string;
+}
+
+const PAGE_ROTATIONS: readonly unknown[] = [0, 90, 180, 270];
+
+/** Igual que `parseOrganizeArgs`: un argumento mal formado es un bug de la app. La validación de las páginas es de `buildOcrUpdate`. */
+function parseOcrLayerArgs(args: unknown): OcrLayerArgs {
+  if (typeof args !== 'object' || args === null || !('password' in args) || !('pages' in args) || !('now' in args)) {
+    throw new TypeError('ocr-layer: argumentos no válidos.');
+  }
+  const { password, pages, now } = args;
+  if (password !== null && typeof password !== 'string') {
+    throw new TypeError('ocr-layer: la contraseña debe ser texto o null.');
+  }
+  if (!Array.isArray(pages) || !pages.every(isOcrPageLike)) throw new TypeError('ocr-layer: las páginas no son una lista de páginas OCR.');
+  if (typeof now !== 'string') throw new TypeError('ocr-layer: la fecha debe ser texto.');
+  return { password, pages: pages as readonly OcrPage[], now };
+}
+
+function isOcrPageLike(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'pageIndex' in value &&
+    typeof value.pageIndex === 'number' &&
+    'rotate' in value &&
+    PAGE_ROTATIONS.includes(value.rotate) &&
+    'words' in value &&
+    Array.isArray(value.words)
+  );
+}
+
+/** Escribe la capa de texto OCR de las páginas indicadas como un incremento (fuente 0). */
+const ocrLayer: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const { password, pages, now } = parseOcrLayerArgs(args);
+  const source = ctx.sources[0];
+  if (source === undefined) throw new RangeError('ocr-layer: falta el documento (fuente 0).');
+  if (ctx.signal.aborted) return err(pdfError('cancelled'));
+  const opened = await openForSave(source, password ?? undefined);
+  if (!opened.ok) return opened;
+  const built = await buildOcrUpdate({
+    source,
+    reader: opened.value,
+    pages,
+    now,
+    signal: ctx.signal,
+    onProgress: (done, total) => {
+      ctx.progress(done, total);
+    },
+  });
+  if (!built.ok) return built;
+  return ok({ delta: built.value.delta });
+};
+
 /** Registro de operaciones del Worker. Cada ficha que añade una operación la registra aquí. */
 export const DOC_OPS: DocOpRegistry = {
   'page-rotations': pageRotations,
@@ -563,4 +621,5 @@ export const DOC_OPS: DocOpRegistry = {
   protect,
   unprotect,
   rewrite,
+  'ocr-layer': ocrLayer,
 };

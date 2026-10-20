@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-141
 titulo: Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, e2e, calidad]
 ---
 
