@@ -5,7 +5,7 @@
  */
 import type { DeltaWriter } from '../pdf/delta-writer';
 import type { ObjectReader } from '../pdf/object-reader';
-import { dictGet, PdfSyntaxError, withEntries, type PdfDict, type PdfRef, type PdfValue } from '../pdf/objects';
+import { dict, dictGet, PdfSyntaxError, withEntries, type PdfDict, type PdfRef, type PdfValue } from '../pdf/objects';
 
 /** Profundidad máxima del árbol de campos (`/Kids`). Más allá, el nodo se conserva tal cual. */
 const MAX_FIELD_DEPTH = 32;
@@ -30,25 +30,57 @@ export async function removePageWidgets(
   removedPages: readonly PdfRef[],
   catalog: PdfRef,
 ): Promise<number> {
+  return updateAcroForm(reader, writer, removedPages, catalog, null);
+}
+
+/** Lo que se añade al `/AcroForm` del documento de destino al insertar páginas con formulario (PDF-055). */
+export interface AcroFormAdditions {
+  /** Raíces de campo nuevas: se añaden al final de `/Fields`. */
+  readonly fields: readonly PdfValue[];
+  /** Fuentes de `/DR /Font` del importado: solo se añaden las que el destino no tiene con ese nombre. */
+  readonly fonts: ReadonlyMap<string, PdfValue>;
+  /** `/AcroForm` completo del importado para el documento que no tiene `/AcroForm`; `null` si no hace falta. */
+  readonly whenMissing: PdfDict | null;
+}
+
+/**
+ * Como `removePageWidgets`, y además añade `additions` al `/AcroForm` en el mismo incremento: campos al final de
+ * `/Fields`, fuentes de `/DR /Font` que faltan, o (si no hay `/AcroForm`) el `whenMissing` en el catálogo. Con
+ * `additions === null` se comporta exactamente como `removePageWidgets`. Devuelve los widgets de las páginas dadas.
+ */
+export async function updateAcroForm(
+  reader: ObjectReader,
+  writer: DeltaWriter,
+  removedPages: readonly PdfRef[],
+  catalog: PdfRef,
+  additions: AcroFormAdditions | null,
+): Promise<number> {
   const widgets = await widgetsOf(reader, removedPages);
-  if (widgets.size === 0) return 0;
+  const extraFields = additions?.fields ?? [];
+  const extraFonts = additions?.fonts ?? new Map<string, PdfValue>();
+  if (widgets.size === 0 && additions === null) return 0;
 
   const catalogDict = await reader.getDict(catalog);
   if (catalogDict === null) throw unreadable('catálogo');
   const acroRaw = dictGet(catalogDict, 'AcroForm');
   const acro = await reader.resolve(acroRaw);
-  if (!isDict(acro)) return widgets.size;
+  if (!isDict(acro)) {
+    if (additions?.whenMissing) writer.object(catalog.num, catalog.gen, withEntries(catalogDict, { AcroForm: additions.whenMissing }));
+    return widgets.size;
+  }
 
   const walk: Walk = { reader, writer, widgets, dropped: new Set(), visited: new Set() };
   const changes: Record<string, PdfValue | undefined> = {};
 
   const fieldsRaw = dictGet(acro, 'Fields');
   const fields = await reader.resolve(fieldsRaw);
-  if (Array.isArray(fields)) {
-    const pruned = await pruneList(walk, fields, 0);
-    if (pruned.changed) {
-      if (isRef(fieldsRaw)) writer.object(fieldsRaw.num, fieldsRaw.gen, pruned.items);
-      else changes.Fields = pruned.items;
+  if (Array.isArray(fields) || extraFields.length > 0) {
+    const current = Array.isArray(fields) ? fields : [];
+    const pruned = await pruneList(walk, current, 0);
+    if (pruned.changed || extraFields.length > 0) {
+      const items = [...pruned.items, ...extraFields];
+      if (isRef(fieldsRaw)) writer.object(fieldsRaw.num, fieldsRaw.gen, items);
+      else changes.Fields = items;
     }
   }
 
@@ -62,12 +94,35 @@ export async function removePageWidgets(
     }
   }
 
+  if (extraFonts.size > 0) {
+    const drRaw = dictGet(acro, 'DR');
+    const dr = asDict(await reader.resolve(drRaw)) ?? dict({});
+    const fontRaw = dictGet(dr, 'Font');
+    const font = asDict(await reader.resolve(fontRaw)) ?? dict({});
+    const missing: Record<string, PdfValue> = {};
+    for (const [key, value] of extraFonts) if (!font.entries.has(key)) missing[key] = value;
+    if (Object.keys(missing).length > 0) {
+      const newFont = withEntries(font, missing);
+      if (isRef(fontRaw)) {
+        writer.object(fontRaw.num, fontRaw.gen, newFont);
+      } else {
+        const newDr = withEntries(dr, { Font: newFont });
+        if (isRef(drRaw)) writer.object(drRaw.num, drRaw.gen, newDr);
+        else changes.DR = newDr;
+      }
+    }
+  }
+
   if (Object.keys(changes).length > 0) {
     const newAcro = withEntries(acro, changes);
     if (isRef(acroRaw)) writer.object(acroRaw.num, acroRaw.gen, newAcro);
     else writer.object(catalog.num, catalog.gen, withEntries(catalogDict, { AcroForm: newAcro }));
   }
   return widgets.size;
+}
+
+function asDict(v: PdfValue | undefined): PdfDict | null {
+  return isDict(v) ? v : null;
 }
 
 /** Refs de los widgets (`/Subtype /Widget`) que aparecen en `/Annots` de las páginas dadas. */
