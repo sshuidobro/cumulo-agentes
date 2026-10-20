@@ -189,28 +189,40 @@ test('desde la pantalla de inicio, combinar con «Bajar» conserva el orden de l
   expect(await outlineTitles(path)).toEqual(['outline', 'basic-5']);
 });
 
-test('diálogo «Combinar archivos» y vista Organizar con PDF importado: axe sin violaciones y lista operable con teclado', async ({ page }) => {
-  await useInputPicker(page);
-  await openWithDownloads(page, fixture('basic-5.pdf'));
-  const dialog = await openCombineFromMenu(page);
-  await chooseFiles(page, () => dialog.getByRole('button', { name: organizeMsg.addFiles, exact: true }).click(), [fixture('outline.pdf')]);
-  await expect(rowsOf(dialog)).toHaveCount(2);
-  const dialogAxe = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
-  expect(dialogAxe.violations).toEqual([]);
+const A11Y_THEMES = [
+  { theme: 'claro', scheme: 'light' },
+  { theme: 'oscuro', scheme: 'dark' },
+] as const;
 
-  // Con el foco en la primera fila, Alt+↓ la baja (sin ratón).
-  await rowsOf(dialog).first().focus();
-  await page.keyboard.press('Alt+ArrowDown');
-  await expect(rowsOf(dialog).nth(1)).toHaveAttribute('aria-selected', 'false');
-  await expect(rowsOf(dialog).nth(1)).toBeFocused();
-  await expect(rowsOf(dialog).nth(1)).toContainText('basic-5.pdf');
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
+for (const { theme, scheme } of A11Y_THEMES) {
+  test.describe(`accesibilidad, tema ${theme}`, () => {
+    test.use({ colorScheme: scheme });
 
-  await openOrganize(page);
-  await insertAfterSecond(page, fixture('outline.pdf'));
-  await expect(organizeCount(page, 35)).toBeVisible();
-  const viewAxe = await new AxeBuilder({ page }).include('[role="listbox"][aria-label="Organizar páginas"]').analyze();
-  expect(viewAxe.violations).toEqual([]);
-});
+    test('diálogo «Combinar archivos» y vista Organizar con PDF importado: axe sin violaciones y lista operable con teclado', async ({ page }) => {
+      await useInputPicker(page);
+      await openWithDownloads(page, fixture('basic-5.pdf'));
+      const dialog = await openCombineFromMenu(page);
+      await chooseFiles(page, () => dialog.getByRole('button', { name: organizeMsg.addFiles, exact: true }).click(), [fixture('outline.pdf')]);
+      await expect(rowsOf(dialog)).toHaveCount(2);
+      expect(await page.evaluate(() => window.matchMedia('(prefers-color-scheme: dark)').matches)).toBe(scheme === 'dark');
+      const dialogAxe = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
+      expect(dialogAxe.violations.map((v) => `${v.impact ?? '?'} ${v.id}: ${v.help} (${String(v.nodes.length)} nodos)`)).toEqual([]);
+
+      // Con el foco en la primera fila, Alt+↓ la baja (sin ratón).
+      await rowsOf(dialog).first().focus();
+      await page.keyboard.press('Alt+ArrowDown');
+      await expect(rowsOf(dialog).nth(1)).toHaveAttribute('aria-selected', 'false');
+      await expect(rowsOf(dialog).nth(1)).toBeFocused();
+      await expect(rowsOf(dialog).nth(1)).toContainText('basic-5.pdf');
+      await page.keyboard.press('Escape');
+      await expect(dialog).toHaveCount(0);
+
+      await openOrganize(page);
+      await insertAfterSecond(page, fixture('outline.pdf'));
+      await expect(organizeCount(page, 35)).toBeVisible();
+      const viewAxe = await new AxeBuilder({ page }).include('[role="listbox"][aria-label="Organizar páginas"]').analyze();
+      expect(viewAxe.violations.map((v) => `${v.impact ?? '?'} ${v.id}: ${v.help} (${String(v.nodes.length)} nodos)`)).toEqual([]);
+    });
+  });
+}
 
