@@ -12,14 +12,11 @@ import { LoadingState } from './open/LoadingState';
 import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
 import { PrintContainer } from './print/PrintContainer';
-import { PrintProgress } from './print/PrintProgress';
-import { ExportProgress } from './export/ExportProgress';
 import './print/print.css';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
 import { PasswordDialog } from './security/PasswordDialog';
 import { SearchBar, focusSearchField } from './search/SearchBar';
-import { ReadAloudBar } from './read-aloud/ReadAloudBar';
 import { toggleSidebar } from '../state/sidebar-actions';
 import { nextMatch, openSearch, prevMatch } from '../state/search-actions';
 import { useSearch } from '../state/search-store';
@@ -34,10 +31,10 @@ import { dismissNotice } from '../state/notice';
 import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/view-actions';
 import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen } from '../state/fullscreen-actions';
 import { openProperties, usePropertiesDialog } from '../state/properties-store';
-import { openPrintDialog, usePrintDialog } from '../state/print-actions';
+import { openPrintDialog, usePrintDialog, usePrintJob } from '../state/print-actions';
 import { useCompare } from '../state/compare-actions';
 import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
-import { useExportDialog } from '../state/export-actions';
+import { useExportDialog, useExportJob } from '../state/export-actions';
 import { useDocOpJob, useExtractDialog } from '../state/extract-actions';
 import { useCombineDialog } from '../state/combine-actions';
 import { useImagesDialog } from '../state/images-dialog-store';
@@ -66,6 +63,9 @@ const SplitDialog = lazy(() => import('./organize/SplitDialog').then((m) => ({ d
 const CombineDialog = lazy(() => import('./organize/CombineDialog').then((m) => ({ default: m.CombineDialog })));
 const ImagesDialog = lazy(() => import('./organize/ImagesDialog').then((m) => ({ default: m.ImagesDialog })));
 const DocOpJobProgress = lazy(() => import('./kit/DocOpProgress').then((m) => ({ default: m.DocOpJobProgress })));
+const ReadAloudBar = lazy(() => import('./read-aloud/ReadAloudBar').then((m) => ({ default: m.ReadAloudBar })));
+const ExportProgress = lazy(() => import('./export/ExportProgress').then((m) => ({ default: m.ExportProgress })));
+const PrintProgress = lazy(() => import('./print/PrintProgress').then((m) => ({ default: m.PrintProgress })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -153,6 +153,9 @@ export function App() {
   const exportOpen = useExportDialog((s) => s.open);
   const extractDialog = useExtractDialog((s) => s.open);
   const docOpRunning = useDocOpJob((s) => s.label !== null);
+  const readAloudActive = useReadAloud((s) => s.status !== 'idle');
+  const exportRunning = useExportJob((s) => s.job.status === 'running');
+  const printPreparing = usePrintJob((s) => s.job.status === 'preparing');
   const combineOpen = useCombineDialog((s) => s.open);
   const imagesOpen = useImagesDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
@@ -216,7 +219,7 @@ export function App() {
             )}
             <SelectionActions />
             <SearchBar />
-            <ReadAloudBar />
+            {readAloudActive && (<Suspense fallback={null}><ReadAloudBar /></Suspense>)}
           </>
         )}
       </main>
@@ -243,8 +246,8 @@ export function App() {
           <ExportDialog />
         </Suspense>
       )}
-      <PrintProgress />
-      <ExportProgress />
+      {printPreparing && (<Suspense fallback={null}><PrintProgress /></Suspense>)}
+      {exportRunning && (<Suspense fallback={null}><ExportProgress /></Suspense>)}
       {extractDialog === 'extract' && (
         <Suspense fallback={null}>
           <ExtractDialog />

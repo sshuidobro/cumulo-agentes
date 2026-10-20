@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -171,3 +171,16 @@ Reglas:
 - 600 580 B > 600 000. No se sube el presupuesto: [[ADR-0041-presupuesto-arranque-600kb]] es una decisión del usuario y hay código fácil de diferir. Medido en una copia: diferir `ReadAloudBar` (−450 B), `ExportProgress` (−368 B) y `PrintProgress` (−486 B) deja el arranque en 599 276 B. Paso 7.
 - Margen escaso (724 B). La siguiente ficha que añada código al arranque debe diferir algo más; candidatos para [[PDF-140-presupuesto-de-arranque]] o una ficha nueva: `PasswordDialog`, `ChoiceDialog` y el uso estático de `core/organize/split` desde `state/extract-actions.ts` (trozo `split` de 12,9 KB en el arranque).
 - Ficha a `pendiente`, `intentos: 0`.
+
+### [programador] ronda 3 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/ui/App.tsx` (pasos 7a-7c: `ReadAloudBar`, `ExportProgress` y `PrintProgress` en `lazy` dentro de `Suspense`, montados solo con `readAloudActive`, `exportRunning` y `printPreparing`). Ficha: estado y Registro.
+- Qué he hecho: aplicados 7a, 7b y 7c tal como están escritos. Sin cambios en tests ni en presupuesto. Los 6a y 6b de la ronda 2 se conservan.
+- Bytes del arranque: **599 276 B** (máximo 600 000; objetivo ≤ 599 000 cumplido en el límite del presupuesto). `pnpm --filter lector-pdf build` OK (incluye `bundle:check`).
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: OK. `pnpm typecheck`: OK. `pnpm coverage`: OK (código 0; Statements 95,04 %, Branches 89,73 %, Functions 97,9 %, Lines 98,33 %).
+  - `pnpm --filter lector-pdf e2e --project=chromium -g "imprim|export|voz|imágenes|extraer|dividir|combinar"`: 42/42 OK.
+  - `pnpm --filter lector-pdf e2e --project=chromium` (completo): 320/320 OK en la última ejecución.
+  - `e2e --project=chromium-perf --no-deps -g "20 JPEG"`: 1/1 OK (sin long tasks > 100 ms).
+  - Nota: en dos ejecuciones completas anteriores falló un test distinto cada vez (`encrypted-save` «firma dibujada» y `xfdf` «toBeFocused»), ambas mientras otro proceso `chromium-perf` ajeno corría en la misma máquina. Ambos pasan en aislado (`xfdf` y `encrypted-save`: 10/10 en dos ejecuciones) y la suite completa pasó después, sin carga externa. Parece inestabilidad por carga, no por el cambio.
+  - Un `pnpm coverage` falló una vez porque otro proceso de Vitest usaba `coverage/`; se repitió tras terminar ese proceso.
+- Dudas o cosas que no he podido hacer: ninguna en esta ronda. Margen del presupuesto: 724 B; la siguiente ficha que añada código al arranque debe diferir más (ver replanificación 2).
