@@ -93,6 +93,7 @@ export function setupSaveHarness(): SaveHarness {
     closeFile,
     exportFile: vi.fn(async () => ok<ExportOutcome>('saved')),
     importFile: vi.fn(async () => ok(null)),
+    importFiles: vi.fn(async () => ok(null)),
     onFileOpenedFromOS: () => () => undefined,
     openExternalUrl: vi.fn(async () => err(platformError('unsupported'))),
     setTitle,
