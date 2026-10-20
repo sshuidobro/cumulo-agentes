@@ -120,5 +120,21 @@ describe('texto libre · texto vacío y creación del modelo', () => {
       origin: { kind: 'new' },
       created: '2026-10-18T10:00:00.000Z',
     });
+    expect('borderless' in a).toBe(false);
+  });
+
+  it('con borderless: true, la copia lo conserva', () => {
+    const a = newFreeTextAnnotation({
+      id: 'suite-y',
+      pageIndex: 0,
+      rect: [1, 2, 3, 4],
+      fontSize: 12,
+      color: [0, 0, 0],
+      textColor: [0, 0, 0],
+      author: 'Ana',
+      now: '2026-10-18T10:00:00.000Z',
+      borderless: true,
+    });
+    expect(a.borderless).toBe(true);
   });
 });

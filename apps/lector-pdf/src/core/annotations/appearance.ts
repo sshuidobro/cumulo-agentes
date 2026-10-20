@@ -141,7 +141,9 @@ function noteDrawing(a: NoteAnnotation): Drawing {
   return withOpacity(a, ops);
 }
 
-/** Texto libre: borde de 1 pt, texto Helvetica ajustado al rect y recortado a él. */
+/**
+ * Texto libre: borde de 1 pt (salvo `borderless`, PDF-149), texto Helvetica ajustado al rect y recortado a él.
+ */
 function freeTextDrawing(a: FreeTextAnnotation): Drawing {
   const [x1, y1, x2, y2] = a.rect;
   const width = x2 - x1;
@@ -150,10 +152,16 @@ function freeTextDrawing(a: FreeTextAnnotation): Drawing {
   const lines = wrapText(a.contents, width - 2 * FREETEXT_MARGIN, fontSize);
   const leading = FREETEXT_LEADING * fontSize;
 
+  const border =
+    a.borderless === true
+      ? []
+      : [
+          '1 w',
+          colorOp(a.color, 'RG'),
+          `${num(x1 + 0.5)} ${num(y1 + 0.5)} ${num(width - 1)} ${num(height - 1)} re S`,
+        ];
   const ops = [
-    '1 w',
-    colorOp(a.color, 'RG'),
-    `${num(x1 + 0.5)} ${num(y1 + 0.5)} ${num(width - 1)} ${num(height - 1)} re S`,
+    ...border,
     'q',
     `${nums([x1, y1, width, height])} re W n`,
     colorOp(a.textColor, 'rg'),

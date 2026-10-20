@@ -95,6 +95,8 @@ export interface NewFreeTextInput {
   readonly now: string;
   /** Texto inicial; por defecto, vacío. */
   readonly contents?: string;
+  /** Sin rectángulo de borde (PDF-130). Si no se pasa, el texto lleva borde. */
+  readonly borderless?: true;
 }
 
 /** Texto libre nuevo: borde del color indicado, opacidad plena, sin texto salvo que se pase `contents`. */
@@ -113,6 +115,7 @@ export function newFreeTextAnnotation(input: NewFreeTextInput): FreeTextAnnotati
     modified: input.now,
     created: input.now,
     origin: { kind: 'new' },
+    ...(input.borderless === true ? { borderless: true as const } : {}),
   };
 }
 

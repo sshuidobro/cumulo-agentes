@@ -62,6 +62,8 @@ export interface FreeTextAnnotation extends Base {
   readonly fontSize: number;
   readonly textColor: Rgb;
   readonly flatten?: true;
+  /** Sin rectángulo de borde (texto añadido a la página, PDF-130). */
+  readonly borderless?: true;
 }
 
 /** Cada trazo es `[x0, y0, x1, y1, ...]`. */
@@ -251,7 +253,7 @@ export function isFlattened(a: Annotation): boolean {
 
 /** Validación completa de una anotación (para borradores y datos externos). */
 export function isAnnotation(v: unknown): v is Annotation {
-  if (!isRecord(v) || !isBaseValid(v) || !isFlattenValid(v)) return false;
+  if (!isRecord(v) || !isBaseValid(v) || !isFlattenValid(v) || !isBorderlessValid(v)) return false;
   switch (v.type) {
     case 'highlight':
     case 'underline':
@@ -284,6 +286,12 @@ export function isAnnotation(v: unknown): v is Annotation {
 function isFlattenValid(v: Record<string, unknown>): boolean {
   if (v.flatten === undefined) return true;
   return v.flatten === true && (v.type === 'freetext' || v.type === 'signature');
+}
+
+/** `borderless` solo puede ser `true` (o estar ausente) en texto libre. */
+function isBorderlessValid(v: Record<string, unknown>): boolean {
+  if (v.borderless === undefined) return true;
+  return v.borderless === true && v.type === 'freetext';
 }
 
 const SIGNATURE_FORMATS: readonly unknown[] = ['rgba-deflate', 'jpeg'];

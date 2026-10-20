@@ -156,6 +156,15 @@ describe('isAnnotation', () => {
     expect(isAnnotation({ ...newAnnotation('h'), quads: [] })).toBe(false);
   });
 
+  it('acepta borderless: true solo en texto libre (PDF-149)', () => {
+    expect(isAnnotation({ ...newAnnotation('t', 'freetext'), borderless: true })).toBe(true);
+    expect(isAnnotation({ ...newAnnotation('t', 'freetext') })).toBe(true);
+    expect(isAnnotation({ ...newAnnotation('t', 'freetext'), borderless: false })).toBe(false);
+    expect(isAnnotation({ ...newAnnotation('t', 'freetext'), borderless: 'x' })).toBe(false);
+    expect(isAnnotation({ ...newAnnotation('n', 'note'), borderless: true })).toBe(false);
+    expect(isAnnotation({ ...newAnnotation('s', 'signature'), borderless: true })).toBe(false);
+  });
+
   it('acepta fechas ISO con desfase horario', () => {
     const a: Annotation = { ...newAnnotation('x'), modified: '2026-10-17T14:00:00+02:00' };
     expect(isAnnotation(a)).toBe(true);
