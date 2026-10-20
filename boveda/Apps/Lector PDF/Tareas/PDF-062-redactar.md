@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-062
 titulo: Redactar - analizador e intérprete de contenido con cajas de glifos (núcleo)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-052, PDF-059]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
