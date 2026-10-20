@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { draftSavedAt, fromDraft, toDraft } from '../../../src/core/annotations/draft';
 import { newReply, newReviewState } from '../../../src/core/annotations/replies';
-import { EMPTY_EDITS, type Annotation, type AnnotationEdits } from '../../../src/core/annotations/model';
+import {
+  EMPTY_EDITS,
+  type Annotation,
+  type AnnotationEdits,
+  type FreeTextAnnotation,
+} from '../../../src/core/annotations/model';
 import type { FieldValue } from '../../../src/core/forms/model';
 import { fileAnnotation, newAnnotation, T0 } from './factories';
 
@@ -75,6 +80,19 @@ describe('borrador de anotaciones: toDraft y fromDraft', () => {
     const note = newAnnotation('suite-1', 'note');
     expect(fromDraft({ ...validDraft(), upserts: [note, note] })).toBeNull();
     expect(fromDraft({ ...validDraft(), removed: ['ref:1R', 'ref:1R'] })).toBeNull();
+  });
+
+  it('un texto libre borderless se restaura con el campo (PDF-149)', () => {
+    const text: FreeTextAnnotation = { ...(newAnnotation('suite-t', 'freetext') as FreeTextAnnotation), borderless: true };
+    const back = fromDraft(toDraft(editsOf([text]), 'a.pdf', SAVED_AT));
+    expect(back?.upserts.get('suite-t')).toMatchObject({ type: 'freetext', borderless: true });
+  });
+
+  it('un borrador con borderless en una nota o con valor distinto de true se rechaza', () => {
+    const note: Record<string, unknown> = { ...newAnnotation('suite-1', 'note'), borderless: true };
+    expect(fromDraft({ ...validDraft(), upserts: [note] })).toBeNull();
+    const text: Record<string, unknown> = { ...newAnnotation('suite-2', 'freetext'), borderless: 'x' };
+    expect(fromDraft({ ...validDraft(), upserts: [text] })).toBeNull();
   });
 
   it('una fecha de guardado que no es ISO válida invalida el borrador', () => {
