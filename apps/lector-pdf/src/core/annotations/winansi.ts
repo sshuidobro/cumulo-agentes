@@ -51,3 +51,11 @@ export function toWinAnsi(s: string): Uint8Array {
   });
   return out;
 }
+
+/** Primer carácter de `s` sin representación en WinAnsi (incluye controles como tabulador o salto de línea); null si todos la tienen. */
+export function firstUnmappable(s: string): string | null {
+  for (const ch of s) {
+    if (codeOf(ch) === UNMAPPABLE && ch !== '?') return ch;
+  }
+  return null;
+}
