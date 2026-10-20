@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-055
 titulo: Insertar páginas de otro PDF y combinar PDFs - núcleo
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-119, PDF-123, PDF-124]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -74,3 +74,16 @@ Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Decisiones: [[ADR-0035-org
 - Lint y typecheck sin errores; tests de insert y combine (13) en verde. Diff de `save.ts` correcto (validación del plan, asignador compartido, orden de escritura, cancelación).
 - Dudas 1-5 del programador aceptadas (el árbol se reescribe como en PDF-052; fuentes `/DR` duplicadas no se renombran porque las `/DA` citan el nombre).
 - (opcional) El commit lleva «Claude Haiku 5.5» en la atribución; no bloquea.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Insertar outline en basic-5 (7 págs, qpdf) | OK | insert.test.ts, en verde |
+| Anotaciones de annotated.pdf | OK | insert.test.ts |
+| Campos de form-full.pdf sin AcroForm previo | OK | insert.test.ts |
+| AES-256 y AES-128, contraseña mala | OK | insert.test.ts, combine-op.test.ts |
+| combine 35 págs + ramas; annotated+form | OK | combine-op.test.ts |
+| perf insertar/combinar 5000 págs | OK | `pnpm perf`: 27 ficheros, 45 tests pasan |
+| lint, typecheck, coverage | OK | código 0; 266 ficheros, 3429 tests; líneas 98,55 % |
+
+Tests añadidos: ninguno (los existentes cubren cada criterio; sin skip/only).
