@@ -45,6 +45,8 @@ Botón **«Comentar»** de la barra: abre la segunda barra con las herramientas,
 - **Comentario sobre un marcado:** clic en un resaltado/subrayado/tachado para abrir su comentario y escribir.
 - **Texto:** clic o arrastrar para crear el cuadro y escribir; se cambia de tamaño con el tirador.
 - **Dibujar:** trazos a mano alzada con el color y grosor elegidos.
+- **Polígono:** un clic por cada vértice; doble clic (o Intro, con tres vértices o más) lo cierra. Clic cerca del primer vértice también lo cierra. Esc lo descarta y Retroceso quita el último vértice.
+- **Sello:** el menú «Sello» elige uno de los catorce sellos (APROBADO, BORRADOR…); un clic en la página lo coloca. Con el teclado, Intro en el sello lo coloca en la página actual. Se arrastra su tirador para cambiar el tamaño, que mantiene la proporción.
 - **Seleccionar, mover y borrar:** clic sobre una anotación (o Tab hasta ella); flechas para mover notas, textos y dibujos; **Supr** para borrar. Esc deja la herramienta actual.
 - **Deshacer/Rehacer:** Ctrl+Z y Ctrl+Y (o Ctrl+Mayús+Z), también con los botones de la barra, que dicen qué deshacen («Deshacer añadir resaltado»).
 - **Panel «Comentarios»:** lista todas las anotaciones (también las de otros programas) con autor, página y texto; se puede buscar, filtrar por tipo y autor, ir a una con clic e Intro y borrarla. «Tu nombre» fija el autor de las anotaciones nuevas.
@@ -98,3 +100,4 @@ Para confirmar que lo guardado se ve igual en Adobe (pendiente de hacer por el u
 4. El panel de comentarios de Adobe lista las seis con autor «Prueba» y el texto con acentos y «€».
 5. Responder a una nota en Adobe y guardar (Ctrl+S) sin mensajes de error.
 6. Reabrir el fichero en el Lector PDF: las anotaciones siguen ahí; en `estandar-annotated.pdf` también las que ya traía el fichero y en `estandar-form.pdf` el formulario.
+7. Con el Lector PDF, en una copia de `estandar-basic-5.pdf`: dibujar un polígono y colocar los sellos «APROBADO» y «NO APROBADO», guardar (Ctrl+S) y abrir el fichero con Adobe. El panel de comentarios de Adobe debe listar el sello como «Sello» y el polígono como «Polígono», y el sello «APROBADO» debe verse con su texto.
