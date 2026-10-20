@@ -160,6 +160,13 @@
   color: var(--color-text-muted);
 }
 
+.source {
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 .state {
   position: absolute;
   inset: 0;

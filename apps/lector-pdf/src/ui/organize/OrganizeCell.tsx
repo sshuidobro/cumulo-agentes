@@ -9,6 +9,7 @@ import { renderPageToCanvas } from '../../engine/render';
 import type { PDFPageProxy } from '../../engine/pdfjs';
 import { renderQueue, releaseCanvas } from '../../state/render-service';
 import { useAppearance } from '../../state/appearance-store';
+import { useOrganize } from '../../state/organize-store';
 import { useViewer } from '../../state/viewer-store';
 import { PRIORITY_THUMBNAIL } from '../sidebar/ThumbnailItem';
 import { organizeMsg } from '../messages-organize';
@@ -41,6 +42,11 @@ export function slotPageSize(
     return null;
   }
   return slot.rotate === 90 || slot.rotate === 270 ? { width: height, height: width } : { width, height };
+}
+
+/** Nombre corto de un fichero para la etiqueta de la celda (el completo va en `title`). */
+export function shortFileName(name: string, max = 16): string {
+  return name.length <= max ? name : `${name.slice(0, max - 1)}…`;
 }
 
 export interface OrganizeCellProps {
@@ -78,14 +84,49 @@ export const OrganizeCell = memo(function OrganizeCell({
   onOpen,
   onPointerDown,
 }: OrganizeCellProps) {
-  const doc = useViewer((s) => s.pdf?.doc ?? null);
+  const viewerDoc = useViewer((s) => s.pdf?.doc ?? null);
   const dims = useViewer((s) => s.dims);
   const nightMode = useAppearance((s) => s.nightMode);
+  // Hueco importado (PDF-128): su documento y nombre están en la vista; sus medidas, en `importedPage`.
+  const importedEntry = useOrganize((s) => (slot.kind === 'imported' ? (s.imported[slot.doc] ?? null) : null));
   const [rendered, setRendered] = useState(false);
+  const [importedPage, setImportedPage] = useState<{ readonly key: string; readonly width: number; readonly height: number } | null>(null);
 
-  const size = slotPageSize(slot, dims);
+  const doc = slot.kind === 'imported' ? (importedEntry?.doc ?? null) : viewerDoc;
+  const importedKey = slot.kind === 'imported' ? `${String(slot.doc)}:${String(slot.source)}` : null;
+  const importedSource = slot.kind === 'imported' ? slot.source : null;
+  const importedFile = importedEntry?.name ?? null;
+
+  // Medidas de la página importada (sin giro): pdf.js da el viewport a escala 1. Solo cambia el estado al llegar.
+  useEffect(() => {
+    if (doc === null || importedSource === null || importedKey === null) return;
+    let cancelled = false;
+    void doc.getPage(importedSource + 1).then(
+      (page) => {
+        const viewport = page.getViewport({ scale: 1 });
+        page.cleanup();
+        if (!cancelled) setImportedPage({ key: importedKey, width: viewport.width, height: viewport.height });
+      },
+      (cause: unknown) => {
+        log.warn('no se han podido leer las medidas de la página importada', { error: cause });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [doc, importedSource, importedKey]);
+
+  const measured = importedPage !== null && importedPage.key === importedKey ? importedPage : null;
+  const size =
+    slot.kind === 'imported'
+      ? measured === null
+        ? null
+        : slot.rotate === 90 || slot.rotate === 270
+          ? { width: measured.height, height: measured.width }
+          : { width: measured.width, height: measured.height }
+      : slotPageSize(slot, dims);
   const box = size === null ? fitBox(cell, 1, Math.SQRT2) : fitBox(cell, size.width, size.height);
-  const source = slot.kind === 'original' ? slot.source : null;
+  const source = slot.kind === 'original' || slot.kind === 'imported' ? slot.source : null;
   const rotate = slot.rotate;
   const canDraw = doc !== null && source !== null && size !== null;
   const scale = size === null || size.width <= 0 ? 0 : box.width / size.width;
@@ -160,7 +201,7 @@ export const OrganizeCell = memo(function OrganizeCell({
       role="option"
       id={organizeCellDomId(index)}
       aria-selected={selected}
-      aria-label={organizeMsg.pageOption(position, rotate)}
+      aria-label={importedFile === null ? organizeMsg.pageOption(position, rotate) : `${organizeMsg.pageOption(position, rotate)} ${importedFile}`}
       data-organize-index={index}
       data-rendered={rendered ? 'true' : undefined}
       className={frameClass}
@@ -183,6 +224,14 @@ export const OrganizeCell = memo(function OrganizeCell({
       <span className={styles.label} aria-hidden="true">
         <span>{position}</span>
         {origin !== null && origin !== position && <span className={styles.was}>{organizeMsg.was(origin)}</span>}
+        {importedFile !== null && (
+          <>
+            {' '}
+            <span className={styles.source} title={importedFile}>
+              {shortFileName(importedFile)}
+            </span>
+          </>
+        )}
       </span>
     </div>
   );

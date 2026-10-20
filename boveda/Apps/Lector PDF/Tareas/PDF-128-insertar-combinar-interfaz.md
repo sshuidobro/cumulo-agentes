@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-128
 titulo: Insertar desde archivo y combinar archivos - interfaz
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-055, PDF-127, COM-019]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-5, organizar, ui]
 ---
 
@@ -73,3 +73,15 @@ export async function combineFiles(): Promise<'saved' | 'downloaded' | 'cancelle
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `src/state/import-pdf.ts` (nuevo: comprobar y abrir un PDF importado, contraseña), `src/state/combine-actions.ts` (nuevo), `src/state/organize-actions.ts` (`insertFromFile`, `MAX_IMPORT_BYTES`, importados en el guardado y en pestañas), `src/state/organize-store.ts` (`imported`), `src/state/extract-actions.ts` (exporta `beginJob`, `endJob`, `jobOptions`, `sourceWithChanges`), `src/ui/organize/CombineDialog.tsx` + `.module.css` (nuevos), `src/ui/organize/OrganizeCell.tsx`, `OrganizeToolbar.tsx`, `OrganizeView.module.css`, `src/ui/toolbar/DocumentMenu.tsx`, `src/ui/open/EmptyState.tsx`, `open.module.css`, `src/ui/App.tsx`, `src/ui/messages-organize.ts`; tests `tests/unit/combine-actions.test.ts` (nuevo), `tests/unit/organize-actions.test.ts` (casos nuevos), `tests/ui/combine-dialog.test.tsx` (nuevo), `tests/e2e/insert-combine.spec.ts` (nuevo, 6 casos).
+- Qué he hecho: «Desde archivo…» (antes/después del foco, o al final) con contraseña, miniaturas y deshacer; «Combinar archivos» desde el menú y la pantalla de inicio, con lista ordenable (botones y Alt+↑/↓), guardado con el diálogo del sistema y progreso. Los importados viajan como fuentes `1..k` en `organize` y se liberan al cerrar la vista o la pestaña.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (304 ficheros, 3943 tests); `pnpm --filter lector-pdf bundle:check` OK (596 912 de 600 000 bytes, margen de ~3 KB); `pnpm --filter lector-pdf e2e` (completo): 349 pasan, 1 falla: `iteration4-performance.spec.ts` «cifrado AES-256 … p1 pintada ≤ 1,5 ×» (medido 1,95). Falla igual sin mis cambios (`git stash`), es previa y no la he tocado. E2E `insert-combine.spec.ts`: 6/6.
+- Dudas o cosas que no he podido hacer:
+  1. `memorySource` de la ficha no existe en la app: uso `bytesSource` (`core/doc-ops/bytes.ts`).
+  2. `ImportedDoc` lleva además `close` (libera el `LoadedPdf`) junto a `doc`.
+  3. Límite de 50 ficheros contando el documento abierto, con el mensaje nuevo `organizeMsg.combineLimit` (el selector devuelve `out-of-range` tanto por número como por tamaño y no se distingue). Mensajes añadidos: `importFailed`, `combineHint`, `pagesOf`, `fromFileBefore/After` (en lugar de un único `insertFromFile`).
+  4. En la web, «Guardar como» descarga y no abre la pestaña: el criterio «se abre una pestaña con 35 páginas» lo cubre el test unitario de la ruta `saved`; el E2E comprueba el PDF descargado (35 páginas, ramas «basic-5» y «outline»).
+  5. Tema oscuro: no tengo test específico; queda sin verificar.
+  6. Ajustes por axe: los botones de fila van fuera del `listbox`, y la celda importada incluye el nombre del fichero en su nombre accesible.

@@ -11,6 +11,7 @@ import {
   closeOrganize,
   deleteSelected,
   insertBlank,
+  insertFromFile,
   organizeRedo,
   organizeUndo,
   rotateSelected,
@@ -92,6 +93,20 @@ export function OrganizeToolbar({ cellSize, onCellSize }: OrganizeToolbarProps):
             label: organizeMsg.after,
             onSelect: () => {
               insertBlank('after');
+            },
+          },
+          {
+            kind: 'action',
+            label: organizeMsg.fromFileBefore,
+            onSelect: () => {
+              void insertFromFile('before');
+            },
+          },
+          {
+            kind: 'action',
+            label: organizeMsg.fromFileAfter,
+            onSelect: () => {
+              void insertFromFile('after');
             },
           },
         ]}

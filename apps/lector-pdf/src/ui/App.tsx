@@ -40,6 +40,7 @@ import { useCompare } from '../state/compare-actions';
 import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
 import { useExportDialog } from '../state/export-actions';
 import { useExtractDialog } from '../state/extract-actions';
+import { useCombineDialog } from '../state/combine-actions';
 import { useOrganize } from '../state/organize-store';
 import { organizeRedo, organizeUndo } from '../state/organize-actions';
 import { useViewer } from '../state/viewer-store';
@@ -62,6 +63,7 @@ const CompareView = lazy(() => import('./compare/CompareView').then((m) => ({ de
 const OrganizeView = lazy(() => import('./organize/OrganizeView').then((m) => ({ default: m.OrganizeView })));
 const ExtractDialog = lazy(() => import('./organize/ExtractDialog').then((m) => ({ default: m.ExtractDialog })));
 const SplitDialog = lazy(() => import('./organize/SplitDialog').then((m) => ({ default: m.SplitDialog })));
+const CombineDialog = lazy(() => import('./organize/CombineDialog').then((m) => ({ default: m.CombineDialog })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -148,6 +150,7 @@ export function App() {
   const printOpen = usePrintDialog((s) => s.open);
   const exportOpen = useExportDialog((s) => s.open);
   const extractDialog = useExtractDialog((s) => s.open);
+  const combineOpen = useCombineDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
   const organizeOpen = useOrganize((s) => s.open);
@@ -246,6 +249,11 @@ export function App() {
       {extractDialog === 'split' && (
         <Suspense fallback={null}>
           <SplitDialog />
+        </Suspense>
+      )}
+      {combineOpen && (
+        <Suspense fallback={null}>
+          <CombineDialog />
         </Suspense>
       )}
       <DocOpJobProgress />

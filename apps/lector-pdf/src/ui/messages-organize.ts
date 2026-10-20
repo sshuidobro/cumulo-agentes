@@ -93,4 +93,23 @@ export const organizeMsg = {
     n === 1 ? '1 página supera el tamaño máximo y va sola en su parte.' : `${String(n)} páginas superan el tamaño máximo y van solas en su parte.`,
   progressExtract: (done: number, total: number): string => `Copiando páginas: ${String(done)} de ${String(total)}…`,
   progressLabel: 'Progreso de la operación',
+  /** Insertar páginas de otro PDF (PDF-128): opciones del menú de «Insertar». */
+  fromFileBefore: 'Desde archivo…, antes de la selección',
+  fromFileAfter: 'Desde archivo…, después de la selección',
+  /** El PDF elegido no se puede leer (no es un PDF o está dañado). */
+  importFailed: (name: string): string => `No se ha podido leer “${name}”. Puede que no sea un PDF válido.`,
+  importTooBig: 'El fichero es demasiado grande (máximo 512 MB).',
+  /** Combinar archivos (PDF-128). */
+  combine: 'Combinar archivos…',
+  combineTitle: 'Combinar archivos',
+  addFiles: 'Añadir archivos…',
+  moveUp: 'Subir',
+  moveDown: 'Bajar',
+  remove: 'Quitar',
+  pagesOf: (n: number): string => (n === 1 ? '1 página' : `${String(n)} páginas`),
+  combineAction: 'Combinar',
+  combineHint: 'Añade al menos dos PDF para combinarlos.',
+  combineLimit: 'No se pueden añadir más ficheros: máximo 50 en total, de 512 MB cada uno.',
+  combined: (name: string): string => `PDF combinado guardado como “${name}”.`,
+  progressCombine: (done: number, total: number): string => `Combinando páginas: ${String(done)} de ${String(total)}…`,
 };

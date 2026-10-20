@@ -7,6 +7,7 @@ import {
   indexOfKey,
   initialPlan,
   insertBlankCommand,
+  insertImportedCommand,
   moveCommand,
   ORGANIZE_UNDO_DEPTH,
   pruneSelection,
@@ -20,8 +21,9 @@ import { windowTitle } from '../core/title';
 import { organizeMsg } from '../ui/messages-organize';
 import { askChoice } from './choice';
 import { runDocOp } from './doc-ops';
-import { currentPassword } from './document-actions';
-import { initialOrganizeState, organizeDirty, useOrganize, type OrganizeState } from './organize-store';
+import { currentPassword, PDF_FILTERS } from './document-actions';
+import { checkImport, loadImport } from './import-pdf';
+import { initialOrganizeState, organizeDirty, useOrganize, type ImportedDoc, type OrganizeState } from './organize-store';
 import { nowIso } from './annotation-actions';
 import { useAnnotations } from './annotation-store';
 import { showNotice } from './notice';
@@ -37,6 +39,9 @@ import { services } from './services';
 import { useViewer } from './viewer-store';
 
 const log = createLogger('organize-actions');
+
+/** Tamaño máximo de un PDF que se importa para insertar o combinar: 512 MB. */
+export const MAX_IMPORT_BYTES = 512 * 1024 * 1024;
 
 /** Historial del plan de la vista abierta. Cada apertura empieza uno nuevo. */
 let stack = newStack(initialPlan([]));
@@ -79,8 +84,8 @@ function run(command: Command<OrganizePlan>): void {
   publish(stack.doc);
 }
 
-/** Cierra la vista y descarta el plan. Invalida lo que estuviera en curso. */
-function closeNow(): void {
+/** Vacía la vista (plan, selección, guardado) sin liberar los PDF importados. Invalida lo que estuviera en curso. */
+function clearView(): void {
   generation++;
   activeSave?.abort();
   activeSave = null;
@@ -88,6 +93,18 @@ function closeNow(): void {
   registerPendingChanges(null);
   useOrganize.setState(initialOrganizeState);
   refreshTitle();
+}
+
+/** Libera los documentos de pdf.js de los PDF importados. Nunca lanza. */
+async function releaseImports(imports: readonly ImportedDoc[]): Promise<void> {
+  await Promise.allSettled(imports.map((item) => item.close()));
+}
+
+/** Cierra la vista y descarta el plan y los PDF importados. Invalida lo que estuviera en curso. */
+function closeNow(): void {
+  const { imported } = useOrganize.getState();
+  clearView();
+  void releaseImports(imported);
 }
 
 const pendingHandle: PendingChanges = {
@@ -185,6 +202,54 @@ export function moveSelected(toIndex: number): void {
   run(moveCommand(keys, toIndex));
 }
 
+/** Índice donde insertar: junto al hueco con foco (antes o después), o al final si no hay foco. */
+function insertionAt(where: 'before' | 'after'): number {
+  const { plan, selection } = useOrganize.getState();
+  const focusIndex = selection.focus === null ? -1 : indexOfKey(plan, selection.focus);
+  if (focusIndex < 0) return plan.slots.length;
+  return where === 'before' ? focusIndex : focusIndex + 1;
+}
+
+/**
+ * Inserta las páginas de un PDF elegido con el diálogo del sistema, antes o después de la selección (sin foco, al
+ * final). Si está protegido pide su contraseña; cancelar no inserta nada. Los errores se avisan.
+ */
+export async function insertFromFile(where: 'before' | 'after'): Promise<void> {
+  if (!ready()) return;
+  const gen = generation;
+  const picked = await services().platform.importFile(PDF_FILTERS, MAX_IMPORT_BYTES);
+  if (!picked.ok) {
+    showNotice(picked.error.code === 'out-of-range' ? organizeMsg.importTooBig : picked.error.message);
+    return;
+  }
+  const file = picked.value;
+  if (file === null) return;
+  const check = await checkImport(file.name, file.bytes);
+  if (check.kind !== 'ok') return;
+  const loaded = await loadImport(file.bytes, check.password);
+  // La vista se cerró o cambió mientras se leía el fichero: no se inserta nada.
+  if (gen !== generation || !ready()) {
+    if (loaded.ok) await loaded.value.destroy();
+    return;
+  }
+  if (!loaded.ok) {
+    log.warn('load-import', loaded.error.code);
+    showNotice(organizeMsg.importFailed(file.name));
+    return;
+  }
+  const pdf = loaded.value;
+  const entry: ImportedDoc = {
+    name: file.name,
+    bytes: file.bytes,
+    password: check.password,
+    doc: pdf.doc,
+    close: () => pdf.destroy(),
+  };
+  const { imported } = useOrganize.getState();
+  useOrganize.setState({ imported: [...imported, entry] });
+  run(insertImportedCommand(insertionAt(where), imported.length, check.rotations));
+}
+
 /**
  * Inserta una página en blanco junto al hueco con foco (antes o después); sin foco, al final.
  * Su tamaño es el del hueco de referencia (el foco, o el último si no hay): una página en blanco tiene el suyo;
@@ -243,11 +308,16 @@ export async function saveOrganize(): Promise<SaveResult> {
     if (!built.ok) return failSave(built.error.message);
     const prefix = built.value ?? new Uint8Array(0);
     if (controller.signal.aborted || gen !== generation) return 'cancelled';
-    const { plan } = useOrganize.getState();
+    const { plan, imported } = useOrganize.getState();
     const result = await runDocOp<{ readonly delta: Uint8Array }>(
       'organize',
-      { password: currentPassword(), slots: toSaveSlots(plan), now: nowIso() },
-      [concatSource(file.source, prefix)],
+      {
+        password: currentPassword(),
+        slots: toSaveSlots(plan),
+        now: nowIso(),
+        importedPasswords: imported.map((item) => item.password),
+      },
+      [concatSource(file.source, prefix), ...imported.map((item) => item.bytes)],
       {
         signal: controller.signal,
         onProgress: (done, total) => {
@@ -305,7 +375,8 @@ const organizeParticipant: TabParticipant<OrganizeSnapshot> = {
     const { status, ...rest } = useOrganize.getState();
     // Un guardado en curso se cancela al suspender: la pestaña vuelve con el plan sin guardar, no a medio escribir.
     const snapshot: OrganizeSnapshot = { state: { ...rest, status: status === 'saving' ? 'ready' : status, progress: null }, stack };
-    closeNow();
+    // Los PDF importados viajan en la instantánea: no se liberan aquí (los libera `dispose` si se cierra la pestaña).
+    clearView();
     return snapshot;
   },
   resume(snapshot: OrganizeSnapshot): void {
@@ -314,7 +385,7 @@ const organizeParticipant: TabParticipant<OrganizeSnapshot> = {
     if (snapshot.state.open) registerPendingChanges(pendingHandle);
     refreshTitle();
   },
-  dispose: () => Promise.resolve(),
+  dispose: (snapshot: OrganizeSnapshot) => releaseImports(snapshot.state.imported),
 };
 
 /** Da de alta el participante de la vista en el registro de pestañas. Llamar una vez al arrancar. */
