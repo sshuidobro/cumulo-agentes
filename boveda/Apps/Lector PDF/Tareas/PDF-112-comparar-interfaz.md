@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-112
 titulo: Comparar - elegir el segundo PDF, progreso y lista de cambios
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-063, PDF-113, PDF-046]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -77,3 +77,5 @@ export function comparedDocument(): LoadedPdf | null;
 - Qué he hecho: he revisado la implementación contra los criterios de aceptación y cada uno tiene su test. He verificado lint, typecheck, cobertura, E2E y presupuesto del bundle.
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (exit 0; líneas 98,13 %); `pnpm --filter lector-pdf e2e` con 298 pasadas y 1 fallo en `tests/e2e/annotations-layer.spec.ts:151` (`@perf`, long tasks, fuera de esta ficha). Al relanzarlo solo con `--project=chromium-perf --no-deps` pasa (exit 0), así que es inestable por carga. `pnpm --filter lector-pdf build` y `bundle:check` OK (arranque 519 069 bytes de 600 000).
 - Dudas o cosas que no he podido hacer: el E2E completo tiene un test `@perf` ajeno (`annotations-layer`) que falló una vez por carga; conviene que lo mire el tester o el líder. No he comprobado visualmente el tema claro/oscuro en navegador; solo en CSS.
+
+- Revisor (coordinador anota): APROBADO, 0 problemas; lint, typecheck y 19 tests OK. Pasa a en-test.
