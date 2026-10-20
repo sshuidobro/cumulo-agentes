@@ -18,6 +18,15 @@
   cursor: grabbing;
 }
 
+/* Pantalla completa (PDF-097): fondo negro; el cursor se oculta cuando el ratón está quieto (use-idle-cursor). */
+.viewer.fullscreen {
+  background: #000;
+}
+
+.viewer.fullscreen[data-idle='true'] {
+  cursor: none;
+}
+
 .viewer:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: -2px;
@@ -45,19 +54,30 @@
 
 .viewer[data-tool='note'] .annotationLayer,
 .viewer[data-tool='freetext'] .annotationLayer,
-.viewer[data-tool='ink'] .annotationLayer {
+.viewer[data-tool='ink'] .annotationLayer,
+.viewer[data-tool='square'] .annotationLayer,
+.viewer[data-tool='circle'] .annotationLayer,
+.viewer[data-tool='line'] .annotationLayer,
+.viewer[data-tool='arrow'] .annotationLayer,
+.viewer[data-tool='polygon'] .annotationLayer {
   pointer-events: auto;
   cursor: crosshair;
 }
 
-/* Con «Firmar», un clic en la página coloca la firma pendiente (PDF-043). */
-.viewer[data-tool='signature'] .annotationLayer {
+/* Con «Firmar», un clic en la página coloca la firma pendiente (PDF-043); con «Sello», el sello elegido (PDF-115). */
+.viewer[data-tool='signature'] .annotationLayer,
+.viewer[data-tool='stamp'] .annotationLayer {
   pointer-events: auto;
   cursor: copy;
 }
 
-/* Con «Dibujar», el dedo traza en vez de desplazar la página (PDF-035). */
-.viewer[data-tool='ink'] .annotationLayer {
+/* Con «Dibujar» o una forma, el dedo traza en vez de desplazar la página (PDF-035, PDF-108). */
+.viewer[data-tool='ink'] .annotationLayer,
+.viewer[data-tool='square'] .annotationLayer,
+.viewer[data-tool='circle'] .annotationLayer,
+.viewer[data-tool='line'] .annotationLayer,
+.viewer[data-tool='arrow'] .annotationLayer,
+.viewer[data-tool='polygon'] .annotationLayer {
   touch-action: none;
 }
 
@@ -89,6 +109,18 @@
 }
 
 .canvasHost > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Lienzo de detalle (ADR-0025): su posición y tamaño los pone PageView en píxeles. No recibe el puntero. */
+.detailHost {
+  position: absolute;
+  pointer-events: none;
+}
+
+.detailHost > canvas {
   display: block;
   width: 100%;
   height: 100%;

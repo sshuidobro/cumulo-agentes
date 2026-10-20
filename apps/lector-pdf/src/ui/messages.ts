@@ -35,7 +35,16 @@ export const msg = {
     freetext: 'Texto',
     ink: 'Dibujo',
     signature: 'Firma',
+    square: 'Rectángulo',
+    circle: 'Elipse',
+    line: 'Línea',
+    polygon: 'Polígono',
+    stamp: 'Sello',
+    reply: 'Respuesta',
+    review: 'Estado',
   },
+  /** Línea con punta (`endings` con alguna punta): nombre accesible de la zona. */
+  annotationArrowKind: 'Flecha',
   /** «Resaltado de Ana»; sin autor, solo el tipo. */
   annotationName: (kind: string, author: string): string => (author.trim() === '' ? kind : `${kind} de ${author}`),
   /** Ventana emergente de comentario (PDF-033): nombre del diálogo, campo de texto y botones. */
@@ -135,6 +144,16 @@ export const msg = {
   toolNoteKeyboardHint: 'Con el teclado, Intro coloca la nota en la página actual; después, Esc y las flechas la mueven.',
   toolFreeText: 'Texto',
   toolInk: 'Dibujar',
+  toolSquare: 'Rectángulo',
+  toolCircle: 'Elipse',
+  toolLine: 'Línea',
+  toolArrow: 'Flecha',
+  toolPolygon: 'Polígono',
+  toolStamp: 'Sello',
+  /** Encabezado del menú de sellos (PDF-115). */
+  stampMenu: 'Elegir sello',
+  /** Ayuda de la barra mientras se dibuja un polígono; se anuncia con `aria-live`. */
+  polygonHint: 'Haz clic para añadir vértices; doble clic o Intro para terminar',
   color: 'Color',
   inkWidth: 'Grosor',
   fontSize: 'Tamaño de letra',

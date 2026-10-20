@@ -12,8 +12,26 @@ import {
   setToolColor,
 } from '../../state/annotation-actions';
 import { useAnnotations, type AnnotationTool, type ColorTool } from '../../state/annotation-store';
+import { addShapeFromKeyboard, chooseStamp, isShapeTool, setShapeColor, setShapeWidth } from '../../state/shape-actions';
+import { STAMP_LABELS, STAMP_NAMES, type StampName } from '../../core/annotations/shapes';
 import { isMarkupTool, markupSelection } from '../../state/markup-actions';
-import { IconColor, IconFontSize, IconFreeText, IconHighlight, IconInk, IconInkWidth, IconNote, IconStrikeout, IconUnderline } from '../icons';
+import {
+  IconArrow,
+  IconCircle,
+  IconColor,
+  IconFontSize,
+  IconFreeText,
+  IconHighlight,
+  IconInk,
+  IconInkWidth,
+  IconLine,
+  IconNote,
+  IconPolygon,
+  IconSquare,
+  IconStamp,
+  IconStrikeout,
+  IconUnderline,
+} from '../icons';
 import { IconButton } from '../kit/IconButton';
 import { MenuButton, type MenuEntry } from '../kit/MenuButton';
 import { msg } from '../messages';
@@ -33,37 +51,61 @@ const TOOLS: readonly ToolSpec[] = [
   { tool: 'note', label: msg.toolNote, Icon: IconNote },
   { tool: 'freetext', label: msg.toolFreeText, Icon: IconFreeText },
   { tool: 'ink', label: msg.toolInk, Icon: IconInk },
+  { tool: 'square', label: msg.toolSquare, Icon: IconSquare },
+  { tool: 'circle', label: msg.toolCircle, Icon: IconCircle },
+  { tool: 'line', label: msg.toolLine, Icon: IconLine },
+  { tool: 'arrow', label: msg.toolArrow, Icon: IconArrow },
+  { tool: 'polygon', label: msg.toolPolygon, Icon: IconPolygon },
 ];
 
 /** Controles con foco itinerante: las herramientas y los menús visibles. */
-type ControlId = ColorTool | 'color' | 'width' | 'fontSize';
+type ControlId = ColorTool | 'stamp' | 'color' | 'width' | 'fontSize';
 
-/** Lo que hay seleccionado y admite «Color», «Grosor» o «Tamaño de letra» aunque la herramienta activa sea otra. */
+/**
+ * Lo que hay seleccionado y admite «Color», «Grosor» o «Tamaño de letra» aunque la herramienta activa sea otra. `shape`:
+ * el color de la forma seleccionada (rectángulo, elipse, línea, flecha o polígono), o `null`.
+ */
 interface Selection {
   readonly text: boolean;
   readonly ink: boolean;
+  readonly shape: Rgb | null;
 }
+
+/** Destino de «Color»: una herramienta de color, o la forma seleccionada (PDF-108). */
+type ColorTarget = ColorTool | 'shape';
+/** Destino de «Grosor»: el dibujo a mano alzada (PDF-035) o las formas (PDF-108). */
+type WidthTarget = 'ink' | 'shape';
 
 /**
  * Controles que hay en la barra con esa herramienta activa, en orden de tabulación. «Color» y «Tamaño de letra» también
- * aparecen con un texto libre seleccionado (PDF-034); «Color» y «Grosor», con un dibujo seleccionado (PDF-035).
+ * aparecen con un texto libre seleccionado (PDF-034); «Color» y «Grosor», con un dibujo seleccionado (PDF-035) o una
+ * forma (PDF-108).
  */
 function visibleControls(tool: AnnotationTool, selection: Selection): ControlId[] {
   const list: ControlId[] = TOOLS.map((spec) => spec.tool);
-  if (tool !== 'none' || selection.text || selection.ink) list.push('color');
-  if (tool === 'ink' || selection.ink) list.push('width');
+  list.push('stamp');
+  if (tool !== 'none' || selection.text || selection.ink || selection.shape !== null) list.push('color');
+  if (widthTargetOf(tool, selection) !== null) list.push('width');
   if (tool === 'freetext' || selection.text) list.push('fontSize');
   return list;
 }
 
 /**
- * Herramienta a la que se aplica «Color»: el texto libre o el dibujo seleccionados (PDF-034, PDF-035) o, si no, la
- * herramienta activa. `null` si no hay ninguna.
+ * Herramienta a la que se aplica «Color»: el texto libre, el dibujo o la forma seleccionados (PDF-034, PDF-035, PDF-108)
+ * o, si no, la herramienta activa. `null` si no hay ninguna.
  */
-function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTool | null {
+function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTarget | null {
   if (selection.text) return 'freetext';
   if (selection.ink) return 'ink';
-  return tool === 'none' || tool === 'signature' ? null : tool;
+  if (selection.shape !== null) return 'shape';
+  return tool === 'none' || tool === 'signature' || tool === 'stamp' ? null : tool;
+}
+
+/** A qué afecta «Grosor»: el dibujo o la forma seleccionados, o la herramienta activa. `null` si ninguna aplica. */
+function widthTargetOf(tool: AnnotationTool, selection: Selection): WidthTarget | null {
+  if (selection.ink || (selection.shape === null && tool === 'ink')) return 'ink';
+  if (selection.shape !== null || isShapeTool(tool) || tool === 'polygon') return 'shape';
+  return null;
 }
 
 /**
@@ -75,6 +117,11 @@ function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTool | 
 function onToolClick(id: ColorTool, tool: AnnotationTool, fromKeyboard: boolean): void {
   if (id === 'note' && fromKeyboard && tool !== 'note') {
     addNoteFromKeyboard();
+    return;
+  }
+  // Una forma activada con teclado (PDF-108) se crea en la página actual, como la nota; también el polígono (PDF-115).
+  if ((isShapeTool(id) || id === 'polygon') && fromKeyboard && tool !== id) {
+    addShapeFromKeyboard(id);
     return;
   }
   if (isMarkupTool(id)) {
@@ -93,33 +140,58 @@ function swatchOf([r, g, b]: Rgb): string {
   return `rgb(${String(Math.round(r * 255))} ${String(Math.round(g * 255))} ${String(Math.round(b * 255))})`;
 }
 
-function colorEntries(target: ColorTool | null, colors: Readonly<Record<ColorTool, Rgb>>): readonly MenuEntry[] {
+function colorEntries(
+  target: ColorTarget | null,
+  colors: Readonly<Record<ColorTool, Rgb>>,
+  shapeColor: Rgb | null,
+): readonly MenuEntry[] {
   if (target === null) return [];
+  const current = target === 'shape' ? (shapeColor ?? colors.square) : colors[target];
   return PALETTE.map((entry): MenuEntry => ({
     kind: 'radio',
     label: entry.label,
-    checked: sameRgb(colors[target], entry.rgb),
+    checked: sameRgb(current, entry.rgb),
     swatch: swatchOf(entry.rgb),
     onSelect: () => { applyColor(target, entry.rgb); },
   }));
 }
 
 /**
- * El color de «Texto» llega también al texto libre seleccionado (PDF-034) y el de «Dibujar», al dibujo seleccionado
- * (PDF-035); el resto de herramientas, solo a su herramienta.
+ * El color de «Texto» llega también al texto libre seleccionado (PDF-034), el de «Dibujar», al dibujo seleccionado
+ * (PDF-035) y «Color» con una forma seleccionada, a esa forma (PDF-108); el resto de herramientas, solo a su herramienta.
  */
-function applyColor(target: ColorTool, rgb: Rgb): void {
+function applyColor(target: ColorTarget, rgb: Rgb): void {
   if (target === 'freetext') setFreeTextColor(rgb);
   else if (target === 'ink') setInkColor(rgb);
+  else if (target === 'shape') setShapeColor(rgb);
   else setToolColor(target, rgb);
 }
 
-function widthEntries(inkWidth: (typeof INK_WIDTHS)[number]): readonly MenuEntry[] {
+/**
+ * Entradas del menú «Sello» (PDF-115): los catorce sellos, en el orden de `STAMP_NAMES`, con el elegido marcado. Elegir
+ * una la activa; con Intro (`fromKeyboard`) además se coloca en la página actual, como las formas con teclado.
+ */
+function stampEntries(pending: StampName): readonly MenuEntry[] {
+  const heading: MenuEntry = { kind: 'heading', label: msg.stampMenu };
+  const items = STAMP_NAMES.map((name): MenuEntry => ({
+    kind: 'radio',
+    label: STAMP_LABELS[name],
+    checked: name === pending,
+    onSelect: (fromKeyboard) => {
+      chooseStamp(name);
+      if (fromKeyboard) addShapeFromKeyboard('stamp');
+    },
+  }));
+  return [heading, ...items];
+}
+
+function widthEntries(target: WidthTarget, inkWidth: (typeof INK_WIDTHS)[number], shapeWidth: (typeof INK_WIDTHS)[number]): readonly MenuEntry[] {
+  const current = target === 'ink' ? inkWidth : shapeWidth;
   return INK_WIDTHS.map((width): MenuEntry => ({
     kind: 'radio',
     label: msg.pointSize(width),
-    checked: width === inkWidth,
-    onSelect: () => { setInkWidth(width); },
+    checked: width === current,
+    onSelect: () => { if (target === 'ink') setInkWidth(width); else setShapeWidth(width); },
   }));
 }
 
@@ -151,8 +223,26 @@ export function CommentToolbar() {
     const id = s.selectedId;
     return id !== null && getEffective().get(id)?.type === 'ink';
   });
-  const selection: Selection = { text: textSelected, ink: inkSelected };
+  // Color de la forma seleccionada (PDF-108); `null` si no hay ninguna. La referencia cambia solo al cambiar el color.
+  const shapeColor = useAnnotations((s) => {
+    const id = s.selectedId;
+    if (id === null) return null;
+    const a = getEffective().get(id);
+    switch (a?.type) {
+      case 'square':
+      case 'circle':
+      case 'line':
+      case 'polygon':
+        return a.color;
+      default:
+        return null;
+    }
+  });
+  const shapeWidth = useAnnotations((s) => s.shapeWidth);
+  const pendingStamp = useAnnotations((s) => s.pendingStamp);
+  const selection: Selection = { text: textSelected, ink: inkSelected, shape: shapeColor };
   const colorTarget = colorTargetOf(tool, selection);
+  const widthTarget = widthTargetOf(tool, selection);
   const [activeIndex, setActiveIndex] = useState(0);
   const elements = useRef(new Map<ControlId, HTMLButtonElement>());
 
@@ -247,23 +337,36 @@ export function CommentToolbar() {
         </IconButton>
       ))}
       <MenuButton
+        label={msg.toolStamp}
+        tabIndex={tabIndexOf('stamp')}
+        ref={register('stamp')}
+        entries={stampEntries(pendingStamp)}
+      >
+        <IconStamp />
+      </MenuButton>
+      <MenuButton
         label={msg.color}
         disabled={colorTarget === null}
         tabIndex={tabIndexOf('color')}
         ref={register('color')}
-        entries={colorEntries(colorTarget, colors)}
+        entries={colorEntries(colorTarget, colors, shapeColor)}
       >
         <IconColor />
       </MenuButton>
-      {(tool === 'ink' || inkSelected) && (
+      {widthTarget !== null && (
         <MenuButton
           label={msg.inkWidth}
           tabIndex={tabIndexOf('width')}
           ref={register('width')}
-          entries={widthEntries(inkWidth)}
+          entries={widthEntries(widthTarget, inkWidth, shapeWidth)}
         >
           <IconInkWidth />
         </MenuButton>
+      )}
+      {tool === 'polygon' && (
+        <p className={styles.hint} aria-live="polite">
+          {msg.polygonHint}
+        </p>
       )}
       {(tool === 'freetext' || textSelected) && (
         <MenuButton

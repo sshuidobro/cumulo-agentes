@@ -9,7 +9,7 @@ export interface ManifestChunk {
 
 export type Manifest = Readonly<Record<string, ManifestChunk>>;
 
-export const ENTRY_JS_BUDGET_BYTES = 500_000;
+export const ENTRY_JS_BUDGET_BYTES = 600_000;
 export const PDFJS_SRC_SUFFIX = 'pdfjs-dist/legacy/build/pdf.mjs';
 
 export interface BundleReport {

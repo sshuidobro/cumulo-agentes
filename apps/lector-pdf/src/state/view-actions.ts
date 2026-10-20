@@ -3,6 +3,7 @@ import { normalizeRotation } from '../core/rotation';
 import { DEFAULT_VIEW_MODE, isViewMode, rowFirstPage, type ViewMode } from '../core/view-mode';
 import { goToPage } from './navigation';
 import { services } from './services';
+import { registerTabParticipant, type TabParticipant } from './tabs';
 import { useViewer, type ViewTool } from './viewer-store';
 
 /** Clave de preferencia del modo de vista (la app ya añade su prefijo). */
@@ -47,6 +48,29 @@ export function zoomWithWheel(deltaY: number, deltaMode: 0 | 1 | 2, focusY: numb
   wheelFrame = requestAnimationFrame(flushWheel);
 }
 
+/** Sin estado: al cambiar de pestaña solo se cancela la rueda pendiente de la pestaña que se deja. */
+const viewParticipant: TabParticipant<undefined> = {
+  id: 'view',
+  order: 30,
+  suspend(): undefined {
+    if (wheelFrame !== null) cancelAnimationFrame(wheelFrame);
+    wheelFrame = null;
+    pendingSteps = [];
+    return undefined;
+  },
+  resume(): void {
+    // Sin estado que restaurar.
+  },
+  dispose(): Promise<void> {
+    return Promise.resolve();
+  },
+};
+
+/** Da de alta la vista en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerViewParticipant(): void {
+  registerTabParticipant(viewParticipant);
+}
+
 function flushWheel(): void {
   wheelFrame = null;
   let zoom = useViewer.getState().zoom;
@@ -79,9 +103,17 @@ export function loadViewMode(): void {
  * primera página de la fila de la página actual para no perder la posición.
  */
 export function setViewMode(mode: ViewMode): void {
+  applyViewMode(mode, { persist: true });
+}
+
+/**
+ * Cambia el modo de vista. Con `persist: false` no toca la preferencia guardada (la pantalla completa lo usa
+ * para cambiar temporalmente el modo, PDF-097).
+ */
+export function applyViewMode(mode: ViewMode, opts: { readonly persist: boolean }): void {
   const { currentPage, dims, viewMode } = useViewer.getState();
   useViewer.setState({ viewMode: mode });
-  services().platform.prefs.set(VIEW_MODE_PREF, mode);
+  if (opts.persist) services().platform.prefs.set(VIEW_MODE_PREF, mode);
   if (viewMode.spread === mode.spread || dims === null) return;
   const page = rowFirstPage(currentPage, mode.spread);
   useViewer.setState({ currentPage: page });

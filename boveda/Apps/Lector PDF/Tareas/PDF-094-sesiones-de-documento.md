@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-094
 titulo: Sesiones de documento - núcleo de pestañas (suspender y reanudar)
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-090, PDF-046]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, estado, pestanas]
 ---
 
@@ -87,3 +87,40 @@ export function hasAnyUnsavedChanges(): boolean;     // activa (hasUnsavedChange
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/tabs.ts` (nuevo), `apps/lector-pdf/src/state/document-actions.ts` (participante `document`, `runOpen`, `openRequested` con pestañas), `apps/lector-pdf/src/ui/messages-tabs.ts` (`tooMany`, `alreadyOpen`), `apps/lector-pdf/src/main.tsx` (`registerDocumentParticipant()`), `apps/lector-pdf/tests/unit/tabs.test.ts` (nuevo, 15 tests), `apps/lector-pdf/tests/unit/document-tabs.test.ts` (nuevo, 9 tests con fixtures reales), `apps/lector-pdf/tests/unit/unsaved-guard.test.ts` (los 3 casos «abrir con cambios pregunta» pasan a un caso «no pregunta»), `apps/lector-pdf/tests/e2e/forms.spec.ts` y `apps/lector-pdf/tests/e2e/recent.spec.ts` (comprobaban la pregunta al abrir; ahora comprueban que no pregunta). Arreglos de preexistentes para cumplir lint/typecheck: `apps/lector-pdf/tests/helpers/save-harness.ts` (faltaban `exportFile`/`importFile` en el Platform de prueba) y `apps/lector-pdf/src/core/pdf/incremental.ts` (import sin uso).
+- Qué he hecho: registro de pestañas (`activateTab`, `beginNewTab`, `closeTab`, `cycleTab`, `findTab`, `hasAnyUnsavedChanges`) con participantes ordenados; el participante `document` suspende (aborta escaneo y apertura, `doc.cleanup`) y reanuda (restaura visor, reescanea desde la página 1, `goToPage`); `openRequested` no pregunta por cambios, detecta «ya abierto» por ruta y tras cargar por `fingerprint`, reutiliza la pestaña activa si está vacía o en error y cierra la pestaña si se cancela la apertura (también la contraseña).
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos). `pnpm --filter lector-pdf typecheck` OK (0 errores). `pnpm coverage` OK: 217 ficheros, 2626 tests pasan. `pnpm --filter lector-pdf e2e` OK: 233 passed, código 0.
+- Dudas o cosas que no he podido hacer:
+  1. **Riesgo de pérdida de datos (decisión para el líder).** Hasta PDF-100/101 el estado de anotaciones y formularios es global. `openDocument` sigue llamando a `endAnnotationSession`/`endFormSession`, así que abrir otro documento con cambios sin guardar ya no pregunta y descarta esos cambios de la pestaña anterior sin aviso. Antes se preguntaba. Opciones: mantener la pregunta hasta PDF-100, o aceptar el riesgo en esta fase interna. Lo he implementado tal como dice la ficha.
+  2. «Mismo tamaño» (`file.size`): `TabInfo` no tiene tamaño, así que la coincidencia tras cargar usa solo `fingerprint`.
+  3. Registro del participante: no se hace al importar `document-actions` porque crearía un ciclo de importación con `tabs` que puede dar TDZ. Se hace con `registerDocumentParticipant()` en `main.tsx` y en los tests.
+  4. «Mientras no está activa» lo he leído como «mientras está activa»: la fila de la pestaña activa se sincroniza con `useViewer` y `useAnnotations`.
+  5. Solo se eliminan al cambiar las pestañas en estado `loading` (como dice la ficha). Una pestaña vacía que se cancela se cierra explícitamente en `openRequested`.
+  6. Escritorio (Tauri) no probado; solo web.
+
+
+### [revisor] ronda 1 — 2026-10-19 — CAMBIOS
+Lint OK, `pnpm --filter lector-pdf typecheck` OK, `pnpm coverage` OK (2626 tests). `pnpm typecheck` raíz falla en `packages/platform` (SharedArrayBuffer): no tocado por este commit, preexistente (avisar al líder).
+1. `apps/lector-pdf/src/state/document-actions.ts` (`openRequested`/`runOpen`, rama `dedupe`) — si se reutilizó una pestaña vacía o en error (`reuse`) y la carga resulta ser gemela de otra, tras activar la gemela queda una pestaña vacía sobrante (la ficha pide cerrar la pestaña nueva) — cerrarla y añadir un test (`document-tabs.test.ts`, caso del `fingerprint` con pestaña activa vacía).
+2. `runOpen` — la coincidencia usa solo `fingerprint`, sin `file.size`: documentarlo en el comentario. (opcional)
+3. Para el líder (no bloquea, la ficha lo manda): abrir otro documento descarta sin aviso las anotaciones sin guardar hasta PDF-100/101, aunque la pestaña seguiría marcada `dirty`. Decidir si se mantiene la pregunta hasta entonces.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/document-actions.ts` (comentario de `runOpen`: coincidencia solo por `fingerprint` y pestaña de carga eliminada al activar la gemela), `apps/lector-pdf/tests/unit/document-tabs.test.ts` (2 tests nuevos).
+- Qué he hecho: revisado el punto 1 (pestaña sobrante). Con pestaña activa en error y con pestaña vacía reutilizada, la carga queda en `loading` y `activateTab` la elimina al cambiar a la gemela; añadidos dos tests de regresión que lo comprueban (pasan sin cambiar la lógica). Punto 2 documentado en el comentario. Punto 3 es decisión del líder (no tocado).
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf typecheck` OK. `pnpm exec eslint --max-warnings 0` sobre los ficheros tocados OK. `pnpm --filter lector-pdf exec vitest run --coverage` OK: 186 ficheros, 2283 tests pasan. `pnpm lint` de la raíz falla por `apps/lector-pdf/tests/e2e/view-modes.spec.ts:3` (`TestInfo` sin usar): fichero con cambios sin commit que no es de esta ficha; no lo he tocado.
+- Dudas o cosas que no he podido hacer: no he ejecutado E2E en esta ronda (solo cambios de comentario y tests unitarios). El punto 3 del revisor sigue abierto para el líder.
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+Typecheck de lector-pdf OK; tests de tabs, document-tabs y unsaved-guard OK (33). Lint de raíz: fallo ajeno (view-modes.spec.ts, PDF-050). Punto 1 de la ronda 1 comprobado: los dos tests de regresión cubren el caso (pestaña en error y pestaña vacía reutilizadas) y pasan. Punto 3 (descarte sin aviso hasta PDF-100/101) sigue pendiente para el líder; no bloquea.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck | OK | `pnpm lint` 0 avisos; `pnpm --filter lector-pdf typecheck` OK |
+| tests + cobertura | OK | `pnpm coverage`: 220 ficheros, 2647 tests; líneas 98,65 % |
+| criterios unit/integración (tabs.test.ts, document-tabs.test.ts) | OK | incluidos en la batería completa |
+| E2E | OK | `playwright test --project=chromium` (lanzado por otro proceso sobre el mismo árbol): 234 passed, EXIT 0; mi ejecución chocó con el puerto 4173 |
+Sin tests añadidos. Pendiente para el líder (no bloquea): descarte sin aviso de anotaciones al abrir otro documento hasta PDF-100/101.

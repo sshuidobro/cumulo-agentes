@@ -12,6 +12,11 @@ export const ALLOW_IN_EDITABLE: ReadonlySet<ShortcutId> = new Set<ShortcutId>(['
  */
 export type ShortcutHandler = (event: KeyboardEvent) => unknown;
 
+/** Las flechas sobre un botón de opción recorren su grupo (lo hace el navegador): no son atajos de página. */
+function isArrowInRadio(event: KeyboardEvent): boolean {
+  return event.key.startsWith('Arrow') && event.target instanceof HTMLInputElement && event.target.type === 'radio';
+}
+
 /**
  * Escucha el teclado de la ventana y llama al manejador del atajo pulsado.
  * Dentro de un campo editable solo actúan los atajos de `ALLOW_IN_EDITABLE`.
@@ -25,6 +30,7 @@ export function useShortcuts(handlers: Partial<Record<ShortcutId, ShortcutHandle
   useEffect(() => {
     const isMac = services().platform.isMac;
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (isArrowInRadio(event)) return;
       const id = shortcuts.match(event, isMac);
       if (id === null) return;
       if (isEditableTarget(event.target) && !ALLOW_IN_EDITABLE.has(id)) return;

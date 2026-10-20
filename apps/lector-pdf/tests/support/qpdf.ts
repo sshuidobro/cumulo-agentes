@@ -27,7 +27,8 @@ export interface QpdfAnnotation {
 type QpdfJsonValue = unknown;
 export type QpdfObjects = Readonly<Record<string, { readonly value?: QpdfJsonValue; readonly stream?: { dict?: unknown } }>>;
 
-function run(args: readonly string[]): { readonly status: number | null; readonly stdout: string; readonly stderr: string } {
+/** Ejecuta `qpdf` con `args`; lanza con la instrucción de instalación si no está en el PATH. */
+export function run(args: readonly string[]): { readonly status: number | null; readonly stdout: string; readonly stderr: string } {
   const result = spawnSync('qpdf', [...args], { encoding: 'utf8', maxBuffer: MAX_BUFFER });
   if (result.error !== undefined) {
     const code = (result.error as NodeJS.ErrnoException).code;
@@ -44,9 +45,10 @@ export function qpdfVersion(): string {
   return match?.[1] ?? stdout.trim();
 }
 
-/** `qpdf --check`: código de salida y salida combinada. */
-export function qpdfCheck(path: string): { code: number; output: string } {
-  const { status, stdout, stderr } = run(['--check', path]);
+/** `qpdf --check`: código de salida y salida combinada. `password` abre un PDF con contraseña de usuario (PDF-047). */
+export function qpdfCheck(path: string, password?: string): { code: number; output: string } {
+  const args = password === undefined ? [] : [`--password=${password}`];
+  const { status, stdout, stderr } = run(['--check', ...args, path]);
   return { code: status ?? -1, output: `${stdout}${stderr}` };
 }
 

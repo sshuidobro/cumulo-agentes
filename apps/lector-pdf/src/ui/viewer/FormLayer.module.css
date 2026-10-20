@@ -24,6 +24,26 @@ textarea.control {
   padding-top: 2px;
 }
 
+/* Casillas y botones de opción: sin dibujo propio (lo pone el lienzo) y con foco visible por el contorno. */
+.toggle {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 0;
+}
+
+/* Campo de firma: se ve su apariencia, no es enfocable ni recibe el puntero. */
+.signature {
+  pointer-events: none;
+  background: transparent;
+}
+
 /* En reposo se ve lo que pinta pdf.js: el control es transparente. */
 .idle {
   background: transparent;

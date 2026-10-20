@@ -7,6 +7,7 @@ import { msg } from '../ui/messages';
 import { nowIso, recoverEdits } from './annotation-actions';
 import { useAnnotations } from './annotation-store';
 import { askChoice, useChoice } from './choice';
+import { isSwitchingTab, registerTabParticipant, unregisterTabParticipant, type TabParticipant } from './tabs';
 import { useViewer } from './viewer-store';
 
 const log = createLogger('draft-sync');
@@ -134,7 +135,7 @@ export function startDraftSync(store: DraftStore): () => void {
       await remove(t.key);
       return;
     }
-    if (edits.upserts.size === 0 && edits.removed.size === 0) {
+    if (edits.upserts.size === 0 && edits.removed.size === 0 && edits.fields.size === 0) {
       await remove(t.key);
       return;
     }
@@ -173,10 +174,36 @@ export function startDraftSync(store: DraftStore): () => void {
     await remove(t.key);
   }
 
+  /**
+   * Participante de pestañas (orden 40). Suspender guarda el borrador si hay cambios y deja de vigilar sin borrarlo
+   * (cuenta como «más tarde» si el aviso de recuperación seguía visible). Reanudar vuelve a vigilar sin preguntar.
+   */
+  const participant: TabParticipant<Tracked | null> = {
+    id: 'drafts',
+    order: 40,
+    suspend(): Tracked | null {
+      const t = tracked;
+      if (t === null) return null;
+      flush(t);
+      t.shown?.dismiss();
+      t.shown = null;
+      tracked = null;
+      return t;
+    },
+    resume(snapshot: Tracked | null): void {
+      tracked = snapshot;
+    },
+    dispose(snapshot: Tracked | null): Promise<void> {
+      if (snapshot !== null) leave(snapshot);
+      return Promise.resolve();
+    },
+  };
+  registerTabParticipant(participant);
+
   const unsubscribeAnnotations = useAnnotations.subscribe((s, prev) => {
     const t = tracked;
     // El store se reinicia al cerrar o abrir un documento (scan 'idle'): eso no es un cambio del usuario.
-    if (t === null || s.scan === 'idle' || useViewer.getState().pdf !== t.pdf) return;
+    if (isSwitchingTab() || t === null || s.scan === 'idle' || useViewer.getState().pdf !== t.pdf) return;
     const dirty = s.undo.isDirty;
     const changed = s.edits !== prev.edits;
     if (dirty === t.dirty && !changed) return;
@@ -196,6 +223,8 @@ export function startDraftSync(store: DraftStore): () => void {
   });
 
   const unsubscribeViewer = useViewer.subscribe((s) => {
+    // Al cambiar de pestaña el visor cambia de documento: lo gestiona el participante, no esta vigilancia.
+    if (isSwitchingTab()) return;
     const pdf = s.status === 'ready' ? s.pdf : null;
     if (pdf === (tracked?.pdf ?? null)) return;
     const previous = tracked;
@@ -233,6 +262,7 @@ export function startDraftSync(store: DraftStore): () => void {
   void purgeOld(store);
 
   return () => {
+    unregisterTabParticipant(participant.id);
     unsubscribeAnnotations();
     unsubscribeViewer();
     if (inBrowser) {

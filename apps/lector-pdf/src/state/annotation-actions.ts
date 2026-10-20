@@ -1,5 +1,5 @@
 import { createLogger, UndoStack, type Command } from '@suite/shared';
-import type { KeyValueStore } from '@suite/platform';
+import type { ByteSource, KeyValueStore } from '@suite/platform';
 import {
   addAnnotationCommand,
   deleteAnnotationCommand,
@@ -8,6 +8,8 @@ import {
 } from '../core/annotations/commands';
 import { setFieldCommand } from '../core/forms/commands';
 import { annotationsOfPage, effectiveAnnotations } from '../core/annotations/effective';
+import { dependentIds } from '../core/annotations/replies';
+import { STAMP_NAMES, type StampName } from '../core/annotations/shapes';
 import type { ForeignAnnotation, ImportedPage } from '../core/annotations/import';
 import {
   EMPTY_EDITS,
@@ -37,6 +39,8 @@ import {
   MAX_AUTHOR_LENGTH,
 } from '../core/annotations/palette';
 import { windowTitle } from '../core/title';
+import { organizeDirty } from './organize-store';
+import type { ObjectReader } from '../core/pdf/object-reader';
 import { readPageAnnotations, scanAnnotations, type LoadedPdf } from '../engine';
 import { setFileAnnotationHidden } from '../engine/annotation-visibility';
 import {
@@ -48,7 +52,11 @@ import {
   type ColorTool,
 } from './annotation-store';
 import { services } from './services';
+import { showNotice } from './notice';
 import { useViewer } from './viewer-store';
+import { currentScanSignal } from './document-actions';
+import { registerTabParticipant, type TabParticipant } from './tabs';
+import { securityMsg } from '../ui/messages-security';
 
 const log = createLogger('annotation-actions');
 
@@ -64,15 +72,20 @@ interface IndexedPage {
   readonly page: ImportedPage;
 }
 
-const COLOR_TOOLS: readonly ColorTool[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
+/** Herramientas de color que ya existían: sus colores guardados son obligatorios en la preferencia. */
+const LEGACY_COLOR_TOOLS: readonly ColorTool[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
+/** Todas las herramientas de color; las formas (PDF-108) pueden faltar en una preferencia antigua. */
+const COLOR_TOOLS: readonly ColorTool[] = [...LEGACY_COLOR_TOOLS, 'square', 'circle', 'line', 'arrow', 'polygon'];
 
 /** Clave de cada preferencia (el almacén ya antepone el prefijo de la app). */
 const PREF = {
   author: 'annotationAuthor',
   colors: 'annotationColors',
   inkWidth: 'inkWidth',
+  shapeWidth: 'shapeWidth',
   fontSize: 'fontSize',
   commentBarOpen: 'commentBarOpen',
+  pendingStamp: 'pendingStamp',
 } as const;
 
 /** Sesión de un documento: se descarta entera al cerrarlo. */
@@ -82,6 +95,10 @@ interface Session {
   readonly stop: AbortController;
   /** Importaciones en curso, por índice de página, para no importar dos veces la misma. */
   readonly pending: Map<number, Promise<void>>;
+  /** Lector del fichero para leer el `/Name` de los sellos ajenos (PDF-104). `null` si no hay fuente o falla al abrir. */
+  readonly reader: Promise<ObjectReader | null>;
+  /** Páginas ya importadas por el escaneo de la sesión (0-based: la siguiente a importar). Lo usa `resume` (PDF-101). */
+  imported: number;
 }
 
 let session: Session | null = null;
@@ -125,22 +142,32 @@ useAnnotations.subscribe((next, prev) => {
   if (next.undo.isDirty === prev.undo.isDirty) return;
   const file = useViewer.getState().file;
   if (file === null) return;
-  services().platform.setTitle(windowTitle(file.name, next.undo.isDirty));
+  services().platform.setTitle(windowTitle(file.name, next.undo.isDirty || organizeDirty()));
 });
 
 /** Lee las preferencias de anotación de la app. Lo que no sea válido toma su valor por defecto. */
-function preferenceState(prefs: KeyValueStore): Pick<AnnotationState, 'author' | 'colors' | 'inkWidth' | 'fontSize' | 'commentBarOpen'> {
+function preferenceState(
+  prefs: KeyValueStore,
+): Pick<
+  AnnotationState,
+  'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen' | 'pendingStamp'
+> {
   const author = prefs.get(PREF.author, isString);
   const colors = prefs.get(PREF.colors, isColorRecord);
   const inkWidth = prefs.get(PREF.inkWidth, oneOf(INK_WIDTHS));
+  const shapeWidth = prefs.get(PREF.shapeWidth, oneOf(INK_WIDTHS));
   const fontSize = prefs.get(PREF.fontSize, oneOf(FONT_SIZES));
   const commentBarOpen = prefs.get(PREF.commentBarOpen, isBoolean);
+  const pendingStamp = prefs.get(PREF.pendingStamp, oneOf(STAMP_NAMES));
   return {
     author: author === null ? DEFAULT_AUTHOR : normalizeAuthor(author),
-    colors: colors ?? { ...DEFAULT_TOOL_COLORS },
+    // Lo guardado manda; las herramientas que la preferencia no trae (formas, PDF-108) toman su color por defecto.
+    colors: { ...DEFAULT_TOOL_COLORS, ...colors },
     inkWidth: inkWidth ?? DEFAULT_INK_WIDTH,
+    shapeWidth: shapeWidth ?? DEFAULT_INK_WIDTH,
     fontSize: fontSize ?? DEFAULT_FONT_SIZE,
     commentBarOpen: commentBarOpen ?? false,
+    pendingStamp: pendingStamp ?? 'Approved',
   };
 }
 
@@ -151,17 +178,19 @@ function prefs(): KeyValueStore {
 /**
  * Arranca la sesión de anotaciones de un documento recién abierto. Reinicia estado y pila.
  * Hasta 20 000 páginas se importan todas en segundo plano; más, se importa cada página al verla
- * (`ensurePageAnnotations`). `signal` aborta la sesión (cierre del documento).
+ * (`ensurePageAnnotations`). `signal` aborta la sesión (cierre del documento). `source` (el fichero abierto) permite
+ * leer el nombre de los sellos ajenos («Firma» frente a «Sello»); sin él, o si falla, sale «Sello».
  */
-export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal): void {
+export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal, source?: ByteSource): void {
   endAnnotationSession();
-  const stop = new AbortController();
-  if (signal.aborted) {
-    stop.abort();
-  } else {
-    signal.addEventListener('abort', () => { stop.abort(); }, { once: true });
-  }
-  const current: Session = { pdf, stop, pending: new Map() };
+  restrictedNoticeShown = false;
+  const stop = linkedController(signal);
+  const reader: Promise<ObjectReader | null> = source === undefined
+    ? Promise.resolve(null)
+    : import('../core/pdf/incremental')
+      .then(({ openForSave }) => openForSave(source))
+      .then((r) => (r.ok ? r.value : null), () => null);
+  const current: Session = { pdf, stop, pending: new Map(), reader, imported: 0 };
   session = current;
   stack = createStack();
   memo = null;
@@ -174,17 +203,42 @@ export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal): voi
     scan: lazy ? 'lazy' : 'scanning',
   });
   if (lazy) return;
+  scanFrom(current, 0);
+}
 
-  let nextPage = 0;
-  scanAnnotations(pdf.doc, {
-    signal: stop.signal,
-    fallbackDate: nowIso(),
-    onBatch: (pages) => {
-      if (session !== current || stop.signal.aborted) return;
-      mergePages(nextPage, pages);
-      nextPage += pages.length;
-    },
-  })
+/** Controlador que se aborta cuando lo hace `signal` (si lo hay), o que ya nace abortado si `signal` ya lo está. */
+function linkedController(signal: AbortSignal | null): AbortController {
+  const controller = new AbortController();
+  if (signal === null) return controller;
+  if (signal.aborted) {
+    controller.abort();
+  } else {
+    signal.addEventListener('abort', () => { controller.abort(); }, { once: true });
+  }
+  return controller;
+}
+
+/**
+ * Importa las páginas de la sesión desde `from` (0-based) en orden. Cada lote se fusiona en `imported`, que avanza con
+ * él. Al terminar sin cancelar, `scan` pasa a 'done'.
+ */
+function scanFrom(current: Session, from: number): void {
+  current.reader
+    .then((opened) => {
+      // Una sesión suspendida (cambio de pestaña) mientras se abría el lector no empieza a escanear.
+      if (current.stop.signal.aborted) return 'cancelled';
+      return scanAnnotations(current.pdf.doc, {
+        from,
+        signal: current.stop.signal,
+        fallbackDate: nowIso(),
+        reader: opened,
+        onBatch: (pages) => {
+          if (session !== current || current.stop.signal.aborted) return;
+          mergePages(current.imported, pages);
+          current.imported += pages.length;
+        },
+      });
+    })
     .then((outcome) => {
       if (session !== current || outcome !== 'done') return;
       useAnnotations.setState({ scan: 'done' });
@@ -210,10 +264,125 @@ export function endAnnotationSession(): void {
     ...initialAnnotationState(),
     colors: prev.colors,
     inkWidth: prev.inkWidth,
+    shapeWidth: prev.shapeWidth,
     fontSize: prev.fontSize,
     author: prev.author,
     commentBarOpen: prev.commentBarOpen,
+    pendingStamp: prev.pendingStamp,
   });
+}
+
+/** Estado del store sin las preferencias (globales: no cambian entre pestañas). */
+function sessionStateOf(s: AnnotationState): AnnotationsSnapshot['state'] {
+  return {
+    baseline: s.baseline,
+    foreign: s.foreign,
+    importedPages: s.importedPages,
+    scan: s.scan,
+    scanProgress: s.scanProgress,
+    scanCancelable: s.scanCancelable,
+    edits: s.edits,
+    undo: s.undo,
+    selectedId: s.selectedId,
+    openPopupId: s.openPopupId,
+    tool: s.tool,
+    pendingSignature: s.pendingSignature,
+    editing: s.editing,
+    pageVersion: s.pageVersion,
+  };
+}
+
+/** Lo que hace falta para volver a mostrar un documento suspendido con sus anotaciones (PDF-101). */
+interface AnnotationsSnapshot {
+  /** Sesión del documento; `pending` vacío y `stop` ya abortado. `null` sin documento. */
+  readonly session: Session | null;
+  readonly stack: UndoStack<AnnotationEdits>;
+  readonly memo: { readonly baseline: AnnotationState['baseline']; readonly edits: AnnotationEdits; readonly result: ReadonlyMap<string, Annotation> } | null;
+  readonly pageMemo: ReadonlyMap<number, { readonly version: number; readonly items: readonly Annotation[] }>;
+  /** Estado del store sin las preferencias (estas son globales y no se guardan aquí). */
+  readonly state: Omit<
+    AnnotationState,
+    'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen' | 'pendingStamp'
+  >;
+  /** Páginas ya importadas por el escaneo de la sesión. */
+  readonly importedPages: number;
+  /** Había un escaneo completo desde el panel (PDF-036) en curso. */
+  readonly fullScanRunning: boolean;
+  /** Ya se avisó de que el PDF restringe los cambios (PDF-048). */
+  readonly permissionNoticeShown: boolean;
+}
+
+/**
+ * Participante de pestañas de las anotaciones (orden 10). Suspender aborta el escaneo y deja el módulo como
+ * `endAnnotationSession()`, guardando antes la pila, los cachés y el estado. Reanudar restaura todo y relanza el
+ * escaneo desde la última página importada. Las preferencias no cambian entre pestañas.
+ */
+const annotationsParticipant: TabParticipant<AnnotationsSnapshot> = {
+  id: 'annotations',
+  order: 10,
+  suspend(): AnnotationsSnapshot {
+    const current = session;
+    const fullScanRunning = fullScan !== null;
+    const state = sessionStateOf(useAnnotations.getState());
+    const snapshot: AnnotationsSnapshot = {
+      session: current === null ? null : { ...current, pending: new Map() },
+      stack,
+      memo,
+      pageMemo: new Map(pageMemo),
+      // Un escaneo completo cancelado vuelve a 'lazy' con las páginas ya importadas (como en `runScanAll`).
+      state: fullScanRunning ? { ...state, scan: 'lazy', scanCancelable: false } : state,
+      importedPages: current?.imported ?? 0,
+      fullScanRunning,
+      permissionNoticeShown: restrictedNoticeShown,
+    };
+    pendingPopup?.();
+    pendingPopup = null;
+    endAnnotationSession();
+    restrictedNoticeShown = false;
+    return snapshot;
+  },
+  resume(snapshot: AnnotationsSnapshot): void {
+    stack = snapshot.stack;
+    memo = snapshot.memo;
+    pageMemo.clear();
+    for (const [index, entry] of snapshot.pageMemo) pageMemo.set(index, entry);
+    restrictedNoticeShown = snapshot.permissionNoticeShown;
+    const live = useAnnotations.getState();
+    useAnnotations.setState({
+      ...snapshot.state,
+      author: live.author,
+      colors: live.colors,
+      inkWidth: live.inkWidth,
+      fontSize: live.fontSize,
+      commentBarOpen: live.commentBarOpen,
+      pendingStamp: live.pendingStamp,
+    });
+    const saved = snapshot.session;
+    if (saved === null) {
+      session = null;
+      return;
+    }
+    const current: Session = {
+      ...saved,
+      stop: linkedController(currentScanSignal()),
+      pending: new Map(),
+      imported: snapshot.importedPages,
+    };
+    session = current;
+    if (snapshot.fullScanRunning) {
+      scanAllAnnotations();
+    } else if (useAnnotations.getState().scan === 'scanning') {
+      scanFrom(current, snapshot.importedPages);
+    }
+    const file = useViewer.getState().file;
+    if (file !== null) services().platform.setTitle(windowTitle(file.name, useAnnotations.getState().undo.isDirty || organizeDirty()));
+  },
+  dispose: () => Promise.resolve(),
+};
+
+/** Da de alta el participante de anotaciones en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerAnnotationParticipant(): void {
+  registerTabParticipant(annotationsParticipant);
 }
 
 /**
@@ -244,7 +413,7 @@ async function importLazyPage(current: Session, pageIndex: number): Promise<void
 async function readLazyPage(current: Session, pageIndex: number): Promise<ImportedPage | null> {
   try {
     const page = await current.pdf.doc.getPage(pageIndex + 1);
-    const imported = await readPageAnnotations(page, nowIso());
+    const imported = await readPageAnnotations(page, nowIso(), await current.reader);
     if (session !== current || current.stop.signal.aborted) return null;
     return imported;
   } catch (cause) {
@@ -359,11 +528,31 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Ejecuta un cambio sobre la pila y publica el resultado en el store. */
-function apply(change: () => void): void {
+/** Ejecuta un cambio sobre la pila y publica el resultado en el store. `kind`: qué permiso exige el cambio (PDF-048). */
+function apply(change: () => void, kind: ChangeKind = 'annotate'): void {
   const before = stack.doc;
   change();
   publish(before);
+  if (stack.doc !== before) warnIfRestricted(kind);
+}
+
+/** Qué hace un cambio: anotar (comentarios, marcas, dibujos) o rellenar un campo de formulario. */
+type ChangeKind = 'annotate' | 'fill';
+
+/** Si ya se ha avisado de que el PDF no permite el cambio en este documento (PDF-048). */
+let restrictedNoticeShown = false;
+
+/**
+ * Aviso una sola vez por documento cuando el PDF no permite comentar (o rellenar). No bloquea nada: el cambio
+ * se hace y se guardará en la copia.
+ */
+function warnIfRestricted(kind: ChangeKind): void {
+  if (restrictedNoticeShown) return;
+  const permissions = useViewer.getState().permissions;
+  const allowed = kind === 'annotate' ? permissions.annotate : permissions.fillForms;
+  if (allowed) return;
+  restrictedNoticeShown = true;
+  showNotice(securityMsg.annotateAnyway);
 }
 
 /** Publica en el store el documento de la pila y sube la versión de las páginas que han cambiado. */
@@ -401,7 +590,7 @@ export function bumpPageVersions(pages: Iterable<number>): void {
 export function executeEdit(cmd: Command<AnnotationEdits>): void {
   apply(() => {
     stack.execute(cmd);
-  });
+  }, 'fill');
 }
 
 /** Ids cuya entrada en `edits` (cambio o borrado) es distinta entre dos estados. */
@@ -475,13 +664,29 @@ export function updateAnnotation(next: Annotation, label?: string, mergeKey?: st
   });
 }
 
+/**
+ * Borra una anotación. Sus respuestas y estados de revisión (PDF-109) se borran con ella, en una sola entrada de
+ * deshacer cuya etiqueta es la de la anotación borrada.
+ */
 export function deleteAnnotation(id: string): void {
-  const current = getEffective().get(id);
+  const all = getEffective();
+  const current = all.get(id);
   if (current === undefined) return;
-  apply(() => {
-    stack.execute(deleteAnnotationCommand(current));
+  const parentCommand = deleteAnnotationCommand(current);
+  const depIds = dependentIds(all, id);
+  const dependents = depIds.flatMap((dep) => {
+    const found = all.get(dep);
+    return found === undefined ? [] : [deleteAnnotationCommand(found)];
   });
-  if (useAnnotations.getState().selectedId === id) {
+  const removed = new Set([id, ...depIds]);
+  apply(() => {
+    stack.group(parentCommand.label, () => {
+      stack.execute(parentCommand);
+      for (const command of dependents) stack.execute(command);
+    });
+  });
+  const { selectedId } = useAnnotations.getState();
+  if (selectedId !== null && removed.has(selectedId)) {
     useAnnotations.setState({ selectedId: null });
   }
 }
@@ -786,6 +991,18 @@ export function selectedInk(): InkAnnotation | undefined {
   return current?.type === 'ink' ? current : undefined;
 }
 
+/** Sello elegido en «Sello» (PDF-115): se guarda como preferencia; lo coloca la herramienta `stamp`. */
+export function rememberPendingStamp(name: StampName): void {
+  prefs().set(PREF.pendingStamp, name);
+  useAnnotations.setState({ pendingStamp: name });
+}
+
+/** Grosor de las formas nuevas (PDF-108): se guarda como preferencia y lo usan las herramientas de forma. */
+export function rememberShapeWidth(width: AnnotationState['shapeWidth']): void {
+  prefs().set(PREF.shapeWidth, width);
+  useAnnotations.setState({ shapeWidth: width });
+}
+
 export function setFontSize(size: AnnotationState['fontSize']): void {
   prefs().set(PREF.fontSize, size);
   useAnnotations.setState({ fontSize: size });
@@ -843,7 +1060,7 @@ function isBoolean(v: unknown): v is boolean {
   return typeof v === 'boolean';
 }
 
-function oneOf<T extends number>(allowed: readonly T[]): (v: unknown) => v is T {
+function oneOf<T extends number | string>(allowed: readonly T[]): (v: unknown) => v is T {
   const list: readonly unknown[] = allowed;
   return (v: unknown): v is T => list.includes(v);
 }
@@ -852,10 +1069,13 @@ function isRgb(v: unknown): v is Rgb {
   return Array.isArray(v) && v.length === 3 && v.every((c) => typeof c === 'number' && c >= 0 && c <= 1);
 }
 
-/** Un color por herramienta de color; si falta alguno, la preferencia entera no vale. */
-function isColorRecord(v: unknown): v is Record<ColorTool, Rgb> {
+/**
+ * Colores guardados: las herramientas de antes deben estar todas (si falta alguna, la preferencia entera no vale); las
+ * formas pueden faltar, y las que estén deben ser colores válidos.
+ */
+function isColorRecord(v: unknown): v is Partial<Record<ColorTool, Rgb>> {
   if (!isRecord(v)) return false;
-  return COLOR_TOOLS.every((tool) => isRgb(v[tool]));
+  return LEGACY_COLOR_TOOLS.every((tool) => isRgb(v[tool])) && COLOR_TOOLS.every((tool) => v[tool] === undefined || isRgb(v[tool]));
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {

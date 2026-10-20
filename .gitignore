@@ -6,7 +6,12 @@ target/
 dist/
 fixtures/pdf/generated/
 apps/*/public/pdfjs/
+apps/*/public/ocr/
 playwright-report/
 test-results/
 apps/*/src-tauri/gen/
 apps/lector-pdf/interop-samples/
+apps/lector-pdf/dist-firma/
+apps/lector-pdf/dist-pdf090/
+apps/lector-pdf/dist-pdf*/
+.claude/worktrees/

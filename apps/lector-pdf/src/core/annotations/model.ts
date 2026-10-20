@@ -4,6 +4,8 @@
  */
 
 import type { FieldValue } from '../forms/model';
+import type { StampName } from './shapes';
+import { isShapeValid } from './shapes';
 
 export type Rgb = readonly [number, number, number];
 /** x1, y1, x2, y2 con x1 <= x2 e y1 <= y2. */
@@ -51,11 +53,15 @@ export interface NoteAnnotation extends Base {
   readonly open: boolean;
 }
 
-/** El texto de la anotación es `contents`. */
+/**
+ * El texto de la anotación es `contents`. Con `flatten` (ADR-0036), al guardar se dibuja como contenido de la
+ * página en lugar de como anotación.
+ */
 export interface FreeTextAnnotation extends Base {
   readonly type: 'freetext';
   readonly fontSize: number;
   readonly textColor: Rgb;
+  readonly flatten?: true;
 }
 
 /** Cada trazo es `[x0, y0, x1, y1, ...]`. */
@@ -86,10 +92,61 @@ export type SignatureArt =
       readonly pixelHeight: number;
     };
 
-/** Firma visual: se escribe como `/Stamp` con `/Name /SuiteFirma` (ADR-0020). */
+/**
+ * Firma visual: se escribe como `/Stamp` con `/Name /SuiteFirma` (ADR-0020). Con `flatten` (ADR-0036), se aplana
+ * como contenido de la página al guardar.
+ */
 export interface SignatureAnnotation extends Base {
   readonly type: 'signature';
   readonly art: SignatureArt;
+  readonly flatten?: true;
+}
+
+export type ShapeLineEnding = 'None' | 'OpenArrow' | 'ClosedArrow';
+
+/** Rectángulo o elipse (PDF-057): el trazo va por dentro de `rect`; `interior` es el relleno o `null`. */
+export interface BoxShapeAnnotation extends Base {
+  readonly type: 'square' | 'circle';
+  readonly width: number;
+  readonly interior: Rgb | null;
+}
+
+/** Línea o flecha: `points` = `[x1, y1, x2, y2]`; `endings` = extremos [inicio, fin]. */
+export interface LineShapeAnnotation extends Base {
+  readonly type: 'line';
+  readonly points: readonly [number, number, number, number];
+  readonly width: number;
+  readonly endings: readonly [ShapeLineEnding, ShapeLineEnding];
+  readonly interior: Rgb | null;
+}
+
+/** Polígono cerrado: `vertices` = `[x0, y0, x1, y1, ...]`. */
+export interface PolygonAnnotation extends Base {
+  readonly type: 'polygon';
+  readonly vertices: readonly number[];
+  readonly width: number;
+  readonly interior: Rgb | null;
+}
+
+/** Sello estándar; su texto y su color salen del nombre (`shapes.ts`). */
+export interface StampAnnotation extends Base {
+  readonly type: 'stamp';
+  readonly name: StampName;
+}
+
+export type ReviewState = 'Accepted' | 'Rejected' | 'Cancelled' | 'Completed' | 'None';
+
+/** Respuesta a otra anotación (PDF-058): `/Text` con `/IRT` y `/RT /R`. No se dibuja. */
+export interface ReplyAnnotation extends Base {
+  readonly type: 'reply';
+  readonly parentId: string;
+}
+
+/** Estado de revisión de otra anotación (PDF-058): `/Text` con `/IRT`, `/State` y `/StateModel /Review`. No se dibuja. */
+export interface ReviewStateAnnotation extends Base {
+  readonly type: 'review';
+  readonly parentId: string;
+  readonly state: ReviewState;
 }
 
 export type Annotation =
@@ -97,7 +154,13 @@ export type Annotation =
   | NoteAnnotation
   | FreeTextAnnotation
   | InkAnnotation
-  | SignatureAnnotation;
+  | SignatureAnnotation
+  | BoxShapeAnnotation
+  | LineShapeAnnotation
+  | PolygonAnnotation
+  | StampAnnotation
+  | ReplyAnnotation
+  | ReviewStateAnnotation;
 export type AnnotationType = Annotation['type'];
 
 /**
@@ -150,6 +213,10 @@ export function rectFromPaths(paths: readonly (readonly number[])[], pad: number
 export function translateAnnotation(a: Annotation, dx: number, dy: number): Annotation {
   const rect = shiftRect(a.rect, dx, dy);
   switch (a.type) {
+    case 'line':
+      return { ...a, rect, points: [a.points[0] + dx, a.points[1] + dy, a.points[2] + dx, a.points[3] + dy] };
+    case 'polygon':
+      return { ...a, rect, vertices: a.vertices.map((v, i) => (i % 2 === 0 ? v + dx : v + dy)) };
     case 'highlight':
     case 'underline':
     case 'strikeout':
@@ -163,6 +230,11 @@ export function translateAnnotation(a: Annotation, dx: number, dy: number): Anno
     case 'note':
     case 'freetext':
     case 'signature':
+    case 'square':
+    case 'circle':
+    case 'stamp':
+    case 'reply':
+    case 'review':
       return { ...a, rect };
   }
 }
@@ -172,9 +244,14 @@ export function resizeSignature(a: SignatureAnnotation, rect: RectPt): Signature
   return { ...a, rect };
 }
 
+/** Anotación que se aplana como contenido de la página al guardar (ADR-0036). */
+export function isFlattened(a: Annotation): boolean {
+  return (a.type === 'freetext' || a.type === 'signature') && a.flatten === true;
+}
+
 /** Validación completa de una anotación (para borradores y datos externos). */
 export function isAnnotation(v: unknown): v is Annotation {
-  if (!isRecord(v) || !isBaseValid(v)) return false;
+  if (!isRecord(v) || !isBaseValid(v) || !isFlattenValid(v)) return false;
   switch (v.type) {
     case 'highlight':
     case 'underline':
@@ -188,9 +265,25 @@ export function isAnnotation(v: unknown): v is Annotation {
       return isArrayOf(v.paths, isPath) && hasItems(v.paths) && isPositive(v.width);
     case 'signature':
       return isSignatureArt(v.art);
+    case 'square':
+    case 'circle':
+    case 'line':
+    case 'polygon':
+    case 'stamp':
+      return isShapeValid(v);
+    case 'reply':
+      return isParentId(v.parentId);
+    case 'review':
+      return isParentId(v.parentId) && REVIEW_STATE_VALUES.includes(v.state);
     default:
       return false;
   }
+}
+
+/** `flatten` solo puede ser `true` (o estar ausente) en texto libre y firmas. */
+function isFlattenValid(v: Record<string, unknown>): boolean {
+  if (v.flatten === undefined) return true;
+  return v.flatten === true && (v.type === 'freetext' || v.type === 'signature');
 }
 
 const SIGNATURE_FORMATS: readonly unknown[] = ['rgba-deflate', 'jpeg'];
@@ -220,6 +313,12 @@ export function isSignatureArt(v: unknown): boolean {
     );
   }
   return false;
+}
+
+const REVIEW_STATE_VALUES: readonly unknown[] = ['Accepted', 'Rejected', 'Cancelled', 'Completed', 'None'];
+
+function isParentId(v: unknown): boolean {
+  return typeof v === 'string' && v.length > 0;
 }
 
 const NOTE_ICONS: readonly unknown[] = ['Comment', 'Note', 'Key', 'Help', 'NewParagraph', 'Paragraph', 'Insert'];

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-102
 titulo: Modo de vista - estado, preferencia y navegación por filas
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-096]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -57,3 +57,22 @@ export function pagedWindow(layout: Layout, row: number): { readonly top: number
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: ninguno en esta ronda. La implementación ya estaba en el commit `c047858` (`apps/lector-pdf/src/core/view-mode.ts`, `src/state/viewer-store.ts`, `src/state/view-actions.ts`, `src/state/navigation.ts`, `src/state/document-actions.ts`, `src/main.tsx`, `tests/unit/view-mode.test.ts`, `tests/unit/view-actions.test.ts`, `tests/unit/navigation.test.ts`, `tests/unit/document-actions.test.ts`). Lo he verificado contra cada criterio.
+- Qué he hecho: revisado el código existente contra la ficha: `ViewMode`, `isViewMode`, `rowFirstPage`, `stepRow`, `referenceSize`, `pagedWindow`, `viewMode` en el store (conservado al abrir otro documento), `loadViewMode`/`setViewMode` con `prefs`, y `nextPage`/`prevPage`/`firstPage`/`lastPage` por filas. Los tests cubren los valores exactos de los criterios de aceptación.
+- Comandos ejecutados y resultado: `pnpm lint` OK (0 avisos); `pnpm typecheck` OK; `pnpm coverage` OK (exit 0; 196 ficheros, 2335 tests pasan; `view-mode.ts` con 98,11 % de líneas, 96,87 % de ramas).
+- Dudas o cosas que no he podido hacer: no he commiteado (lo pediste así). `referenceSize` está implementada, pero no he comprobado que el visor la use para el zoom de ajuste; no figura en los criterios de la ficha. Tampoco he ejecutado `pnpm perf` ni e2e porque la ficha no los pide.
+
+- Revisor (ronda 1): APROBADO, 0 problemas. Pasa a en-test.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| rowFirstPage / stepRow / referenceSize / isViewMode | OK | tests de `view-mode.test.ts` con los valores exactos de la ficha |
+| Preferencia y conservar modo al abrir | OK | `view-actions.test.ts`, `document-actions.test.ts` |
+| Navegación pairs/none | OK | `navigation.test.ts` |
+| Cobertura view-mode.ts | 98,11 % líneas | `pnpm coverage` (carpeta propia), exit 0 |
+| lint / typecheck / tests | OK | 197 ficheros, 2374 tests pasan |
+
+Tests añadidos: ninguno. Rendimiento: no aplica.

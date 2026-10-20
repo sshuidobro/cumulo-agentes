@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-048
 titulo: Respetar los permisos del documento (copiar, imprimir) y avisar al anotar
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-046, PDF-044, PDF-045]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, seguridad, ui]
 ---
 
@@ -53,3 +53,36 @@ export function permissionsFrom(flags: ReadonlySet<number> | null): DocPermissio
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/permissions.ts` (nuevo), `src/engine/permissions.ts` (nuevo), `src/engine/index.ts`, `src/state/viewer-store.ts`, `src/state/document-actions.ts`, `src/state/annotation-actions.ts`, `src/state/print-actions.ts`, `src/ui/messages-security.ts`, `src/ui/viewer/text-selection.ts`, `src/ui/viewer/SelectionActions.tsx`, `src/ui/print/PrintDialog.tsx` y `.module.css`, `src/ui/kit/MenuButton.tsx`, `src/ui/toolbar/DocumentMenu.tsx`, `src/ui/toolbar/MainToolbar.tsx`, `src/ui/properties/PropertiesDialog.tsx`; tests nuevos `tests/unit/document-permissions.test.ts`, `tests/ui/document-permissions.test.tsx`, `tests/e2e/permissions.spec.ts`; `tests/ui/open.test.tsx` (una línea: `readPermissions` en el mock de `engine`).
+- Qué he hecho: permisos leídos al abrir (`doc.getPermissions()`, en `useViewer.permissions`); copiar bloqueado en el manejador `copy` y en el botón «Copiar»; imprimir bloqueado en botón, menú, Ctrl+P (aviso) y `startPrint`; alta calidad deshabilitada con explicación y, si no se permite, 150 ppp; aviso `annotateAnyway` una vez por documento al anotar o rellenar sin permiso (sin bloquear); pestaña «Seguridad» en Propiedades con cifrado y permisos.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (225 ficheros, 2695 tests; cobertura global 96,5 %); `pnpm --filter lector-pdf e2e -- tests/e2e/permissions.spec.ts` 6/6 OK (incluye axe en la pestaña Seguridad sin incidencias serias ni críticas). No he ejecutado `pnpm perf` ni `pnpm --filter lector-pdf build` (no lo pide la ficha).
+- Dudas o cosas que no he podido hacer:
+  - El cifrado se deriva del manejador de seguridad que ya expone `ObjectReader` (revisión, métodos y longitud de la clave), no de leer `/V`, `/Length` y `/CF` a mano. Da los mismos valores en los fixtures comprobados.
+  - «Copiar» se rige solo por la bandera 16 (como dice la ficha). La bandera 512 (copia para accesibilidad) no se considera: si el usuario quiere que se respete, es decisión de producto.
+  - `printHighQuality` es la bandera 2048 sin condicionarla a la 4, tal como indica la ficha.
+  - Para deshabilitar la entrada «Imprimir…» del menú he añadido `disabled?` a `MenuActionSpec` (componente compartido de `ui/kit`). Es un cambio mínimo sin efecto en el resto de entradas.
+  - El aviso de anotar comparte un único indicador por documento para anotar y para rellenar.
+  - Durante la ronda, `typecheck` y `lint` fallaron por ficheros ajenos a esta ficha (`fullscreen-actions.test.ts` y un `zz-measure.perf.test.ts` que otro agente ha retirado después); al repetir, pasaron. No los he tocado.
+  - No hago commit, según la petición.
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Lint y typecheck OK; tests de la ficha (unit y UI de permisos, open) 26/26 OK. `pnpm coverage` completo no se pudo lanzar (otro Vitest usaba `coverage/`); el programador informa de 2695 tests verdes y 96,5 %. El tester debe repetirlo.
+2. Duda bandera 512: decisión de revisión, se mantiene solo la bandera 16 para copiar. Es lo que hace Adobe Reader (512 solo habilita la extracción para lectores de pantalla, no el portapapeles). Sin cambios.
+3. (opcional) `cipherKindOf` distingue RC4 40/128 por la longitud de la clave (<= 5 bytes); correcto para los fixtures, vigilar R3 con `/Length` 40.
+4. Cambios ajenos en el árbol (PDF-097, PDF-050: Viewer, ViewMenu, view-actions) no pertenecen a esta ficha; deben ir en sus propios commits.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E copiar bloqueado (portapapeles intacto, aviso, botón deshabilitado) | OK | `permissions.spec.ts:78` |
+| E2E imprimir deshabilitado, Ctrl+P avisa | OK | `permissions.spec.ts:92` |
+| E2E resaltado avisa una vez; Ctrl+S válido (qpdf) | OK | `permissions.spec.ts:115` |
+| E2E basic-5 sin cambios ni avisos | OK | `permissions.spec.ts:166` |
+| Propiedades › Seguridad (AES 256 / RC4 40) | OK | `permissions.spec.ts:136,154` |
+| Unit `permissionsFrom(Set([4]))` | OK | `tests/unit/document-permissions.test.ts` |
+| Axe pestaña Seguridad | OK | incluido en permissions.spec |
+| lint, typecheck, coverage, e2e | OK | `pnpm lint`/`typecheck`/`coverage` código 0 (stmts 96,54 %, líneas 98,76 %); `pnpm --filter lector-pdf e2e` 261/261 |
+
+Tests añadidos: ninguno (los del programador cubren los criterios). Rendimiento: tests @perf del e2e en verde.

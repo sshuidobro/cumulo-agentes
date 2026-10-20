@@ -26,8 +26,11 @@ export const FORM_FULL_VALUES: Readonly<Record<string, FieldValue>> = {
 };
 
 /** Campos del fichero, fusionados por nombre como hace la app al importar. */
-export async function readFormFields(bytes: Uint8Array): Promise<ReadonlyMap<string, FormField>> {
-  const loaded = await loadPdf(memorySource(bytes), { assetBaseUrl: nodeAssetBase() });
+export async function readFormFields(bytes: Uint8Array, password?: string): Promise<ReadonlyMap<string, FormField>> {
+  const loaded = await loadPdf(memorySource(bytes), {
+    assetBaseUrl: nodeAssetBase(),
+    ...(password === undefined ? {} : { password }),
+  });
   if (!loaded.ok) throw new Error(`No se pudo abrir el PDF: ${loaded.error.code}`);
   try {
     let fields: ReadonlyMap<string, FormField> = new Map();

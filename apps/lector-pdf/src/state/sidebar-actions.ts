@@ -1,12 +1,42 @@
 import { isSidebarState, sidebarOnOpen, type SidebarState, type SidebarTab } from '../core/sidebar';
 import { services } from './services';
+import { registerTabParticipant, type TabParticipant } from './tabs';
 import { useViewer } from './viewer-store';
 
 /** Clave de preferencia (con el prefijo de la app) que guarda el estado del panel. */
 export const SIDEBAR_PREF = 'sidebar';
 
+/** Pestaña por defecto cuando el documento no tiene una «última usada». */
+const DEFAULT_TAB: SidebarTab = 'thumbnails';
+
 /** Última pestaña mostrada: la que abre «Panel lateral» cuando está cerrado. */
-let lastTab: SidebarTab = 'thumbnails';
+let lastTab: SidebarTab = DEFAULT_TAB;
+
+/** El estado visible del panel ya va en el visor; aquí solo la última pestaña usada del documento. */
+interface SidebarSnapshot {
+  readonly lastTab: SidebarTab;
+}
+
+const sidebarParticipant: TabParticipant<SidebarSnapshot> = {
+  id: 'sidebar',
+  order: 30,
+  suspend(): SidebarSnapshot {
+    const snapshot = { lastTab };
+    lastTab = DEFAULT_TAB;
+    return snapshot;
+  },
+  resume(snapshot: SidebarSnapshot): void {
+    lastTab = snapshot.lastTab;
+  },
+  dispose(): Promise<void> {
+    return Promise.resolve();
+  },
+};
+
+/** Da de alta el panel lateral en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerSidebarParticipant(): void {
+  registerTabParticipant(sidebarParticipant);
+}
 
 function setSidebar(next: SidebarState): void {
   useViewer.setState({ sidebar: next });

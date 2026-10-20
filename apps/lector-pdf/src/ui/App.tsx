@@ -1,9 +1,9 @@
-import type { ChangeEvent } from 'react';
+import { lazy, Suspense, useEffect, type ChangeEvent } from 'react';
 import { msg } from './messages';
 import { useShortcuts } from './use-shortcuts';
 import { useTheme } from './use-theme';
 import { MainToolbar } from './toolbar/MainToolbar';
-import { CommentToolbar } from './toolbar/CommentToolbar';
+import { TabBar, TAB_PANEL_ID } from './tabs/TabBar';
 import { DropOverlay } from './open/DropOverlay';
 import { EmptyState } from './open/EmptyState';
 import { ErrorState } from './open/ErrorState';
@@ -11,14 +11,13 @@ import { IoErrorBanner } from './open/IoErrorBanner';
 import { LoadingState } from './open/LoadingState';
 import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
+import { PrintContainer } from './print/PrintContainer';
+import { PrintProgress } from './print/PrintProgress';
+import { ExportProgress } from './export/ExportProgress';
+import './print/print.css';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
-import { PropertiesDialog } from './properties/PropertiesDialog';
-import { PrintContainer } from './print/PrintContainer';
-import { PrintDialog } from './print/PrintDialog';
-import { PrintProgress } from './print/PrintProgress';
-import './print/print.css';
-import { Sidebar } from './sidebar/Sidebar';
+import { PasswordDialog } from './security/PasswordDialog';
 import { SearchBar, focusSearchField } from './search/SearchBar';
 import { toggleSidebar } from '../state/sidebar-actions';
 import { nextMatch, openSearch, prevMatch } from '../state/search-actions';
@@ -32,12 +31,27 @@ import { firstPage, lastPage, nextPage, prevPage } from '../state/navigation';
 import { goBack, goForward } from '../state/history';
 import { dismissNotice } from '../state/notice';
 import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/view-actions';
-import { openProperties } from '../state/properties-store';
-import { openPrintDialog } from '../state/print-actions';
+import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen } from '../state/fullscreen-actions';
+import { openProperties, usePropertiesDialog } from '../state/properties-store';
+import { openPrintDialog, usePrintDialog } from '../state/print-actions';
+import { useCompare } from '../state/compare-actions';
+import { useExportDialog } from '../state/export-actions';
 import { useViewer } from '../state/viewer-store';
+import { useTabs } from '../state/tabs';
+import { closeActiveTab, stepTab } from '../state/tab-actions';
 import { focusPageField } from './toolbar/PageNavigator';
 import { selectPageText } from './viewer/text-selection';
 import styles from './App.module.css';
+
+// Diálogos diferidos (ADR-0027): su código no entra en el arranque y se carga al abrirlos.
+const PropertiesDialog = lazy(() => import('./properties/PropertiesDialog').then((m) => ({ default: m.PropertiesDialog })));
+const PrintDialog = lazy(() => import('./print/PrintDialog').then((m) => ({ default: m.PrintDialog })));
+const ExportDialog = lazy(() => import('./export/ExportDialog').then((m) => ({ default: m.ExportDialog })));
+// Barra de comentarios y panel lateral (PDF-140): no se muestran al arrancar, se cargan al abrirlos.
+const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) => ({ default: m.CommentToolbar })));
+const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m.Sidebar })));
+// Comparación de dos PDFs (PDF-112): la vista solo se carga al comparar.
+const CompareView = lazy(() => import('./compare/CompareView').then((m) => ({ default: m.CompareView })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -78,6 +92,24 @@ const VIEW_SHORTCUTS = {
   'save-as': () => { blurActiveElement(); void saveAs(); },
   properties: () => { openProperties(); },
   print: () => { openPrintDialog(); },
+  fullscreen: () => { toggleFullscreen(); },
+} as const;
+
+/** Atajos con la pantalla completa activa (PDF-097). Escape sale antes que «cancelar herramienta». */
+const FULLSCREEN_SHORTCUTS = {
+  'cancel-tool': () => { exitFullscreen(); },
+  'fullscreen-next': () => { nextPage(); },
+  'fullscreen-prev': () => { prevPage(); },
+} as const;
+
+/** Atajos de pestañas (PDF-095). Con una sola pestaña, Ctrl+W cierra el documento. Sin pestañas no se consumen. */
+const TAB_SHORTCUTS = {
+  'next-tab': () => { stepTab(1); },
+  'prev-tab': () => { stepTab(-1); },
+  'close-tab': () => {
+    if (useTabs.getState().activeId === null) return false;
+    void closeActiveTab();
+  },
 } as const;
 
 function blurActiveElement(): void {
@@ -94,15 +126,24 @@ export function App() {
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
   const notice = useViewer((s) => s.notice);
   const sidebar = useViewer((s) => s.sidebar);
+  const propertiesOpen = usePropertiesDialog((s) => s.open);
+  const printOpen = usePrintDialog((s) => s.open);
+  const exportOpen = useExportDialog((s) => s.open);
+  const fullscreen = useFullscreen((s) => s.on);
+  const compareStatus = useCompare((s) => s.status);
 
-  // Escape solo se consume si hay una herramienta de anotación activa.
+  // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
   useShortcuts({
     open: () => void pickAndOpen(),
     undo,
     redo,
-    ...(tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
+    ...(fullscreen ? FULLSCREEN_SHORTCUTS : tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
     ...(status === 'ready' ? VIEW_SHORTCUTS : {}),
+    ...TAB_SHORTCUTS,
   });
+
+  // Si el sistema sale de la pantalla completa (F11, SO), la vista vuelve a su estado anterior.
+  useEffect(() => watchSystemFullscreen(), []);
 
   const onBrowserFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.currentTarget.files?.[0];
@@ -110,12 +151,19 @@ export function App() {
     if (file !== undefined) openBrowserFile(file);
   };
 
+  // En pantalla completa no se muestran barras ni panel: solo el visor (PDF-097).
+  const chrome = !fullscreen;
   return (
-    <div className={styles.app}>
-      <MainToolbar />
-      {status === 'ready' && commentBarOpen && <CommentToolbar />}
+    <div className={fullscreen ? `${styles.app} ${styles.appFullscreen}` : styles.app}>
+      {chrome && <TabBar />}
+      {chrome && <MainToolbar />}
+      {chrome && status === 'ready' && commentBarOpen && (
+        <Suspense fallback={null}>
+          <CommentToolbar />
+        </Suspense>
+      )}
       <IoErrorBanner />
-      <main className={status === 'ready' ? styles.mainReady : styles.main}>
+      <main id={TAB_PANEL_ID} className={status === 'ready' ? styles.mainReady : styles.main}>
         {status === 'empty' && <EmptyState />}
         {status === 'loading' && <LoadingState />}
         {status === 'error' && <ErrorState />}
@@ -125,7 +173,11 @@ export function App() {
               {msg.pageCount(numPages)}
             </div>
             <div className={styles.body}>
-              {sidebar !== 'none' && <Sidebar />}
+              {chrome && sidebar !== 'none' && (
+                <Suspense fallback={null}>
+                  <Sidebar />
+                </Suspense>
+              )}
               <Viewer />
             </div>
             <SelectionActions />
@@ -134,10 +186,30 @@ export function App() {
         )}
       </main>
       <Notice notice={notice} onExpire={dismissNotice} />
+      {compareStatus !== 'idle' && (
+        <Suspense fallback={null}>
+          <CompareView />
+        </Suspense>
+      )}
       <ChoiceDialog />
-      <PropertiesDialog />
-      <PrintDialog />
+      <PasswordDialog />
+      {propertiesOpen && (
+        <Suspense fallback={null}>
+          <PropertiesDialog />
+        </Suspense>
+      )}
+      {printOpen && (
+        <Suspense fallback={null}>
+          <PrintDialog />
+        </Suspense>
+      )}
+      {exportOpen && (
+        <Suspense fallback={null}>
+          <ExportDialog />
+        </Suspense>
+      )}
       <PrintProgress />
+      <ExportProgress />
       <PrintContainer />
       {platform.kind === 'web' && (
         <>

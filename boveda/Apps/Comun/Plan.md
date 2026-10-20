@@ -2,9 +2,9 @@
 tipo: plan
 app: comun
 estado: en-curso
-iteracion: 3
+iteracion: 4
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [plan, comun]
 ---
 
@@ -120,6 +120,15 @@ COM-004 a COM-011 los necesita la iteración 1 del Lector PDF; COM-012 y COM-013
 | [[COM-017-pantalla-completa]] | Pantalla completa | COM-016 | pendiente |
 
 Van en serie porque las cuatro amplían la interfaz `Platform` (`types.ts`) y las implementaciones. COM-014 la necesita la iteración 3 del Lector (PDF-044); las otras tres, su iteración 4.
+
+## Iteración 4 · Plataforma para la iteración 6 del Lector PDF (planificada 2026-10-19)
+**Objetivo:** guardar exportaciones (imágenes, texto, ZIP, XFDF) sin que entren en «Recientes».
+**Decisiones:** [[ADR-0032-exportar-imagenes-y-texto]] · [[ADR-0030-respuestas-estados-xfdf]].
+
+| Id | Título | Depende de | Estado |
+|---|---|---|---|
+| [[COM-018-exportar-fichero]] | `Platform.exportFile` (web y Tauri) | COM-017 | pendiente |
+| [[COM-019-importar-varios-ficheros]] | `Platform.importFiles` (varios ficheros, web y Tauri) | COM-018 | pendiente |
 
 ## Siguiente iteración
 Sin planificar: se decidirá con la segunda app (mover componentes comunes a `packages/ui-kit`, resolver las mejoras pendientes de `UndoStack`).

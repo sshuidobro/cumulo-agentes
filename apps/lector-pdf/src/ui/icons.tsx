@@ -56,6 +56,16 @@ export function IconOpen() {
   );
 }
 
+/** Reloj con flecha: documentos recientes (PDF-049). */
+export function IconRecent() {
+  return (
+    <Svg>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6.5V10l2.5 1.5" />
+    </Svg>
+  );
+}
+
 export function IconZoomIn() {
   return (
     <Svg>
@@ -249,6 +259,57 @@ export function IconInk() {
   );
 }
 
+/** Rectángulo, elipse, línea y flecha de la barra «Comentar» (PDF-108). */
+export function IconSquare() {
+  return (
+    <Svg>
+      <rect x="3.5" y="5" width="13" height="10" />
+    </Svg>
+  );
+}
+
+export function IconCircle() {
+  return (
+    <Svg>
+      <ellipse cx="10" cy="10" rx="6.5" ry="5" />
+    </Svg>
+  );
+}
+
+export function IconLine() {
+  return (
+    <Svg>
+      <path d="M4 16 16 4" />
+    </Svg>
+  );
+}
+
+export function IconArrow() {
+  return (
+    <Svg>
+      <path d="M4 16 15.5 4.5" />
+      <path d="M9.5 4.5h6v6" />
+    </Svg>
+  );
+}
+
+export function IconPolygon() {
+  return (
+    <Svg>
+      <path d="M10 3.5 16 8l-2.3 7.5H6.3L4 8z" />
+    </Svg>
+  );
+}
+
+export function IconStamp() {
+  return (
+    <Svg>
+      <rect x="4" y="3.5" width="12" height="5" rx="1" />
+      <path d="M7 12.5h6M10 12.5v4" />
+    </Svg>
+  );
+}
+
 export function IconColor() {
   return (
     <Svg>
@@ -276,6 +337,15 @@ export function IconFontSize() {
   );
 }
 
+export function IconEdit() {
+  return (
+    <Svg>
+      <path d="M12.8 4.2l3 3L7.4 15.6H4.4v-3z" />
+      <path d="M11.3 5.7l3 3" />
+    </Svg>
+  );
+}
+
 export function IconTrash() {
   return (
     <Svg>
@@ -289,6 +359,14 @@ export function IconClose() {
   return (
     <Svg>
       <path d="M5 5l10 10M15 5L5 15" />
+    </Svg>
+  );
+}
+
+export function IconWarning() {
+  return (
+    <Svg>
+      <path d="M10 3.5L18 16.5H2L10 3.5zM10 8.5v3.5M10 14.2v.3" />
     </Svg>
   );
 }
@@ -307,6 +385,15 @@ export function IconFormFields() {
     <Svg>
       <rect x="3" y="4.5" width="14" height="11" rx="1.5" />
       <path d="M6 8h4.5M6 11.5h8" />
+    </Svg>
+  );
+}
+
+export function IconViewMode() {
+  return (
+    <Svg>
+      <rect x="3.5" y="3.5" width="13" height="13" rx="1.5" />
+      <path d="M10 3.5v13" />
     </Svg>
   );
 }

@@ -17,7 +17,10 @@ import { bumpPageVersions, executeEdit, onEditsPublished, onPagesImported } from
 import { useAnnotations } from './annotation-store';
 import { services } from './services';
 import { initialFormState, useForms, type FormState } from './form-store';
+import { goToPage } from './navigation';
 import { showNotice } from './notice';
+import { registerTabParticipant, type TabParticipant } from './tabs';
+import { useViewer } from './viewer-store';
 import { formMsg } from '../ui/messages-forms';
 
 /** Clave de la preferencia de resaltado de campos (el almacén ya antepone el prefijo de la app). */
@@ -25,6 +28,7 @@ const HIGHLIGHT_PREF = 'formHighlight';
 
 /** Suscripciones de la sesión de formularios de un documento. */
 interface FormSession {
+  readonly pdf: LoadedPdf;
   readonly stopPages: () => void;
   readonly stopEdits: () => void;
 }
@@ -32,6 +36,8 @@ interface FormSession {
 let session: FormSession | null = null;
 /** El aviso «hay campos que rellenar» se muestra una vez por documento (PDF-041). */
 let fillableNoticeShown = false;
+/** Widget que debe recibir el foco al montarse su página (Tab entre páginas, PDF-083). */
+let pendingFocus: { readonly pageIndex: number; readonly widgetId: string } | null = null;
 
 function isBoolean(v: unknown): v is boolean {
   return typeof v === 'boolean';
@@ -43,11 +49,17 @@ function isBoolean(v: unknown): v is boolean {
  */
 export function startFormSession(pdf: LoadedPdf): void {
   endFormSession();
-  const doc = pdf.doc;
   const highlight = services().platform.prefs.get(HIGHLIGHT_PREF, isBoolean) ?? true;
   useForms.setState(initialFormState(highlight));
   fillableNoticeShown = false;
+  subscribeForms(pdf);
+}
+
+/** Se da de alta en los avisos de anotaciones para mantener los formularios de `pdf` al día (sin tocar el store). */
+function subscribeForms(pdf: LoadedPdf): void {
+  const doc = pdf.doc;
   session = {
+    pdf,
     stopPages: onPagesImported((pages) => {
       importPages(doc, pages);
     }),
@@ -57,6 +69,51 @@ export function startFormSession(pdf: LoadedPdf): void {
   };
 }
 
+/** Lo que hace falta para volver a mostrar un documento suspendido con sus formularios (PDF-101). */
+interface FormsSnapshot {
+  /** Documento de la sesión, o `null` sin documento. */
+  readonly pdf: LoadedPdf | null;
+  readonly fields: FormState['fields'];
+  readonly byPage: FormState['byPage'];
+  readonly fillableNoticeShown: boolean;
+  readonly pendingFocus: { readonly pageIndex: number; readonly widgetId: string } | null;
+}
+
+/**
+ * Participante de pestañas de los formularios (orden 20). Suspender guarda campos y avisos, y deja el módulo como
+ * `endFormSession()`. Los valores rellenados siguen en el documento pdf.js, que no se destruye aquí. Reanudar restaura
+ * el store y vuelve a darse de alta en los avisos, sin volver a mostrar «hay campos que rellenar».
+ */
+const formsParticipant: TabParticipant<FormsSnapshot> = {
+  id: 'forms',
+  order: 20,
+  suspend(): FormsSnapshot {
+    const { fields, byPage } = useForms.getState();
+    const snapshot: FormsSnapshot = {
+      pdf: session?.pdf ?? null,
+      fields,
+      byPage,
+      fillableNoticeShown,
+      pendingFocus,
+    };
+    endFormSession();
+    return snapshot;
+  },
+  resume(snapshot: FormsSnapshot): void {
+    if (snapshot.pdf === null) return;
+    useForms.setState({ fields: snapshot.fields, byPage: snapshot.byPage });
+    fillableNoticeShown = snapshot.fillableNoticeShown;
+    pendingFocus = snapshot.pendingFocus;
+    subscribeForms(snapshot.pdf);
+  },
+  dispose: () => Promise.resolve(),
+};
+
+/** Da de alta el participante de formularios en el registro de pestañas. Llamar una vez al arrancar. */
+export function registerFormsParticipant(): void {
+  registerTabParticipant(formsParticipant);
+}
+
 /** Cierra la sesión de formularios: se da de baja de los avisos y vacía el store (conserva el resaltado). */
 export function endFormSession(): void {
   const current = session;
@@ -64,6 +121,7 @@ export function endFormSession(): void {
   current?.stopPages();
   current?.stopEdits();
   fillableNoticeShown = false;
+  pendingFocus = null;
   useForms.setState(initialFormState(useForms.getState().highlight));
 }
 
@@ -92,6 +150,48 @@ export function setFieldValue(name: string, value: FieldValue): void {
 export function setFormHighlight(on: boolean): void {
   services().platform.prefs.set(HIGHLIGHT_PREF, on);
   useForms.setState({ highlight: on });
+}
+
+/**
+ * Lleva el foco al primer (dir 1) o último (dir −1) campo rellenable de la siguiente (o anterior) página que tenga
+ * alguno. Pide al visor esa página con la posición del borde superior del widget. Devuelve false si no hay ninguna.
+ */
+export function focusAdjacentPage(pageIndex: number, dir: 1 | -1): boolean {
+  const { dims } = useViewer.getState();
+  if (dims === null) return false;
+  const fillablePages = [...useForms.getState().byPage.keys()]
+    .filter((page) => fillableWidgetsOf(page).length > 0)
+    .sort((a, b) => a - b);
+  const target = dir === 1 ? fillablePages.find((page) => page > pageIndex) : fillablePages.findLast((page) => page < pageIndex);
+  if (target === undefined) return false;
+  const widgets = fillableWidgetsOf(target);
+  const widget = dir === 1 ? widgets[0] : widgets[widgets.length - 1];
+  if (widget === undefined) return false;
+  pendingFocus = { pageIndex: target, widgetId: widget.id };
+  const height = dims.height(target);
+  const top = widget.rect[3];
+  goToPage(target, { yFraction: height > 0 ? (height - top) / height : 0 });
+  return true;
+}
+
+/** Id del widget a enfocar al montarse la página `pageIndex`, o null. Lo consume: devuelve el id una sola vez. */
+export function takePendingFocus(pageIndex: number): string | null {
+  if (pendingFocus === null || pendingFocus.pageIndex !== pageIndex) return null;
+  const { widgetId } = pendingFocus;
+  pendingFocus = null;
+  return widgetId;
+}
+
+/** Widgets rellenables de una página, en el orden en que los pinta `FormLayer` (por nombre, luego por widget). */
+function fillableWidgetsOf(pageIndex: number): readonly FormWidget[] {
+  const { fields, byPage } = useForms.getState();
+  const widgets: FormWidget[] = [];
+  for (const name of byPage.get(pageIndex) ?? []) {
+    const field = fields.get(name);
+    if (field === undefined || !isFillable(field)) continue;
+    widgets.push(...field.widgets.filter((widget) => widget.pageIndex === pageIndex));
+  }
+  return widgets;
 }
 
 /** Incorpora los widgets de páginas recién importadas y pone en el lienzo los valores que ya tienen cambios. */

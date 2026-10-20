@@ -4,14 +4,17 @@ import {
   translateAnnotation,
   type Annotation,
   type AnnotationType,
+  type BoxShapeAnnotation,
   type FreeTextAnnotation,
   type RectPt,
   type SignatureAnnotation,
+  type StampAnnotation,
 } from '../../core/annotations/model';
 import { freeTextClickRect, freeTextDragRect, resizeFreeTextRect } from '../../core/annotations/freetext';
 import { newInkAnnotation } from '../../core/annotations/ink';
 import { newNoteAnnotation, noteRectAt } from '../../core/annotations/note';
 import { simplifyPath } from '../../core/annotations/simplify';
+import { resizeBoxRect } from '../../core/annotations/shape-drag';
 import { resizeKeepingAspect } from '../../core/signature/signature';
 import type { PageViewport } from '../../engine/pdfjs';
 import {
@@ -31,12 +34,15 @@ import {
   updateAnnotation,
 } from '../../state/annotation-actions';
 import { useAnnotations } from '../../state/annotation-store';
+import { resizeShape } from '../../state/shape-actions';
 import { msg } from '../messages';
 import { annotationOutline, cssColor } from './annotation-geometry';
 import { AnnotationShape, ZoneShape } from './annotation-shapes';
 import { FreeTextEditor } from './FreeTextEditor';
 import { toPx } from './freetext-box';
-import { drawInkSegments, prepareInkCanvas } from './ink-preview';
+import { drawInkSegments, prepareInkCanvas, type InkDrawingContext } from './ink-preview';
+import { PolygonDraft, ShapeSketch } from './ShapeSketch';
+import { useShapeTool } from './use-shape-tool';
 import styles from './AnnotationLayer.module.css';
 import viewerStyles from './Viewer.module.css';
 
@@ -54,9 +60,19 @@ const LABEL_CONTENTS_CHARS = 80;
 /** Caracteres del comentario que muestra el `title` nativo al pasar el ratón (PDF-033). */
 const TOOLTIP_CHARS = 200;
 /** Tipos que se pueden mover. El marcado de texto va unido al texto y no se mueve. */
-const MOVABLE: ReadonlySet<AnnotationType> = new Set<AnnotationType>(['note', 'freetext', 'ink', 'signature']);
+const MOVABLE: ReadonlySet<AnnotationType> = new Set<AnnotationType>([
+  'note',
+  'freetext',
+  'ink',
+  'signature',
+  'square',
+  'circle',
+  'line',
+  'polygon',
+  'stamp',
+]);
 /** Tipos con tirador de tamaño en la esquina inferior derecha cuando están seleccionados. */
-type Resizable = FreeTextAnnotation | SignatureAnnotation;
+type Resizable = FreeTextAnnotation | SignatureAnnotation | BoxShapeAnnotation | StampAnnotation;
 /** Marcador del foco tras borrar: se lleva el foco al visor (la región del documento). */
 const FOCUS_VIEWER = 'viewer';
 /** Tolerancia de la simplificación de un trazo a mano alzada al soltar, en puntos PDF (PDF-035). */
@@ -75,7 +91,7 @@ interface InkStroke {
   /** Petición de animación pendiente para la vista previa, o `null`. */
   frame: number | null;
   /** Contexto del lienzo de la vista previa; `null` hasta que el lienzo existe (PDF-076). */
-  ctx: CanvasRenderingContext2D | null;
+  ctx: InkDrawingContext | null;
   /** Coordenadas de `points` ya dibujadas en la vista previa (PDF-076). */
   drawn: number;
 }
@@ -144,6 +160,9 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   const endDrag = useRef<(() => void) | null>(null);
   /** Trazo a mano alzada en curso, si lo hay (PDF-035). */
   const inkStroke = useRef<InkStroke | null>(null);
+  // Herramientas de forma (PDF-108): arrastrar crea rectángulos, elipses, líneas y flechas.
+  const shapeTool = useShapeTool(pageIndex, viewport, pageBoundsPt);
+  const shapeWidth = useAnnotations((s) => s.shapeWidth);
 
   useEffect(
     () => () => {
@@ -288,8 +307,8 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
   }
 
   /**
-   * Tirador de tamaño de un texto libre (PDF-034) o de una firma (PDF-043): arrastrarlo cambia ancho y alto, con la
-   * esquina superior izquierda fija. La firma mantiene su proporción.
+   * Tirador de tamaño de un texto libre (PDF-034), de una firma (PDF-043) o de un rectángulo o elipse (PDF-108):
+   * arrastrarlo cambia ancho y alto, con la esquina superior izquierda fija. La firma mantiene su proporción.
    */
   function beginResize(event: PointerEvent<SVGRectElement>, a: Resizable): void {
     if (event.button !== 0) return;
@@ -301,9 +320,9 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     const rectAt = (e: globalThis.PointerEvent): RectPt => {
       // Arrastrar hacia abajo (PDF y decreciente) hace más alto el cuadro: dh = -dy.
       const [dx, dy] = pdfDelta(e.clientX - startX, e.clientY - startY);
-      return a.type === 'freetext'
-        ? resizeFreeTextRect(original, dx, -dy, a.fontSize)
-        : resizeKeepingAspect(original, 'se', dx, -dy);
+      if (a.type === 'freetext') return resizeFreeTextRect(original, dx, -dy, a.fontSize);
+      if (a.type === 'square' || a.type === 'circle') return resizeBoxRect(original, dx, -dy);
+      return resizeKeepingAspect(original, 'se', dx, -dy);
     };
     followPointer(
       (e) => {
@@ -313,17 +332,22 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
         setResizing(null);
         if (e.type === 'pointercancel') return;
         if (a.type === 'freetext') resizeFreeText(a.id, rectAt(e));
-        else updateAnnotation(resizeSignature(a, rectAt(e)), 'cambiar tamaño de la firma');
+        else if (a.type === 'signature') updateAnnotation(resizeSignature(a, rectAt(e)), 'cambiar tamaño de la firma');
+        else resizeShape(a.id, rectAt(e));
       },
     );
   }
 
-  /** Clic o arrastre sobre la capa: primero la herramienta «Nota», luego «Texto», «Dibujar» y «Firmar» (cada una comprueba la suya). */
+  /**
+   * Clic o arrastre sobre la capa: primero la herramienta «Nota», luego «Texto», «Dibujar», «Firmar» y las formas (cada una
+   * comprueba la suya).
+   */
   function onLayerPointerDown(event: PointerEvent<SVGSVGElement>): void {
     createNoteAt(event);
     beginFreeTextCreate(event);
     beginInk(event);
     createSignatureAt(event);
+    shapeTool.onPointerDown(event);
   }
 
   /**
@@ -546,8 +570,12 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     }
   }
 
-  // Tirador del texto libre o de la firma seleccionados, en la esquina inferior derecha (PDF-034, PDF-043); no aparece mientras se edita.
-  const selectedResizable = items.find((a): a is Resizable => a.id === selectedId && (a.type === 'freetext' || a.type === 'signature'));
+  // Tirador del texto libre, la firma, la forma o el sello seleccionados, en la esquina inferior derecha (PDF-034, PDF-043,
+  // PDF-115); no aparece mientras se edita.
+  const selectedResizable = items.find(
+    (a): a is Resizable =>
+      a.id === selectedId && (a.type === 'freetext' || a.type === 'signature' || a.type === 'square' || a.type === 'circle' || a.type === 'stamp'),
+  );
   const handleRect =
     selectedResizable === undefined ? undefined : resizing?.id === selectedResizable.id ? resizing.rect : selectedResizable.rect;
   const handle =
@@ -563,13 +591,27 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
         width={viewport.width}
         height={viewport.height}
         onPointerDown={onLayerPointerDown}
-        onPointerMove={moveInk}
+        onPointerMove={(e) => {
+          moveInk(e);
+          shapeTool.onPointerMove(e);
+        }}
         onPointerUp={endInk}
         onPointerCancel={cancelInkPointer}
+        onDoubleClick={shapeTool.onDoubleClick}
       >
         {sketch !== null && (
           <g transform={`matrix(${viewport.transform.join(' ')})`}>
             <rect x={sketch[0]} y={sketch[1]} width={sketch[2] - sketch[0]} height={sketch[3] - sketch[1]} className={styles.sketch} />
+          </g>
+        )}
+        {shapeTool.sketch !== null && (
+          <g transform={`matrix(${viewport.transform.join(' ')})`}>
+            <ShapeSketch sketch={shapeTool.sketch} width={shapeWidth} />
+          </g>
+        )}
+        {shapeTool.polygon !== null && (
+          <g transform={`matrix(${viewport.transform.join(' ')})`}>
+            <PolygonDraft polygon={shapeTool.polygon} />
           </g>
         )}
         {items.length > 0 && (
@@ -648,7 +690,8 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
 
 /** Nombre accesible de la zona: «Resaltado de Ana: primeros 80 caracteres del comentario». */
 function zoneLabel(a: Annotation): string {
-  const name = msg.annotationName(msg.annotationKinds[a.type], a.author);
+  const kind = a.type === 'line' && a.endings.some((e) => e !== 'None') ? msg.annotationArrowKind : msg.annotationKinds[a.type];
+  const name = msg.annotationName(kind, a.author);
   const excerpt = Array.from(a.contents).slice(0, LABEL_CONTENTS_CHARS).join('');
   return excerpt === '' ? name : `${name}: ${excerpt}`;
 }

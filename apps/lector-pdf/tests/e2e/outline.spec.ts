@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { CORPUS_DIR, FIXTURES_DIR } from '../fixtures/paths.ts';
+import { showSidebarTab } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 /** Altura de página de los fixtures (carta, 792 pt) y la posición del destino «Sección 1.1» (y = 500 pt). */
@@ -16,12 +17,10 @@ async function openFile(page: Page, path: string): Promise<void> {
 
 /**
  * Abre el panel (F4) si está cerrado y elige la pestaña «Marcadores». Un PDF con `/PageMode /UseOutlines` ya
- * abre el panel en esa pestaña, así que F4 solo se pulsa si la pestaña no está visible.
+ * abre el panel en esa pestaña, así que F4 solo se pulsa si el panel está cerrado (ver `showSidebarTab`).
  */
 async function openBookmarks(page: Page): Promise<void> {
-  const tab = page.getByRole('tab', { name: 'Marcadores' });
-  if (!(await tab.isVisible())) await page.keyboard.press('F4');
-  await tab.click();
+  await showSidebarTab(page, 'Marcadores');
 }
 
 test('outline.pdf: clic en «Anexo» va a la página 30; Alt+← vuelve a la página 1', async ({ page }) => {

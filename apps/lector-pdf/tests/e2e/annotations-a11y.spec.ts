@@ -7,7 +7,9 @@ import {
   openCommentBar,
   openCommentsPanel,
   openWithDownloads,
+  createNoteWithText,
   pickTool,
+  zoneOf,
 } from './annotations-kit.ts';
 import { pageFrame } from './helpers.ts';
 
@@ -44,10 +46,56 @@ test('ventana de nota abierta: sin violaciones serious ni critical', async ({ pa
   expect(await seriousViolations(page, testInfo, 'ventana de nota')).toEqual([]);
 });
 
+test('ventana de nota con respuestas y estado: sin violaciones serious ni critical', async ({ page }, testInfo) => {
+  await openWithDownloads(page, fixture('basic-5.pdf'));
+  await pickTool(page, 'Nota');
+  await pageFrame(page, 1).click({ position: { x: 150, y: 150 } });
+  const dialog = commentDialog(page);
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('textbox', { name: 'Escribe una respuesta' }).fill('Respuesta de prueba');
+  await dialog.getByRole('button', { name: 'Responder', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Estado', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'Aceptado', exact: true }).click();
+  await expect(dialog.getByText('Estado: Aceptado')).toBeVisible();
+
+  expect(await seriousViolations(page, testInfo, 'ventana con respuestas y estado')).toEqual([]);
+});
+
 test('panel de comentarios con filas: sin violaciones serious ni critical', async ({ page }, testInfo) => {
   await openWithDownloads(page, fixture('annotated.pdf'));
   await openCommentsPanel(page);
   await expect(commentRows(page)).toHaveCount(6);
 
   expect(await seriousViolations(page, testInfo, 'panel de comentarios')).toEqual([]);
+});
+
+test('panel con nota, respuesta y estado: sin violaciones serious ni critical (PDF-116)', async ({ page }, testInfo) => {
+  await openWithDownloads(page, fixture('basic-5.pdf'));
+  await createNoteWithText(page, 'Revisar esta cifra');
+  await zoneOf(page, 1, 'Nota de').dblclick();
+  const dialog = commentDialog(page);
+  await dialog.getByRole('textbox', { name: 'Escribe una respuesta' }).fill('Primera respuesta');
+  await dialog.getByRole('button', { name: 'Responder', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Estado', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'Aceptado', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await openCommentsPanel(page);
+  await expect(commentRows(page)).toHaveCount(2);
+
+  expect(await seriousViolations(page, testInfo, 'panel de comentarios con respuesta')).toEqual([]);
+});
+
+test.describe('herramientas de forma con tema oscuro (PDF-108)', () => {
+  test.use({ colorScheme: 'dark' });
+
+  test('barra «Comentar» con «Rectángulo» activo: sin violaciones serious ni critical', async ({ page }, testInfo) => {
+    await openWithDownloads(page, fixture('basic-5.pdf'));
+    await pickTool(page, 'Rectángulo');
+    await expect(page.getByRole('toolbar', { name: 'Comentar' })).toBeVisible();
+    expect(await page.evaluate(() => window.matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true);
+
+    expect(await seriousViolations(page, testInfo, 'barra Comentar con forma, tema oscuro')).toEqual([]);
+  });
 });

@@ -157,13 +157,18 @@ fn update_recents<R: Runtime, T>(
 
 /// Anota en recientes una ruta elegida por el usuario o recibida del SO. Es un
 /// efecto secundario: si no se puede guardar la lista, la apertura sigue adelante.
-fn remember<R: Runtime>(
+fn add_to_recents<R: Runtime>(
     app: &AppHandle<R>,
     state: &SuitePlatformState,
     path: &Path,
     size: Option<u64>,
 ) {
     let _ = update_recents(app, state, |list| list.touch(path, size, recent::now_ms()));
+}
+
+/// `None` (llamadas antiguas) equivale a anotar en recientes.
+fn should_remember(flag: Option<bool>) -> bool {
+    flag.unwrap_or(true)
 }
 
 fn recent_open_error(error: RecentOpenError) -> CommandError {
@@ -228,6 +233,7 @@ pub async fn suite_open_dialog<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, SuitePlatformState>,
     filters: Vec<FileFilterDto>,
+    remember: Option<bool>,
 ) -> Result<Option<FileInfoDto>, CommandError> {
     let dialog = apply_filters(app.dialog().file(), &filters);
     match dialog.blocking_pick_file() {
@@ -235,7 +241,9 @@ pub async fn suite_open_dialog<R: Runtime>(
         Some(picked) => {
             let path = picked_path(picked)?;
             let info = register_existing(&state.registry, &path)?;
-            remember(&app, &state, &path, Some(info.size));
+            if should_remember(remember) {
+                add_to_recents(&app, &state, &path, Some(info.size));
+            }
             Ok(Some(info.into()))
         }
     }
@@ -248,6 +256,7 @@ pub async fn suite_save_dialog<R: Runtime>(
     state: State<'_, SuitePlatformState>,
     suggested_name: String,
     filters: Vec<FileFilterDto>,
+    remember: Option<bool>,
 ) -> Result<Option<FileInfoDto>, CommandError> {
     let dialog = apply_filters(app.dialog().file(), &filters).set_file_name(suggested_name);
     match dialog.blocking_save_file() {
@@ -257,7 +266,9 @@ pub async fn suite_save_dialog<R: Runtime>(
             let info = register_target(&state.registry, &path)?;
             // Un destino que aún no existe no tiene tamaño: se anota sin él.
             let size = info.last_modified_ms.map(|_| info.size);
-            remember(&app, &state, &path, size);
+            if should_remember(remember) {
+                add_to_recents(&app, &state, &path, size);
+            }
             Ok(Some(info.into()))
         }
     }
@@ -406,7 +417,7 @@ pub fn register_os_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<PathBuf>) {
         let Ok(info) = register_existing(&state.registry, &path) else {
             continue;
         };
-        remember(app, &state, &path, Some(info.size));
+        add_to_recents(app, &state, &path, Some(info.size));
         lock_pending(&state).push(info);
         queued = true;
     }
@@ -437,6 +448,13 @@ pub fn handler<R: Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_remember_por_defecto_anota_y_false_no() {
+        assert!(should_remember(None));
+        assert!(should_remember(Some(true)));
+        assert!(!should_remember(Some(false)));
+    }
 
     #[test]
     fn error_de_cambio_en_disco_se_convierte_con_codigo_y_mensaje_en_espanol() {

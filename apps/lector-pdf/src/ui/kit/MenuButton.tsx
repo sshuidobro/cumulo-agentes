@@ -9,7 +9,8 @@ export interface MenuItemSpec {
   readonly checked: boolean;
   /** Color CSS de una muestra junto al nombre (decorativa). */
   readonly swatch?: string;
-  readonly onSelect: () => void;
+  /** `fromKeyboard`: la elección llegó con Intro o Espacio (sin ratón), como con los controles de la barra (PDF-115). */
+  readonly onSelect: (fromKeyboard: boolean) => void;
 }
 
 /** Acción del menú (un `menuitem` normal, sin marca). `shortcut` es el atajo de teclado que se muestra junto al nombre. */
@@ -19,10 +20,27 @@ export interface MenuActionSpec {
   readonly shortcut?: string;
   /** Miniatura (URL de imagen) que sustituye al texto: el nombre accesible sigue siendo `label`. */
   readonly thumbnail?: string;
-  readonly onSelect: () => void;
+  /** Entrada deshabilitada: se ve, pero no se puede elegir (PDF-048). */
+  readonly disabled?: boolean;
+  /** Explicación mostrada al pasar el ratón por una entrada deshabilitada (PDF-113). */
+  readonly disabledReason?: string;
+  readonly onSelect: (fromKeyboard: boolean) => void;
 }
 
-export type MenuEntry = MenuItemSpec | MenuActionSpec | 'separator';
+/** Texto emergente de una entrada: la explicación si está deshabilitada; si no, el nombre con su atajo. */
+function menuItemTitle(entry: MenuEntry): string | undefined {
+  if (typeof entry === 'string' || entry.kind !== 'action') return undefined;
+  if (entry.disabled === true && entry.disabledReason !== undefined) return entry.disabledReason;
+  return entry.shortcut !== undefined ? `${entry.label} (${entry.shortcut})` : undefined;
+}
+
+/** Rótulo de grupo (no se puede elegir): encabeza las opciones que siguen (PDF-116). */
+export interface MenuHeadingSpec {
+  readonly kind: 'heading';
+  readonly label: string;
+}
+
+export type MenuEntry = MenuItemSpec | MenuActionSpec | MenuHeadingSpec | 'separator';
 
 export interface MenuButtonProps {
   /** Nombre accesible del botón (es solo icono). */
@@ -161,16 +179,22 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, ref }
           {entries.map((entry, index) =>
             entry === 'separator' ? (
               <div key={`separator-${String(index)}`} role="separator" className={styles.separator} />
+            ) : entry.kind === 'heading' ? (
+              <div key={`heading-${String(index)}`} role="presentation" className={styles.heading}>
+                {entry.label}
+              </div>
             ) : (
               <button
                 key={entry.label}
                 type="button"
                 role={entry.kind === 'action' ? 'menuitem' : entry.kind === 'radio' ? 'menuitemradio' : 'menuitemcheckbox'}
                 aria-checked={entry.kind === 'action' ? undefined : entry.checked}
-                title={entry.kind === 'action' && entry.shortcut !== undefined ? `${entry.label} (${entry.shortcut})` : undefined}
+                title={menuItemTitle(entry)}
                 className={styles.item}
-                onClick={() => {
-                  entry.onSelect();
+                disabled={entry.kind === 'action' && entry.disabled === true}
+                onClick={(event) => {
+                  // `detail` es 0 cuando la activación llega del teclado o de un lector de pantalla.
+                  entry.onSelect(event.detail === 0);
                   close(true);
                 }}
               >

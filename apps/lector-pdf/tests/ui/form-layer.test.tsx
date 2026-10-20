@@ -4,13 +4,18 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FormField } from '../../src/core/forms';
 import type { PageViewport } from '../../src/engine/pdfjs';
-import { setFieldValue } from '../../src/state/form-actions';
+import { focusAdjacentPage, setFieldValue, takePendingFocus } from '../../src/state/form-actions';
+import { formMsg } from '../../src/ui/messages-forms';
 import { initialAnnotationState, useAnnotations } from '../../src/state/annotation-store';
 import { useAppearance } from '../../src/state/appearance-store';
 import { useForms } from '../../src/state/form-store';
 import { FormLayer } from '../../src/ui/viewer/FormLayer';
 
-vi.mock('../../src/state/form-actions', () => ({ setFieldValue: vi.fn() }));
+vi.mock('../../src/state/form-actions', () => ({
+  setFieldValue: vi.fn(),
+  focusAdjacentPage: vi.fn(() => false),
+  takePendingFocus: vi.fn(() => null),
+}));
 
 /** Alto de la página de prueba en puntos: el viewport convierte puntos PDF (origen abajo) a píxeles (origen arriba). */
 const PAGE_HEIGHT = 792;
@@ -144,6 +149,8 @@ function renderPage(scale = 1, pageIndex = 0) {
 
 beforeEach(() => {
   vi.mocked(setFieldValue).mockClear();
+  vi.mocked(focusAdjacentPage).mockReset().mockReturnValue(false);
+  vi.mocked(takePendingFocus).mockReset().mockReturnValue(null);
   setForms([...PAGE_ONE, otraPagina]);
   useAnnotations.setState(initialAnnotationState());
   useAppearance.setState({ nightMode: false });
@@ -287,5 +294,159 @@ describe('capa de formularios · posición', () => {
     expect(input.style.top).toBe('24px');
     expect(input.style.width).toBe('456px');
     expect(input.style.height).toBe('40px');
+  });
+});
+
+/** Casilla «acepto», grupo «color» con tres botones y un campo de firma; sin campos de texto. */
+const acepto = field({
+  name: 'acepto',
+  type: 'checkbox',
+  initial: { kind: 'checkbox', checked: false },
+  widgets: [{ ...widget('13R', 0, [72, 560, 86, 574]), onState: 'Si' }],
+});
+const colorOpciones = (['Rojo', 'Verde', 'Azul'] as const).map((state, i) => ({
+  ...widget(`${14 + i}R`, 0, [72 + i * 48, 520, 86 + i * 48, 534]),
+  onState: state,
+}));
+const color = field({
+  name: 'color',
+  type: 'radio',
+  initial: { kind: 'radio', selected: 'Verde' },
+  widgets: colorOpciones,
+});
+const firma = field({ name: 'firma', type: 'signature', widgets: [widget('17R', 0, [320, 340, 523, 380])] });
+
+describe('capa de formularios · casillas, botones de opción y firma', () => {
+  beforeEach(() => {
+    setForms([nombre, acepto, color, firma]);
+  });
+
+  it('la casilla tiene su nombre accesible; Espacio la marca y confirma el valor', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const box = screen.getByRole('checkbox', { name: 'acepto' });
+    expect(box).not.toBeChecked();
+    box.focus();
+    await user.keyboard(' ');
+    expect(setFieldValue).toHaveBeenCalledWith('acepto', { kind: 'checkbox', checked: true });
+  });
+
+  it('una casilla marcada refleja el valor efectivo', () => {
+    setForms([{ ...acepto, initial: { kind: 'checkbox', checked: true } }]);
+    renderPage();
+    expect(screen.getByRole('checkbox', { name: 'acepto' })).toBeChecked();
+  });
+
+  it('clic sobre el botón «Azul» confirma selected «Azul»; el grupo marca «Verde» al inicio', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    expect(screen.getByRole('radio', { name: 'color: Verde' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'color: Azul' }));
+    expect(setFieldValue).toHaveBeenCalledWith('color', { kind: 'radio', selected: 'Azul' });
+  });
+
+  it('cada botón de opción se nombra con el campo y su estado («color: Rojo»)', () => {
+    renderPage();
+    expect(screen.getByRole('radio', { name: 'color: Rojo' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'color: Verde' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'color: Azul' })).toBeInTheDocument();
+  });
+
+  it('los botones de opción comparten el grupo del campo (las flechas recorren el grupo)', () => {
+    renderPage();
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toHaveAttribute('name', 'campo:color');
+    }
+  });
+
+  it('los controles de casilla y opción son enfocables y muestran el foco', () => {
+    renderPage();
+    const box = screen.getByRole('checkbox', { name: 'acepto' });
+    box.focus();
+    expect(box).toHaveFocus();
+    expect(box.className).toMatch(/toggle/);
+    const blue = screen.getByRole('radio', { name: 'color: Azul' });
+    blue.focus();
+    expect(blue).toHaveFocus();
+  });
+
+  it('el campo de firma es una imagen con nombre, no es enfocable y explica por qué', () => {
+    renderPage();
+    const sign = screen.getByRole('img', { name: formMsg.signatureField });
+    expect(sign).toHaveAttribute('title', formMsg.signatureTitle);
+    expect(sign).not.toHaveAttribute('tabindex');
+    sign.focus();
+    expect(sign).not.toHaveFocus();
+  });
+});
+
+describe('capa de formularios · Tab entre páginas', () => {
+  beforeEach(() => {
+    setForms([nombre, acepto]);
+  });
+
+  it('Tab en el último campo rellenable pide la página siguiente; si la hay, no mueve el foco aquí', async () => {
+    const user = userEvent.setup();
+    vi.mocked(focusAdjacentPage).mockReturnValue(true);
+    renderPage();
+    const box = screen.getByRole('checkbox', { name: 'acepto' });
+    box.focus();
+    await user.tab();
+    expect(focusAdjacentPage).toHaveBeenCalledWith(0, 1);
+    expect(box).toHaveFocus();
+  });
+
+  it('Mayús+Tab en el primer campo rellenable pide la página anterior', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    screen.getByRole('textbox', { name: 'nombre' }).focus();
+    await user.tab({ shift: true });
+    expect(focusAdjacentPage).toHaveBeenCalledWith(0, -1);
+  });
+
+  it('Tab en un campo que no es el último no pide la página siguiente', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    screen.getByRole('textbox', { name: 'nombre' }).focus();
+    await user.tab();
+    expect(focusAdjacentPage).not.toHaveBeenCalled();
+  });
+
+  it('si la página trae un foco pendiente, enfoca ese control al montarse', () => {
+    vi.mocked(takePendingFocus).mockReturnValue('13R');
+    renderPage();
+    expect(takePendingFocus).toHaveBeenCalledWith(0);
+    expect(screen.getByRole('checkbox', { name: 'acepto' })).toHaveFocus();
+  });
+
+  it('un grupo de botones de opción al final de la página cuenta como una parada: Tab desde la opción marcada (no la última) pide la página siguiente', async () => {
+    const user = userEvent.setup();
+    vi.mocked(focusAdjacentPage).mockReturnValue(true);
+    setForms([nombre, color]);
+    renderPage();
+    const green = screen.getByRole('radio', { name: 'color: Verde' });
+    green.focus();
+    await user.tab();
+    expect(focusAdjacentPage).toHaveBeenCalledWith(0, 1);
+  });
+
+  it('un grupo de botones de opción al principio: Mayús+Tab desde la opción marcada (no la primera) pide la página anterior', async () => {
+    const user = userEvent.setup();
+    vi.mocked(focusAdjacentPage).mockReturnValue(true);
+    setForms([color, nombre]);
+    renderPage();
+    const green = screen.getByRole('radio', { name: 'color: Verde' });
+    green.focus();
+    await user.tab({ shift: true });
+    expect(focusAdjacentPage).toHaveBeenCalledWith(0, -1);
+  });
+
+  it('Tab desde una opción de un grupo que no está al final no pide la página siguiente', async () => {
+    const user = userEvent.setup();
+    setForms([color, nombre]);
+    renderPage();
+    screen.getByRole('radio', { name: 'color: Verde' }).focus();
+    await user.tab();
+    expect(focusAdjacentPage).not.toHaveBeenCalled();
   });
 });

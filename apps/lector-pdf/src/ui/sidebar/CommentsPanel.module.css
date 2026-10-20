@@ -199,6 +199,20 @@
   white-space: nowrap;
 }
 
+.state {
+  font-weight: 600;
+  color: var(--color-text);
+}
+.replies {
+  color: var(--color-text-muted);
+}
+/* Respuesta: sangrada 24 px bajo su comentario, una sola línea de extracto. */
+.replyRow {
+  padding-left: calc(0.5rem + 24px);
+}
+.replyExcerpt {
+  -webkit-line-clamp: 1;
+}
 .excerpt {
   margin: 0;
   display: -webkit-box;

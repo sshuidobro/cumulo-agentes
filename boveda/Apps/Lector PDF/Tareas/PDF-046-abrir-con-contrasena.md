@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-046
 titulo: Abrir PDF con contraseña
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-091, PDF-090]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-19
 tags: [tarea, pdf, iteracion-4, seguridad, ui]
 ---
 
@@ -47,3 +47,34 @@ Al abrir un PDF protegido aparece un diálogo propio que pide la contraseña; si
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/state/password-prompt.ts` (nuevo), `apps/lector-pdf/src/state/document-actions.ts`, `apps/lector-pdf/src/state/save-actions.ts`, `apps/lector-pdf/src/ui/security/PasswordDialog.tsx` y `PasswordDialog.module.css` (nuevos), `apps/lector-pdf/src/ui/messages-security.ts` (nuevo), `apps/lector-pdf/src/ui/App.tsx`, `apps/lector-pdf/src/ui/kit/Dialog.tsx`, `apps/lector-pdf/src/core/errors.ts` (solo el texto de `password-required`), `apps/lector-pdf/tests/unit/errors.test.ts`, `apps/lector-pdf/tests/unit/password-prompt.test.ts` (nuevo), `apps/lector-pdf/tests/unit/document-password.test.ts` (nuevo), `apps/lector-pdf/tests/ui/password-dialog.test.tsx` (nuevo), `apps/lector-pdf/tests/e2e/password.spec.ts` (nuevo).
+- Qué he hecho: `askPassword`/`submitPassword`/`cancelPassword` (una petición a la vez, sin registrar la contraseña). `openDocument` pide la contraseña con bucle hasta abrir o cancelar; `Session.password` y `currentPassword()`; `reopenSaved` la reutiliza. Diálogo «Contraseña necesaria» con campo, casilla de mostrar, aviso `role="alert"`, Intro, Cancelar y Esc.
+- Decisiones menores tomadas (avisar si no son válidas): la ficha cita `messages-security.ts` como existente, pero no existía, así que lo creé. La petición lleva un `id` además de `name` e `incorrect`, para que el diálogo se remonte con el campo vacío en cada intento. `Dialog` acepta `data-initial-focus` para que el foco inicial vaya al campo y no al primer botón (cambio aditivo en el kit).
+- Comandos ejecutados y resultado: `pnpm coverage` → 204 ficheros, 2454 tests en verde, cobertura global 96,6 % líneas. `pnpm typecheck` → sin errores. `playwright test tests/e2e/password.spec.ts --project=chromium` → 10/10. `pnpm lint` → falla por errores en ficheros ajenos a esta ficha (`src/ui/open/RecentList.tsx`, `tests/ui/recent.test.tsx`, `tests/unit/pdf/incremental.test.ts`); mis ficheros no tienen avisos.
+- Dudas o cosas que no he podido hacer: (1) El criterio «tras abrir con contraseña, añadir una nota y Ctrl+S → aviso sin pedir la contraseña» no tiene E2E: falta añadir la nota en el test. (2) Los criterios de «recordar posición y borradores con PDF cifrado» no tienen test. (3) El `errors.ts` del árbol está modificado por otro programador (`save-encrypted` → `save-wrong-password`, `save-encryption-unsupported`): no he tocado esas líneas. Solo he commiteado mi cambio de `password-required`.
+
+### [revisor] ronda 1 — 2026-10-19 — CAMBIOS
+1. `apps/lector-pdf/tests/e2e/password.spec.ts` — falta el E2E del criterio «abrir con contraseña, añadir una nota y Ctrl+S → aviso de guardado cifrado sin pedir de nuevo la contraseña» (el programador lo admite) — añadirlo (el aviso concreto es el que haya en `errors.ts` tras los cambios del otro programador).
+2. `apps/lector-pdf/tests/` — falta test del criterio «recordar posición (PDF-019) y borradores con PDF cifrado: abrir, ir a p3, cerrar, reabrir con contraseña → p3» — añadirlo (E2E o integración con FakePlatform). Si los borradores no aplican hoy, justificar en el Registro.
+3. Criterio «ninguna `log.*` (espía del logger)»: `tests/unit/document-password.test.ts:136` espía `console.*`, no el logger común; comprobar que el logger se espía de verdad (o que equivale a console) y ajustar.
+4. Lint: el programador dice que falla por ficheros ajenos; confirmar que `pnpm lint` queda en 0 antes de reenviar (criterio de la ficha).
+El código de `document-actions.ts`, el diálogo y los tests existentes (10/10 E2E, unit y UI) están correctos; solo faltan estos criterios.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/password.spec.ts` (E2E de nota + Ctrl+S y de posición p3 y borrador tras recargar), `apps/lector-pdf/tests/unit/document-password.test.ts` (el espía ahora es el logger común de `@suite/shared`, todos los niveles), `eslint.config.js` (ignora `apps/lector-pdf/dist-qa049/`, salida de build sin commitear de otro agente, igual que `dist-firma` y `dist-pdf090`; sin ella lint daba 9705 errores), esta ficha.
+- Qué he hecho: atiendo los 4 puntos del revisor. Los E2E de nota+Ctrl+S, posición (p3) y borrador cifrado existen y pasan; el espía del logger ya cubre `log.*`; lint queda en 0. No toco `document-actions.ts` (el cambio `file.source` de `startAnnotationSession` es del trabajo de anotaciones) ni los demás cambios sin commitear de otras fichas.
+- Comandos ejecutados y resultado: `pnpm lint` → 0 errores, 0 avisos (tras el ajuste de `eslint.config.js`). `pnpm typecheck` → sin errores. `pnpm coverage` → exit 0, cobertura global 96,6 % sentencias / 98,7 % líneas. `pnpm --filter lector-pdf e2e -- tests/e2e/password.spec.ts` → 13/13 en Chromium (incluye los 5 cifrados, mal/propietario, Cancelar/Esc, owner-only, axe, nota+Ctrl+S, posición p3 y borrador).
+- Dudas o cosas que no he podido hacer: (1) El aviso de guardado cifrado usado en el E2E es `save-wrong-password` («No se pueden guardar los cambios: la contraseña no es correcta.»), que es el que hay hoy en `errors.ts`; PDF-047 lo cambiará. (2) Los borradores se comprueban con un E2E sobre el flujo real (no con FakePlatform). (3) Queda sin commitear el trabajo de otras fichas (anotaciones, PDF-052, `dist-qa049/`, `document-actions.ts`).
+
+### [revisor] ronda 2 — 2026-10-19 — APROBADO
+Los 4 puntos de la ronda 1 están resueltos: E2E de nota + Ctrl+S, E2E de posición p3 y de borrador cifrado, espía del logger común (todos los niveles) y lint en 0. Verificado: `pnpm lint` 0, `pnpm typecheck` 0, E2E `password.spec.ts` 13/13, tests unitarios y UI del diálogo 22/22. Sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| 5 cifrados + Intro, mal/propietario, Cancelar/Esc, owner-only, nota+Ctrl+S, p3 y borrador, axe | OK | `tests/e2e/password.spec.ts` 13/13 dentro de `pnpm --filter lector-pdf e2e` (225 passed) |
+| Sin contraseña en `log.*` ni prefs | OK | `tests/unit/document-password.test.ts` en verde |
+| lint / typecheck / coverage | OK | lint 0; typecheck 0; 204 ficheros, 2462 tests; líneas 98,67 % |
+Tests añadidos: ninguno (cobertura de criterios suficiente). Rendimiento: los @perf del e2e pasan.

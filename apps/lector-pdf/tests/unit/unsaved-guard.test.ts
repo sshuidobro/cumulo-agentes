@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { memorySource } from '@suite/platform';
-import { ok } from '@suite/shared';
 import { openRequested } from '../../src/state/document-actions';
 import { addAnnotation } from '../../src/state/annotation-actions';
-import { confirmDiscardOrSave, installCloseGuard } from '../../src/state/unsaved-guard';
+import { registerPendingChanges } from '../../src/state/save-actions';
+import { confirmDiscardOrSave, hasUnsavedChanges, installCloseGuard } from '../../src/state/unsaved-guard';
 import { useChoice } from '../../src/state/choice';
 import { useViewer } from '../../src/state/viewer-store';
 import { openedFile } from '../helpers/fake-platform';
@@ -103,43 +103,44 @@ describe('confirmDiscardOrSave y abrir otro documento', () => {
     expect(useChoice.getState().active).toBeNull();
   });
 
-  it('abrir otro documento con cambios pregunta; «Cancelar» mantiene el actual y libera el nuevo', async () => {
-    const current = await openFixture();
-    addAnnotation(newAnnotation('suite-hl-1', 'highlight', 0));
-    const other = openedFile('otro.pdf', memorySource(h.original));
-
-    const opening = openRequested(other);
-    expect(await answerChoice('Cancelar')).toBe(QUESTION);
-    await opening;
-
-    expect(useViewer.getState().file).toBe(current);
-    expect(h.closeFile).toHaveBeenCalledWith(other);
-  });
-
-  it('abrir otro documento con cambios y «No guardar» abre el nuevo', async () => {
+  it('abrir otro documento con cambios no pregunta: el nuevo se abre y el anterior queda en su pestaña', async () => {
     await openFixture();
     addAnnotation(newAnnotation('suite-hl-1', 'highlight', 0));
     const other = openedFile('otro.pdf', memorySource(h.original));
 
-    const opening = openRequested(other);
-    await answerChoice('No guardar');
-    await opening;
+    await openRequested(other);
 
+    expect(useChoice.getState().active).toBeNull();
     expect(useViewer.getState().file?.name).toBe('otro.pdf');
     expect(h.save).not.toHaveBeenCalled();
   });
+});
 
-  it('abrir otro documento con cambios y «Guardar» guarda antes de abrir el nuevo', async () => {
+describe('cambios pendientes (organizar) en el aviso de cierre', () => {
+  afterEach(() => {
+    registerPendingChanges(null);
+  });
+
+  it('hasUnsavedChanges es true mientras hay cambios pendientes sucios', () => {
+    let dirty = true;
+    registerPendingChanges({ isDirty: () => dirty, save: vi.fn(async () => 'saved' as const), discard: () => undefined });
+    expect(hasUnsavedChanges()).toBe(true);
+
+    dirty = false;
+    expect(hasUnsavedChanges()).toBe(false);
+  });
+
+  it('«No guardar» descarta también los cambios pendientes', async () => {
     await openFixture();
-    addAnnotation(newAnnotation('suite-hl-1', 'highlight', 0));
-    const other = openedFile('otro.pdf', memorySource(h.original));
-    h.save.mockResolvedValueOnce(ok(openedFile(FIXTURE, memorySource(h.original))));
+    const discard = vi.fn();
+    registerPendingChanges({ isDirty: () => true, save: vi.fn(async () => 'saved' as const), discard });
 
-    const opening = openRequested(other);
-    await answerChoice('Guardar');
-    await opening;
+    const decision = confirmDiscardOrSave();
+    await answerChoice('No guardar');
 
-    expect(h.save).toHaveBeenCalledTimes(1);
-    expect(useViewer.getState().file?.name).toBe('otro.pdf');
+    expect(await decision).toBe('proceed');
+    expect(discard).toHaveBeenCalledTimes(1);
+    expect(h.save).not.toHaveBeenCalled();
   });
 });
+

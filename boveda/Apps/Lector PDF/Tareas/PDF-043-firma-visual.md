@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-043
 titulo: Firmar - colocar, mover y redimensionar la firma en la página
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-086]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -45,3 +45,23 @@ Botón «Firmar» en la barra: se elige una firma guardada o se crea una, se col
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-18
+- Ficheros cambiados: `apps/lector-pdf/src/ui/viewer/Viewer.tsx` (Intro con «Firmar» antes de comprobar `scaled`), `apps/lector-pdf/tests/e2e/signature.spec.ts` (E2E completo: teclado con Tab/flechas/Intro, Stamp con pdf.js en Node y rectángulo, solo lectura en el panel, PNG con transparencia; sin `TestInfo` sin usar). La parte de estado, núcleo, capa, barra y tests unitarios/UI ya estaba en el commit c047858; no la he tocado.
+- Qué he hecho: el E2E de la ficha no pasaba la colocación con teclado en documentos que caben enteros (`factor <= 1` salía antes del manejo de Intro). Corregido. Añadidos los criterios que faltaban en E2E (rectángulo del Stamp, `hasAppearance`, PNG transparente, solo lectura). Al reabrir, la firma se comprueba por píxeles oscuros en su sitio, no como zona editable (es anotación ajena).
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf exec playwright test tests/e2e/signature.spec.ts --project=chromium` → 5/5 OK. `pnpm typecheck` → OK. `pnpm lint` → sin errores fuera de `apps/lector-pdf/dist-firma/` (artefacto de build ajeno, sin ignorar en ESLint; ya señalado en PDF-042). `pnpm coverage` → 2319/2320 tests; falla solo `tests/ui/zoom-controls.test.tsx` (Tab con tope, ajeno, ya señalado en PDF-042).
+- Dudas o cosas que no he podido hacer: (a) la ficha pone `src/core/annotations/signature.ts`, pero el código está en `src/core/signature/signature.ts` (lo dejo como está). (b) El tirador llama a `updateAnnotation` sin `mergeKey` porque la ficha no define la clave; cada tamaño es una entrada de deshacer. (c) No he ejecutado todo `pnpm --filter lector-pdf e2e` (solo `signature.spec.ts`). (d) `dist-firma` y `zoom-controls` quedan fuera de mi ficha: lint y coverage no salen con 0 por ellos.
+
+### [revisor] ronda 1 — 2026-10-18 — APROBADO
+- Typecheck OK; tests unitarios/UI de firma OK (único fallo: `zoom-controls`, ajeno). Cambio de `Viewer.tsx` correcto (Intro antes de `scaled`). E2E cubre teclado, Stamp/qpdf, solo lectura, PNG transparente, sin red y undo. No he podido relanzar el E2E (puerto 4173 ocupado); me fío de la ejecución 5/5 del programador.
+1. (opcional) `AnnotationLayer.tsx:316` — el tamaño de la firma no usa `mergeKey`; la ficha no lo exigía.
+2. (opcional) Ruta real `src/core/signature/signature.ts`, distinta de la de la ficha.
+
+### [tester] ronda 1 — 2026-10-18 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit signature, UI | OK | `pnpm coverage`: 2319/2320 (único fallo: zoom-controls, ajeno) |
+| E2E firma (colocar/mover/redimensionar/undo, teclado, Stamp+qpdf, PNG, sin red, axe) | OK | `pnpm --filter lector-pdf e2e`: 194 passed |
+| typecheck | OK | `pnpm typecheck` |
+| lint | OK salvo dist-firma (ajeno) | sin errores en otros ficheros |
+Tests añadidos: ninguno. Rendimiento: tests @perf del e2e completo en verde.

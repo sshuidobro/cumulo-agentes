@@ -65,13 +65,23 @@ test('arrastrar y soltar un PDF muestra la superposición y lo abre', async ({ p
     const fire = (type: string): void => {
       window.dispatchEvent(new DragEvent(type, { dataTransfer: d, bubbles: true, cancelable: true }));
     };
-    fire('dragenter');
-    fire('dragover');
-    (window as unknown as { __fireDrop: () => void }).__fireDrop = () => {
+    const w = window as unknown as { __fireEnter: () => void; __fireDrop: () => void };
+    w.__fireEnter = () => {
+      fire('dragenter');
+      fire('dragover');
+    };
+    w.__fireDrop = () => {
       fire('drop');
     };
   }, bytes);
-  await expect(page.getByText('Suelta el PDF para abrirlo')).toBeVisible();
+  // El componente registra sus escuchas en un efecto, que puede acabar después de `goto`: se repite el «dragenter»
+  // hasta que la superposición aparece (el arrastre real también llega en cualquier momento).
+  await expect(async () => {
+    await page.evaluate(() => {
+      (window as unknown as { __fireEnter: () => void }).__fireEnter();
+    });
+    await expect(page.getByText('Suelta el PDF para abrirlo')).toBeVisible({ timeout: 500 });
+  }).toPass();
   await page.evaluate(() => {
     (window as unknown as { __fireDrop: () => void }).__fireDrop();
   });

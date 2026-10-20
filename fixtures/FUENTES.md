@@ -31,3 +31,21 @@ Los HTML de origen y el script de regeneración (`make-libreoffice.sh`) están e
 ## Generados
 
 Los PDF generados por código (no versionados, carpeta `fixtures/pdf/generated/`) se describen en `apps/lector-pdf/tests/fixtures/catalog.ts`.
+
+Los PDF cifrados se generan con `qpdf` 11.9 (`qpdf --encrypt`, [`tests/fixtures/encrypted.ts`](../apps/lector-pdf/tests/fixtures/encrypted.ts)); no contienen datos de terceros, solo el texto de las bases. Contraseñas de prueba: usuario `usuario`, propietario `propietario`.
+
+| Fichero | Base | Cifrado | Contraseña para abrir |
+|---|---|---|---|
+| `encrypted-rc4-40.pdf` | `basic-5.pdf` | RC4 40 bits | `usuario` o `propietario` |
+| `encrypted-rc4-128.pdf` | `basic-5.pdf` | RC4 128 bits | `usuario` o `propietario` |
+| `encrypted-aes-128.pdf` | `basic-5.pdf` | AES-128 | `usuario` o `propietario` |
+| `encrypted-aes-256.pdf` | `basic-5.pdf` | AES-256 | `usuario` o `propietario` |
+| `encrypted-aes-256-objstm.pdf` | `compressed.pdf` | AES-256 con object streams | `usuario` o `propietario` |
+| `encrypted-owner-only.pdf` | `basic-5.pdf` | AES-256; sin contraseña de usuario, con permisos de impresión, copia, modificación y anotación denegados | ninguna |
+| `encrypted-annotated-aes-128.pdf` | `annotated.pdf` | AES-128 | `usuario` o `propietario` |
+
+## OCR (generado)
+
+| Fichero | Procedencia | Licencia | Qué aporta |
+|---|---|---|---|
+| `scanned-es-3.pdf` | generado por `apps/lector-pdf/tests/fixtures/scanned.ts` con `@napi-rs/canvas` 1.0.11 (JPEG 1654×2339, 200 ppp, A4) | propia | Escaneado simulado de 3 páginas en español sin capa de texto (factura, contrato, informe) para el OCR (PDF-133) |

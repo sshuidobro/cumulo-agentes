@@ -1,0 +1,234 @@
+{
+  "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-400-normal.woff": {
+    "file": "assets/dancing-script-latin-400-normal-BY5FxJb0.woff",
+    "src": "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-400-normal.woff"
+  },
+  "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-400-normal.woff2": {
+    "file": "assets/dancing-script-latin-400-normal--YrtvvVF.woff2",
+    "src": "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-400-normal.woff2"
+  },
+  "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-ext-400-normal.woff": {
+    "file": "assets/dancing-script-latin-ext-400-normal-DaWfpMsu.woff",
+    "src": "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-ext-400-normal.woff"
+  },
+  "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-ext-400-normal.woff2": {
+    "file": "assets/dancing-script-latin-ext-400-normal-C917Kz-3.woff2",
+    "src": "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-latin-ext-400-normal.woff2"
+  },
+  "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-vietnamese-400-normal.woff": {
+    "file": "assets/dancing-script-vietnamese-400-normal-D2srOv8f.woff",
+    "src": "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-vietnamese-400-normal.woff"
+  },
+  "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-vietnamese-400-normal.woff2": {
+    "file": "assets/dancing-script-vietnamese-400-normal-lz8MlVep.woff2",
+    "src": "../../node_modules/.pnpm/@fontsource+dancing-script@5.3.0/node_modules/@fontsource/dancing-script/files/dancing-script-vietnamese-400-normal.woff2"
+  },
+  "../../node_modules/.pnpm/pdfjs-dist@6.4.299/node_modules/pdfjs-dist/legacy/build/pdf.mjs": {
+    "file": "assets/pdf-hDixE7Rz.js",
+    "name": "pdf",
+    "src": "../../node_modules/.pnpm/pdfjs-dist@6.4.299/node_modules/pdfjs-dist/legacy/build/pdf.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "_preload-helper-CRzLMJPS.js"
+    ]
+  },
+  "../../node_modules/.pnpm/pdfjs-dist@6.4.299/node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs": {
+    "file": "assets/pdf.worker.min-Dkey6ZUl.mjs",
+    "src": "../../node_modules/.pnpm/pdfjs-dist@6.4.299/node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs"
+  },
+  "../../node_modules/.pnpm/pdfjs-dist@6.4.299/node_modules/pdfjs-dist/web/images/cursor-editorTextHighlight.svg": {
+    "file": "assets/cursor-editorTextHighlight-kG3uUOwL.svg",
+    "src": "../../node_modules/.pnpm/pdfjs-dist@6.4.299/node_modules/pdfjs-dist/web/images/cursor-editorTextHighlight.svg"
+  },
+  "../../packages/platform/src/tauri/index.ts": {
+    "file": "assets/tauri-KijKvfi3.js",
+    "name": "tauri",
+    "src": "../../packages/platform/src/tauri/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_prefs-DotGBXfj.js",
+      "_logger-Bw1W29Qx.js"
+    ]
+  },
+  "../../packages/platform/src/web/index.ts": {
+    "file": "assets/web-CeEnt5Ub.js",
+    "name": "web",
+    "src": "../../packages/platform/src/web/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_prefs-DotGBXfj.js",
+      "_logger-Bw1W29Qx.js"
+    ]
+  },
+  "_Dialog-cW4vecsk.css": {
+    "file": "assets/Dialog-cW4vecsk.css",
+    "src": "_Dialog-cW4vecsk.css"
+  },
+  "_Dialog-xA5nBSHl.js": {
+    "file": "assets/Dialog-xA5nBSHl.js",
+    "name": "Dialog",
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js"
+    ],
+    "css": [
+      "assets/Dialog-cW4vecsk.css"
+    ]
+  },
+  "_PrintDialog-Dkj0VqBg.css": {
+    "file": "assets/PrintDialog-Dkj0VqBg.css",
+    "src": "_PrintDialog-Dkj0VqBg.css"
+  },
+  "_PrintDialog.module-1gHhlJjs.js": {
+    "file": "assets/PrintDialog.module-1gHhlJjs.js",
+    "name": "PrintDialog.module",
+    "imports": [
+      "_Dialog-xA5nBSHl.js",
+      "_prefs-DotGBXfj.js",
+      "_logger-Bw1W29Qx.js",
+      "_preload-helper-CRzLMJPS.js",
+      "_engine-BQBlO_RY.js",
+      "_notice-Bf6nAUmv.js"
+    ],
+    "dynamicImports": [
+      "../../packages/platform/src/tauri/index.ts",
+      "../../packages/platform/src/web/index.ts"
+    ],
+    "css": [
+      "assets/PrintDialog-Dkj0VqBg.css"
+    ]
+  },
+  "_engine-BQBlO_RY.js": {
+    "file": "assets/engine-BQBlO_RY.js",
+    "name": "engine",
+    "imports": [
+      "_Dialog-xA5nBSHl.js",
+      "_logger-Bw1W29Qx.js",
+      "_preload-helper-CRzLMJPS.js"
+    ],
+    "dynamicImports": [
+      "../../node_modules/.pnpm/pdfjs-dist@6.4.299/node_modules/pdfjs-dist/legacy/build/pdf.mjs"
+    ]
+  },
+  "_ink-preview-DoJ-fAfA.js": {
+    "file": "assets/ink-preview-DoJ-fAfA.js",
+    "name": "ink-preview",
+    "imports": [
+      "_Dialog-xA5nBSHl.js",
+      "_logger-Bw1W29Qx.js",
+      "_notice-Bf6nAUmv.js"
+    ]
+  },
+  "_logger-Bw1W29Qx.js": {
+    "file": "assets/logger-Bw1W29Qx.js",
+    "name": "logger"
+  },
+  "_notice-Bf6nAUmv.js": {
+    "file": "assets/notice-Bf6nAUmv.js",
+    "name": "notice",
+    "imports": [
+      "_Dialog-xA5nBSHl.js"
+    ]
+  },
+  "_prefs-DotGBXfj.js": {
+    "file": "assets/prefs-DotGBXfj.js",
+    "name": "prefs",
+    "imports": [
+      "_logger-Bw1W29Qx.js"
+    ]
+  },
+  "_preload-helper-CRzLMJPS.js": {
+    "file": "assets/preload-helper-CRzLMJPS.js",
+    "name": "preload-helper"
+  },
+  "_properties-store-DSGAiNHj.js": {
+    "file": "assets/properties-store-DSGAiNHj.js",
+    "name": "properties-store",
+    "imports": [
+      "_Dialog-xA5nBSHl.js"
+    ]
+  },
+  "_rolldown-runtime-WkwZ5CU-.js": {
+    "file": "assets/rolldown-runtime-WkwZ5CU-.js",
+    "name": "rolldown-runtime"
+  },
+  "index.html": {
+    "file": "assets/index-CEJyhhF2.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_Dialog-xA5nBSHl.js",
+      "_prefs-DotGBXfj.js",
+      "_PrintDialog.module-1gHhlJjs.js",
+      "_logger-Bw1W29Qx.js",
+      "_preload-helper-CRzLMJPS.js",
+      "_engine-BQBlO_RY.js",
+      "_notice-Bf6nAUmv.js",
+      "_properties-store-DSGAiNHj.js",
+      "_ink-preview-DoJ-fAfA.js"
+    ],
+    "dynamicImports": [
+      "src/ui/signature/SignatureDialog.tsx",
+      "src/ui/properties/PropertiesDialog.tsx",
+      "src/ui/print/PrintDialog.tsx"
+    ],
+    "css": [
+      "assets/index-en95Lt3b.css"
+    ],
+    "assets": [
+      "assets/pdf.worker.min-Dkey6ZUl.mjs",
+      "assets/cursor-editorTextHighlight-kG3uUOwL.svg"
+    ]
+  },
+  "src/ui/print/PrintDialog.tsx": {
+    "file": "assets/PrintDialog-BFNArPqG.js",
+    "name": "PrintDialog",
+    "src": "src/ui/print/PrintDialog.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_Dialog-xA5nBSHl.js",
+      "_PrintDialog.module-1gHhlJjs.js"
+    ]
+  },
+  "src/ui/properties/PropertiesDialog.tsx": {
+    "file": "assets/PropertiesDialog-BYKTD9b2.js",
+    "name": "PropertiesDialog",
+    "src": "src/ui/properties/PropertiesDialog.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_Dialog-xA5nBSHl.js",
+      "_logger-Bw1W29Qx.js",
+      "_engine-BQBlO_RY.js",
+      "_properties-store-DSGAiNHj.js"
+    ],
+    "css": [
+      "assets/PropertiesDialog-gCECArAH.css"
+    ]
+  },
+  "src/ui/signature/SignatureDialog.tsx": {
+    "file": "assets/SignatureDialog-DvLWMBPO.js",
+    "name": "SignatureDialog",
+    "src": "src/ui/signature/SignatureDialog.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_rolldown-runtime-WkwZ5CU-.js",
+      "_Dialog-xA5nBSHl.js",
+      "_logger-Bw1W29Qx.js",
+      "_ink-preview-DoJ-fAfA.js"
+    ],
+    "css": [
+      "assets/SignatureDialog-Bi5ptj1g.css"
+    ],
+    "assets": [
+      "assets/dancing-script-vietnamese-400-normal-lz8MlVep.woff2",
+      "assets/dancing-script-vietnamese-400-normal-D2srOv8f.woff",
+      "assets/dancing-script-latin-ext-400-normal-C917Kz-3.woff2",
+      "assets/dancing-script-latin-ext-400-normal-DaWfpMsu.woff",
+      "assets/dancing-script-latin-400-normal--YrtvvVF.woff2",
+      "assets/dancing-script-latin-400-normal-BY5FxJb0.woff"
+    ]
+  }
+}

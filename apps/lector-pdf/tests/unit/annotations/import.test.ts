@@ -369,3 +369,61 @@ describe('importPageAnnotations · filtrado', () => {
     expect(page.supported[0]).toMatchObject({ modified: IMPORT_DATE });
   });
 });
+
+describe('importPageAnnotations · respuestas y estados de revisión (PDF-058)', () => {
+  const text = (over: Record<string, unknown> = {}): RawAnnotation =>
+    raw({ subtype: 'Text', id: '20R', rect: [100, 600, 120, 620], quadPoints: undefined, ...over });
+
+  it('una /Text con inReplyTo y replyType R es una respuesta con padre ref:<IRT>', () => {
+    const page = importOne(text({ inReplyTo: '12R', replyType: 'R', annotationFlags: 28 }));
+    expect(page.foreign).toEqual([]);
+    expect(page.supported).toEqual([
+      expect.objectContaining({
+        type: 'reply',
+        id: 'ref:20R',
+        parentId: 'ref:12R',
+        origin: { kind: 'file', ref: { num: 20, gen: 0 }, popupRef: { num: 11, gen: 0 } },
+      }),
+    ]);
+  });
+
+  it('sin replyType también es respuesta; una respuesta oculta se importa igual', () => {
+    const page = importOne(text({ inReplyTo: '12R', annotationFlags: 2 }));
+    expect(page.supported).toEqual([expect.objectContaining({ type: 'reply', parentId: 'ref:12R' })]);
+  });
+
+  it('con state y stateModel Review es un estado; el estado se lee tal cual', () => {
+    const page = importOne(text({ inReplyTo: '12R', state: 'Accepted', stateModel: 'Review', annotationFlags: 30 }));
+    expect(page.supported).toEqual([expect.objectContaining({ type: 'review', parentId: 'ref:12R', state: 'Accepted' })]);
+  });
+
+  it('un estado desconocido es anotación ajena', () => {
+    const page = importOne(text({ inReplyTo: '12R', state: 'Quizá', stateModel: 'Review' }));
+    expect(page.supported).toEqual([]);
+    expect(page.foreign).toHaveLength(1);
+    expect(page.foreign[0]).toMatchObject({ subtype: 'Text', id: 'ref:20R' });
+  });
+
+  it('replyType Group se ignora: ni editable ni ajena', () => {
+    const page = importOne(text({ inReplyTo: '12R', replyType: 'Group' }));
+    expect(page.supported).toEqual([]);
+    expect(page.foreign).toEqual([]);
+  });
+
+  it('stateModel Marked se ignora: ni editable ni ajena', () => {
+    const page = importOne(text({ inReplyTo: '12R', state: 'Accepted', stateModel: 'Marked' }));
+    expect(page.supported).toEqual([]);
+    expect(page.foreign).toEqual([]);
+  });
+
+  it('inReplyTo que no es una referencia válida, o replyType desconocido, es ajena', () => {
+    expect(importOne(text({ inReplyTo: 'abc' })).foreign).toHaveLength(1);
+    expect(importOne(text({ inReplyTo: 12 })).foreign).toHaveLength(1);
+    expect(importOne(text({ inReplyTo: '12R', replyType: 'X' })).foreign).toHaveLength(1);
+  });
+
+  it('una /Text sin inReplyTo sigue siendo una nota', () => {
+    const page = importOne(text({ annotationFlags: 4 }));
+    expect(page.supported).toEqual([expect.objectContaining({ type: 'note' })]);
+  });
+});

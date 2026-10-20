@@ -11,9 +11,11 @@ import {
   buildPageLabels,
 } from './structure.ts';
 import { textPage } from './pdf-builder.ts';
+import { qpdfEncrypt } from './encrypted.ts';
+import { buildScannedDocument } from './scanned.ts';
 
 /** Subir si cambia la forma de los ficheros generados: fuerza la regeneración en todos los equipos. */
-export const GENERATOR_VERSION = 3;
+export const GENERATOR_VERSION = 5;
 
 export interface FixtureSpec {
   readonly name: string;
@@ -30,10 +32,20 @@ const BASIC_LINE_3 = [
   'rebusquedas no es la palabra completa.',
 ];
 
-function buildBasic5(): Uint8Array {
+/** Cinco páginas con la línea 3 de cada una tomada de `lineFor` (1-based). */
+function buildBasic5With(lineFor: (page: number) => string): Uint8Array {
   return buildDocument(5, (page) => ({
-    content: textPage([`Página ${page} de 5`, `marcador-${page}`, BASIC_LINE_3[page - 1] ?? '']),
+    content: textPage([`Página ${page} de 5`, `marcador-${page}`, lineFor(page)]),
   }));
+}
+
+function buildBasic5(): Uint8Array {
+  return buildBasic5With((page) => BASIC_LINE_3[page - 1] ?? '');
+}
+
+/** Igual que `basic-5.pdf` salvo la línea 3 de la página 2: «página» pasa a «hoja» (comparar, PDF-063). */
+function buildBasic5Changed(): Uint8Array {
+  return buildBasic5With((page) => (page === 2 ? 'Texto de búsqueda en la hoja dos.' : (BASIC_LINE_3[page - 1] ?? '')));
 }
 
 /** Degradado propio de cada página: r = (x + k) % 256, g = (y * 2) % 256, b = (k * 37) % 256. */
@@ -108,8 +120,13 @@ function buildBadStartxref(): Uint8Array {
 
 export const FIXTURES: readonly FixtureSpec[] = [
   { name: 'basic-5.pdf', build: buildBasic5 },
+  { name: 'basic-5-changed.pdf', build: buildBasic5Changed },
   { name: 'pages-5000.pdf', build: () => buildNumbered(5000, NEEDLES_5000) },
+  // Pestañas (PDF-095): documento de 1 000 páginas para medir el cambio de pestaña con un documento grande.
+  { name: 'pages-1000.pdf', build: () => buildNumbered(1000, new Set<number>()) },
   { name: 'pages-100000.pdf', build: () => buildNumbered(100000, new Set([99999])) },
+  // Presupuesto de los modos de página (PDF-050): doble página continua con 10 000 páginas.
+  { name: 'pages-10000.pdf', build: () => buildNumbered(10000, NEEDLES_5000) },
   // Caso degenerado: todas las páginas como hijos directos de un único /Pages.
   { name: 'pages-20000-flat.pdf', build: () => buildNumbered(20000, NEEDLES_5000, 20000) },
   {
@@ -117,6 +134,7 @@ export const FIXTURES: readonly FixtureSpec[] = [
     build: () => buildDocument(SIZES_PAGES.length, (page) => pageSpecAt(SIZES_PAGES, page)),
   },
   { name: 'images-200.pdf', build: buildImages200 },
+  { name: 'scanned-es-3.pdf', build: buildScannedDocument },
   { name: 'corrupt-empty.pdf', build: () => new Uint8Array(0) },
   { name: 'corrupt-not-pdf.pdf', build: () => Buffer.from('Esto no es un PDF.\n'.repeat(20), 'latin1') },
   {
@@ -135,4 +153,62 @@ export const FIXTURES: readonly FixtureSpec[] = [
   { name: 'annotated.pdf', build: buildAnnotated },
   { name: 'form.pdf', build: buildForm },
   { name: 'form-full.pdf', build: buildFormFull },
+  // Cifrados con qpdf (contraseñas: usuario = `usuario`, propietario = `propietario`; ver fixtures/FUENTES.md).
+  {
+    name: 'encrypted-rc4-40.pdf',
+    build: () => qpdfEncrypt(buildBasic5(), ['--allow-weak-crypto', '--encrypt', 'usuario', 'propietario', '40', '--']),
+  },
+  {
+    name: 'encrypted-rc4-128.pdf',
+    build: () =>
+      qpdfEncrypt(buildBasic5(), [
+        '--allow-weak-crypto',
+        '--encrypt',
+        'usuario',
+        'propietario',
+        '128',
+        '--use-aes=n',
+        '--',
+      ]),
+  },
+  {
+    name: 'encrypted-aes-128.pdf',
+    build: () => qpdfEncrypt(buildBasic5(), ['--encrypt', 'usuario', 'propietario', '128', '--use-aes=y', '--']),
+  },
+  {
+    name: 'encrypted-aes-256.pdf',
+    build: () => qpdfEncrypt(buildBasic5(), ['--encrypt', 'usuario', 'propietario', '256', '--']),
+  },
+  {
+    name: 'encrypted-aes-256-objstm.pdf',
+    build: () =>
+      qpdfEncrypt(buildCompressed(), [
+        '--object-streams=generate',
+        '--encrypt',
+        'usuario',
+        'propietario',
+        '256',
+        '--',
+      ]),
+  },
+  {
+    name: 'encrypted-owner-only.pdf',
+    build: () =>
+      qpdfEncrypt(buildBasic5(), [
+        '--encrypt',
+        '',
+        'propietario',
+        '256',
+        '--print=none',
+        '--extract=n',
+        '--modify=none',
+        '--annotate=n',
+        '--',
+      ]),
+  },
+  {
+    name: 'encrypted-annotated-aes-128.pdf',
+    build: () =>
+      qpdfEncrypt(buildAnnotated(), ['--encrypt', 'usuario', 'propietario', '128', '--use-aes=y', '--']),
+  },
 ];

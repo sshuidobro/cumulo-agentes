@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { createStorageStore, memorySource, type Platform } from '@suite/platform';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LoadedPdf } from '../../src/engine';
@@ -8,6 +8,7 @@ import { newAnnotation, fileAnnotation } from '../unit/annotations/factories';
 import { AnnotationLayer } from '../../src/ui/viewer/AnnotationLayer';
 import { AnnotationPopup } from '../../src/ui/viewer/AnnotationPopup';
 import {
+  addAnnotation,
   endAnnotationSession,
   getEffective,
   openPopup,
@@ -330,5 +331,107 @@ describe('Ventana de comentario · anotaciones nuevas (PDF-033)', () => {
     fireEvent.doubleClick(zone('suite-h1'));
 
     expect(valueOf(screen.getByRole('textbox', { name: 'Comentario' }))).toBe('Cifra');
+  });
+});
+
+describe('Ventana de comentario · respuestas y estados (PDF-109)', () => {
+  /** Abre la ventana de una nota con texto, con el autor «Ana». */
+  function openNote(): void {
+    startAnnotationSession(lazyLoaded(), new AbortController().signal);
+    useAnnotations.setState({ author: 'Ana' });
+    addAnnotation({ ...newAnnotation('suite-nota', 'note'), contents: 'Revisar la cifra' });
+    openPopup('suite-nota');
+    renderPage();
+  }
+
+  function replyField(): HTMLTextAreaElement {
+    return screen.getByRole('textbox', { name: 'Escribe una respuesta' }) as HTMLTextAreaElement;
+  }
+
+  it('escribir y pulsar «Responder» añade la respuesta a la lista y vacía el campo, que conserva el foco', () => {
+    openNote();
+
+    fireEvent.change(replyField(), { target: { value: 'De acuerdo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Responder' }));
+
+    const list = screen.getByRole('list', { name: 'Respuestas' });
+    expect(within(list).getByText('De acuerdo')).toBeTruthy();
+    expect(within(list).getByText('Ana')).toBeTruthy();
+    expect(valueOf(replyField())).toBe('');
+    expect(document.activeElement).toBe(replyField());
+    expect(screen.getByText('1 respuesta')).toBeTruthy();
+  });
+
+  it('con el campo en blanco, «Responder» está desactivado y no añade nada', () => {
+    openNote();
+
+    expect((screen.getByRole('button', { name: 'Responder' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole('list', { name: 'Respuestas' })).toBeNull();
+  });
+
+  it('Ctrl+Intro en el campo responde; Intro sola inserta un salto de línea y no responde', () => {
+    openNote();
+
+    fireEvent.change(replyField(), { target: { value: 'Con atajo' } });
+    fireEvent.keyDown(replyField(), { key: 'Enter' });
+    expect(screen.queryByRole('list', { name: 'Respuestas' })).toBeNull();
+
+    fireEvent.keyDown(replyField(), { key: 'Enter', ctrlKey: true });
+    expect(within(screen.getByRole('list', { name: 'Respuestas' })).getByText('Con atajo')).toBeTruthy();
+  });
+
+  it('Escape en el campo de respuesta cierra la ventana, como en el comentario', () => {
+    openNote();
+
+    fireEvent.keyDown(replyField(), { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useAnnotations.getState().openPopupId).toBeNull();
+  });
+
+  it('editar una respuesta con teclado: Intro confirma, Escape cancela', () => {
+    openNote();
+    fireEvent.change(replyField(), { target: { value: 'Primera' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Responder' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar respuesta' }));
+    const editor = screen.getByRole('textbox', { name: 'Editar respuesta' });
+    fireEvent.change(editor, { target: { value: 'Editada' } });
+    fireEvent.keyDown(editor, { key: 'Escape' });
+    expect(screen.getByText('Primera')).toBeTruthy();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Editar respuesta' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar respuesta' }));
+    const again = screen.getByRole('textbox', { name: 'Editar respuesta' });
+    fireEvent.change(again, { target: { value: 'Editada' } });
+    fireEvent.keyDown(again, { key: 'Enter' });
+    expect(screen.getByText('Editada')).toBeTruthy();
+    expect(screen.queryByText('Primera')).toBeNull();
+  });
+
+  it('borrar una respuesta la quita de la lista', () => {
+    openNote();
+    fireEvent.change(replyField(), { target: { value: 'Sobra' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Responder' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Borrar respuesta' }));
+
+    expect(screen.queryByRole('list', { name: 'Respuestas' })).toBeNull();
+    expect(screen.queryByText('Sobra')).toBeNull();
+  });
+
+  it('el menú «Estado» fija el estado vigente, que se muestra en la cabecera', () => {
+    openNote();
+    expect(screen.queryByText('Estado: Aceptado')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Estado' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Aceptado' }));
+
+    expect(getEffective().size).toBe(2);
+    expect(screen.getByText('Estado: Aceptado')).toBeTruthy();
+    expect(screen.getByText('Estado: Aceptado').getAttribute('aria-live')).toBe('polite');
+    fireEvent.click(screen.getByRole('button', { name: 'Estado' }));
+    expect(screen.getByRole('menuitemradio', { name: 'Aceptado' }).getAttribute('aria-checked')).toBe('true');
   });
 });

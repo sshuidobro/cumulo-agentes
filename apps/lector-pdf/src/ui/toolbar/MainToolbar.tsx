@@ -4,10 +4,13 @@ import { IconAppearance, IconComment, IconFormFields, IconHand, IconNextPage, Ic
 import { SignatureMenu } from '../signature/SignatureMenu';
 import { msg } from '../messages';
 import { printMsg } from '../messages-print';
+import { securityMsg } from '../messages-security';
 import { formMsg } from '../messages-forms';
 import { formatOpenShortcut, formatShortcut } from '../shortcuts';
 import { ZoomControls } from './ZoomControls';
 import { DocumentMenu } from './DocumentMenu';
+import { RecentMenu } from './RecentMenu';
+import { ViewMenu } from './ViewMenu';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
@@ -39,6 +42,7 @@ function toggleCommentBar(open: boolean, annotationTool: AnnotationTool): void {
 export function MainToolbar() {
   const { platform } = services();
   const ready = useViewer((s) => s.status === 'ready');
+  const printAllowed = useViewer((s) => s.permissions.print);
   const undoState = useAnnotations((s) => s.undo);
   const annotationTool = useAnnotations((s) => s.tool);
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
@@ -60,6 +64,7 @@ export function MainToolbar() {
       >
         <IconOpen />
       </IconButton>
+      <RecentMenu />
       <IconButton
         label={msg.save}
         shortcut={formatShortcut('save', platform.isMac)}
@@ -79,7 +84,8 @@ export function MainToolbar() {
       <IconButton
         label={printMsg.print}
         shortcut={formatShortcut('print', platform.isMac)}
-        disabled={!ready}
+        disabled={!ready || !printAllowed}
+        {...(printAllowed ? {} : { description: securityMsg.printBlocked })}
         onClick={() => { openPrintDialog(); }}
       >
         <IconPrint />
@@ -186,6 +192,7 @@ export function MainToolbar() {
       >
         <IconRotateRight />
       </IconButton>
+      <ViewMenu />
       <div role="separator" aria-orientation="vertical" className={styles.separator} />
       <MenuButton
         label={msg.appearance}

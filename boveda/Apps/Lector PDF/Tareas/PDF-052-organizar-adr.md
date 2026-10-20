@@ -1,38 +1,120 @@
 ---
 tipo: tarea
 id: PDF-052
-titulo: ADR y prueba técnica: reescribir PDFs (organizar páginas y reparar xref)
+titulo: Reorganizar páginas por actualización incremental (núcleo y medidas)
 app: pdf
-estado: pendiente
-depende_de: [PDF-039]
+estado: hecha
+depende_de: [PDF-039, PDF-106]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-17
-tags: [tarea, pdf, iteracion-5, organizar, decision, por-detallar]
+actualizado: 2026-10-19
+tags: [tarea, pdf, iteracion-5, organizar, decision]
 ---
 
-# PDF-052 · ADR y prueba técnica: reescribir PDFs (organizar páginas y reparar xref)
+# PDF-052 · Reorganizar páginas por actualización incremental (núcleo y medidas)
 
-Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Paridad: [[Paridad Adobe Acrobat]]
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Decisiones: [[ADR-0028-reescribir-pdfs]] · Paridad: [[Paridad Adobe Acrobat]] · Sigue: [[PDF-053-organizar-paginas]]
 
-> **Ficha por detallar.** El líder la completará (firmas, ficheros, pasos y criterios exactos, y ADR si hace falta) al cerrar la iteración anterior. No empezar hasta entonces.
+> 2026-10-19 (líder): la pregunta de licencias ya no aplica. El líder ha decidido el escritor propio ([[ADR-0028-reescribir-pdfs]]): no entra pdf-lib, qpdf-wasm ni mupdf. El ADR ya está escrito; esta ficha implementa el núcleo y rellena la tabla «Medidas» del ADR.
 
 ## Objetivo
-Decidir cómo reescribir un PDF completo (reordenar, borrar, insertar, combinar, reparar xref): ampliar el escritor propio con copia de objetos por rangos o usar una librería (pdf-lib o forks, qpdf en WASM) con medidas de tiempo y memoria en 5 000 y 100 000 páginas. Las licencias GPL/AGPL se consultan al usuario.
+Una función pura de `core/` que, dada la nueva lista de páginas (orden y giro de cada una), escribe la actualización incremental que reorganiza el PDF: borrar, reordenar y girar páginas conservando anotaciones, enlaces, índice y cifrado, con 5 o 100 000 páginas.
 
 ## Contexto
-- Leer cuando se detalle: [[Paridad Adobe Acrobat]], [[Librerias y arquitectura PDF]] y los ADR enlazados en el Plan.
+- [[ADR-0028-reescribir-pdfs]] (sección «Decisión», punto 1): reglas exactas del árbol nuevo.
+- `src/core/pdf/delta-writer.ts` (de [[PDF-106-escritor-de-incrementos|PDF-106]]): `startDelta`, `reserveXref`, `finishDelta`, `DeltaWriter.object`.
+- `src/core/pdf/object-reader.ts`: `ObjectReader.open`, `getDict`, `resolve`, `pageRefs()` (refs de todas las páginas en orden), `xref.trailer`, `xref.size`.
+- `src/core/pdf/objects.ts`: `dict`, `name`, `ref`, `withEntries`, `dictGet`.
+- `src/core/errors.ts`: `PdfErrorCode`, `PDF_ERROR_MESSAGES`, `pdfError`.
+- Patrón de tests: `tests/unit/pdf/incremental.test.ts`, `tests/unit/pdf/interop.test.ts` (qpdf), `tests/helpers/pdfjs-node.ts`, `tests/perf/incremental.perf.test.ts` (`bestOf`).
 
 ## Qué hay que hacer
-Por detallar.
+1. `src/core/errors.ts`: código nuevo `'organize-invalid'` → «No se pueden reorganizar las páginas: la lista de páginas no es válida.».
+2. `src/core/pdf/page-tree.ts`:
+```ts
+export type PageRotation = 0 | 90 | 180 | 270;
+/** Una página del documento resultante. `source`: índice 0-based de la página en el fichero abierto. `rotate`: giro final absoluto. */
+export interface PageSlot { readonly source: number; readonly rotate: PageRotation }
+export interface PageTreeInput {
+  readonly source: ByteSource;
+  readonly reader: ObjectReader;          // abierto con openForSave sobre el mismo source
+  readonly pages: readonly PageSlot[];    // orden final
+  readonly now: string;                   // ISO 8601 (semilla de /ID)
+  readonly random?: RandomBytes;
+  readonly signal?: AbortSignal;          // abortado → err(pdfError('cancelled'))
+  readonly onProgress?: (done: number, total: number) => void; // cada 1 000 páginas escritas y al final
+}
+export interface PageTreeOutput { readonly delta: Uint8Array; readonly expectedSize: number; readonly rewrittenPages: number }
+export const PAGE_TREE_FANOUT = 32;
+/** Giro efectivo de cada página (propio o heredado), en orden. Para que la UI sepa el estado inicial. */
+export async function readPageRotations(reader: ObjectReader): Promise<Result<readonly PageRotation[]>>;
+export async function buildPageTreeUpdate(input: PageTreeInput): Promise<Result<PageTreeOutput>>;
+```
+   Reglas de `buildPageTreeUpdate` (nunca lanza; los fallos de lectura → `save-unreadable`, contraseña → como `buildIncrementalUpdate`):
+   - Validar: `pages.length >= 1`, cada `source` entero en `[0, n)` y sin repetir, `rotate` ∈ {0, 90, 180, 270}. Si no → `err(pdfError('organize-invalid'))`.
+   - Giro efectivo de una página = su `/Rotate` o el del primer antecesor que lo tenga (bajando por `/Parent`, máximo 64 niveles), normalizado a 0-359 y redondeado al múltiplo de 90; sin ninguno → 0.
+   - **Solo giros** (las `source` son exactamente `0..n-1` en orden): reescribir solo las páginas cuyo giro efectivo ≠ `rotate`, con `withEntries(dict, { Rotate: rotate === 0 ? undefined : rotate })` si el giro venía de la propia página, o con `Rotate: rotate` (también 0) si era heredado. Sin cambios → `delta` vacío y `expectedSize = source.size`.
+   - **Caso general**: raíz = `/Pages` del catálogo (`trailer /Root` → `/Pages`). Construir de abajo arriba nodos de hasta 32 hijos en el orden de `pages`; el nodo de arriba es la raíz y **reutiliza el número y generación** de la raíz original; el resto de nodos son números nuevos desde `reader.xref.size`. Nodo: `{ Type: /Pages, Kids, Count, Parent }` (la raíz sin `Parent`). Si hay ≤ 32 páginas, la raíz tiene las páginas como hijos directos.
+   - Cada página conservada se reescribe con su número y generación: `Parent` nuevo; `Resources`, `MediaBox` y `CropBox` copiados del antecesor más cercano si la página no los tiene (el valor tal cual, también si es una referencia); `Rotate` según `slot.rotate` (`undefined` si es 0). El resto de claves (`/Annots`, `/Contents`, `/StructParents`…) no se tocan.
+   - Orden de escritura: nodos de arriba abajo y, dentro de un nivel, de izquierda a derecha; después las páginas en el orden de `pages`. Luego `finishDelta`.
+   - `rewrittenPages` = páginas escritas.
+3. Tests `tests/unit/pdf/page-tree.test.ts` (Node, pdf.js de `tests/helpers/pdfjs-node.ts` y qpdf de `tests/support/qpdf.ts`). En todos, el fichero resultante es `concat(original, delta)`.
+4. Rendimiento `tests/perf/page-tree.perf.test.ts` (`ObjectReader.open` + `buildPageTreeUpdate`, mejor de 3, 1 calentamiento). Escribe los tiempos y tamaños medidos en la tabla «Medidas» de [[ADR-0028-reescribir-pdfs]].
 
 ## Criterios de aceptación
-- [ ] ADR con medidas; prototipo que borra la página 2 de `pages-5000.pdf` conservando índice, enlaces y anotaciones.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0; presupuestos de rendimiento del Plan sin regresiones.
+- [ ] `basic-5.pdf`, `pages = [4,3,2,1,0]` (todas con giro 0): pdf.js lee 5 páginas cuyo texto empieza por «Página 5 de 5», «Página 4 de 5»…; `qpdf --check` código 0.
+- [ ] `basic-5.pdf`, borrar la página 2 (`[0,2,3,4]`): pdf.js da 4 páginas; `qpdf --check` 0; `qpdf --show-npages` 4.
+- [ ] `basic-5.pdf`, solo girar la página 3 a 90: `rewrittenPages === 1`; pdf.js `getPage(3).rotate === 90`, el resto 0; girarla de nuevo a 0 sobre el resultado deja `/Rotate` fuera del diccionario.
+- [ ] Giro heredado: un documento de prueba con `/Rotate 90` en un nodo `/Pages` (créalo con `tests/fixtures/pdf-builder.ts` en el propio test): `readPageRotations` da 90 para sus páginas; `[1,0]` con giro 90 conserva 90 en pdf.js; con giro 0 da 0.
+- [ ] `outline.pdf`: borrar la página 2 → `getOutline()` devuelve los mismos títulos; las entradas a páginas conservadas resuelven (`resolveDest` de `src/engine/dest.ts`) a su **nuevo** índice; las que iban a la página borrada devuelven `null` sin lanzar.
+- [ ] `links.pdf`: reordenar `[1,0,…]` → los enlaces internos de cada página siguen en esa página y llevan a la página correcta (nuevo índice).
+- [ ] `annotated.pdf`: reordenar y girar → `getAnnotations()` de cada página da los mismos subtipos, `/Contents` y autores que antes en esa misma página.
+- [ ] `encrypted-aes-256.pdf` (contraseña `usuario`): borrar la página 1 → pdf.js abre con la contraseña y da 4 páginas; `qpdf --check --password=usuario` código 0; el texto sigue legible.
+- [ ] `compressed.pdf` (xref stream y object streams): borrar una página → pdf.js y `qpdf --check` correctos.
+- [ ] `pages-5000.pdf`: borrar la página 2 → 4 999 páginas; la última es «Página 5000…»; `qpdf --check` 0.
+- [ ] Entradas no válidas (`[]`, índice repetido, `-1`, `n`, giro 45) → `organize-invalid`; `signal` abortado → `cancelled`; `onProgress` se llama con `total` = `pages.length` y termina en `done === total`.
+- [ ] `pnpm perf`: `pages-5000.pdf` borrar página 2 < 1 000 ms; `pages-100000.pdf` borrar página 2 < 15 000 ms; `pages-100000.pdf` girar la página 50 000 < 3 000 ms. Medidas anotadas en el ADR.
+- [ ] Cobertura de `page-tree.ts` ≥ 90 % de líneas.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm coverage` con código 0.
 
 ## Fuera de alcance
-- Por detallar.
+- Interfaz, Worker, estado de la app y anotaciones sin guardar (PDF-053). Insertar páginas de otro PDF, extraer, combinar (PDF-054/055). Reparar xref. Limpiar índice o campos de formulario de páginas borradas.
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-19
+- Ficheros cambiados: `boveda/Apps/Lector PDF/Tareas/PDF-052-organizar-adr.md` (solo estado y Registro).
+- Qué he hecho: No he implementado nada. La ficha está marcada como "Ficha por detallar" (sin firmas, pasos, ficheros ni "Qué hay que hacer"; "Fuera de alcance" dice "Por detallar"). Según la propia ficha, no debe empezarse hasta que el líder la complete.
+- Comandos ejecutados y resultado: ninguno (no hay código que compilar ni probar).
+- Dudas o cosas que no he podido hacer: Falta que el líder detalle la ficha (firmas, ficheros, pasos, criterios). Además, la tarea exige consultar al usuario sobre licencias GPL/AGPL de librerías (pdf-lib, qpdf en WASM) antes de decidir; esa pregunta de producto queda pendiente. Como dependencia, `depende_de: [PDF-039]`: no he verificado su estado. Ficha pasada a `bloqueada`.
+
+### [líder] replanificación — 2026-10-19
+- Desbloqueada sin preguntar al usuario: pdf-lib y forks son MIT y qpdf Apache-2.0 (no hay GPL/AGPL salvo mupdf), y además se decide no usar ninguna librería: escritor propio ([[ADR-0028-reescribir-pdfs]]).
+- La ficha pasa de «ADR y prueba» a núcleo de reorganización con medidas. La parte común del escritor se separa antes en [[PDF-106-escritor-de-incrementos]] (`depende_de` añade PDF-106). `estado: pendiente`, `intentos: 0`.
+
+### [programador] ronda 2 — 2026-10-19
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/page-tree.ts` (nuevo), `apps/lector-pdf/src/core/errors.ts` (código `organize-invalid`), `apps/lector-pdf/src/core/pdf/incremental.ts` (exporta `toSaveError`, sin cambios de comportamiento), `apps/lector-pdf/src/core/pdf/serialize.ts` (mismos bytes, más rápido: ver abajo), `apps/lector-pdf/tests/unit/pdf/page-tree.test.ts` (nuevo), `apps/lector-pdf/tests/perf/page-tree.perf.test.ts` (nuevo), `boveda/Decisiones/ADR-0028-reescribir-pdfs.md` (tabla «Medidas»), esta ficha.
+- Qué he hecho: Implementado `buildPageTreeUpdate` y `readPageRotations` según la ficha: solo giros (reescribe solo las páginas que cambian) y reordenación general (árbol nuevo de 32 hijos bajo la raíz `/Pages` original, páginas con `/Parent`, `/Rotate` y atributos heredados copiados). Tests: 18 unitarios con pdf.js y qpdf (todos los criterios de aceptación) y 3 de rendimiento. Para cumplir el presupuesto de 100 000 páginas he optimizado el serializador (el coste estaba en codificar cada fragmento por separado y en los nombres) y he hecho una única pasada de lectura del árbol en el giro y en `readPageRotations`.
+- Comandos ejecutados y resultado:
+  - `pnpm lint` → sin errores ni avisos.
+  - `pnpm typecheck` → sin errores.
+  - `pnpm exec vitest run tests/unit/pdf/page-tree.test.ts` → 18/18 pasan. Junto con `delta-writer-golden` y `serialize`, 41/41.
+  - `pnpm exec vitest run --config vitest.perf.config.ts apps/lector-pdf/tests/perf/page-tree.perf.test.ts` → 3/3 pasan. Medidas (mejor de 3 tras calentamiento, incluye `ObjectReader.open`): `pages-5000` borrar pág. 2 = 218 ms (límite 1 000); `pages-100000` borrar pág. 2 = 5 299 ms (límite 15 000); `pages-100000` girar pág. 50 000 = 2 521 ms (límite 3 000, margen estrecho). Anotadas en ADR-0028.
+  - `pnpm coverage` no se pudo lanzar en la carpeta por defecto porque otro proceso de Vitest ocupaba `coverage/`. Lo he ejecutado con `--coverage.reportsDirectory` propio: 225 ficheros y 2 695 tests pasan; `page-tree.ts` con 93,08 % de líneas (requisito ≥ 90 %).
+- Dudas o cosas que no he podido hacer: (1) El "giro efectivo" ignora un `/Rotate` que no sea número (lo trata como ausente y sigue subiendo por `/Parent`); la ficha no lo dice. (2) Cambios fuera de la lista de ficheros de la ficha: `serialize.ts` y la exportación de `toSaveError` (necesarios para el rendimiento y para no duplicar el mapeo de errores). Conviene revisarlo en la revisión. (3) El margen del giro en 100 000 páginas es pequeño (2,5 s de 3 s); si el revisor lo mide más lento en su máquina, el cuello de botella es leer las 100 000 páginas (~2 s) y no el escritor. (4) Sin commit, como se pidió. (5) La medida de rendimiento no se hizo con la CPU en reposo comprobada (no se ejecutó `pnpm perf` completo).
+
+### [revisor] ronda 1 — 2026-10-19 — APROBADO
+1. Lint y typecheck sin avisos; `tests/unit/pdf` 22 ficheros / 450 tests en verde (incluye page-tree). `pnpm coverage` no se pudo lanzar (otro Vitest ocupa `coverage/`); se acepta el 93,08 % medido por el programador.
+2. `page-tree.ts` cumple las reglas de la ficha (validación, giro heredado, raíz reutilizada, orden de escritura, cancelación y progreso). Cambios en `serialize.ts` e `incremental.ts` (`toSaveError`) justificados y sin cambio de comportamiento.
+3. (opcional) El margen del giro en 100 000 páginas (2,5 s de 3 s) es estrecho: que el tester lo mida con la CPU en reposo.
+
+### [tester] ronda 1 — 2026-10-19 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint, typecheck | OK | `pnpm lint`, `pnpm typecheck` sin avisos |
+| Batería completa y cobertura | OK | `pnpm coverage`: 225 ficheros, 2 695 tests; `page-tree.ts` 93,08 % líneas |
+| Criterios funcionales (pdf.js y qpdf, cifrado, compressed, 5000 págs, entradas inválidas, cancelación, progreso) | OK | `page-tree.test.ts` 18/18 dentro de la batería |
+| Rendimiento (límites 1 000 / 15 000 / 3 000 ms) | OK | `pnpm perf` 20 ficheros/34 tests verdes y `page-tree.perf.test.ts` 3/3 con carga 0,43 (reposo); tiempos medidos por el programador en el ADR-0028 (giro 100 000 págs ~2,5 s) |
+Tests añadidos: ninguno. Rendimiento: medido en reposo, dentro de presupuesto (el test no imprime tiempos; el margen del giro de 100 000 páginas es estrecho pero pasó).

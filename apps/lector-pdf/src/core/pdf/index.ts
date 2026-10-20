@@ -9,5 +9,6 @@ export { BlockCache, type BlockCacheOptions } from './block-cache';
 export { ObjectReader } from './object-reader';
 export { scanFonts, mergeFonts, type FontInfo } from './fonts';
 export { buildIncrementalUpdate, openForSave, type IncrementalInput, type IncrementalOutput } from './incremental';
+export { DeltaWriter, finishDelta, reserveXref, startDelta, type FinishDeltaOptions, type XrefRow } from './delta-writer';
 export * from './image';
 export { concatSource } from './concat-source';

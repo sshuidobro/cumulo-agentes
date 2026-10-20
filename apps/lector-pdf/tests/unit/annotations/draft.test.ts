@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { draftSavedAt, fromDraft, toDraft } from '../../../src/core/annotations/draft';
+import { newReply, newReviewState } from '../../../src/core/annotations/replies';
 import { EMPTY_EDITS, type Annotation, type AnnotationEdits } from '../../../src/core/annotations/model';
 import type { FieldValue } from '../../../src/core/forms/model';
 import { fileAnnotation, newAnnotation, T0 } from './factories';
@@ -31,6 +32,19 @@ describe('borrador de anotaciones: toDraft y fromDraft', () => {
 
     expect(back).toEqual(edits);
     expect(draft).toMatchObject({ version: 2, fileName: 'a.pdf', savedAt: SAVED_AT });
+  });
+
+  it('los cinco tipos de forma y sello pasan fromDraft(toDraft(...)) sin pérdidas', () => {
+    const shapes = [
+      newAnnotation('suite-sq', 'square'),
+      { ...newAnnotation('suite-ci', 'circle'), interior: [0, 1, 0] as const },
+      newAnnotation('suite-ln', 'line'),
+      newAnnotation('suite-pg', 'polygon'),
+      newAnnotation('suite-st', 'stamp'),
+    ];
+    const edits = editsOf(shapes, []);
+    const back = fromDraft(JSON.parse(JSON.stringify(toDraft(edits, 'a.pdf', SAVED_AT))) as unknown);
+    expect(back).toEqual(edits);
   });
 
   it('un borrador vacío se reconstruye vacío', () => {
@@ -127,5 +141,18 @@ describe('draftSavedAt', () => {
     expect(draftSavedAt({ savedAt: 'no es fecha' })).toBeNull();
     expect(draftSavedAt({ savedAt: 5 })).toBeNull();
     expect(draftSavedAt(undefined)).toBeNull();
+  });
+});
+
+describe('borrador con respuestas y estados (PDF-058)', () => {
+  it('fromDraft(toDraft(...)) conserva respuestas y estados sin pérdidas', () => {
+    const parent = newAnnotation('suite-nota', 'note');
+    const reply = newReply({ id: 'suite-r', parent, contents: 'Sí, ñ € 😀', author: 'Ana', now: T0 });
+    const review = newReviewState({ id: 'suite-s', parent, state: 'Cancelled', author: 'Luis', now: T0 });
+    const edits = editsOf([parent, reply, review]);
+    const back = fromDraft(JSON.parse(JSON.stringify(toDraft(edits, 'a.pdf', SAVED_AT))));
+    expect(back?.upserts.get('suite-r')).toEqual(reply);
+    expect(back?.upserts.get('suite-s')).toEqual(review);
+    expect(back?.upserts.size).toBe(3);
   });
 });

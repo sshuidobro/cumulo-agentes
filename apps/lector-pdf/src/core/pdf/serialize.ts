@@ -9,20 +9,33 @@ const HEX_UPPER = '0123456789ABCDEF';
 /** Caracteres que hay que escapar en un nombre además de los fuera de `!`..`~`. */
 const NAME_SPECIAL = new Set<number>([0x23, 0x28, 0x29, 0x2f, 0x3c, 0x3e, 0x5b, 0x5d, 0x7b, 0x7d, 0x25]);
 
-/** Acumula trozos de texto ASCII y bytes crudos (solo los flujos llevan bytes no ASCII). */
+/**
+ * Acumula trozos de texto ASCII y bytes crudos (solo los flujos llevan bytes no ASCII). El texto se concatena
+ * y se codifica una sola vez por bloque de bytes crudos: codificar cada fragmento por separado era el
+ * cuello de botella al reescribir miles de páginas (PDF-052).
+ */
 class ByteWriter {
-  private readonly chunks: Array<string | Uint8Array> = [];
+  private readonly parts: Uint8Array[] = [];
+  private pending = '';
 
   text(s: string): void {
-    this.chunks.push(s);
+    this.pending += s;
   }
 
   raw(b: Uint8Array): void {
-    this.chunks.push(b);
+    this.flush();
+    this.parts.push(b);
+  }
+
+  private flush(): void {
+    if (this.pending === '') return;
+    this.parts.push(TEXT_ENCODER.encode(this.pending));
+    this.pending = '';
   }
 
   finish(): Uint8Array {
-    const parts = this.chunks.map((c) => (typeof c === 'string' ? TEXT_ENCODER.encode(c) : c));
+    this.flush();
+    const parts = this.parts;
     const total = parts.reduce((n, p) => n + p.length, 0);
     const out = new Uint8Array(total);
     let at = 0;
@@ -47,7 +60,12 @@ function hex2(b: number): string {
   return HEX_UPPER.charAt(b >> 4) + HEX_UPPER.charAt(b & 0xf);
 }
 
+/** Nombres ASCII imprimibles sin caracteres especiales: se escriben tal cual (camino rápido). */
+const PLAIN_NAME = /^[!-~]+$/;
+const SPECIAL_IN_NAME = /[#()/<>[\]{}%]/;
+
 function formatName(value: string): string {
+  if (PLAIN_NAME.test(value) && !SPECIAL_IN_NAME.test(value)) return `/${value}`;
   let out = '/';
   for (const b of TEXT_ENCODER.encode(value)) {
     if (b < 0x21 || b > 0x7e || NAME_SPECIAL.has(b)) out += `#${hex2(b)}`;

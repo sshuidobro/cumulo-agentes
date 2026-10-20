@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_CANVAS_DIM, MAX_CANVAS_PIXELS, planCanvas } from '../../src/core/canvas-size';
+import {
+  CAPPED_BASE_PIXELS,
+  MAX_CANVAS_DIM,
+  MAX_CANVAS_PIXELS,
+  planBaseCanvas,
+  planCanvas,
+} from '../../src/core/canvas-size';
 
 describe('planCanvas', () => {
   it('usa la densidad de pantalla cuando el lienzo cabe', () => {
@@ -79,5 +85,42 @@ describe('planCanvas', () => {
     expect(() => planCanvas(-1, 10, 1)).toThrow(RangeError);
     expect(() => planCanvas(10, Number.NaN, 1)).toThrow(RangeError);
     expect(() => planCanvas(Number.POSITIVE_INFINITY, 10, 1)).toThrow(RangeError);
+  });
+});
+
+describe('planBaseCanvas', () => {
+  it('página no capada: igual que planCanvas', () => {
+    expect(planBaseCanvas(612, 792, 1)).toEqual(planCanvas(612, 792, 1));
+    expect(planBaseCanvas(612, 792, 2)).toEqual(planCanvas(612, 792, 2));
+  });
+
+  it('página capada (3 200 %): respeta el tope de 32 MiB y reduce la escala', () => {
+    const plan = planBaseCanvas(19584, 25344, 1);
+    const full = planCanvas(19584, 25344, 1);
+    expect(plan.capped).toBe(true);
+    expect(plan.width * plan.height).toBeLessThanOrEqual(CAPPED_BASE_PIXELS);
+    expect(plan.outputScale).toBeLessThan(full.outputScale);
+    expect(plan.width).toBeLessThanOrEqual(MAX_CANVAS_DIM);
+    expect(plan.height).toBeLessThanOrEqual(MAX_CANVAS_DIM);
+  });
+
+  it('página capada solo por lado: cumple los dos topes', () => {
+    const plan = planBaseCanvas(100, 40000, 1);
+    expect(plan.capped).toBe(true);
+    expect(plan.width * plan.height).toBeLessThanOrEqual(CAPPED_BASE_PIXELS);
+    expect(plan.width).toBeLessThanOrEqual(MAX_CANVAS_DIM);
+    expect(plan.height).toBeLessThanOrEqual(MAX_CANVAS_DIM);
+    expect(plan.width).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rechaza tamaños negativos o no finitos igual que planCanvas', () => {
+    expect(() => planBaseCanvas(-1, 10, 1)).toThrow(RangeError);
+    expect(() => planBaseCanvas(10, Number.NaN, 1)).toThrow(RangeError);
+    expect(() => planBaseCanvas(Number.POSITIVE_INFINITY, 10, 1)).toThrow(RangeError);
+  });
+
+  it('con 0 píxeles devuelve lo mismo que planCanvas', () => {
+    expect(planBaseCanvas(0, 792, 1)).toEqual(planCanvas(0, 792, 1));
+    expect(planBaseCanvas(0, 0, 1)).toEqual(planCanvas(0, 0, 1));
   });
 });

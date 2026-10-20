@@ -2,8 +2,12 @@ import { MenuButton } from '../kit/MenuButton';
 import { IconMore } from '../icons';
 import { formatShortcut } from '../shortcuts';
 import { printMsg } from '../messages-print';
+import { exportMsg } from '../messages-export';
 import { propertiesMsg } from '../messages-properties';
+import { compareMsg } from '../messages-compare';
 import { openPrintDialog } from '../../state/print-actions';
+import { openExportDialog } from '../../state/export-actions';
+import { startCompare } from '../../state/compare-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -12,6 +16,8 @@ import { useViewer } from '../../state/viewer-store';
 export function DocumentMenu() {
   const { platform } = services();
   const ready = useViewer((s) => s.status === 'ready');
+  const printAllowed = useViewer((s) => s.permissions.print);
+  const copyAllowed = useViewer((s) => s.permissions.copy);
   return (
     <MenuButton
       label={propertiesMsg.moreActions}
@@ -27,7 +33,20 @@ export function DocumentMenu() {
           kind: 'action',
           label: printMsg.menuItem,
           shortcut: formatShortcut('print', platform.isMac),
+          disabled: !printAllowed,
           onSelect: () => { openPrintDialog(); },
+        },
+        {
+          kind: 'action',
+          label: compareMsg.menuItem,
+          onSelect: () => { void startCompare(); },
+        },
+        {
+          kind: 'action',
+          label: exportMsg.menuItem,
+          disabled: !copyAllowed,
+          disabledReason: exportMsg.blocked,
+          onSelect: () => { openExportDialog(); },
         },
       ]}
     >

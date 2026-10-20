@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { annotationDict, popupDict, updatedDict } from '../../../src/core/annotations/to-pdf';
 import type { Annotation, AnnotationType } from '../../../src/core/annotations';
 import { decodeTextString } from '../../../src/core/pdf/text-string';
-import { dictGet, name, ref, type PdfDict, type PdfString, type PdfValue } from '../../../src/core/pdf/objects';
+import { dict, dictGet, name, ref, type PdfDict, type PdfString, type PdfValue } from '../../../src/core/pdf/objects';
 import { newAnnotation } from './factories';
 
 const PAGE = ref(3);
@@ -32,7 +32,7 @@ function nameOf(v: PdfValue | undefined): string {
 }
 
 function build(a: Annotation, popupRef: typeof POPUP | null = null): PdfDict {
-  return annotationDict(a, { pageRef: PAGE, apRef: AP, popupRef, now: NOW });
+  return annotationDict(a, { pageRef: PAGE, apRef: AP, popupRef, now: NOW, irtRef: null });
 }
 
 describe('annotationDict', () => {
@@ -185,5 +185,143 @@ describe('updatedDict', () => {
     const a: Annotation = { ...newAnnotation('ref:10R', 'note'), contents: 'Ñandú 😀', origin: { kind: 'file', ref: { num: 10, gen: 0 }, popupRef: null } };
     const u = updatedDict(build(newAnnotation('ref:10R', 'note')), a, { apRef: AP, now: NOW });
     expect(str(dictGet(u, 'Contents'))).toBe('Ñandú 😀');
+  });
+});
+
+describe('formas y sellos (PDF-057)', () => {
+  const shape = {
+    id: 'suite-f',
+    pageIndex: 0,
+    rect: [10, 20, 110, 70] as const,
+    color: [1, 0, 0] as const,
+    opacity: 1,
+    contents: '',
+    author: 'Ana',
+    modified: NOW,
+    created: NOW,
+    origin: { kind: 'new' } as const,
+  };
+
+  it('/Square con relleno: subtipo, /BS con grosor y trazo continuo, /IC y sin /RD ni /BE', () => {
+    const d = build({ ...shape, type: 'square', width: 3, interior: [0, 1, 0] } as Annotation);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Square');
+    const bs = dictGet(d, 'BS');
+    expect(bs).toEqual(dict({ W: 3, S: name('S') }));
+    expect(dictGet(d, 'IC')).toEqual([0, 1, 0]);
+    expect(dictGet(d, 'RD')).toBeUndefined();
+    expect(dictGet(d, 'BE')).toBeUndefined();
+  });
+
+  it('/Circle sin relleno: no lleva /IC', () => {
+    const d = build({ ...shape, type: 'circle', width: 1, interior: null } as Annotation);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Circle');
+    expect(dictGet(d, 'IC')).toBeUndefined();
+  });
+
+  it('/Line con flecha: /L en orden inicio→fin, /LE, /IT /LineArrow', () => {
+    const d = build({
+      ...shape,
+      type: 'line',
+      points: [10, 20, 110, 70],
+      width: 2,
+      endings: ['None', 'OpenArrow'],
+      interior: null,
+    } as Annotation);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Line');
+    expect(dictGet(d, 'L')).toEqual([10, 20, 110, 70]);
+    expect(dictGet(d, 'LE')).toEqual([name('None'), name('OpenArrow')]);
+    expect(nameOf(dictGet(d, 'IT'))).toBe('LineArrow');
+  });
+
+  it('/Line sin puntas: no lleva /IT', () => {
+    const d = build({
+      ...shape,
+      type: 'line',
+      points: [10, 20, 110, 70],
+      width: 2,
+      endings: ['None', 'None'],
+      interior: null,
+    } as Annotation);
+    expect(dictGet(d, 'IT')).toBeUndefined();
+  });
+
+  it('/Polygon: /Vertices con los vértices', () => {
+    const d = build({ ...shape, type: 'polygon', vertices: [0, 0, 10, 0, 5, 8], width: 1, interior: null } as Annotation);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Polygon');
+    expect(dictGet(d, 'Vertices')).toEqual([0, 0, 10, 0, 5, 8]);
+  });
+
+  it('/Stamp: /Name estándar del sello', () => {
+    const d = build({ ...shape, type: 'stamp', name: 'Draft' } as Annotation);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Stamp');
+    expect(nameOf(dictGet(d, 'Name'))).toBe('Draft');
+    expect(dictGet(d, 'BS')).toBeUndefined();
+  });
+
+  it('updatedDict sobre un /Square con /RD y /IC los quita si el relleno es null', () => {
+    const original = dict({
+      Type: name('Annot'),
+      Subtype: name('Square'),
+      RD: [1, 1, 1, 1],
+      IC: [0, 1, 0],
+      BE: dict({ S: name('C') }),
+    });
+    const a = { ...shape, type: 'square', width: 2, interior: null } as Annotation;
+    const u = updatedDict(original, a, { apRef: AP, now: NOW });
+    expect(dictGet(u, 'RD')).toBeUndefined();
+    expect(dictGet(u, 'IC')).toBeUndefined();
+    expect(dictGet(u, 'BE')).toBeUndefined();
+    expect(dictGet(u, 'BS')).toEqual(dict({ W: 2, S: name('S') }));
+  });
+
+  it('updatedDict conserva /IC si la forma sigue con relleno', () => {
+    const original = dict({ Type: name('Annot'), Subtype: name('Square'), IC: [0, 1, 0] });
+    const a = { ...shape, type: 'square', width: 2, interior: [1, 1, 0] } as Annotation;
+    expect(dictGet(updatedDict(original, a, { apRef: AP, now: NOW }), 'IC')).toEqual([1, 1, 0]);
+  });
+});
+
+describe('respuestas y estados de revisión (PDF-058)', () => {
+  const PARENT = ref(20);
+  const reply = (over: object = {}): Annotation => make('reply', { parentId: 'ref:20R', ...over });
+  const review = (over: object = {}): Annotation => make('review', { parentId: 'ref:20R', state: 'Completed', ...over });
+  const opts = { pageRef: PAGE, apRef: AP, popupRef: null, now: NOW, irtRef: PARENT };
+
+  it('una respuesta es /Text con /IRT, /RT /R, /Name /Comment y /F 28', () => {
+    const d = annotationDict(reply(), opts);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Text');
+    expect(dictGet(d, 'IRT')).toEqual(PARENT);
+    expect(nameOf(dictGet(d, 'RT'))).toBe('R');
+    expect(nameOf(dictGet(d, 'Name'))).toBe('Comment');
+    expect(dictGet(d, 'F')).toBe(28);
+    expect(dictGet(d, 'State')).toBeUndefined();
+  });
+
+  it('un estado es /Text con /IRT, /State, /StateModel /Review, /Name /Comment y /F 30 (oculta)', () => {
+    const d = annotationDict(review(), opts);
+    expect(nameOf(dictGet(d, 'Subtype'))).toBe('Text');
+    expect(dictGet(d, 'IRT')).toEqual(PARENT);
+    expect(str(dictGet(d, 'State'))).toBe('Completed');
+    expect(str(dictGet(d, 'StateModel'))).toBe('Review');
+    expect(nameOf(dictGet(d, 'Name'))).toBe('Comment');
+    expect(dictGet(d, 'F')).toBe(30);
+  });
+
+  it('sin padre (irtRef null) en una respuesta o un estado es un error de programación', () => {
+    expect(() => annotationDict(reply(), { ...opts, irtRef: null })).toThrow(/IRT/);
+    expect(() => annotationDict(review(), { ...opts, irtRef: null })).toThrow(/IRT/);
+  });
+
+  it('updatedDict conserva el /IRT del original al cambiar la respuesta', () => {
+    const original = annotationDict(reply(), opts);
+    const changed = updatedDict(original, reply({ contents: 'Otro texto' }), { apRef: AP, now: NOW });
+    expect(dictGet(changed, 'IRT')).toEqual(PARENT);
+    expect(str(dictGet(changed, 'Contents'))).toBe('Otro texto');
+  });
+
+  it('el resto de tipos no lleva /IRT ni /RT', () => {
+    const d = annotationDict(make('highlight', { quads: [[1, 2, 3, 4, 5, 6, 7, 8]] }), { ...opts, irtRef: null });
+    expect(dictGet(d, 'IRT')).toBeUndefined();
+    expect(dictGet(d, 'RT')).toBeUndefined();
   });
 });

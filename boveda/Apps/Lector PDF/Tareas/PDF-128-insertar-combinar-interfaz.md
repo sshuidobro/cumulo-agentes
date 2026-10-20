@@ -1,0 +1,75 @@
+---
+tipo: tarea
+id: PDF-128
+titulo: Insertar desde archivo y combinar archivos - interfaz
+app: pdf
+estado: pendiente
+depende_de: [PDF-055, PDF-127, COM-019]
+intentos: 0
+skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
+creado: 2026-10-19
+actualizado: 2026-10-19
+tags: [tarea, pdf, iteracion-5, organizar, ui]
+---
+
+# PDF-128 · Insertar desde archivo y combinar archivos: interfaz
+
+Plan: [[Apps/Lector PDF/Plan|Plan]] (iteración 5) · Decisiones: [[ADR-0035-organizar-en-la-app]] · Antes: [[PDF-055-insertar-combinar]], [[PDF-127-extraer-dividir-interfaz]], [[COM-019-importar-varios-ficheros]]
+
+## Objetivo
+En la vista Organizar, «Insertar desde archivo…» añade las páginas de otro PDF (también protegido) en la posición elegida, con miniaturas, deshacer y guardado. «Combinar archivos…» (menú y pantalla de inicio) junta varios PDF en uno nuevo, en el orden que elija el usuario, y lo abre.
+
+## Contexto
+- Ops `'organize'` (con importados) y `'combine'` (PDF-055); `'page-rotations'` (PDF-118).
+- `src/state/organize-actions.ts` (PDF-124) y `src/core/organize/plan.ts` → `insertImportedCommand`.
+- `src/ui/organize/OrganizeView.tsx`, `OrganizeCell.tsx`, `OrganizeToolbar.tsx` (PDF-125/126/127).
+- `src/state/password-prompt.ts` → `askPassword`; `src/engine` → `loadPdf` (miniaturas de los importados con `memorySource`).
+- `services().platform.importFile` / `importFiles` (COM-018/019), `saveAs`; `src/state/document-actions.ts` → `openRequested` (abrir un `OpenedFile`, con pestañas), `PDF_FILTERS`.
+- `src/state/extract-actions.ts` → `useDocOpJob`, `cancelDocOp`; `src/ui/kit/DocOpProgress.tsx` (PDF-127).
+- `src/ui/open/EmptyState.tsx`, `src/ui/toolbar/DocumentMenu.tsx`.
+
+## Qué hay que hacer
+1. Insertar (en `organize-actions.ts`):
+```ts
+export const MAX_IMPORT_BYTES = 512 * 1024 * 1024;
+export async function insertFromFile(where: 'before' | 'after'): Promise<void>;
+```
+   - `importFile(PDF_FILTERS, MAX_IMPORT_BYTES)` → op `'page-rotations'` sobre los bytes con contraseña `null`; `save-wrong-password` → `askPassword(nombre)` y reintenta (cancelar → nada); otro error → aviso `organizeMsg.importFailed(nombre)`; `out-of-range` → aviso `organizeMsg.importTooBig`.
+   - Se guarda en el estado `imported: readonly { name; bytes; password; doc: PDFDocumentProxy }[]` (el `doc` de pdf.js se carga con `loadPdf(memorySource(bytes), …)` para las miniaturas y se destruye al cerrar la vista o la pestaña) y se ejecuta `insertImportedCommand(at, docIndex, rotations)`.
+   - `saveOrganize` pasa los bytes de los importados como fuentes `1..k` y sus contraseñas.
+   - El participante de pestañas de la vista incluye `imported` en su instantánea; `dispose` destruye sus `doc`.
+2. `OrganizeCell.tsx`: los huecos `imported` dibujan la página con el `doc` importado y muestran debajo el nombre corto del fichero (`title` con el nombre completo).
+3. `OrganizeToolbar.tsx`: el menú «Insertar» gana «Desde archivo…, antes / después de la selección».
+4. Combinar: `src/state/combine-actions.ts`:
+```ts
+export interface CombineItem { readonly id: string; readonly name: string; readonly pages: number; readonly source: 'current' | { readonly bytes: Uint8Array; readonly password: string | null } }
+export const useCombineDialog: UseBoundStore<StoreApi<{ readonly open: boolean; readonly items: readonly CombineItem[] }>>;
+export function openCombineDialog(): void;        // si hay documento abierto, lo añade primero (con sus cambios sin guardar)
+export async function addCombineFiles(): Promise<void>;   // importFiles(PDF_FILTERS, MAX_IMPORT_BYTES, 50); pide contraseña de los protegidos
+export function moveCombineItem(id: string, delta: -1 | 1): void;
+export function removeCombineItem(id: string): void;
+export async function combineFiles(): Promise<'saved' | 'downloaded' | 'cancelled' | 'failed'>;
+```
+   - Fuente del documento actual: `concatSource(file.source, prefix)` como en PDF-127.
+   - `combineFiles`: al menos 2 elementos (si no, el botón está deshabilitado) → op `'combine'` con progreso (`useDocOpJob`) → `saveAs('<primero>-combinado.pdf', PDF_FILTERS, { kind: 'bytes', bytes })` → `'saved'` → se abre con `openRequested(file)` (pestaña nueva si hay documento); `'downloaded'` → aviso.
+5. `src/ui/organize/CombineDialog.tsx` (+ CSS, `lazy`): lista (`role="listbox"`) con nombre, «N páginas», botones «Subir», «Bajar», «Quitar» (con `aria-label` que incluye el nombre); Alt+↑/↓ mueve el elemento con foco; «Añadir archivos…»; «Combinar» (primario); aviso `organizeMsg.newIsUnprotected` si alguno estaba protegido.
+6. Entradas: `DocumentMenu.tsx` → «Combinar archivos…»; `EmptyState.tsx` → botón secundario «Combinar archivos…».
+7. `organizeMsg`: `insertFromFile`, `importFailed(name)`, `importTooBig` «El fichero es demasiado grande (máximo 512 MB).», `combine` «Combinar archivos…», `combineTitle` «Combinar archivos», `addFiles` «Añadir archivos…», `moveUp`, `moveDown`, `remove`, `pagesOf(n)`, `combineAction` «Combinar», `combined(name)`, `progressCombine(done, total)`.
+8. Tests: `tests/unit/combine-actions.test.ts`, casos nuevos en `tests/unit/organize-actions.test.ts`, `tests/ui/combine-dialog.test.tsx`, `tests/e2e/insert-combine.spec.ts`.
+
+## Criterios de aceptación
+- [ ] E2E: `basic-5.pdf` → Organizar → seleccionar la 2 → Insertar desde archivo, después → `outline.pdf` → 35 miniaturas, las 3-32 con el nombre «outline.pdf» → Guardar → el visor tiene 35 páginas y la 3.ª es «Página 1 de 30».
+- [ ] E2E: insertar `encrypted-aes-256.pdf` pide su contraseña; con `usuario` inserta 5 páginas legibles; Cancelar no inserta nada.
+- [ ] E2E: Ctrl+Z tras insertar quita las páginas insertadas; guardar sin ellas no cambia el número de páginas.
+- [ ] E2E (**criterio original**): Combinar archivos con `basic-5.pdf` abierto + `outline.pdf` → se abre una pestaña con 35 páginas y el índice con las ramas «basic-5» y «outline».
+- [ ] E2E: desde la pantalla de inicio, «Combinar archivos…» con dos ficheros, reordenados con «Bajar» → el resultado sigue el orden de la lista.
+- [ ] Unit: más de 50 ficheros o uno > 512 MB → aviso y nada añadido; error de op → aviso en español; cancelar → nada guardado.
+- [ ] Teclado y accesibilidad: lista operable solo con teclado; axe sin violaciones en diálogo y vista; tema oscuro.
+- [ ] `pnpm --filter lector-pdf bundle:check` dentro del presupuesto.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm coverage`, `pnpm --filter lector-pdf e2e` con código 0.
+
+## Fuera de alcance
+- Combinar ficheros que no sean PDF (imágenes: [[PDF-129-pdf-desde-imagenes-interfaz]]). Arrastrar ficheros al diálogo. Elegir solo un rango de cada fichero al combinar.
+
+## Registro
+<!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->

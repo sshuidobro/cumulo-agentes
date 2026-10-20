@@ -17,6 +17,18 @@ export async function openFixture(page: Page, name: string): Promise<void> {
 }
 
 /** Campo «Número de página» de la barra. */
+/**
+ * Muestra el panel lateral y elige su pestaña. Decide si hace falta F4 mirando el botón «Panel lateral» de la barra
+ * (`aria-pressed`, que refleja el estado del panel al instante), no la pestaña: el panel se monta de forma diferida
+ * y, al reabrir un documento, el panel ya viene abierto por las preferencias; mirar la pestaña daba falsos «cerrado»
+ * y F4 lo cerraba.
+ */
+export async function showSidebarTab(page: Page, name: string): Promise<void> {
+  const toggle = page.getByRole('button', { name: 'Panel lateral', exact: true });
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true') await page.keyboard.press('F4');
+  await page.getByRole('tab', { name }).click();
+}
+
 export function pageField(page: Page): Locator {
   return page.getByRole('textbox', { name: 'Número de página' });
 }
@@ -34,6 +46,13 @@ export async function waitPageRendered(page: Page, n: number): Promise<void> {
 /** Espera a que el marco «Página n de total» esté montado. */
 export async function waitPageVisible(page: Page, n: number, total: number): Promise<void> {
   await expect(page.getByRole('group', { name: `Página ${String(n)} de ${String(total)}` })).toBeVisible();
+}
+
+/** Elige una opción del menú «Vista» (PDF-050) y espera a que el visor muestre sus marcos. */
+export async function chooseView(page: Page, option: string): Promise<void> {
+  await page.getByRole('button', { name: 'Vista', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: option, exact: true }).click();
+  await expect(page.locator('[data-testid=viewer] [data-page-index]').first()).toBeVisible();
 }
 
 /** Salta a la página `n` con Ctrl+Mayús+N, escribiendo el número e Intro. */

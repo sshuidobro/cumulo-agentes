@@ -1,20 +1,25 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createStorageStore, type Platform } from '@suite/platform';
+import { createStorageStore, type ByteSource, type Platform } from '@suite/platform';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LoadedPdf } from '../../src/engine';
+import { loadPdf, type LoadedPdf } from '../../src/engine';
 import type { ForeignAnnotation } from '../../src/core/annotations/import';
 import type { Annotation } from '../../src/core/annotations/model';
+import { newReply, newReviewState } from '../../src/core/annotations/replies';
+import type { SignatureAnnotation, SignatureArt } from '../../src/core/annotations';
 import { PageDimsTable } from '../../src/core/page-dims';
 import { CommentsPanel } from '../../src/ui/sidebar/CommentsPanel';
 import { Sidebar } from '../../src/ui/sidebar/Sidebar';
 import {
   endAnnotationSession,
+  ensurePageAnnotations,
   getEffective,
   startAnnotationSession,
   undo,
 } from '../../src/state/annotation-actions';
+import { closeDocument, openDocument } from '../../src/state/document-actions';
+import { additionsDiff, saveAnnotations } from '../support/save-annotations';
 import { initialAnnotationState, useAnnotations } from '../../src/state/annotation-store';
 import { initServices, services } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
@@ -383,5 +388,259 @@ describe('Panel de comentarios (PDF-036)', () => {
     expect(getEffective().has('ref:1R')).toBe(false);
     expect(goToPage).not.toHaveBeenCalled();
     expect(useViewer.getState().currentPage).toBe(7);
+  });
+});
+
+describe('sellos ajenos guardados por la suite (PDF-104)', () => {
+  const stamp = (id: string, stampName?: string): ForeignAnnotation => ({
+    id,
+    pageIndex: 0,
+    subtype: 'Stamp',
+    rect: [10, 20, 110, 40],
+    contents: '',
+    author: '',
+    modified: null,
+    ...(stampName === undefined ? {} : { stampName }),
+  });
+
+  it('una firma de la suite se muestra como «Firma» y el filtro de tipos la ofrece', async () => {
+    const user = userEvent.setup();
+    load([], [stamp('ref:20R', 'SuiteFirma')]);
+    setup();
+
+    expect(rowNamed('Firma')).toBeInTheDocument();
+    expect(screen.queryByText('Sello', { exact: false })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }));
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Firma' })).toBeInTheDocument();
+  });
+
+  it('un sello con otro /Name, o sin nombre, se muestra como «Sello»', () => {
+    load([], [stamp('ref:21R', 'Approved'), stamp('ref:22R')]);
+    setup();
+
+    expect(screen.getAllByRole('option').filter((el) => el.textContent?.includes('Sello'))).toHaveLength(2);
+    expect(screen.queryByText('Firma', { exact: false })).toBeNull();
+  });
+
+  it('la firma reabierta es de solo lectura: no tiene botón de borrar activo', () => {
+    load([], [stamp('ref:23R', 'SuiteFirma')]);
+    setup();
+
+    const row = rowNamed('Firma');
+    expect(row.querySelector('button')).toBeNull();
+  });
+});
+
+describe('firmas y sellos de un PDF abierto (PDF-104)', () => {
+  const OPEN_TIMEOUT = 30_000;
+  // El PDF mínimo no usa fuentes ni mapas de caracteres: no hace falta la carpeta de recursos de pdf.js.
+  const ASSET_BASE = '';
+  const SIGNED_AT = '2026-10-18T09:30:00.000Z';
+  const INK: SignatureArt = { kind: 'ink', paths: [[0, 0, 25, 40, 50, 0]], width: 2, box: [100, 50] };
+  const signature: SignatureAnnotation = {
+    id: 'firma-1',
+    type: 'signature',
+    pageIndex: 0,
+    rect: [100, 100, 300, 200],
+    color: [0, 0, 0.6],
+    opacity: 1,
+    contents: '',
+    author: 'Ana',
+    modified: SIGNED_AT,
+    created: SIGNED_AT,
+    origin: { kind: 'new' },
+    art: INK,
+  };
+
+  /** PDF mínimo de una página, escrito a mano (jsdom no puede leer `fixtures/`): objetos y xref con desplazamientos reales. */
+  function minimalPdf(): Uint8Array {
+    const objects = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>',
+    ];
+    let body = '%PDF-1.4\n';
+    const offsets = objects.map((object, i) => {
+      const offset = body.length;
+      body += `${String(i + 1)} 0 obj\n${object}\nendobj\n`;
+      return offset;
+    });
+    const xref = body.length;
+    body += `xref\n0 ${String(objects.length + 1)}\n0000000000 65535 f \n`;
+    for (const offset of offsets) body += `${String(offset).padStart(10, '0')} 00000 n \n`;
+    body += `trailer\n<< /Size ${String(objects.length + 1)} /Root 1 0 R >>\nstartxref\n${String(xref)}\n%%EOF\n`;
+    return new TextEncoder().encode(body);
+  }
+
+  /** PDF de una página con una firma escrita por la suite (`/Name /SuiteFirma`). */
+  async function signedBytes(): Promise<Uint8Array> {
+    const { data } = await saveAnnotations(minimalPdf(), additionsDiff([signature]));
+    return data;
+  }
+
+  /**
+   * Mismo PDF con un sello de Acrobat `/Name /Approved`. Se cambia el nombre por otro de la misma longitud
+   * («Approved» con dos espacios), así no se mueven los desplazamientos de la xref.
+   */
+  function asApprovedStamp(data: Uint8Array): Uint8Array {
+    const parts = Buffer.from(data).toString('latin1').split('/Name /SuiteFirma');
+    if (parts.length !== 2) throw new Error('el PDF no tiene exactamente una firma de la suite');
+    return new Uint8Array(Buffer.from(parts.join('/Name /Approved  '), 'latin1'));
+  }
+
+  async function openAndWaitForScan(data: Uint8Array): Promise<void> {
+    await openDocument(openedFile('firmado.pdf', memorySource(data)));
+    await vi.waitFor(() => {
+      expect(useAnnotations.getState().scan).toBe('done');
+    }, { timeout: OPEN_TIMEOUT });
+  }
+
+  beforeEach(() => {
+    initServices({
+      platform: createFakePlatform({ prefs: createStorageStore(null, 'test.') }) as Platform,
+      assetBaseUrl: ASSET_BASE,
+    });
+  });
+
+  afterEach(async () => {
+    await closeDocument();
+  });
+
+  it('abrir un PDF con una firma de la suite lista «Firma» y el filtro la ofrece', async () => {
+    const user = userEvent.setup();
+    await openAndWaitForScan(await signedBytes());
+    setup();
+
+    expect(rowNamed('Firma')).toBeInTheDocument();
+    expect(screen.queryByText('Sello', { exact: false })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }));
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Firma' })).toBeInTheDocument();
+  }, OPEN_TIMEOUT);
+
+  it('abrir un PDF con un sello /Name /Approved lista «Sello», no «Firma»', async () => {
+    await openAndWaitForScan(asApprovedStamp(await signedBytes()));
+    setup();
+
+    expect(rowNamed('Sello')).toBeInTheDocument();
+    expect(screen.queryByText('Firma', { exact: false })).toBeNull();
+  }, OPEN_TIMEOUT);
+
+  it('en modo «lazy», la página importada al verla lista «Firma»', async () => {
+    const data = await signedBytes();
+    const loaded = await loadPdf(memorySource(data), { assetBaseUrl: ASSET_BASE });
+    if (!loaded.ok) throw new Error(loaded.error.code);
+    try {
+      // Más páginas que el límite de escaneo completo: la sesión no escanea y cada página se importa al verla.
+      const lazy: LoadedPdf = { ...loaded.value, numPages: 25_000 };
+      useViewer.setState({
+        ...initialViewerState,
+        status: 'ready',
+        file: openedFile('firmado.pdf', memorySource(data)),
+        dims: PageDimsTable.uniform(1, 612, 792, 0),
+        dimsVersion: 1,
+      });
+      startAnnotationSession(lazy, new AbortController().signal, memorySource(data));
+      await ensurePageAnnotations(0);
+      setup();
+
+      expect(useAnnotations.getState().scan).toBe('lazy');
+      expect(rowNamed('Firma')).toBeInTheDocument();
+    } finally {
+      endAnnotationSession();
+      await loaded.value.destroy();
+    }
+  }, OPEN_TIMEOUT);
+
+  it('si el fichero no se puede volver a leer, el escaneo termina y la firma sale como «Sello» sin error', async () => {
+    const data = await signedBytes();
+    const loaded = await loadPdf(memorySource(data), { assetBaseUrl: ASSET_BASE });
+    if (!loaded.ok) throw new Error(loaded.error.code);
+    try {
+      const broken: ByteSource = { size: data.length, read: () => Promise.reject(new Error('lectura fallida')) };
+      startAnnotationSession(loaded.value, new AbortController().signal, broken);
+      await vi.waitFor(() => {
+        expect(useAnnotations.getState().scan).toBe('done');
+      }, { timeout: OPEN_TIMEOUT });
+      setup();
+
+      expect(rowNamed('Sello')).toBeInTheDocument();
+      expect(screen.queryByText('Firma', { exact: false })).toBeNull();
+    } finally {
+      endAnnotationSession();
+      await loaded.value.destroy();
+    }
+  }, OPEN_TIMEOUT);
+});
+
+describe('respuestas y estados en el panel (PDF-116)', () => {
+  const AT = '2026-10-17T12:00:00.000Z';
+
+  /** Una nota con una respuesta de Ana y un estado «Aceptado», en la página 2. */
+  function threaded() {
+    const note = { ...newAnnotation('suite-1', 'note', 2), contents: 'Revisar esto', author: 'Otra persona' };
+    const reply = newReply({ id: 'suite-r1', parent: note, contents: 'Hecho', author: 'Ana', now: AT });
+    const state = newReviewState({ id: 'suite-s1', parent: note, state: 'Accepted', author: 'Ana', now: AT });
+    return { note, reply, state };
+  }
+
+  it('la respuesta va bajo su comentario con su autor; el comentario muestra su estado y «1 respuesta»', () => {
+    const { note, reply, state } = threaded();
+    load([note, reply, state]);
+    setup();
+
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(2);
+    expect(options[1]).toBe(rowNamed('Respuesta de Ana'));
+    expect(screen.getByText('Aceptado')).toBeInTheDocument();
+    expect(screen.getByText('1 respuesta')).toBeInTheDocument();
+    expect(screen.getByText('1 comentario', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('flecha abajo desde el comentario pasa a su respuesta; Intro en la respuesta abre la ventana del comentario padre', async () => {
+    const user = userEvent.setup();
+    const { note, reply, state } = threaded();
+    load([note, reply, state]);
+    const list = setup();
+
+    act(() => list.focus());
+    await user.keyboard('{ArrowDown}');
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('Revisar esto').id);
+    await user.keyboard('{ArrowDown}');
+    expect(list).toHaveAttribute('aria-activedescendant', rowNamed('Respuesta de Ana').id);
+
+    await user.keyboard('{Enter}');
+    expect(goToPage).toHaveBeenLastCalledWith(2, expect.objectContaining({ yFraction: expect.any(Number) }));
+    expect(useAnnotations.getState().selectedId).toBe('suite-1');
+    act(() => {
+      useViewer.setState({ currentPage: 2 });
+    });
+    expect(useAnnotations.getState().openPopupId).toBe('suite-1');
+  });
+
+  it('clic sobre una respuesta abre la ventana de su comentario', async () => {
+    const user = userEvent.setup();
+    const { note, reply, state } = threaded();
+    load([note, reply, state]);
+    setup();
+
+    await user.click(rowNamed('Respuesta de Ana'));
+    expect(useAnnotations.getState().selectedId).toBe('suite-1');
+  });
+
+  it('el menú Filtrar tiene el grupo «Estado»; elegir «Rechazado» oculta la nota aceptada con su respuesta', async () => {
+    const user = userEvent.setup();
+    const { note, reply, state } = threaded();
+    const rejected = { ...newAnnotation('suite-2', 'note', 3), contents: 'Otra nota', author: 'Otra persona' };
+    const rejectedState = newReviewState({ id: 'suite-s2', parent: rejected, state: 'Rejected', author: 'Ana', now: AT });
+    load([note, reply, state, rejected, rejectedState]);
+    setup();
+
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }));
+    expect(screen.getByText('Estado', { selector: 'div' })).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Rechazado' }));
+    expect(screen.getByText('1 comentario', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /Respuesta de Ana/ })).toBeNull();
+    expect(screen.queryByRole('option', { name: /Revisar esto/ })).toBeNull();
+    expect(screen.getByRole('option', { name: /Otra nota/ })).toBeInTheDocument();
   });
 });

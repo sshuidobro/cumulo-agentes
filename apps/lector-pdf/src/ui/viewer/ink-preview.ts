@@ -15,21 +15,36 @@ export interface InkViewport {
 /** Subconjunto del contexto 2D que usa la vista previa (permite simularlo en pruebas). */
 export type InkContext = Pick<CanvasRenderingContext2D, 'beginPath' | 'moveTo' | 'lineTo' | 'stroke'>;
 
+/** Contexto de dibujo de la vista previa: lienzo del DOM o, si está transferido, `OffscreenCanvas` (PDF-105). */
+export type InkDrawingContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+
 /**
  * Ajusta el lienzo al viewport y a `dpr`, y deja el contexto en coordenadas PDF con el estilo del trazo.
- * `null` si no hay contexto 2D.
+ * Con `transferControlToOffscreen` (PDF-105) los fotogramas van al compositor sin pasar por el `Commit` del hilo
+ * principal. `null` si no hay contexto 2D.
  */
 export function prepareInkCanvas(
   canvas: HTMLCanvasElement,
   viewport: InkViewport,
   dpr: number,
   style: InkPreviewStyle,
-): CanvasRenderingContext2D | null {
-  canvas.width = Math.round(viewport.width * dpr);
-  canvas.height = Math.round(viewport.height * dpr);
+): InkDrawingContext | null {
   canvas.style.width = `${viewport.width}px`;
   canvas.style.height = `${viewport.height}px`;
-  const ctx = canvas.getContext('2d');
+  const pxW = Math.round(viewport.width * dpr);
+  const pxH = Math.round(viewport.height * dpr);
+  // Si el lienzo ya estuviera transferido, `transferControlToOffscreen` lanza: es un bug y se deja propagar.
+  let ctx: InkDrawingContext | null;
+  if (typeof canvas.transferControlToOffscreen === 'function') {
+    const off = canvas.transferControlToOffscreen();
+    off.width = pxW;
+    off.height = pxH;
+    ctx = off.getContext('2d');
+  } else {
+    canvas.width = pxW;
+    canvas.height = pxH;
+    ctx = canvas.getContext('2d');
+  }
   if (ctx === null) return null;
   const [a = 1, b = 0, c = 0, d = 1, e = 0, f = 0] = viewport.transform;
   ctx.setTransform(a * dpr, b * dpr, c * dpr, d * dpr, e * dpr, f * dpr);

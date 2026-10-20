@@ -9,6 +9,13 @@ const ADD_LABEL: Readonly<Record<AnnotationType, string>> = {
   freetext: 'añadir texto',
   ink: 'añadir dibujo',
   signature: 'añadir firma',
+  square: 'añadir rectángulo',
+  circle: 'añadir elipse',
+  line: 'añadir línea',
+  polygon: 'añadir polígono',
+  stamp: 'añadir sello',
+  reply: 'responder',
+  review: 'cambiar estado',
 };
 
 const NOUN: Readonly<Record<AnnotationType, string>> = {
@@ -19,6 +26,13 @@ const NOUN: Readonly<Record<AnnotationType, string>> = {
   freetext: 'texto',
   ink: 'dibujo',
   signature: 'firma',
+  square: 'rectángulo',
+  circle: 'elipse',
+  line: 'línea',
+  polygon: 'polígono',
+  stamp: 'sello',
+  reply: 'respuesta',
+  review: 'estado',
 };
 
 /**

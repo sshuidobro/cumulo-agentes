@@ -18,6 +18,8 @@ export type SaveOutcome =
   | { readonly kind: 'saved'; readonly file: OpenedFile }
   | { readonly kind: 'downloaded'; readonly name: string }
   | { readonly kind: 'cancelled' };
+export type ExportOutcome = 'saved' | 'downloaded' | 'cancelled';
+export interface ImportedFile { readonly name: string; readonly bytes: Uint8Array }
 export type PlatformErrorCode = 'not-found' | 'permission-denied' | 'io' | 'changed-on-disk'
   | 'save-in-place-unsupported' | 'unsupported' | 'out-of-range';
 /** Fichero reciente. Solo metadatos: nunca el contenido. */
@@ -47,6 +49,10 @@ export interface Platform {
   /** Guarda encima de `target` de forma atómica y devuelve el fichero reabierto. */
   save(target: OpenedFile, data: SaveData): Promise<Result<OpenedFile>>;
   saveAs(suggestedName: string, filters: readonly FileFilter[], data: SaveData): Promise<Result<SaveOutcome>>;
+  /** Guarda `bytes` con el diálogo de guardar. No lo anota en recientes ni lo deja abierto. */
+  exportFile(suggestedName: string, filters: readonly FileFilter[], bytes: Uint8Array): Promise<Result<ExportOutcome>>;
+  /** Elige un fichero con el diálogo de abrir y devuelve su contenido completo; null = cancelado. Más de `maxBytes` → err('out-of-range') sin leerlo. No lo anota en recientes ni lo deja abierto. */
+  importFile(filters: readonly FileFilter[], maxBytes: number): Promise<Result<ImportedFile | null>>;
   closeFile(file: OpenedFile): Promise<void>;
   onFileOpenedFromOS(cb: (file: OpenedFile) => void): () => void;
   openExternalUrl(url: string): Promise<Result<void>>;

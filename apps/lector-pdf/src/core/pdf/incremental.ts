@@ -5,33 +5,37 @@
  * afectadas (ADR-0014). Nunca lanza: los errores vuelven como `Result`.
  */
 import type { ByteSource } from '@suite/platform';
-import { err, ok, type AppError, type Result } from '@suite/shared';
+import { err, ok, type Result } from '@suite/shared';
 import { inflateSync } from 'fflate';
 import { buildAppearance } from '../annotations/appearance';
-import { isEmptyDiff, type AnnotationDiff } from '../annotations/diff';
-import type { Annotation, PdfObjRef } from '../annotations/model';
+import type { AnnotationDiff } from '../annotations/diff';
+import { parseRef } from '../annotations/import';
+import { isFlattened, type Annotation, type PdfObjRef } from '../annotations/model';
 import { annotationDict, popupDict, updatedDict } from '../annotations/to-pdf';
 import { fromBase64 } from '../base64';
-import { pdfError } from '../errors';
 import type { FieldChange } from '../forms/diff';
 import { planFieldWrites } from '../forms/to-pdf';
+import { finishDelta, reserveXref, startDelta, type DeltaWriter } from './delta-writer';
+import type { RandomBytes } from './crypt-rules';
 import { jpegImageObject, rgbaImageObjects } from './image';
 import {
-  bytesString,
-  dict,
   dictGet,
-  name,
   PdfSyntaxError,
   ref,
-  stream,
   withEntries,
   type PdfDict,
   type PdfRef,
-  type PdfString,
   type PdfValue,
 } from './objects';
 import { ObjectReader } from './object-reader';
-import { serializeIndirect, serializeValue } from './serialize';
+import {
+  effectiveResources,
+  freeResourceName,
+  withResource,
+  wrapStreams,
+  wrappedContents,
+} from './page-content';
+import { toSaveError } from './save-error';
 
 export interface IncrementalInput {
   readonly source: ByteSource;
@@ -42,6 +46,8 @@ export interface IncrementalInput {
   readonly now: string;
   /** Valores de formulario cambiados (PDF-042). Por defecto, ninguno. */
   readonly fields?: readonly FieldChange[];
+  /** IV de AES para cifrar los objetos. Por defecto, el del lector; con uno fijo el delta es determinista. */
+  readonly random?: RandomBytes;
 }
 
 export interface IncrementalOutput {
@@ -53,14 +59,10 @@ export interface IncrementalOutput {
   readonly written: ReadonlyMap<string, PdfObjRef>;
 }
 
-interface XrefRow {
-  readonly offset: number;
-  readonly gen: number;
-}
-
 interface AddedPlan {
   readonly a: Annotation;
-  readonly annot: PdfRef;
+  /** `null` si la anotación se aplana: entonces no es un objeto de anotación, solo su apariencia. */
+  readonly annot: PdfRef | null;
   readonly ap: PdfRef;
   /** Solo para notas. */
   readonly popup: PdfRef | null;
@@ -69,6 +71,8 @@ interface AddedPlan {
    * `[imagen]` si es `jpeg`, ninguno en el resto. Se reservan aquí para que la xref no tenga huecos.
    */
   readonly extra: readonly PdfRef[];
+  /** `/IRT` de una respuesta o estado (PDF-058); `null` para el resto. */
+  readonly irt: PdfRef | null;
 }
 
 interface ModifiedPlan {
@@ -77,18 +81,19 @@ interface ModifiedPlan {
   readonly ap: PdfRef;
 }
 
-const TEXT_ENCODER = new TextEncoder();
-const LF = 0x0a;
-const CR = 0x0d;
-/** Tamaño de cada fila de la xref de tabla y de `/W [1 4 2]`. */
-const STREAM_ROW_BYTES = 7;
-const FNV_OFFSET_BASIS = 0x811c9dc5;
-const FNV_PRIME = 0x01000193;
-const ID_BYTES = 16;
+/**
+ * Números del contenido que se añade a una página con anotaciones aplanadas (ADR-0036): los dos flujos que
+ * envuelven el contenido original (`open` = «q», `close` = «Q» + los `Do`).
+ */
+interface ContentRefs {
+  readonly open: PdfRef;
+  readonly close: PdfRef;
+}
 
 /**
  * Escribe el incremento. Diff vacío → `delta` vacío. Cualquier fallo se devuelve como `Result`:
- * cifrado → `save-encrypted`; cualquier otra lectura o estructura dañada → `save-unreadable`.
+ * contraseña errónea → `save-wrong-password`; cifrado no soportado → `save-encryption-unsupported`;
+ * cualquier otra lectura o estructura dañada → `save-unreadable`.
  */
 export async function buildIncrementalUpdate(input: IncrementalInput): Promise<Result<IncrementalOutput>> {
   try {
@@ -98,18 +103,14 @@ export async function buildIncrementalUpdate(input: IncrementalInput): Promise<R
   }
 }
 
-function toSaveError(error: unknown): AppError {
-  if (error instanceof PdfSyntaxError && error.message === 'encrypted') return pdfError('save-encrypted', error);
-  return pdfError('save-unreadable', error);
-}
-
 /**
  * Abre el lector para guardar: única forma en que la app abre un lector para escribir (PDF-037).
- * Nunca lanza: cifrado → `save-encrypted`; cualquier otro fallo → `save-unreadable`.
+ * `password` abre un PDF cifrado (por defecto, la vacía). Nunca lanza: los fallos vuelven como `Result`
+ * (ver `buildIncrementalUpdate`).
  */
-export async function openForSave(source: ByteSource): Promise<Result<ObjectReader>> {
+export async function openForSave(source: ByteSource, password?: string): Promise<Result<ObjectReader>> {
   try {
-    return ok(await ObjectReader.open(source));
+    return ok(await ObjectReader.open(source, password === undefined ? {} : { password }));
   } catch (error: unknown) {
     return err(toSaveError(error));
   }
@@ -118,29 +119,37 @@ export async function openForSave(source: ByteSource): Promise<Result<ObjectRead
 async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> {
   const { source, reader, diff, now } = input;
   const fields = input.fields ?? [];
-  if (isEmptyDiff(diff) && fields.length === 0) {
+  assertFlattenIsNew(diff);
+  const writable = writableAdded(diff);
+  if (writable.length === 0 && diff.modified.length === 0 && diff.removed.length === 0 && fields.length === 0) {
     return { delta: new Uint8Array(0), expectedSize: source.size, written: new Map() };
   }
 
   const trailer = reader.xref.trailer;
-  if (dictGet(trailer, 'Encrypt') !== undefined) throw new PdfSyntaxError('encrypted', 0);
   const root = dictGet(trailer, 'Root');
   if (!isRefValue(root)) throw unreadable('Root');
 
   // 1. Números de objeto: anotación, apariencia y popup (solo notas) por cada añadida; apariencia por cada modificada.
+  // Una anotación aplanada no tiene objeto de anotación; sí apariencia e imágenes. Por cada página con aplanados,
+  // dos números más para el contenido (`ContentRefs`).
   let next = reader.xref.size;
-  const added: AddedPlan[] = diff.added.map((a) => {
-    const annot = ref(next++);
+  const numbered = writable.map((a) => {
+    const annot = isFlattened(a) ? null : ref(next++);
     const ap = ref(next++);
     const popup = a.type === 'note' ? ref(next++) : null;
     const extra = Array.from({ length: imageObjectCount(a) }, () => ref(next++));
     return { a, annot, ap, popup, extra };
   });
+  const annotOf = new Map<string, PdfRef>();
+  for (const p of numbered) if (p.annot !== null) annotOf.set(p.a.id, p.annot);
+  const added: AddedPlan[] = numbered.map((p) => ({ ...p, irt: irtOf(p.a, annotOf) }));
+  const flatPages = [...new Set(writable.filter(isFlattened).map((a) => a.pageIndex))].sort((x, y) => x - y);
+  const contentRefs = new Map<number, ContentRefs>(
+    flatPages.map((index) => [index, { open: ref(next++), close: ref(next++) }] as const),
+  );
   const modified: ModifiedPlan[] = diff.modified.map((a) => ({ a, origin: fileOrigin(a).ref, ap: ref(next++) }));
   const fieldWrites = await planFieldWrites(reader, fields, () => ref(next++));
-  const xrefNum = reader.xref.lastKind === 'stream' ? next++ : null;
-  const size = next;
-  const objectCount = size - reader.xref.size;
+  const { xrefNum, size } = reserveXref(reader, next);
 
   // 2. Huecos de las anotaciones borradas: sus números y los de sus popups, agrupados por página.
   const removedByPage = new Map<number, Set<number>>();
@@ -164,15 +173,11 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
   }
 
   const written = new Map<string, PdfObjRef>();
-  for (const p of added) written.set(p.a.id, { num: p.annot.num, gen: 0 });
+  for (const p of added) if (p.annot !== null) written.set(p.a.id, { num: p.annot.num, gen: 0 });
   for (const m of modified) written.set(m.a.id, m.origin);
 
   // 3. Escritura. El delta empieza con un salto de línea si el original no termina en uno.
-  const writer = new DeltaWriter(source.size);
-  if (source.size > 0) {
-    const [last = LF] = await source.read(source.size - 1, source.size);
-    if (last !== LF && last !== CR) writer.write(Uint8Array.of(LF));
-  }
+  const writer = await startDelta(source, reader, input.random);
 
   // Modificadas: mismo número y generación; el resto de claves se conserva.
   for (const m of modified) {
@@ -188,47 +193,27 @@ async function writeUpdate(input: IncrementalInput): Promise<IncrementalOutput> 
   // Páginas tocadas, en orden para que la salida sea determinista.
   const pages = [...new Set([...addedByPage.keys(), ...removedByPage.keys()])].sort((x, y) => x - y);
   for (const index of pages) {
-    await rewritePage(reader, writer, index, addedByPage.get(index) ?? [], removedByPage.get(index) ?? new Set(), now);
+    await rewritePage(
+      reader,
+      writer,
+      index,
+      addedByPage.get(index) ?? [],
+      removedByPage.get(index) ?? new Set(),
+      now,
+      contentRefs.get(index) ?? null,
+    );
   }
 
   // 4. Sección xref con el mismo tipo que la última del original.
-  const entries = new Map<number, XrefRow>(writer.offsets);
-  const id = documentId(trailer, idSeed(now, source.size, objectCount));
-  const trailerEntries = trailerDict(reader, root, id, size);
-
-  if (xrefNum === null) {
-    const xrefOffset = writer.offset;
-    writer.write(text('xref\n'));
-    for (const group of groupsOf(entries)) {
-      writer.write(text(`${group.start} ${group.rows.length}\n`));
-      for (const [, row] of group.rows) writer.write(text(tableRow(row)));
-    }
-    writer.write(text('trailer\n'));
-    writer.write(serializeValue(dict(trailerEntries)));
-    writer.write(text(`\nstartxref\n${xrefOffset}\n%%EOF\n`));
-  } else {
-    const xrefOffset = writer.offset;
-    entries.set(xrefNum, { offset: xrefOffset, gen: 0 });
-    const groups = groupsOf(entries);
-    const streamDict: Record<string, PdfValue> = {
-      Type: name('XRef'),
-      W: [1, 4, 2],
-      Index: groups.flatMap((g) => [g.start, g.rows.length]),
-      ...trailerEntries,
-    };
-    const data = streamRows(groups);
-    writer.write(serializeIndirect(xrefNum, 0, stream(streamDict, data)));
-    writer.write(text(`startxref\n${xrefOffset}\n%%EOF\n`));
-  }
-
-  const delta = writer.toBytes();
+  const delta = finishDelta(writer, { reader, root, size, xrefNum, now, sourceSize: source.size });
   return { delta, expectedSize: source.size + delta.length, written };
 }
 
 /**
  * Reescribe la página `index`: quita las refs de las anotaciones borradas (y sus popups), añade las
  * nuevas y escribe las anotaciones nuevas con su apariencia y popup. Si `/Annots` es un array indirecto
- * se reescribe solo ese array; si es directo o no existe, se reescribe la página.
+ * se reescribe solo ese array; si es directo o no existe, se reescribe la página. Las anotaciones
+ * aplanadas (ADR-0036) se dibujan al final del contenido de la página, en el mismo objeto de página.
  */
 async function rewritePage(
   reader: ObjectReader,
@@ -237,33 +222,92 @@ async function rewritePage(
   added: readonly AddedPlan[],
   removedNums: ReadonlySet<number>,
   now: string,
+  contentRefs: ContentRefs | null,
 ): Promise<void> {
   const pageRef = await reader.pageRef(index);
   const page = await reader.getDict(pageRef);
   if (page === null) throw unreadable(`página ${index + 1}`);
-  const annots = await annotsOf(reader, page, index);
+  const annotPlans = added.filter((p) => !isFlattened(p.a));
+  const flatPlans = added.filter((p) => isFlattened(p.a));
+  // Cambios del diccionario de página: solo las claves que cambian.
+  const pageChanges: Record<string, PdfValue> = {};
 
-  const kept = annots.items.filter((item) => !(isRefValue(item) && removedNums.has(item.num)));
-  const appended: PdfRef[] = [];
-  for (const p of added) {
-    appended.push(p.annot);
-    if (p.popup !== null) appended.push(p.popup);
-  }
-  const newAnnots: readonly PdfValue[] = [...kept, ...appended];
+  if (annotPlans.length > 0 || removedNums.size > 0) {
+    const annots = await annotsOf(reader, page, index);
+    const kept = annots.items.filter((item) => !(isRefValue(item) && removedNums.has(item.num)));
+    const appended: PdfRef[] = [];
+    for (const p of annotPlans) {
+      if (p.annot !== null) appended.push(p.annot);
+      if (p.popup !== null) appended.push(p.popup);
+    }
+    const newAnnots: readonly PdfValue[] = [...kept, ...appended];
 
-  for (const p of added) {
-    writer.object(p.annot.num, 0, annotationDict(p.a, { pageRef, apRef: p.ap, popupRef: p.popup, now }));
-    writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
-    writeSignatureImage(writer, p.a, p.extra);
-    if (p.popup !== null && p.a.type === 'note') {
-      writer.object(p.popup.num, 0, popupDict(p.annot, p.a.rect, p.a.open));
+    for (const p of annotPlans) {
+      if (p.annot === null) continue;
+      writer.object(p.annot.num, 0, annotationDict(p.a, { pageRef, apRef: p.ap, popupRef: p.popup, now, irtRef: p.irt }));
+      writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
+      writeSignatureImage(writer, p.a, p.extra);
+      if (p.popup !== null && p.a.type === 'note') {
+        writer.object(p.popup.num, 0, popupDict(p.annot, p.a.rect, p.a.open));
+      }
+    }
+
+    if (annots.indirect === null) {
+      pageChanges.Annots = newAnnots;
+    } else {
+      writer.object(annots.indirect.num, annots.indirect.gen, newAnnots);
     }
   }
 
-  if (annots.indirect === null) {
-    writer.object(pageRef.num, pageRef.gen, withEntries(page, { Annots: newAnnots }));
-  } else {
-    writer.object(annots.indirect.num, annots.indirect.gen, newAnnots);
+  if (flatPlans.length > 0) {
+    if (contentRefs === null) throw new RangeError(`faltan números de contenido para la página ${index + 1}`);
+    Object.assign(pageChanges, await flattenInto(reader, writer, page, flatPlans, contentRefs));
+  }
+
+  if (Object.keys(pageChanges).length > 0) {
+    writer.object(pageRef.num, pageRef.gen, withEntries(page, pageChanges));
+  }
+}
+
+/**
+ * Dibuja cada anotación aplanada como Form XObject de la página (`/SuiteFlatN`) y añade al contenido un
+ * flujo `q` antes y otro `Q` + `q /SuiteFlatN Do Q` después (ADR-0036). Devuelve `/Contents` y `/Resources`
+ * nuevos del diccionario de página; los recursos heredados se copian aquí, así las demás páginas no cambian.
+ */
+async function flattenInto(
+  reader: ObjectReader,
+  writer: DeltaWriter,
+  page: PdfDict,
+  plans: readonly AddedPlan[],
+  contentRefs: ContentRefs,
+): Promise<Record<string, PdfValue>> {
+  let resources = await effectiveResources(reader, page);
+  let ops = '';
+  for (const p of plans) {
+    const resName = freeResourceName(resources, 'XObject', 'SuiteFlat');
+    resources = withResource(resources, 'XObject', resName, p.ap);
+    ops += `q /${resName} Do Q\n`;
+    writer.object(p.ap.num, 0, buildAppearance(p.a, p.extra[0]).stream);
+    writeSignatureImage(writer, p.a, p.extra);
+  }
+  const streams = wrapStreams(ops);
+  writer.object(contentRefs.open.num, 0, streams.open);
+  writer.object(contentRefs.close.num, 0, streams.close);
+  return {
+    Contents: wrappedContents(page, contentRefs.open, contentRefs.close),
+    Resources: resources,
+  };
+}
+
+/**
+ * Una anotación aplanada tiene que ser nueva (ADR-0036): si viene del fichero, es un bug de quien prepara el
+ * incremento.
+ */
+function assertFlattenIsNew(diff: AnnotationDiff): void {
+  for (const a of [...diff.added, ...diff.modified, ...diff.removed]) {
+    if (isFlattened(a) && a.origin.kind === 'file') {
+      throw new RangeError(`la anotación aplanada ${a.id} proviene del fichero`);
+    }
   }
 }
 
@@ -322,134 +366,34 @@ async function annotsOf(
   throw unreadable(`/Annots de la página ${index + 1}`);
 }
 
-/** Trailer del incremento. Sin `/ID` original, ambos identificadores son nuevos. */
-function trailerDict(reader: ObjectReader, root: PdfRef, id: readonly [PdfString, PdfString], size: number): Record<string, PdfValue> {
-  const entries: Record<string, PdfValue> = { Size: size, Root: root };
-  const info = dictGet(reader.xref.trailer, 'Info');
-  if (info !== undefined) entries.Info = info;
-  entries.ID = [id[0], id[1]];
-  entries.Prev = reader.xref.lastXrefOffset;
-  return entries;
-}
 
 /**
- * `/ID` del incremento: `[id0 original, id1 nuevo]`. `id1` es determinista (16 bytes FNV-1a de `seed`).
- * Si el original no tiene `/ID` válido, `id0` también es nuevo.
+ * Anotaciones nuevas que se escriben (PDF-058). Una respuesta o estado solo se escribe si su padre se escribe en
+ * este incremento o es del fichero y no se borra; si no, se descarta. Se repite hasta que no cambie la lista
+ * (una respuesta a una descartada también se descarta).
  */
-function documentId(trailer: PdfDict, seed: string): readonly [PdfString, PdfString] {
-  const id1 = bytesString(idBytes(seed), true);
-  const original = dictGet(trailer, 'ID');
-  if (isArrayValue(original) && original.length === 2) {
-    const [first, second] = original;
-    if (isStringValue(first) && isStringValue(second)) return [first, id1];
+function writableAdded(diff: AnnotationDiff): readonly Annotation[] {
+  const removedIds = new Set(diff.removed.map((a) => a.id));
+  let list: readonly Annotation[] = diff.added;
+  for (;;) {
+    const ids = new Set(list.filter((a) => !isFlattened(a)).map((a) => a.id));
+    const next = list.filter((a) => {
+      if (a.type !== 'reply' && a.type !== 'review') return true;
+      if (ids.has(a.parentId)) return true;
+      return a.parentId.startsWith('ref:') && parseRef(a.parentId.slice(4)) !== null && !removedIds.has(a.parentId);
+    });
+    if (next.length === list.length) return next;
+    list = next;
   }
-  return [id1, id1];
 }
 
-function idSeed(now: string, sourceSize: number, objectCount: number): string {
-  return `${now}|${sourceSize}|${objectCount}`;
-}
-
-/** 16 bytes: cuatro pasadas de FNV-1a de 32 bits con bases distintas. */
-function idBytes(seed: string): Uint8Array {
-  const data = TEXT_ENCODER.encode(seed);
-  const out = new Uint8Array(ID_BYTES);
-  for (let lane = 0; lane < ID_BYTES / 4; lane++) {
-    let h = (FNV_OFFSET_BASIS ^ Math.imul(lane + 1, 0x9e3779b1)) >>> 0;
-    for (const b of data) {
-      h = Math.imul(h ^ b, FNV_PRIME) >>> 0;
-    }
-    out[lane * 4] = (h >>> 24) & 0xff;
-    out[lane * 4 + 1] = (h >>> 16) & 0xff;
-    out[lane * 4 + 2] = (h >>> 8) & 0xff;
-    out[lane * 4 + 3] = h & 0xff;
-  }
-  return out;
-}
-
-interface Group {
-  readonly start: number;
-  readonly rows: readonly (readonly [number, XrefRow])[];
-}
-
-/** Subsecciones de números consecutivos, ordenadas. */
-function groupsOf(entries: ReadonlyMap<number, XrefRow>): Group[] {
-  const nums = [...entries.keys()].sort((x, y) => x - y);
-  const groups: Array<{ start: number; rows: Array<readonly [number, XrefRow]> }> = [];
-  for (const num of nums) {
-    const row = entries.get(num);
-    if (row === undefined) continue;
-    const last = groups[groups.length - 1];
-    if (last !== undefined && last.start + last.rows.length === num) {
-      last.rows.push([num, row]);
-    } else {
-      groups.push({ start: num, rows: [[num, row]] });
-    }
-  }
-  return groups;
-}
-
-/** Fila de una xref de tabla: 20 bytes exactos. */
-function tableRow(row: XrefRow): string {
-  return `${String(row.offset).padStart(10, '0')} ${String(row.gen).padStart(5, '0')} n \n`;
-}
-
-/** Filas de `/W [1 4 2]`: tipo 1 (objeto en offset), offset de 4 bytes y generación de 2. */
-function streamRows(groups: readonly Group[]): Uint8Array {
-  const count = groups.reduce((n, g) => n + g.rows.length, 0);
-  const out = new Uint8Array(count * STREAM_ROW_BYTES);
-  let at = 0;
-  for (const group of groups) {
-    for (const [, row] of group.rows) {
-      const { offset, gen } = row;
-      out[at] = 1;
-      out[at + 1] = (offset >>> 24) & 0xff;
-      out[at + 2] = (offset >>> 16) & 0xff;
-      out[at + 3] = (offset >>> 8) & 0xff;
-      out[at + 4] = offset & 0xff;
-      out[at + 5] = (gen >>> 8) & 0xff;
-      out[at + 6] = gen & 0xff;
-      at += STREAM_ROW_BYTES;
-    }
-  }
-  return out;
-}
-
-/** Acumula el delta y registra el offset absoluto (`base` + bytes escritos) de cada objeto. */
-class DeltaWriter {
-  readonly offsets = new Map<number, XrefRow>();
-  private readonly base: number;
-  private readonly parts: Uint8Array[] = [];
-  private length = 0;
-
-  constructor(base: number) {
-    this.base = base;
-  }
-
-  /** Offset absoluto en el fichero resultante del próximo byte. */
-  get offset(): number {
-    return this.base + this.length;
-  }
-
-  write(bytes: Uint8Array): void {
-    this.parts.push(bytes);
-    this.length += bytes.length;
-  }
-
-  object(num: number, gen: number, value: PdfValue): void {
-    this.offsets.set(num, { offset: this.offset, gen });
-    this.write(serializeIndirect(num, gen, value));
-  }
-
-  toBytes(): Uint8Array {
-    const out = new Uint8Array(this.length);
-    let at = 0;
-    for (const p of this.parts) {
-      out.set(p, at);
-      at += p.length;
-    }
-    return out;
-  }
+/** `/IRT` de una respuesta o estado: el padre nuevo de este incremento, o el objeto del fichero. */
+function irtOf(a: Annotation, annotOf: ReadonlyMap<string, PdfRef>): PdfRef | null {
+  if (a.type !== 'reply' && a.type !== 'review') return null;
+  const local = annotOf.get(a.parentId);
+  if (local !== undefined) return local;
+  const file = parseRef(a.parentId.slice('ref:'.length));
+  return file === null ? null : toRef(file);
 }
 
 function fileOrigin(a: Annotation): { readonly ref: PdfObjRef; readonly popupRef: PdfObjRef | null } {
@@ -459,10 +403,6 @@ function fileOrigin(a: Annotation): { readonly ref: PdfObjRef; readonly popupRef
 
 function toRef(r: PdfObjRef): PdfRef {
   return ref(r.num, r.gen);
-}
-
-function text(s: string): Uint8Array {
-  return TEXT_ENCODER.encode(s);
 }
 
 function unreadable(where: string): PdfSyntaxError {
@@ -475,8 +415,4 @@ function isRefValue(v: PdfValue | undefined): v is PdfRef {
 
 function isArrayValue(v: PdfValue | undefined): v is readonly PdfValue[] {
   return Array.isArray(v);
-}
-
-function isStringValue(v: PdfValue | undefined): v is PdfString {
-  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'string';
 }

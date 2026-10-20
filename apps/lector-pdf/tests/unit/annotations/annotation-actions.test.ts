@@ -3,6 +3,10 @@ import { createStorageStore, memorySource, type Platform } from '@suite/platform
 import { createFakePlatform, openedFile } from '../../helpers/fake-platform';
 import { fixtureSource, nodeAssetBase } from '../../helpers/pdfjs-node';
 import { loadPdf, type LoadedPdf } from '../../../src/engine';
+import { additionsDiff, saveAnnotations } from '../../support/save-annotations';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { FIXTURES_DIR } from '../../fixtures/paths';
 import type { RawAnnotation } from '../../../src/core/annotations/import';
 import { PALETTE } from '../../../src/core/annotations/palette';
 import { PageDimsTable } from '../../../src/core/page-dims';
@@ -290,4 +294,44 @@ describe('nota con teclado (PDF-072)', () => {
     expect(getEffective().size).toBe(0);
     expect(useAnnotations.getState().tool).toBe('none');
   });
+});
+
+describe('firmas guardadas al reabrir (PDF-104)', () => {
+  const SIGNATURE = {
+    id: 'firma-1',
+    type: 'signature' as const,
+    pageIndex: 0,
+    rect: [100, 100, 300, 200] as [number, number, number, number],
+    color: [0, 0, 0.6] as [number, number, number],
+    opacity: 1,
+    contents: '',
+    author: 'Ana',
+    modified: '2026-10-18T10:00:00.000Z',
+    created: '2026-10-18T10:00:00.000Z',
+    origin: { kind: 'new' as const },
+    art: { kind: 'ink' as const, paths: [[0, 0, 25, 40, 50, 0]], width: 2, box: [100, 50] as [number, number] },
+  };
+
+  it('una firma escrita por la suite se lista como «SuiteFirma» al abrir la sesión', async () => {
+    const original = new Uint8Array(readFileSync(join(FIXTURES_DIR, 'basic-5.pdf')));
+    const { data } = await saveAnnotations(original, additionsDiff([SIGNATURE]));
+    const result = await loadPdf(memorySource(data), { assetBaseUrl: nodeAssetBase() });
+    if (!result.ok) throw new Error(result.error.code);
+    opened.push(result.value);
+
+    startAnnotationSession(result.value, new AbortController().signal, memorySource(data));
+    await waitForScan();
+
+    expect([...useAnnotations.getState().foreign.values()].map((a) => a.stampName)).toEqual(['SuiteFirma']);
+  }, OPEN_TIMEOUT);
+
+  it('si el fichero no se puede leer para guardar, el escaneo termina y el sello sale sin nombre', async () => {
+    const pdf = await openAnnotated();
+    startAnnotationSession(pdf, new AbortController().signal, memorySource(new Uint8Array([1, 2, 3])));
+    await waitForScan();
+
+    const foreign = [...useAnnotations.getState().foreign.values()];
+    expect(foreign).toHaveLength(1);
+    expect(foreign[0]?.stampName).toBeUndefined();
+  }, OPEN_TIMEOUT);
 });
