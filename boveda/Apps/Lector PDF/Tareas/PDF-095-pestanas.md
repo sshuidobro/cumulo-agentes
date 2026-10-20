@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: en-test
+estado: cambios-pedidos
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
-intentos: 1
+intentos: 2
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
 actualizado: 2026-10-20
@@ -86,3 +86,15 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 - Verificado: lint y typecheck OK; `tab-bar.test.tsx` 15/15; `tabs.spec.ts` 7/7. El × cumple la decisión del líder (aria-hidden, tabIndex -1, title, sin aria-label), `aria-keyshortcuts="Delete"` en cada tab, roving tabindex y teclado conformes a la ficha. Rendimiento (ronda 1) y cobertura (ronda 4) tomados del Registro del programador; el tester debe confirmarlos con `tabs-performance.spec.ts` y `pnpm coverage`. Sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-20 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck | OK | exit 0 |
+| `pnpm coverage` | OK | líneas 98.63 %, ramas 90.66 % |
+| `tabs.spec.ts` | 7/7 | `playwright test tests/e2e/tabs.spec.ts --project=chromium` |
+| `tabs-performance.spec.ts` | OK | `--project=chromium-perf --no-deps`: pasa (p95/heap/long tasks dentro de presupuesto) |
+| `pnpm --filter lector-pdf e2e` con código 0 | FALLA | 4 fallos, 261 pasan, 1 no ejecutado; reproducibles al lanzarlos solos |
+
+Fallos (todos en `apps/lector-pdf`, `playwright test <fichero> --project=chromium`): `outline.spec.ts:64` (abre `compressed.pdf` y luego `informe.pdf` con `openFile`; en la 2.ª apertura el panel/pestaña «Marcadores» no aparece, timeout 60 s en `openBookmarks`: ahora el 2.º fichero abre pestaña nueva y F4 alterna el panel), `annotations-flow.spec.ts:94`, `annotations-foreign.spec.ts:72`, `notes.spec.ts:91`. Probable causa: tests que asumían reemplazo de documento o reabrir el mismo fichero; con pestañas se activa la existente o se abre otra. Hay que adaptar esos tests (o el código si es regresión real) y dejar `e2e` en verde.
+Tests añadidos: ninguno.
