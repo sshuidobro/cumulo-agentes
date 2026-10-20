@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-113
 titulo: Exportar - diálogo, progreso, permisos y guardado
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-064, COM-018, PDF-048, PDF-095, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -72,3 +72,21 @@ export function cancelExport(): void;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/ui/kit/MenuButton.tsx` (prop `disabledReason` en `MenuActionSpec`; el `title` de una entrada deshabilitada muestra la explicación), `apps/lector-pdf/src/ui/toolbar/DocumentMenu.tsx` (`disabledReason: exportMsg.blocked`), nuevos `apps/lector-pdf/tests/unit/export-actions.test.ts`, `apps/lector-pdf/tests/ui/export-dialog.test.tsx`, `apps/lector-pdf/tests/e2e/export.spec.ts`. El núcleo (`state/export-actions.ts`, `core/export/plan.ts`, `ui/export/*`, `ui/messages-export.ts`, cambios en `App.tsx` y `DocumentMenu.tsx`) ya estaba en el commit `da503d7` (trabajo previo sin ficha cerrada); lo he revisado contra la ficha y lo he dejado tal cual.
+- Qué he hecho: añadido el test unitario (PNG suelto con número, ZIP sin recomprimir, aviso de ppp reducidos, >1 GB sin guardar, >200 páginas con confirmación y cancelación, cancelar a mitad con `dispose`, TXT con BOM y `\f`, rango inválido, sin permiso de copia, recientes intactas, opciones recordadas), tests de componente (foco inicial, Escape, campos según formato, rango inválido, Intro exporta) y E2E (PNG 1-3 a 1275×1650 en ZIP; JPEG 72 ppp 612×792 con/sin comentarios y píxeles amarillos; TXT; axe en el diálogo; teclado; tema oscuro; «Exportar…» deshabilitado en `encrypted-owner-only.pdf`; @perf de 20 páginas sin long tasks > 100 ms y cancelación sin descarga).
+- Comandos ejecutados y resultado:
+  - `pnpm exec vitest run tests/unit/export-actions.test.ts tests/ui/export-dialog.test.tsx` (en `apps/lector-pdf`): 15/15 OK.
+  - `pnpm exec playwright test tests/e2e/export.spec.ts --project=chromium`: 6/6 OK.
+  - `... --project=chromium-perf --no-deps`: 2/2 OK.
+  - `pnpm --filter lector-pdf bundle:check`: OK (508 103 bytes de arranque, máximo 600 000; sobre el `dist` existente, sin `build` porque tsc falla por cambios ajenos).
+  - ESLint sobre los ficheros de esta ficha: sin errores. `pnpm lint` global: falla por `src/ui/viewer/AnnotationLayer.tsx:690` (parse error, fichero de otro programador en curso).
+  - `pnpm typecheck`: 12 errores, todos fuera de esta ficha (`src/core/signature/digital/p12.ts`, `src/ui/toolbar/CommentToolbar.tsx` con el tipo «stamp»). En mis ficheros: ninguno.
+  - `pnpm coverage` (raíz): 3581 OK, 2 KO en `tests/ui/comment-toolbar.test.tsx` (flechas y foco de la barra «Comentar»; el test espera la herramienta «Flecha» de trabajo ajeno en curso). No están relacionados con mis cambios (`MenuButton` solo añade `title` a entradas deshabilitadas).
+- Dudas o cosas que no he podido hacer:
+  - `pnpm coverage` y `pnpm lint` no quedan en verde por código ajeno (ver arriba); conviene volver a correrlos cuando el resto del árbol esté estable.
+  - La prueba de «Cancelar» (@perf) comprueba la ausencia de descarga y del aviso «Exportación terminada.»; no hay forma determinista de ver que el navegador no ha descargado nada después, así que es una comprobación razonable pero no total.
+  - El criterio de tema oscuro se comprueba como «fondo del diálogo distinto de blanco» más axe; no hay captura de referencia.
+  - `pnpm --filter lector-pdf build` no se ha ejecutado (falla por tipos ajenos), así que el presupuesto se ha medido sobre el `dist` anterior.
+  - No he hecho commit (lo pide la instrucción del equipo; el árbol tiene cambios ajenos).
