@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-150
 titulo: Arreglar «Cancelar» a mitad de la exportación (E2E @perf rojo en HEAD)
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, calidad-profesional]
@@ -45,3 +45,16 @@ Que la prueba `tests/e2e/export.spec.ts` › «exportar pages-5000 (@perf) › �
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/ui/export-dialog.test.tsx` (test nuevo); la ficha. Sin cambios en el código de la app: el `1-200` de la prueba ya estaba en HEAD (commit `8978075`).
+- Qué he hecho: reproducido el fallo. Con la máquina en reposo la prueba «Cancelar» a mitad pasa (3/3 y 5/5 con `--repeat-each`; 1,8–2,2 s cada una). Las rondas fallidas coincidían con otros procesos del equipo en paralelo (`eslint` a ~110 % de CPU, `vitest` y `playwright`): «La máquina no está en reposo: CPU ocupada 51–86 %» y, en una, timeout de 60 s y ENOENT en `test-results/`. Causa raíz: contención de CPU durante la medida, no bug de producto; no toqué el código de la app. Añadido test UI: Escape durante el progreso cancela (foco en «Cancelar», diálogo cerrado, estado `idle`, sin `exportFile`).
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf e2e --project=chromium-perf --no-deps -g "Cancelar» a mitad" --repeat-each=5`: 5/5 OK (código 0).
+  - `pnpm lint`: OK. `pnpm typecheck`: OK (tras quitar `exact` de `getByRole` en mis líneas).
+  - `pnpm coverage`: 4035 de 4036 OK. **Falla** `tests/ui/open.test.tsx` › «Cancelar aborta la carga y vuelve al estado vacío» (no encuentra el encabezado «Abre un PDF para empezar»). Falla también al ejecutar ese fichero solo; no toco `open.test` ni `src/` (sin cambios respecto a HEAD), así que es previa a esta ficha.
+  - `pnpm --filter lector-pdf e2e` completo: 364 OK, 2 fallidos (`iteration4-performance` › cifrado AES-256: «guardar una nota» y «cambio de pestaña»), ambos por «La máquina no está en reposo». Repetidos en aislado (`-g "cifrado AES-256"`): 4/4 OK.
+- Dudas o cosas que no he podido hacer:
+  - `pnpm test`/`coverage` no están en verde por `open.test.tsx` (rojo previo, fuera de alcance). Hace falta decidir quién lo arregla.
+  - Ajena a esta ficha: en el árbol de trabajo hay borrados sin commit los directorios versionados `apps/lector-pdf/dist-firma/` y `dist-qa049/`, y un `stash@{0}` de otra rama. No los he tocado.
+  - Los procesos del equipo en paralelo impiden medir `@perf` de forma fiable; conviene no lanzar lint/vitest mientras se mide.
