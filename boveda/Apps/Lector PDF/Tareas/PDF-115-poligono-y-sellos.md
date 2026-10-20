@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-115
 titulo: Herramientas Polígono y Sello en la barra Comentar
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-108, PDF-107]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -84,3 +84,6 @@ Lint, typecheck y tests de la ficha (576) en verde; criterios cubiertos. Un prob
 - Qué he hecho: el escuchador de `keydown` del polígono se guarda en un ref (`polygonKey`) y `stopPolygon` quita exactamente ese, así que ya no depende de la función del render en que se llamó. Nuevo test «cerrar un polígono con doble clic no deja escuchadores de teclado registrados» (espías de `addEventListener`/`removeEventListener` sobre `window`; comprueba que cada `keydown` añadido se quita).
 - Comandos ejecutados y resultado: `vitest run tests/ui/shape-tool.test.tsx` → 19/19. `eslint` sobre los ficheros tocados → limpio. `pnpm typecheck` → código 0. `pnpm coverage` (con `--coverage.reportsDirectory` propio: otro proceso de Vitest ocupaba el directorio `coverage/`) → código 0, 279 ficheros, 3622 tests. Una primera pasada tuvo un timeout de 5 s en `commands.test.ts` por la carga de la máquina; en solitario pasa (20/20) y en la pasada final todo pasó. E2E no relanzado en esta ronda (el cambio es interno al hook y el E2E de ronda 1 pasó 295/295).
 - Dudas o cosas que no he podido hacer: ninguna en esta ronda. No he hecho commit (indicación del usuario). Pendiente de la ronda 1: `pnpm lint` de raíz falla por ficheros ajenos a la ficha (`signature/digital/*`).
+
+### [revisor] ronda 2 — 2026-10-20 — APROBADO
+La fuga queda corregida: el handler se guarda en `polygonKey` (ref) y `stopPolygon` quita exactamente ese. Test nuevo de doble clic con espías en verde (19/19), eslint y typecheck limpios en la ficha. Sin problemas pendientes.
