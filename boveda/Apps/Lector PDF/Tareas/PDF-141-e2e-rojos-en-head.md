@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-141
 titulo: Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 1
 skills: [pruebas-calidad, stack-typescript-react]
@@ -106,3 +106,23 @@ Causa del fallo: son pruebas de presupuesto de tiempo de reloj sin `{ tag: '@per
   - `pnpm lint` OK (exit 0); `pnpm typecheck` OK (tras corregir un tipo en la prueba nueva); `pnpm coverage` OK: 272 ficheros / 3542 tests en verde, líneas 98,61 %, ramas 90,57 %.
   - `git diff HEAD -- apps/lector-pdf | grep -nE "skip|fixme|\.only|retries|timeout"` sobre las líneas añadidas: sin coincidencias.
 - Dudas o cosas que no he podido hacer: (1) no he vuelto a ejecutar la batería E2E completa dos veces: sigue bloqueada por `detail.spec.ts:212` (PDF-142, fuera de alcance), que falla de forma determinista. (2) Las repeticiones de `chromium-perf` y `chromium` se han hecho sin carga añadida a propósito (para no mezclar con otras ejecuciones); el fallo original del tester se produjo con carga, y la corrección es estructural (etiqueta `@perf` + puerta de reposo), no depende de la carga. (3) `render.spec.ts:87` («pages-5000: la página 1 se dibuja en menos de 5 s») también tiene un presupuesto de tiempo sin `@perf`; no ha fallado en las repeticiones, así que no lo he tocado; si el tester lo ve intermitente, etiquetarlo igual.
+
+### [revisor] ronda 2 — 2026-10-20 — APROBADO
+1. Lint y typecheck OK; `sidebar-f4-reopen.spec.ts` pasa en `chromium`.
+2. `apps/lector-pdf/tests/e2e/performance.spec.ts:79,85,155` — etiquetas `@perf` correctas según ADR-0016; sin cambios de presupuestos, timeouts ni retries.
+3. `apps/lector-pdf/tests/e2e/sidebar-f4-reopen.spec.ts` — prueba nueva válida, cubre F4 abrir/cerrar tras reabrir.
+4. Criterio «E2E completo dos veces» sigue condicionado a `detail.spec.ts:212` (PDF-142, fuera de alcance).
+5. (opcional) `render.spec.ts:87` tiene presupuesto de tiempo sin `@perf`; etiquetar si se vuelve intermitente.
+
+### [tester] ronda 2 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E completo en verde dos veces seguidas | OK | `LECTOR_E2E_PORT=4711 pnpm --filter lector-pdf e2e` x2: 286 passed (8,3 min) en ambas, exit 0 (incluye `detail.spec.ts:212`, resuelto por PDF-142) |
+| flow + foreign + notes | OK | dentro de la suite completa |
+| performance/render/outline x20 y `@perf` x10 | OK | aportado en ronda 2 del programador (220/220 y 160/160) y las tres pruebas de tiempo ahora van en `chromium-perf`; también verdes en la suite completa |
+| F4 abre/cierra tras reabrir | OK | `sidebar-f4-reopen.spec.ts` verde en ambas pasadas |
+| Sin relajar pruebas | OK | `git diff 2aa6f30 -- apps/lector-pdf` (líneas añadidas): sin skip/fixme/only/retries/timeout |
+| lint / typecheck / coverage | OK | lint exit 0, typecheck OK, líneas 98,61 %, ramas 90,57 % |
+
+No repetí los 20x de repeat-each por duración (~25 min); me apoyo en la ronda 2 del programador y las dos pasadas completas, ambas verdes.
+Tests añadidos: ninguno. Rendimiento: pruebas `@perf` verdes en ambas pasadas.

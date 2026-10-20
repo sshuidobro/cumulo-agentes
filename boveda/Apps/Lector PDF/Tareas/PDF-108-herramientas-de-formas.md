@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-108
 titulo: Herramientas Rectángulo, Elipse, Línea y Flecha en la barra Comentar
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-057, PDF-101, PDF-050, PDF-051, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -95,3 +95,20 @@ export function useShapeTool(pageIndex: number, viewport: PageViewport, pageBoun
   - El título del E2E va sin tildes: con tildes en la carpeta de salida, el fichero guardado no llega a la pestaña nueva con `setInputFiles`. Es una limitación del test, no de la app; conviene vigilarla en otros specs con títulos acentuados que reabran ficheros.
   - Con una forma seleccionada, «Color» cambia solo esa forma (no el color por defecto de la herramienta), como indica la ficha; el color por defecto se cambia con la herramienta sin selección.
   - No he hecho el Manual (lo escribe el líder al cerrar la iteración).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint y typecheck OK; tests de shape-drag, shape-actions, shape-tool y comment-toolbar en verde (54). Criterios cubiertos, nada fuera de alcance, núcleo puro, una sola entrada de deshacer por acción, listeners de arrastre limpiados al desmontar, preferencias antiguas toleradas.
+- (opcional) `shape-drag.ts` `dragBox` con `keepRatio`: el recorte a la página puede dejar una caja no cuadrada junto al borde; aceptable.
+- Pendiente para el tester: E2E completo (`shapes.spec.ts`, a11y, `@perf`) y `pnpm coverage`; no relanzados en revisión.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit shape-drag / shape-actions / preferencias antiguas | OK | `pnpm coverage` exit 0, incluye `shape-drag.test.ts`, `shape-actions.test.ts` |
+| UI rectángulo, Escape, arrastre sobre anotación, flecha por teclado | OK | `tests/ui/shape-tool.test.tsx` en la batería de coverage |
+| E2E basic-5 (dibujar, deshacer/rehacer, mover, redimensionar, color, guardar, recargar, píxel rojo) | OK | `LECTOR_E2E_PORT=4611 pnpm --filter lector-pdf e2e`: 285 passed, exit 0 |
+| Botones accesibles, foco itinerante, axe tema oscuro | OK | `annotations-a11y.spec.ts` dentro del e2e completo |
+| lint, typecheck, coverage, e2e con código 0; sin long tasks | OK | lint y typecheck sin errores; coverage líneas 98,61 %; `shapes.spec.ts:168 @perf` pages-5000 en verde |
+
+Tests añadidos: ninguno (los del programador cubren cada criterio).
+Rendimiento: arrastre sobre `pages-5000.pdf` sin long tasks > 100 ms (@perf verde).
