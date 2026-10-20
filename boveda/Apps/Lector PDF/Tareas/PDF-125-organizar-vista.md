@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-125
 titulo: Organizar - vista de cuadrícula con selección, teclado y barra
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-124, PDF-114]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -85,3 +85,14 @@ Lint, typecheck y los 8 ficheros de tests de organize (137 tests) en verde. No h
 
 ### [revisor] ronda 2 — 2026-10-20 — APROBADO
 Lint y typecheck OK; 8 ficheros de tests de organize (141) OK; e2e `organize-a11y.spec.ts` 2/2 (axe claro y oscuro sin violaciones). Los 3 puntos de la ronda 1 resueltos (axe, botones de icono, tope de filas sin recortar las visibles, con tests). El cambio de rol en `MainToolbar.tsx` es mínimo con `git diff -w`. No he lanzado la cobertura completa (el programador reporta verde, 297 ficheros).
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| UI teclado/selección/Supr/Ctrl+Z/Ctrl+]/Alt+→/Ctrl+S/Escape/100 000 huecos | OK | `vitest run tests/ui/organize-view.test.tsx tests/unit/organize`: 8 ficheros, 141 tests OK |
+| Unit grid | OK | incluido arriba (24+ casos, bordes) |
+| axe claro y oscuro | OK | e2e `organize-a11y.spec.ts` 2/2 |
+| bundle | OK | `check-bundle`: 539 348 B (máx. 600 000) |
+| lint / typecheck | OK | código 0 |
+| Batería completa | OK | 297 ficheros, 3853 tests; flakes por carga (timeouts de 5 s en `page-tree.test.ts`, un fallo en `search-actions.test.ts`) ajenos a la ficha; ambos pasan solos y la pasada completa posterior los dejó verdes salvo ese intermitente |
+Nota: `pnpm coverage` choca con el directorio de otro proceso Vitest; usado `--coverage.reportsDirectory` propio. Tests añadidos: ninguno nuevo.
