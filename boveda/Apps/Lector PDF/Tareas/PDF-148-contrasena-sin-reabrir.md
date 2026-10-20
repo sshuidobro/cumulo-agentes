@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -125,6 +125,30 @@ if (password === undefined) {
 - [ ] (a) pasa en las 3 repeticiones (razón de medianas de 5 ≤ 1,5) con la tabla y el desglose de las 3 en el Registro. Si alguna falla: no tocar umbral ni medida, anotar los números y dejar `cambios-pedidos` para el líder.
 - [ ] Ejecutados de nuevo y con código 0: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm --filter lector-pdf e2e --project=chromium -g "contraseña|cifrad|iteration4"`.
 
+## Replanificación (líder, 2026-10-20) · paso 6: medir sin el sondeo de Playwright
+Lo hecho en las rondas 1-5 **se conserva** (código en `fde63ab`). Solo se toca el spec de rendimiento.
+
+Causa de la bimodalidad (~430 / ~925 ms tras «Abrir»): `timeToFirstPage` espera con `expect(...).toBeVisible()` (`waitPageRendered` y el diálogo). Esas esperas reintentan cada 100 → 250 → 500 → 1000 ms. El salto de unos 500 ms es un escalón de reintento, no la app. El «hasta diálogo» de unos 180 ms tiene el mismo sesgo.
+
+6a. `tests/e2e/iteration4-performance.spec.ts` → `timeToFirstPage` (líneas 106-119). Cambia **solo** las dos esperas de esta función (no el helper común `waitPageRendered`, que usan otras pruebas):
+```ts
+const RAF = { polling: 'raf', timeout: 30_000 } as const;
+// diálogo visible (sustituye a expect(...).toBeVisible() de la línea 113):
+await page.waitForFunction(() => document.querySelector('[role=dialog]') !== null, undefined, RAF);
+// p1 pintada (sustituye a waitPageRendered(page, 1) de la línea 117):
+await page.waitForFunction(
+  () => document.querySelector('[data-testid=viewer] [data-page-index="0"][data-rendered="true"]') !== null,
+  undefined, RAF,
+);
+```
+Es el mismo patrón que `switchAndMeasure` (línea 146). `typePassword` no cambia: su `toBeVisible` ya se cumple a la primera.
+6b. No cambian el umbral `OPEN_RATIO_MAX = 1.5`, `OPEN_RUNS = 5`, el calentamiento ni la resta del tiempo del usuario.
+
+### Criterios añadidos (paso 6)
+- [ ] `--repeat-each=3 --reporter=json`: la (a) pasa en las 3 repeticiones. Copiar al Registro, de las 3, las aperturas, la mediana y la razón, con el desglose.
+- [ ] El desglose «tras Abrir» ya no es bimodal: en cada repetición, máximo − mínimo < 200 ms. Si sigue siendo bimodal con la espera `raf`, el problema es real. En ese caso, no tocar el umbral: anotar los números y dejar la ficha en `cambios-pedidos`.
+- [ ] El resto de `iteration4-performance.spec.ts` y `pnpm lint`/`pnpm typecheck` con código 0.
+
 ## Criterios de aceptación
 - [ ] Los 9 casos existentes de `document-password.test.ts` y `password-dialog.test.tsx`, `tab-actions.test.ts`, `compare-actions.test.ts` siguen en verde sin cambiar sus aserciones.
 - [ ] Los 5 casos nuevos de `load-password.test.ts` y el de «una sola llamada» pasan.
@@ -206,3 +230,8 @@ if (password === undefined) {
 - Qué he hecho: he comprobado el estado del código. El árbol de trabajo está limpio y el cambio de la ronda 3-4 ya está en el commit `fde63ab`. No había pasos pendientes de implementar: los pasos 1-5 están aplicados. No he repetido la medición de rendimiento.
 - Comandos ejecutados y resultado: `pnpm lint`: código 0 (sin avisos). `pnpm typecheck`: código 0, sin errores.
 - Dudas o cosas que no he podido hacer: no paso la ficha a `en-revision`. Su criterio de aceptación «(a) pasa en las 3 repeticiones» no se cumple (rondas 4: fallo en repeticiones 1 y 2, con razones 2,50 y 1,60). La propia ficha dice que, si falla, se dejen `cambios-pedidos` para el líder. Queda pendiente la decisión del líder sobre medición, ADR-0043 o PDF-099 (a). No he hecho commit de esta ronda porque no hay cambios de código.
+
+### [lider] replanificación 3 — 2026-10-20
+- La bimodalidad (~430/~925 ms) cuadra con el escalón de reintento de 500 ms de `expect().toBeVisible()` de Playwright. Es un fallo de la medida, no de la app, y tampoco es ruido aleatorio que se arregle con más repeticiones.
+- Decisión: medir con `waitForFunction` y `polling: 'raf'` en `timeToFirstPage` (paso 6). El umbral sigue en ≤ 1,5 ×. La medida se afina; el umbral no se relaja.
+- Ficha a `pendiente`, `intentos: 0`.

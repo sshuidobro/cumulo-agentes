@@ -47,3 +47,6 @@ Medida y presupuesto de PDF-099 (a) **sin cambios** (≤ 1,5 ×, restando el tie
 ## Nota 2026-10-20 · carga diferida del sondeo
 - `needsUserPassword` se importa con `import('../core/pdf/password-probe')` dentro de `runOpen`, no de forma estática: el import estático del barril `core/pdf` subía el arranque a 627 248 B (> 600 000, [[PDF-148-contrasena-sin-reabrir]]). Mismo patrón que `core/pdf/incremental` en `save-actions.ts`. El presupuesto de arranque no se toca.
 - La medida de PDF-099 (a) usa 1 par de calentamiento descartado y medianas de 5 aperturas; umbral ≤ 1,5 × sin cambios.
+
+## Nota 2026-10-20 · cómo se mide (a)
+- Las esperas de la medida (a) usan `page.waitForFunction(..., { polling: 'raf' })`, no `expect().toBeVisible()`: los reintentos de 100/250/500/1000 ms de este último cuantizan el tiempo y producían una distribución bimodal falsa (~430/~925 ms) ([[PDF-148-contrasena-sin-reabrir]], paso 6). Umbral ≤ 1,5 × sin cambios.
