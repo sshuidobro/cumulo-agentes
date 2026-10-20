@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-145
 titulo: Editar texto - aplicar las líneas editadas y operaciones del Worker (núcleo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-144]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -83,3 +83,8 @@ export async function buildTextEditUpdate(input: EditTextInput): Promise<Result<
 - Qué he hecho: `buildTextEditUpdate` agrupa ediciones por página, localiza cada línea con `locateLine`, quita sus glifos con `removeGlyphs` y escribe un único `/Contents` Flate con el texto nuevo (fuente estándar compartida por incremento, `SuiteEd` por página). Ops `edit-text-probe` y `edit-text` (reescritura completa con `keepEncryption`). Un `RangeError` se propaga sin convertirlo en error de usuario.
 - Comandos ejecutados y resultado: `pnpm lint` OK. `pnpm typecheck` OK en `apps/lector-pdf`. `pnpm coverage`: 299 ficheros y 3889 tests en verde; `edit-text/apply.ts` 97,4 % líneas / 91,9 % ramas; `doc-ops/ops/edit-text.ts` 100 % líneas / 94,3 % ramas. No he ejecutado `qpdf` fuera de los tests (los tests lo usan y pasan).
 - Dudas o cosas que no he podido hacer: en el árbol de trabajo hay cambios ajenos sin commitear (`OrganizeView`, `OrganizeCell`, `grid.ts`, `PDF-126`) que en un momento hicieron fallar `typecheck` (`OrganizeView.tsx`, `onPointerDown`); no los he tocado y el commit incluye solo mis ficheros. Los criterios de aceptación están cubiertos por los tests, pero las casillas de la ficha no las he marcado (lo hará el tester). Caso «ediciones con página sin diccionario» cubierto solo de forma parcial (rama `PdfSyntaxError`).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint, typecheck y los 67 tests de edit-text/op en verde. La cobertura (97,4 % y 100 %) la reporta el programador con la suite completa.
+- `apply.ts` sigue la ficha: validación con `RangeError`, un objeto de fuente por incremento, `SuiteEd` por página, un único flujo Flate, delta vacío sin ediciones y cancelación entre páginas.
+- (opcional) `apply.ts:105`: la comprobación de área 0 no detecta una caja con ancho o alto negativo; no bloquea.
