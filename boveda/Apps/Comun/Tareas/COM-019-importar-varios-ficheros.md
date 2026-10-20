@@ -3,7 +3,7 @@ tipo: tarea
 id: COM-019
 titulo: Platform.importFiles - elegir varios ficheros a la vez
 app: comun
-estado: en-test
+estado: hecha
 depende_de: [COM-018]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
@@ -68,3 +68,12 @@ importFiles(filters: readonly FileFilter[], maxBytesEach: number, maxCount: numb
 - Lint y tests de `@suite/platform` (263) en verde; diff cumple los criterios (web con picker e input, comprobación previa de número y tamaños, Tauri con `remember: false` y tokens cerrados en `finally`, Rust con liberación en fallo parcial).
 - El fallo de `pnpm typecheck` en `apps/lector-pdf` (redact) viene de cambios sin commit ajenos a esta ficha; no bloquea.
 - (opcional) `register_all` se prueba, pero el comando completo no (el diálogo no es testeable sin app): aceptable.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Web (picker, input, orden, recientes, cancelar, maxCount) | OK | `platform-web-import-many.test.ts` (7 tests) en verde |
+| Tauri (`remember:false`, tokens cerrados también con error E/S) | OK | `import-many-tauri.test.ts` (6 tests) en verde |
+| cargo fmt / clippy -D warnings / test | OK | código 0 |
+| lint / typecheck / coverage | OK | líneas 98.31 % |
+Tests añadidos: ninguno (la cobertura existente basta). Rendimiento: no aplica.
