@@ -1,9 +1,11 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { describeChange, type PageComparison } from '../../core/compare/compare';
+import { nextChangeIndex } from '../../core/compare/change-index';
 import { cancelCompare, closeCompare, countChanges, selectChange, useCompare } from '../../state/compare-actions';
 import { useViewer } from '../../state/viewer-store';
 import { compareMsg } from '../messages-compare';
 import { useViewportSize } from '../viewer/use-viewport-size';
+import { ComparePages } from './ComparePages';
 import styles from './CompareView.module.css';
 
 /** Altura fija de cada fila de la lista de cambios. */
@@ -76,6 +78,14 @@ export function CompareView() {
     setScrollTop(nextScroll);
   }
 
+  /** Selecciona el cambio anterior o siguiente y lleva la lista a esa fila. */
+  function stepChange(delta: 1 | -1): void {
+    const next = nextChangeIndex(selected, results.length, delta);
+    if (next === null) return;
+    setActive(next);
+    selectChange(next);
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -84,6 +94,11 @@ export function CompareView() {
       return;
     }
     if (results.length === 0) return;
+    if (event.altKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      event.preventDefault();
+      stepChange(event.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       moveActive(event.key === 'ArrowDown' ? 1 : -1);
@@ -94,6 +109,7 @@ export function CompareView() {
   }
 
   const changes = countChanges(results);
+  const selectedResult = selected === null ? undefined : results[selected];
   const done = status === 'done';
   return (
     <div className={styles.layer} role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
@@ -108,6 +124,12 @@ export function CompareView() {
           </div>
         )}
         <div className={styles.actions}>
+          <button type="button" className={styles.button} disabled={results.length === 0} onClick={() => { stepChange(-1); }}>
+            {compareMsg.previousChange}
+          </button>
+          <button type="button" className={styles.button} disabled={results.length === 0} onClick={() => { stepChange(1); }}>
+            {compareMsg.nextChange}
+          </button>
           {status === 'running' && (
             <button type="button" className={styles.button} onClick={cancelCompare}>
               {compareMsg.cancel}
@@ -139,7 +161,11 @@ export function CompareView() {
           </div>
         </div>
         <div className={styles.pages} data-testid="compare-pages">
-          {compareMsg.selectChange}
+          {selectedResult === undefined ? (
+            <p className={styles.hint}>{compareMsg.selectChange}</p>
+          ) : (
+            <ComparePages result={selectedResult} token={selected ?? 0} otherName={otherName ?? ''} />
+          )}
         </div>
       </div>
     </div>
