@@ -13,7 +13,7 @@ const noUi = { group: ['react', 'react-dom', 'react-dom/*', 'zustand'], message:
 
 export default defineConfig(
   {
-    ignores: ['**/node_modules/', '**/coverage/', '**/dist/', 'boveda/', 'ejemplos/', 'target/',
+    ignores: ['**/node_modules/', '**/coverage/', '**/dist/', 'boveda/', 'ejemplos/', 'target/', '.claude/worktrees/**',
       '**/src-tauri/target/', '**/src-tauri/gen/', '**/public/pdfjs/', '**/public/ocr/', 'fixtures/pdf/generated/',
       '**/playwright-report/', '**/test-results/', 'apps/lector-pdf/dist-firma/', 'apps/lector-pdf/dist-pdf090/', 'apps/lector-pdf/dist-qa049/'],
   },

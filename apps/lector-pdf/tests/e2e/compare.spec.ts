@@ -169,7 +169,7 @@ test.describe('Páginas del cambio (PDF-117)', () => {
     await dialog.getByRole('button', { name: compareMsg.overlay, exact: true }).click();
     const canvas = dialog.getByTestId('compare-pages').locator('canvas');
     await expect(canvas).toHaveCount(1);
-    const pixels = await canvas.evaluate((el, f) => {
+    const readPixels = () => canvas.evaluate((el, f) => {
       const c = el as HTMLCanvasElement;
       const ctx = c.getContext('2d');
       if (ctx === null) throw new Error('lienzo sin contexto 2d');
@@ -188,6 +188,9 @@ test.describe('Páginas del cambio (PDF-117)', () => {
       }
       return { corner: Math.max(corner[0] ?? 0, corner[1] ?? 0, corner[2] ?? 0), colored };
     }, fraction);
+    // La superposición se dibuja de forma asíncrona: esperamos a que aparezca el color antes de leer el resto.
+    await expect.poll(async () => (await readPixels()).colored, { timeout: 30_000 }).toBe(true);
+    const pixels = await readPixels();
     expect(pixels.corner, 'una zona sin texto es negra').toBeLessThan(16);
     expect(pixels.colored, 'la palabra cambiada tiene píxeles de color').toBe(true);
   });
