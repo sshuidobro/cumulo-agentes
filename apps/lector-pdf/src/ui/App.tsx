@@ -35,6 +35,7 @@ import { openPrintDialog, usePrintDialog, usePrintJob } from '../state/print-act
 import { useCompare } from '../state/compare-actions';
 import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
 import { useExportDialog, useExportJob } from '../state/export-actions';
+import { useOcrDialog } from '../state/ocr-actions';
 import { useDocOpJob, useExtractDialog } from '../state/extract-actions';
 import { useProtectDialog } from '../state/protect-actions';
 import { useCombineDialog } from '../state/combine-actions';
@@ -52,6 +53,7 @@ import styles from './App.module.css';
 const PropertiesDialog = lazy(() => import('./properties/PropertiesDialog').then((m) => ({ default: m.PropertiesDialog })));
 const PrintDialog = lazy(() => import('./print/PrintDialog').then((m) => ({ default: m.PrintDialog })));
 const ExportDialog = lazy(() => import('./export/ExportDialog').then((m) => ({ default: m.ExportDialog })));
+const OcrDialog = lazy(() => import('./ocr/OcrDialog').then((m) => ({ default: m.OcrDialog })));
 // Barra de comentarios y panel lateral (PDF-140): no se muestran al arrancar, se cargan al abrirlos.
 const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) => ({ default: m.CommentToolbar })));
 const EditToolbar = lazy(() => import('./toolbar/EditToolbar').then((m) => ({ default: m.EditToolbar })));
@@ -156,6 +158,7 @@ export function App() {
   const propertiesOpen = usePropertiesDialog((s) => s.open);
   const printOpen = usePrintDialog((s) => s.open);
   const exportOpen = useExportDialog((s) => s.open);
+  const ocrOpen = useOcrDialog((s) => s.open);
   const extractDialog = useExtractDialog((s) => s.open);
   const docOpRunning = useDocOpJob((s) => s.label !== null);
   const readAloudActive = useReadAloud((s) => s.status !== 'idle');
@@ -255,6 +258,11 @@ export function App() {
       {exportOpen && (
         <Suspense fallback={null}>
           <ExportDialog />
+        </Suspense>
+      )}
+      {ocrOpen && (
+        <Suspense fallback={null}>
+          <OcrDialog />
         </Suspense>
       )}
       {printPreparing && (<Suspense fallback={null}><PrintProgress /></Suspense>)}

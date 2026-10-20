@@ -9,6 +9,8 @@ import { organizeMsg } from '../messages-organize';
 import { IMAGES_MENU_ITEM, requestImagesDialog } from '../../state/images-dialog-store';
 import { openPrintDialog } from '../../state/print-actions';
 import { openExportDialog } from '../../state/export-actions';
+import { openOcrDialog } from '../../state/ocr-actions';
+import { ocrMsg } from '../messages-ocr';
 import { startCompare } from '../../state/compare-actions';
 import { openOrganize } from '../../state/organize-actions';
 import { openCombineDialog } from '../../state/combine-actions';
@@ -98,6 +100,12 @@ export function DocumentMenu() {
           disabled: !copyAllowed,
           disabledReason: exportMsg.blocked,
           onSelect: () => { openExportDialog(); },
+        },
+        {
+          kind: 'action',
+          label: ocrMsg.menuItem,
+          disabled: !ready,
+          onSelect: () => { openOcrDialog(); },
         },
       ]}
     >
