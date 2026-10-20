@@ -40,6 +40,7 @@ function fakeLoaded(numPages: number): LoadedPdf {
     doc: { getPage: async () => fakePage() } as unknown as LoadedPdf['doc'],
     numPages,
     fingerprint: 'fake',
+    password: null,
     onIoError: () => () => undefined,
     destroy: async () => undefined,
   };

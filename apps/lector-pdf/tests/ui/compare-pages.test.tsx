@@ -84,7 +84,7 @@ function fakeDoc(pages: readonly (readonly string[])[]): { readonly doc: PDFDocu
 }
 
 function fakeLoaded(doc: PDFDocumentProxy): LoadedPdf {
-  return { doc, numPages: 2, fingerprint: 'fp', onIoError: () => () => undefined, destroy: async () => undefined };
+  return { doc, numPages: 2, fingerprint: 'fp', password: null, onIoError: () => () => undefined, destroy: async () => undefined };
 }
 
 /** Página 2 («Esto es la página dos») frente a «Esto es la hoja dos» en el otro documento. */
