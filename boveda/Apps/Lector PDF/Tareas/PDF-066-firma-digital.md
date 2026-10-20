@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-066
 titulo: Firma digital - abrir certificado PKCS#12 y firmar PAdES B-B por incremento (núcleo)
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-043, PDF-052, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, firma, seguridad, nucleo]
 ---
 
@@ -79,3 +79,15 @@ export async function buildSignatureUpdate(input: SignInput): Promise<Result<{ r
 
 ### [líder] detalle — 2026-10-19
 - Ficha detallada con [[ADR-0040-firma-digital]] (librería decidida por el líder: node-forge bajo BSD-3; pkijs no abre .p12 con 3DES). Se parte en firmar (aquí), validar ([[PDF-138-firma-digital-validar]]) e interfaz ([[PDF-139-firma-digital-interfaz]]). La comprobación en Adobe queda como lista manual del usuario.
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/package.json` y `pnpm-lock.yaml` (`node-forge@1.4.0`, `@types/node-forge@1.3.14`); `eslint.config.js` (regla: solo `src/core/signature/digital/` importa `node-forge`); `apps/lector-pdf/src/core/errors.ts` (códigos `p12-*`, `sign-encrypted`, `sign-too-big`); `apps/lector-pdf/src/core/pdf/delta-writer.ts` (`DeltaWriter.raw`); nuevos: `apps/lector-pdf/src/core/signature/digital/{p12,cms,sign-pdf,index}.ts`, `apps/lector-pdf/src/core/doc-ops/ops/signature.ts` (ops `p12-info` y `sign`, registradas en `ops/index.ts`); tests `apps/lector-pdf/tests/unit/signature/{p12,cms,sign-pdf}.test.ts`, `apps/lector-pdf/tests/unit/doc-ops/signature-ops.test.ts`, soporte `apps/lector-pdf/tests/support/{certs,pdfsig}.ts` (certificados y `pdfsig` generados al vuelo).
+- Qué he hecho: `openP12` (AES, 3DES, EC → `p12-unsupported-key`, sin clave, contraseña mala, basura), CMS PAdES B-B propio con `forge.asn1` (atributos `contentType`, `messageDigest`, `signingCertificateV2`, sin `signingTime`) y firma incremental con hueco de 16 KiB, `/ByteRange` y resumen por bloques de 1 MiB. Las ops `sign` y `p12-info` cargan el módulo bajo demanda (`import()`), así `node-forge` queda fuera del chunk común del Worker.
+- Comandos ejecutados y resultado: `pnpm typecheck` → OK. `npx eslint` sobre todos los ficheros tocados → 0 errores; la regla de `node-forge` probada con un import indebido en `src/core/` (error, como debe). `pnpm coverage` (raíz) → exit 0: 279 ficheros, 3621 tests; cobertura de `src/core/signature/digital/`: 95,2 % de sentencias, 99,2 % de líneas, 85,5 % de ramas. Criterios automáticos cubiertos: `openssl cms -verify` acepta la firma; `openssl asn1parse`/`cms -print` muestran los atributos y ningún `signingTime`; `basic-5.pdf` firmado invisible → `pdfsig` «Signature is Valid», `ETSI.CAdES.detached`, `qpdf --check` 0; firma visible en la página 2 → pdf.js lista un widget `Sig` «Firma 1» con apariencia; dos firmas → dos válidas y «Not total document signed» en la primera; `form-full.pdf` conserva sus campos y el nuevo está en `/Fields`; `compressed.pdf` válido; `encrypted-aes-256.pdf` → `sign-encrypted`.
+- Dudas o cosas que no he podido hacer:
+  - `pnpm lint` completo falla por 48 errores en `apps/lector-pdf/dist-pdf115/` (carpeta de build ajena, no está en `ignores` de `eslint.config.js`; no la he tocado). Mis ficheros pasan lint sin avisos.
+  - Un `pnpm coverage` anterior falló una vez en `tests/ui/comment-toolbar.test.tsx` (2 tests de teclado, código ajeno); en la ejecución siguiente pasó todo.
+  - No ejecutado `pnpm build`/`bundle:check` (directorio `dist` compartido con otros programadores).
+  - Decisiones menores que no estaban en la ficha: mensaje de `sign-too-big` («La firma no cabe en el espacio reservado para ella.»); clave RSA sin certificado que le corresponda → `p12-invalid` (no se puede generar con openssl, rama sin test); la fecha de la apariencia se muestra en hora local, `/M` va en UTC; `/Fields` y `/AcroForm` indirectos y `/Annots` indirecto/directo cubiertos con un PDF generado en el test.
+  - La lista de comprobación en Adobe Acrobat es manual (no ejecutada), para el Manual.
+  - El F = 132 del widget, el `/Name` (CN) y el resto de atributos siguen la ficha tal cual.
