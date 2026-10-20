@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-132
 titulo: Proteger con contraseña y quitar protección - interfaz
 app: pdf
-estado: en-curso
+estado: bloqueada
 depende_de: [PDF-131, PDF-130]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, seguridad, ui]
 ---
 
@@ -65,3 +65,17 @@ export async function removeProtection(): Promise<SaveResult>;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/protect.spec.ts`; esta ficha. El código de la ronda 1 (`src/state/protect-actions.ts`, `src/ui/security/ProtectDialog.tsx`, `DocumentMenu.tsx`, `App.tsx`, `messages-security.ts`, tests) ya estaba commiteado en `8978075` y lo he revisado contra la ficha: sin cambios.
+- Qué he hecho: el E2E «solo restricciones» fallaba al reabrir porque Chromium no acepta `setInputFiles` con una ruta que contiene «» (el título del test). Ahora la descarga se guarda en una carpeta temporal ASCII. Se borró `apps/lector-pdf/dist-pdf132` y `dist-pdf151` (salida de build ignorada por git) porque ESLint los recorría y rompía `pnpm lint`.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: OK (tras borrar las salidas de build).
+  - `pnpm typecheck`: OK.
+  - `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>` (el directorio por defecto estaba ocupado por otro proceso de Vitest): código 0, todos los tests en verde; cobertura de líneas 98,33 %.
+  - `LECTOR_E2E_PORT=4199 LECTOR_E2E_OUTDIR=dist-pdf132 playwright test tests/e2e/protect.spec.ts --project=chromium`: 7/7 OK.
+  - `bundle:check` (build en `dist-pdf132`): **ROJO**: 610 071 bytes frente a 600 000. El commit anterior (`8978075^`), compilado en un worktree temporal, ya da 604 265 bytes: el exceso viene de antes de esta ficha. PDF-132 añade unos 6 KB al arranque (`App.tsx` importa `useProtectDialog` de `protect-actions.ts` de forma estática, y el chunk `view-actions` lleva los textos de `securityMsg`).
+- Dudas o cosas que no he podido hacer:
+  1. **Decisión para el líder (bloquea el criterio de `bundle:check`)**: el arranque ya superaba el presupuesto antes de esta ficha. Hay que elegir entre subir el presupuesto de `tests/bundle/bundle-budget.ts` (`ENTRY_JS_BUDGET_BYTES`) o recortar código del arranque en otra ficha. No lo cambio yo.
+  2. Desviación menor: `protectDocument` detecta firmas con `doc.getSignatures()` (solo las firmadas) en vez de `getFieldObjects` como dice la ficha. Es el mismo criterio y el test de firmas ya está cubierto.
+  3. Un proceso ajeno (otro agente) tiene borrados en el árbol 469 ficheros versionados de `apps/lector-pdf/dist-firma/`, `dist-qa049/` y similares. No los he tocado ni restaurado; el commit de esta ronda incluye solo mis dos ficheros.
