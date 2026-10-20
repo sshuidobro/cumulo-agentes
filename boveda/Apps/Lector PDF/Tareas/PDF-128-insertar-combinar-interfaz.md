@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-128
 titulo: Insertar desde archivo y combinar archivos - interfaz
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-055, PDF-127, COM-019]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -90,3 +90,9 @@ export async function combineFiles(): Promise<'saved' | 'downloaded' | 'cancelle
 Comprobado: lint, typecheck y coverage OK (98,3 % líneas); bundle:check OK (591 097 de 600 000); `insert-combine.spec.ts` 6/6. Lógica de `combine-actions`, `import-pdf` e `insertFromFile` correcta (generación, liberación de `doc`, cancelar, límite 50/512 MB).
 1. `tests/e2e/insert-combine.spec.ts:192` — el criterio «axe sin violaciones en diálogo y vista; tema oscuro» no está cubierto: el test de axe corre solo en tema claro y el programador lo declara «sin verificar» — repetir el test de axe (diálogo «Combinar archivos» y vista Organizar con importado) en claro y oscuro con `page.emulateMedia({ colorScheme })` como en `tests/e2e/organize-a11y.spec.ts:29`, y corregir los contrastes de `CombineDialog.module.css` y del nombre de fichero de `OrganizeCell` si fallan.
 2. (opcional) Ficha, criterio `e2e` con código 0: el fallo de `iteration4-performance.spec.ts` (AES-256 ≤ 1,5×) se dice previo; confirmar en la ronda siguiente que sigue siendo ajeno al cambio o anotarlo para el líder.
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/insert-combine.spec.ts` (el test de axe y teclado se repite en tema claro y oscuro con `colorScheme`, comprobando `prefers-color-scheme` como en `organize-a11y.spec.ts`).
+- Qué he hecho: atendido el comentario 1 del revisor. Sin cambios de CSS: axe no encuentra violaciones en el diálogo ni en la vista con tema oscuro, así que no hizo falta corregir contrastes.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf e2e -- tests/e2e/insert-combine.spec.ts` 7/7 OK (incluye claro y oscuro); `pnpm lint` OK; `pnpm typecheck` OK.
+- Dudas o cosas que no he podido hacer: el comentario 2 (opcional) sobre `iteration4-performance.spec.ts` no se ha tocado en esta ronda; no está relacionado con esta ficha.
