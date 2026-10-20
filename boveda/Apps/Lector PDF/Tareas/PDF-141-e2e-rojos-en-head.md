@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-141
 titulo: Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react]
@@ -77,3 +77,9 @@ Los testers de otras fichas reportan fallos ajenos a sus cambios:
   - `playwright test` completo, dos pasadas: 280 OK y 1 fallo en ambas: `detail.spec.ts:212` (`@perf`, zoom 3200, 20 s de scroll: 389 MB de lienzos frente a 300 MB). Fallo determinista, también en aislado. Está en [[PDF-142-memoria-lienzo-detalle]]; no lo he tocado (fuera de la tabla).
   - `pnpm lint` OK (exit 0); `pnpm typecheck` OK; `pnpm coverage` OK (líneas 98,55 %, ramas 90,44 %).
 - Dudas o cosas que no he podido hacer: el criterio «E2E completo en verde dos veces seguidas» no se cumple mientras exista `detail.spec.ts:212` (PDF-142). Eliminé `apps/lector-pdf/dist-load` (salida de build de la carga, ensuciaba lint). El cambio de `PDF-095-pestanas.md` que aparece en el árbol de trabajo no es mío; no lo he incluido en el commit.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+1. Lint y typecheck OK; reejecutados chromium (flow, foreign, notes, render, outline): 17/17 OK.
+2. `apps/lector-pdf/tests/e2e/render.spec.ts:158` — el arreglo es correcto: un único `expect.poll` sobre el lienzo vigente, mismo umbral (>100), sin relajar nada ni tocar timeouts/retries.
+3. El criterio «E2E completo en verde dos veces» queda condicionado a `detail.spec.ts:212`, asignado a [[PDF-142-memoria-lienzo-detalle]] (fuera de alcance por indicación del líder).
+4. (opcional) No hay prueba de cierre con F4 tras reabrir; el tester puede verificarlo a mano o añadirla en otra ficha.
