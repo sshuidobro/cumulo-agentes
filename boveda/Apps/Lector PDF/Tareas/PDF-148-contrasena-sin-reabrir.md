@@ -200,3 +200,9 @@ if (password === undefined) {
   - Rep. 2: 446, 460, 441, 441, 448 (mediana 446) / 1151, 714, 1090, 591, 624 (mediana 714) / **1,60** (fallo). Desglose: 183/968, 215/498, 165/924, 176/415, 193/431.
   - Rep. 3: 456, 452, 438, 474, 454 (mediana 454) / 618, 624, 1125, 595, 1106 (mediana 624) / 1,38 (pasa). Desglose: 178/440, 195/429, 198/927, 179/415, 175/931.
 - Dudas o cosas que no he podido hacer: el hasta-diálogo se mantiene en ~180 ms (< 100 ms esperado no se cumple). Tras «Abrir» la apertura alterna entre ~420-440 ms (como sin cifrar) y ~925 ms, en ambas mitades de cada repetición; la mediana cae en una u otra según la repetición. Parece ruido o un segundo análisis dentro del worker, pero no lo he investigado. No he tocado umbral ni medida. Para el líder: decidir si repetir la medición en reposo o revisar ADR-0043/PDF-099 (a).
+
+### [programador] ronda 5 — 2026-10-20
+- Ficheros cambiados: ninguno (esta ficha solo se actualiza en el Registro).
+- Qué he hecho: he comprobado el estado del código. El árbol de trabajo está limpio y el cambio de la ronda 3-4 ya está en el commit `fde63ab`. No había pasos pendientes de implementar: los pasos 1-5 están aplicados. No he repetido la medición de rendimiento.
+- Comandos ejecutados y resultado: `pnpm lint`: código 0 (sin avisos). `pnpm typecheck`: código 0, sin errores.
+- Dudas o cosas que no he podido hacer: no paso la ficha a `en-revision`. Su criterio de aceptación «(a) pasa en las 3 repeticiones» no se cumple (rondas 4: fallo en repeticiones 1 y 2, con razones 2,50 y 1,60). La propia ficha dice que, si falla, se dejen `cambios-pedidos` para el líder. Queda pendiente la decisión del líder sobre medición, ADR-0043 o PDF-099 (a). No he hecho commit de esta ronda porque no hay cambios de código.
