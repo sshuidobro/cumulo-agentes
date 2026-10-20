@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { memorySource, type OpenedFile, type Platform } from '@suite/platform';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -116,5 +116,23 @@ describe('ExportDialog', () => {
     await waitFor(() => { expect(platform.exportFile).toHaveBeenCalledTimes(1); });
     expect(vi.mocked(platform.exportFile).mock.calls[0]?.[0]).toBe('informe-imagenes.zip');
     expect(useExportDialog.getState().open).toBe(false);
+  });
+
+  it('Escape durante el progreso cancela: se cierra y no se guarda nada', async () => {
+    const user = userEvent.setup();
+    // Una página que nunca termina: la exportación sigue en curso hasta que se cancela.
+    vi.mocked(renderPageImage).mockImplementation(() => new Promise<never>(() => undefined));
+    renderDialog();
+    act(() => { openExportDialog(); });
+
+    await user.click(await screen.findByRole('button', { name: exportMsg.export }));
+    const progress = await screen.findByRole('dialog', { name: exportMsg.progressTitle });
+    expect(within(progress).getByRole('button', { name: exportMsg.cancel })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => { expect(screen.queryByRole('dialog', { name: exportMsg.progressTitle })).toBeNull(); });
+    expect(useExportJob.getState().job.status).toBe('idle');
+    expect(platform.exportFile).not.toHaveBeenCalled();
   });
 });
