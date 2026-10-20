@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-144
 titulo: Editar texto - localizar la línea editable y elegir la fuente estándar (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-143]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -106,3 +106,12 @@ export async function findEditableLine(
 
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 Lint, typecheck y coverage en verde (edit-text 93 % sentencias). Algoritmo y reglas de fuente conforme a la ficha; sin problemas bloqueantes.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint` 0 avisos; `pnpm typecheck` Done |
+| Batería completa | OK | `pnpm coverage`: Statements 95,02 %, Lines 98,33 % |
+| Criterios de fuente, firstUnmappable, basic-5, issues, Georgia-Bold, dos fuentes | OK | `vitest run tests/unit/edit-text tests/unit/annotations`: 35 ficheros, 585 tests en verde |
+| Cobertura edit-text ≥ 90 % | OK | ver coverage-summary.json (93 % sentencias según revisor) |
+Sin `skip`/`only`. Tests añadidos: ninguno (los del programador cubren cada criterio). Rendimiento: no aplica (núcleo puro).
