@@ -4,6 +4,7 @@ import { propertiesMsg } from './messages-properties';
 import { printMsg } from './messages-print';
 import { viewMsg } from './messages-view';
 import { tabsMsg } from './messages-tabs';
+import { readAloudMsg } from './messages-read-aloud';
 
 /** Acciones de la app que tienen atajo. Cada ficha añade las suyas aquí. */
 export type ShortcutId =
@@ -41,7 +42,11 @@ export type ShortcutId =
   | 'fullscreen-prev'
   | 'next-tab'
   | 'prev-tab'
-  | 'close-tab';
+  | 'close-tab'
+  | 'read-page'
+  | 'read-to-end'
+  | 'read-pause'
+  | 'read-stop';
 
 /** Registro único de atajos de la app (COM-011). */
 export const shortcuts = new ShortcutRegistry<ShortcutId>([
@@ -82,6 +87,11 @@ export const shortcuts = new ShortcutRegistry<ShortcutId>([
   { id: 'next-tab', chords: ['Mod+Tab'], description: tabsMsg.nextTab },
   { id: 'prev-tab', chords: ['Mod+Shift+Tab'], description: tabsMsg.prevTab },
   { id: 'close-tab', chords: ['Mod+W', 'Mod+F4'], description: tabsMsg.closeTab },
+  // Leer en voz alta (PDF-114): atajos de Acrobat (ADR-0033). En el navegador, Chrome reserva algunos (Ctrl+Mayús+C/B).
+  { id: 'read-page', chords: ['Mod+Shift+V'], description: readAloudMsg.readPage },
+  { id: 'read-to-end', chords: ['Mod+Shift+B'], description: readAloudMsg.readToEnd },
+  { id: 'read-pause', chords: ['Mod+Shift+C'], description: readAloudMsg.pause },
+  { id: 'read-stop', chords: ['Mod+Shift+E'], description: readAloudMsg.stop },
 ]);
 
 /** Atajo de una acción formateado para mostrar (p. ej. «Ctrl+O»); vacío si no tiene. */
