@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-061
 titulo: OCR - capa de texto invisible por incremento (núcleo)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-059, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
