@@ -5,7 +5,7 @@ app: pdf
 estado: aceptada
 fecha: 2026-10-18
 creado: 2026-10-18
-actualizado: 2026-10-18
+actualizado: 2026-10-20
 tags: [decision, pdf, visor, rendimiento]
 ---
 
@@ -32,3 +32,9 @@ El lienzo de cada página está limitado a 33 554 432 píxeles ([[ADR-0007-motor
 ## Consecuencias
 - A 3 200 % el texto se ve nítido; el desplazamiento rápido muestra el lienzo base estirado durante ≤ 150 ms + render.
 - La capa de texto y la de anotaciones no cambian (son CSS/SVG escalables).
+
+## Enmienda 2026-10-20 · tope del lienzo base en modo detalle
+- Problema ([[PDF-142-memoria-lienzo-detalle]]): con zoom alto, cada página montada (visible + *overscan*) tiene un lienzo base capado a `MAX_CANVAS_PIXELS` = 128 MiB. Tres páginas montadas = 384 MiB > 300 MB ([[ADR-0012-suite-de-rendimiento]]). Ya ocurría en `defec48`: el diseño no acotaba la memoria del lienzo base.
+- Decisión: si una página necesita detalle (`planCanvas(...).capped === true`), su lienzo base se reduce además a `CAPPED_BASE_PIXELS` = 8 388 608 px (32 MiB). La base solo es respaldo estirado; la nitidez la da el lienzo de detalle. Las páginas no capadas no cambian.
+- Memoria esperada a 3 200 %: ≤ 3 × 32 MiB de base + detalle (visor × dpr × 1,5²) por página visible, muy por debajo de 300 MB.
+- Alternativa descartada: no montar lienzo base en páginas de *overscan* (deja huecos en blanco al desplazar, contra la regla «nunca hueco en blanco»).

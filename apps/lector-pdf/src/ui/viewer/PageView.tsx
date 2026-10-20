@@ -1,6 +1,6 @@
 import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createLogger } from '@suite/shared';
-import { planCanvas } from '../../core/canvas-size';
+import { planBaseCanvas } from '../../core/canvas-size';
 import { needsRedraw, planDetail, visibleInFrame, type PxRect } from '../../core/detail';
 import { normalizeRotation, type Rotation } from '../../core/rotation';
 import { zoomToScale } from '../../core/zoom';
@@ -112,7 +112,7 @@ export const PageView = memo(function PageView({
   const detailPendingRef = useRef<HTMLCanvasElement | null>(null);
   const detailDrawnRef = useRef<DetailDrawn | null>(null);
   // Lienzo base: el mismo cálculo que el de su dibujo, así el detalle parte de la misma densidad.
-  const basePlan = useMemo(() => planCanvas(width, height, window.devicePixelRatio), [width, height]);
+  const basePlan = useMemo(() => planBaseCanvas(width, height, window.devicePixelRatio), [width, height]);
   // Primitivos de la zona visible: el efecto no se reinicia si el objeto cambia sin que cambien sus valores.
   const hasViewport = viewportRect !== null;
   const viewX = viewportRect?.x ?? 0;

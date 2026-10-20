@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
 intentos: 2
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -110,3 +110,19 @@ Tests añadidos: ninguno.
 - Corrección y bisección en [[PDF-142-memoria-lienzo-detalle]] (bisecta `defec48..HEAD`).
 - Criterio «`pnpm --filter lector-pdf e2e` con código 0»: para esta ficha se da por cumplido salvo `detail.spec.ts:212`, que pasa a PDF-142. PDF-095 vuelve a **en-revision** (sin incrementar `intentos`). El revisor revisa los cambios de `tests/e2e/` de la ronda 5 (`notes`, `open-qa`, `pdfjs-deferred` → `@perf`) y que no se haya relajado ninguna prueba.
 - [[PDF-099-e2e-iteracion-4]] pasa a depender también de PDF-142.
+
+### [revisor] ronda 2 — 2026-10-20 — APROBADO
+- Revisados los cambios de `tests/e2e/` de la ronda 5 (f24eed2): `notes.spec.ts` (Tab añade los pasos reales de respuesta y «Estado»; `fill` en vez de teclear, mismo aserto), `open-qa.spec.ts` (reintenta `dragenter` hasta ver la superposición, mismos asertos), `pdfjs-deferred.spec.ts` (`@perf`, conforme a ADR-0016). No se ha relajado ninguna prueba. Lint y typecheck exit 0. `detail.spec.ts:212` queda en PDF-142 por decisión del líder. Sin problemas bloqueantes.
+
+### [tester] ronda 2 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint, typecheck | OK | exit 0 |
+| `pnpm coverage` | OK | líneas 98.55 %, ramas 90.44 % |
+| `tabs.spec.ts` (7 criterios E2E + axe) | 7/7 | `playwright test tests/e2e/tabs.spec.ts --project=chromium` |
+| `tabs-performance.spec.ts` | OK | `--project=chromium-perf --no-deps`: pasa |
+| `e2e` global | Cumplido salvo `detail.spec.ts:212`, que pasa a [[PDF-142-memoria-lienzo-detalle]] (decisión del líder, ronda 6) | — |
+| Manual en `tauri dev` | Pendiente del usuario (Ctrl+Tab, Ctrl+W, «Abrir con» con dos PDF) | — |
+
+Nota: el puerto 4173 estaba ocupado por otra sesión; usé `LECTOR_E2E_PORT=4391 LECTOR_E2E_OUTDIR=dist-qa95`.
+Tests añadidos: ninguno. Rendimiento: dentro de presupuesto (p95 cambio de pestaña, heap y long tasks; valores de ronda 1: 97 ms, 7.8→7.9 MB, 0 long tasks).

@@ -37,6 +37,25 @@ export function planCanvas(cssWidth: number, cssHeight: number, devicePixelRatio
   };
 }
 
+/** Tope del lienzo base cuando la página usa lienzo de detalle (32 MiB, ADR-0025 enmienda). */
+export const CAPPED_BASE_PIXELS = 8_388_608;
+
+/**
+ * Como `planCanvas`, pero si el plan sale capado reduce la escala para no pasar de `CAPPED_BASE_PIXELS`.
+ * Lo usa el lienzo base de las páginas que llevan lienzo de detalle (ADR-0025 enmienda).
+ */
+export function planBaseCanvas(cssWidth: number, cssHeight: number, devicePixelRatio: number): CanvasPlan {
+  const plan = planCanvas(cssWidth, cssHeight, devicePixelRatio);
+  if (!plan.capped) return plan;
+  const scale = Math.min(plan.outputScale, Math.sqrt(CAPPED_BASE_PIXELS / (cssWidth * cssHeight)));
+  return {
+    width: Math.max(1, Math.floor(cssWidth * scale)),
+    height: Math.max(1, Math.floor(cssHeight * scale)),
+    outputScale: scale,
+    capped: true,
+  };
+}
+
 function assertSize(value: number, name: string): void {
   if (!Number.isFinite(value) || value < 0) throw new RangeError(`${name} no válido: ${value}`);
 }

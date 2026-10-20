@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-141
 titulo: Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: []
-intentos: 0
+intentos: 1
 skills: [pruebas-calidad, stack-typescript-react]
 creado: 2026-10-19
 actualizado: 2026-10-20
@@ -77,3 +77,21 @@ Los testers de otras fichas reportan fallos ajenos a sus cambios:
   - `playwright test` completo, dos pasadas: 280 OK y 1 fallo en ambas: `detail.spec.ts:212` (`@perf`, zoom 3200, 20 s de scroll: 389 MB de lienzos frente a 300 MB). Fallo determinista, también en aislado. Está en [[PDF-142-memoria-lienzo-detalle]]; no lo he tocado (fuera de la tabla).
   - `pnpm lint` OK (exit 0); `pnpm typecheck` OK; `pnpm coverage` OK (líneas 98,55 %, ramas 90,44 %).
 - Dudas o cosas que no he podido hacer: el criterio «E2E completo en verde dos veces seguidas» no se cumple mientras exista `detail.spec.ts:212` (PDF-142). Eliminé `apps/lector-pdf/dist-load` (salida de build de la carga, ensuciaba lint). El cambio de `PDF-095-pestanas.md` que aparece en el árbol de trabajo no es mío; no lo he incluido en el commit.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+1. Lint y typecheck OK; reejecutados chromium (flow, foreign, notes, render, outline): 17/17 OK.
+2. `apps/lector-pdf/tests/e2e/render.spec.ts:158` — el arreglo es correcto: un único `expect.poll` sobre el lienzo vigente, mismo umbral (>100), sin relajar nada ni tocar timeouts/retries.
+3. El criterio «E2E completo en verde dos veces» queda condicionado a `detail.spec.ts:212`, asignado a [[PDF-142-memoria-lienzo-detalle]] (fuera de alcance por indicación del líder).
+4. (opcional) No hay prueba de cierre con F4 tras reabrir; el tester puede verificarlo a mano o añadirla en otra ficha.
+
+### [tester] ronda 1 — 2026-10-20 — FALLA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| flow + foreign + notes | OK | `LECTOR_E2E_PORT=4402 e2e ... --project=chromium`: 10/10 |
+| performance/render/outline `--repeat-each=20` | FALLA | 314 passed y 4 fallos (2 tests x 2 repeticiones) en `performance.spec.ts:155` (pages-5000: 1.ª coincidencia <1 s / recorrido <15 s) y `:79`/`:85` (pages-100000: abrir <5 s, Fin <1,5 s). Carga de la máquina 5-11 (otro agente en paralelo). Con `--repeat-each=3` sin carga: 27/27 |
+| E2E completo dos veces | No ejecutado | bloqueado por `detail.spec.ts:212` (PDF-142) y por el fallo anterior |
+| lint / typecheck / coverage | OK | líneas 96,57 % |
+| Sin relajar pruebas | OK (revisión de ficha del programador; solo cambia `render.spec.ts`) | — |
+| F4 cierra tras reabrir | Sin prueba automática | sigue sin cubrirse |
+
+Causa del fallo: son pruebas de presupuesto de tiempo de reloj sin `{ tag: '@perf' }` en el proyecto `chromium` (con carga se pasan del presupuesto). Según la ficha (paso 3) deben ir a `chromium-perf` con espera de reposo ([[ADR-0016-e2e-long-tasks-en-serie]]) sin subir presupuestos. Repetir: `LECTOR_E2E_PORT=4402 pnpm --filter lector-pdf e2e performance.spec.ts render.spec.ts outline.spec.ts --project=chromium --repeat-each=20` con la máquina cargada (~16 min).
