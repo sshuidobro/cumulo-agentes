@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-061
 titulo: OCR - capa de texto invisible por incremento (núcleo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-059, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -83,3 +83,8 @@ export async function buildOcrUpdate(input: OcrLayerInput): Promise<Result<{ rea
   - Tomo tres decisiones no escritas en la ficha, para revisar: (1) índice repetido en `pages` → `organize-invalid` (evita escribir dos veces la misma página); (2) caja mal formada (x0 ≥ x1, y0 ≥ y1 o no finita) lanza `RangeError` dentro de `ocrOperators` (bug de quien prepara las palabras; `buildOcrUpdate` lo devuelve como `save-unreadable`); (3) sin `index.ts` en `core/ocr/` porque la ficha solo nombra `text-layer.ts`.
   - El código `organize-invalid` dice «No se pueden reorganizar las páginas» y es confuso para OCR. Lo he usado porque la ficha lo pide; conviene un código propio (`ocr-invalid`) en una ficha posterior.
   - No he tocado `tests/e2e`.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint, typecheck y tests de la ficha (30) en verde. Cumple criterios y las tres decisiones del programador son razonables. Sin problemas bloqueantes.
+- (opcional) Código propio `ocr-invalid` en lugar de `organize-invalid`, como ya apunta el programador.
+- Nota: el commit sigue pendiente (`ops/index.ts` mezcla trabajo de otra ficha).
