@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-5, organizar, ui]
 ---
 
@@ -65,3 +65,18 @@ export async function createPdfFromImages(): Promise<'saved' | 'downloaded' | 'c
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: nuevos `apps/lector-pdf/src/state/images-dialog-store.ts`, `src/state/images-pdf-actions.ts`, `src/ui/messages-images.ts`, `src/ui/organize/ImagesDialog.tsx`, `ImagesDialog.module.css`, `tests/unit/images-pdf-actions.test.ts`, `tests/ui/images-dialog.test.tsx`, `tests/e2e/images-pdf.spec.ts`. Modificados: `src/state/extract-actions.ts` (`beginJob` acepta texto de progreso opcional), `src/ui/kit/DocOpProgress.tsx` (prop `progressText` opcional, por defecto «Copiando páginas…»), `src/ui/App.tsx`, `src/ui/open/EmptyState.tsx`, `src/ui/toolbar/DocumentMenu.tsx`.
+- Qué he hecho: diálogo «Crear PDF desde imágenes» (lista con miniaturas, subir/bajar/quitar con Alt+↑/↓, tamaño de página y margen recordados en `images-pdf-options`), creación con op `images-to-pdf` y progreso cancelable; JPEG legibles van con sus bytes, el resto se decodifica a RGBA; límites de 500 imágenes, 50 MB y 50 Mpx con aviso. Entrada en la pantalla de inicio y en «Más acciones». Los criterios de test de la ficha tienen su prueba (unit, componente, E2E y `@perf`).
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: OK. `pnpm typecheck`: OK. `pnpm coverage`: OK (307 ficheros, 3974 tests; sin cambios en la cobertura de `core/`).
+  - `pnpm --filter lector-pdf e2e images-pdf --project=chromium`: 3/3 OK. `--project=chromium-perf --no-deps`: 1/1 OK (20 JPEG de ~2 MB, sin long tasks > 100 ms).
+  - `pnpm --filter lector-pdf e2e` completo (chromium, sin @perf): 320/320 OK.
+  - `pnpm --filter lector-pdf bundle:check`: **FALLA**. Arranque 600 415 bytes, máximo 600 000 (en `HEAD`, medido en copia aparte: 598 188; el cambio añade 2 227 bytes al arranque).
+- Dudas o cosas que no he podido hacer:
+  1. **Presupuesto de bundle (bloquea la ficha).** Para cumplirlo habría que quitar piezas que la ficha pide o cambiar el presupuesto (PDF-074). Lo decide el líder: subir `ENTRY_JS_BUDGET_BYTES` a unos 601 000 o aceptar otro recorte. He aplicado la carga diferida de lo que se pudo (`messages-images`, el módulo de acciones y `core/pdf/image`, `core/export/plan` y `core/signature/image-art`), pero el arranque sigue 415 bytes por encima.
+  2. `importFiles` de la plataforma devuelve `out-of-range` tanto por número como por tamaño. Para distinguir «más de 500» de «más de 50 MB» paso `maxCount = Number.MAX_SAFE_INTEGER` y compruebo el número en la app. Consecuencia: con un lote enorme se leen todos los ficheros antes de rechazar. Confirmar.
+  3. La ficha pedía `useImagesDialog` en `images-pdf-actions.ts`. Está en `images-dialog-store.ts` y se re-exporta desde allí, para que la pantalla de inicio no cargue el módulo de acciones. Añadidos `closeImagesDialog`, `setImagesPageSize`, `setImagesMargin`, `IMAGES_MENU_ITEM` y `openImagesDialog` (carga diferida desde los botones).
+  4. «Más acciones» está deshabilitado sin documento abierto (como «Combinar»), así que su entrada solo se usa con un documento. Confirmar que es lo esperado.
+  5. Dos cambios en ficheros compartidos (opcionales, sin efecto en los existentes): `beginJob` y `DocOpProgress`.
