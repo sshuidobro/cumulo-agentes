@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-150
 titulo: Arreglar «Cancelar» a mitad de la exportación (E2E @perf rojo en HEAD)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, calidad-profesional]
@@ -33,11 +33,11 @@ Que la prueba `tests/e2e/export.spec.ts` › «exportar pages-5000 (@perf) › �
 3. Si cambia código de la app, añadir un test unitario en `tests/unit/` que cubra el caso (cancelar durante el bucle → resultado `'cancelled'` y sin llamar a guardar).
 
 ## Criterios de aceptación
-- [ ] La prueba pasa: `pnpm --filter lector-pdf e2e --project=chromium-perf --no-deps -g "Cancelar» a mitad" --repeat-each=5` con código 0.
-- [ ] Causa raíz anotada en el Registro (error original, causa, arreglo).
-- [ ] «Cancelar» responde con teclado (Escape cierra el progreso y cancela) y con ratón; tras cancelar no hay descarga ni aviso «terminada».
-- [ ] Sin `waitForTimeout`, `test.skip`, `.only`, ni presupuestos relajados; el test hermano «sin tareas largas > 100 ms» sigue pasando.
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm --filter lector-pdf e2e` con código 0.
+- [x] La prueba pasa: `pnpm --filter lector-pdf e2e --project=chromium-perf --no-deps -g "Cancelar» a mitad" --repeat-each=5` con código 0.
+- [x] Causa raíz anotada en el Registro (error original, causa, arreglo).
+- [x] «Cancelar» responde con teclado (Escape cierra el progreso y cancela) y con ratón; tras cancelar no hay descarga ni aviso «terminada».
+- [x] Sin `waitForTimeout`, `test.skip`, `.only`, ni presupuestos relajados; el test hermano «sin tareas largas > 100 ms» sigue pasando.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` y `pnpm --filter lector-pdf e2e` con código 0.
 
 ## Fuera de alcance
 - Cambiar el diseño del diálogo de exportación o sus textos.
@@ -61,3 +61,14 @@ Que la prueba `tests/e2e/export.spec.ts` › «exportar pages-5000 (@perf) › �
 
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 1. Lint, typecheck y tests de export-dialog y open (15/15) en verde. El test nuevo de Escape cubre cancelar con teclado sin guardar. Causa raíz (contención de CPU, sin bug de producto) documentada y creíble. (opcional) El tester debe confirmar el E2E en reposo con --repeat-each=5.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Prueba estable x5 | OK | `e2e --project=chromium-perf --no-deps -g "Cancelar» a mitad" --repeat-each=5`: 5 passed (1,9–2,1 s) |
+| Causa raíz anotada | OK | contención de CPU, sin bug de producto (registro del programador) |
+| Cancelar con teclado/ratón, sin descarga | OK | test UI de Escape en `export-dialog.test.tsx` + E2E de Cancelar |
+| Sin waitForTimeout/skip/only; hermano sigue pasando | OK | grep limpio en `export.spec.ts`; E2E completo en verde |
+| lint / typecheck / tests / e2e | OK | lint y typecheck 0; coverage 314 ficheros, 4059 tests OK (el rojo previo de `open.test.tsx` ya no aparece); e2e 371 passed (12 min) |
+
+Tests añadidos: ninguno nuevo. Rendimiento: sin regresión, todos los @perf en verde.
