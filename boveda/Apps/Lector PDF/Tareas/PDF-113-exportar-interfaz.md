@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-113
 titulo: Exportar - diálogo, progreso, permisos y guardado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-064, COM-018, PDF-048, PDF-095, PDF-097]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -96,3 +96,14 @@ export function cancelExport(): void;
 - Núcleo conforme a la ficha: permisos, rango, límite de 1 GB, confirmación con más de 200 páginas, cancelación con `dispose`, recientes intactas, opciones recordadas.
 - (opcional) `MenuButton.tsx` mezcla el cambio `fromKeyboard` de PDF-115 con `disabledReason`: conviene que cada ficha lo incluya en su propio commit.
 - Pendiente para el tester: `@perf` (20 páginas de `pages-5000.pdf`), `bundle:check` tras un build limpio y `lint`/`coverage` globales con el árbol estable.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Build fresco + `bundle:check` | OK | `pnpm --filter lector-pdf build` código 0; «Arranque: 509007 bytes en 26 ficheros JS (máximo 600000)» |
+| E2E (PNG zip, JPEG/comentarios, TXT, cifrado, teclado, axe, oscuro) | OK | `pnpm --filter lector-pdf e2e`: 295 passed (14.8m), incluye `tests/e2e/export.spec.ts` |
+| E2E `@perf` 20 páginas de pages-5000 y Cancelar | OK | proyecto `chromium-perf` dentro de los 295 passed |
+| Unit/UI (opciones recordadas, >1 GB, recientes) | OK | `coverage`: 3621 OK; export-actions y export-dialog en verde |
+| `pnpm lint` / `pnpm typecheck` | OK | ambos código 0 con el árbol actual |
+| `pnpm coverage` | OK con nota | 1 KO en `protect-ops.test.ts` (PDF-131, ajeno; en solitario 11/11 OK, flaky bajo carga). Coverage corrido con `reportsDirectory` propio porque otro proceso bloqueaba `coverage/` |
+Tests añadidos: ninguno nuevo (los del programador cubren los criterios).   Rendimiento: sin long tasks > 100 ms en export de 20 páginas; Cancelar sin descarga.
