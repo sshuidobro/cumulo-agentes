@@ -41,7 +41,7 @@ async function redactBytes(
 ): Promise<Uint8Array> {
   const source = memorySource(data);
   const reader = await ObjectReader.open(source);
-  const built = await buildRedactionUpdate({ source, reader, areas, rasterPages, now: NOW });
+  const built = await buildRedactionUpdate({ source, reader, areas, rasterPages, imageReplacements: new Map(), now: NOW });
   if (!built.ok) throw new Error(built.error.code);
   const reopened = await ObjectReader.open(concatSource(source, built.value.delta));
   const written = await rewriteDocument({ reader: reopened, encryption: null, keepEncryption: true, now: NOW });
@@ -242,7 +242,7 @@ async function runRedact(
 ): Promise<Uint8Array> {
   const op = DOC_OPS.redact;
   if (op === undefined) throw new Error('falta la operación redact');
-  const result = await op({ ...args, rasterPages: [], now: NOW }, context(data));
+  const result = await op({ ...args, rasterPages: [], imageReplacements: [], now: NOW }, context(data));
   if (!result.ok) throw new Error(result.error.code);
   return (result.value as { readonly bytes: Uint8Array }).bytes;
 }
@@ -383,7 +383,7 @@ describe('buildRedactionUpdate: texto y criterio original', () => {
   it('sin zonas el delta está vacío y el tamaño esperado es el del original', async () => {
     const source = memorySource(basic);
     const reader = await ObjectReader.open(source);
-    expect(await buildRedactionUpdate({ source, reader, areas: [], rasterPages: new Map(), now: NOW })).toEqual({
+    expect(await buildRedactionUpdate({ source, reader, areas: [], rasterPages: new Map(), imageReplacements: new Map(), now: NOW })).toEqual({
       ok: true,
       value: { delta: new Uint8Array(0), expectedSize: basic.length },
     });
@@ -392,7 +392,7 @@ describe('buildRedactionUpdate: texto y criterio original', () => {
   it('una zona en una página que no existe se rechaza', async () => {
     const source = memorySource(basic);
     const reader = await ObjectReader.open(source);
-    const built = await buildRedactionUpdate({ source, reader, areas: [area(5, [0, 0, 1, 1])], rasterPages: new Map(), now: NOW });
+    const built = await buildRedactionUpdate({ source, reader, areas: [area(5, [0, 0, 1, 1])], rasterPages: new Map(), imageReplacements: new Map(), now: NOW });
     expect(built.ok).toBe(false);
   });
 
@@ -406,6 +406,7 @@ describe('buildRedactionUpdate: texto y criterio original', () => {
       reader,
       areas: [area(0, [0, 0, 10, 10])],
       rasterPages: new Map(),
+      imageReplacements: new Map(),
       now: NOW,
       signal: controller.signal,
     });
@@ -518,7 +519,7 @@ describe('buildRedactionUpdate: páginas en imagen', () => {
   it('falta el JPEG de una página en imagen → organize-invalid', async () => {
     const source = memorySource(type3Page());
     const reader = await ObjectReader.open(source);
-    const built = await buildRedactionUpdate({ source, reader, areas: [area(0, [60, 690, 200, 720])], rasterPages: new Map(), now: NOW });
+    const built = await buildRedactionUpdate({ source, reader, areas: [area(0, [60, 690, 200, 720])], rasterPages: new Map(), imageReplacements: new Map(), now: NOW });
     expect(built.ok).toBe(false);
     if (!built.ok) expect(built.error.code).toBe('organize-invalid');
   });
@@ -531,6 +532,7 @@ describe('buildRedactionUpdate: páginas en imagen', () => {
       reader,
       areas: [area(0, [60, 690, 200, 720])],
       rasterPages: new Map([[0, bytes('no es un jpeg')]]),
+      imageReplacements: new Map(),
       now: NOW,
     });
     expect(built.ok).toBe(false);
@@ -555,7 +557,7 @@ describe('operación redact (cifrado y argumentos)', () => {
     const op = DOC_OPS.redact;
     if (op === undefined) throw new Error('falta la operación redact');
     const data = new Uint8Array(readFileSync(join(FIXTURES_DIR, FIXTURE_BASIC)));
-    const base = { password: null, now: NOW, rasterPages: [] };
+    const base = { password: null, now: NOW, rasterPages: [], imageReplacements: [] };
     await expect(op({ ...base, areas: 'no' }, context(data))).rejects.toThrow(TypeError);
     await expect(op({ ...base, areas: [{ pageIndex: 0, rect: [1, 2, 3] }] }, context(data))).rejects.toThrow(TypeError);
     await expect(op({ ...base, areas: [], rasterPages: [[0, 'x']] }, context(data))).rejects.toThrow(TypeError);

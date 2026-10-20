@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-136
 titulo: Redactar - imágenes parcialmente cubiertas sin convertir la página
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-135]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, seguridad, edicion, nucleo]
 ---
 
@@ -62,3 +62,13 @@ export interface PartialImage {
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/redact/apply.ts`, `apps/lector-pdf/src/core/doc-ops/ops/index.ts`, `apps/lector-pdf/tests/unit/redact/apply.test.ts` (ajuste de argumentos), `apps/lector-pdf/tests/unit/redact/images.test.ts` (nuevo).
+- Qué he hecho: `PartialImage` nuevo (`name`, `kind`, `width`, `height`, `pixelRects`, `jpeg?`). `planRedaction` clasifica las imágenes parciales por nombre (jpeg / flate; el resto o CTM girada/sesgada → `raster`) y calcula `pixelRects` con la inversa de la CTM, recortados y redondeados hacia fuera. `RedactInput` y la op `redact` reciben `imageReplacements`; la página usa objetos de imagen propios con el mismo nombre en `/Resources`, sin tocar las demás páginas. Solo las imágenes que caben enteras en una zona se quitan.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm --filter lector-pdf exec vitest run tests/unit/redact` 39/39 OK; `pnpm coverage --coverage.reportsDirectory=<scratchpad>` código 0, 286 ficheros y 3719 tests OK; `apply.ts` 96.5 % de líneas. En una primera ejecución de cobertura dos ficheros (`fixtures-encrypted`, `page-tree`) dieron timeout de 5 s por la carga de la máquina (otra ejecución de Vitest en el mismo repo); pasan en aislado y en la segunda ejecución completa.
+- Dudas o cosas que no he podido hacer:
+  - Clave de `imageReplacements`: `"<pageIndex>:<nombre>"` con `pageIndex` base 0, igual que `rasterPages`. Hay que fijarlo también en PDF-137.
+  - La prueba del JPEG usa `DeviceRGB` (el canvas de `@napi-rs/canvas` no genera JPEG en gris). Con `/ColorSpace` `ICCBased` o imágenes no `DeviceGray`/`DeviceRGB` la página va como imagen.
+  - Consecuencia de «unir las zonas de todos los usos»: si una imagen aparece dos veces y un uso cae entero en la zona, los píxeles de esa zona se ponen a negro también en el otro uso (sobreredacción, nunca fuga). Lo dejo tal cual está escrito en la ficha.
+  - El criterio de «cabe entera» usa la caja envolvente del cuadrilátero, como en PDF-135.

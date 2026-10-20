@@ -617,6 +617,7 @@ interface RedactArgs {
   readonly password: string | null;
   readonly areas: readonly RedactArea[];
   readonly rasterPages: ReadonlyMap<number, Uint8Array>;
+  readonly imageReplacements: ReadonlyMap<string, Uint8Array>;
   readonly now: string;
 }
 
@@ -629,9 +630,19 @@ function parseRedactArgs(op: string, args: unknown, full: boolean): RedactArgs {
   if (password !== null && typeof password !== 'string') throw new TypeError(`${op}: la contraseña debe ser texto o null.`);
   if (!Array.isArray(areas)) throw new TypeError(`${op}: las zonas deben ser una lista.`);
   const parsedAreas = areas.map((item: unknown): RedactArea => parseRedactArea(op, item));
-  if (!full) return { password, areas: parsedAreas, rasterPages: new Map(), now: '' };
+  if (!full) return { password, areas: parsedAreas, rasterPages: new Map(), imageReplacements: new Map(), now: '' };
   if (!('rasterPages' in args) || !('now' in args) || typeof args.now !== 'string' || !Array.isArray(args.rasterPages)) {
     throw new TypeError(`${op}: faltan las páginas en imagen o la fecha.`);
+  }
+  if (!('imageReplacements' in args) || !Array.isArray(args.imageReplacements)) {
+    throw new TypeError(`${op}: faltan las imágenes sustituidas.`);
+  }
+  const imageReplacements = new Map<string, Uint8Array>();
+  for (const entry of args.imageReplacements) {
+    if (!Array.isArray(entry) || entry.length !== 2) throw new TypeError(`${op}: imagen sustituida no válida.`);
+    const [key, bytes] = entry;
+    if (typeof key !== 'string' || !(bytes instanceof Uint8Array)) throw new TypeError(`${op}: imagen sustituida no válida.`);
+    imageReplacements.set(key, bytes);
   }
   const rasterPages = new Map<number, Uint8Array>();
   for (const entry of args.rasterPages) {
@@ -640,7 +651,7 @@ function parseRedactArgs(op: string, args: unknown, full: boolean): RedactArgs {
     if (typeof pageIndex !== 'number' || !(bytes instanceof Uint8Array)) throw new TypeError(`${op}: página en imagen no válida.`);
     rasterPages.set(pageIndex, bytes);
   }
-  return { password, areas: parsedAreas, rasterPages, now: args.now };
+  return { password, areas: parsedAreas, rasterPages, imageReplacements, now: args.now };
 }
 
 function parseRedactArea(op: string, value: unknown): RedactArea {
@@ -665,12 +676,12 @@ const redactPlan: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> 
 
 /** Redacta las zonas y reescribe el fichero completo conservando su cifrado (PDF-135). */
 const redact: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
-  const { password, areas, rasterPages, now } = parseRedactArgs('redact', args, true);
+  const { password, areas, rasterPages, imageReplacements, now } = parseRedactArgs('redact', args, true);
   const source = ctx.sources[0];
   if (source === undefined) throw new RangeError('redact: falta el documento (fuente 0).');
   const opened = await openSource(ctx, password);
   if (!opened.ok) return opened;
-  const built = await buildRedactionUpdate({ source, reader: opened.value, areas, rasterPages, now, signal: ctx.signal });
+  const built = await buildRedactionUpdate({ source, reader: opened.value, areas, rasterPages, imageReplacements, now, signal: ctx.signal });
   if (!built.ok) return built;
   const reopened = await openForSave(concatSource(source, built.value.delta), password ?? undefined);
   if (!reopened.ok) return reopened;
