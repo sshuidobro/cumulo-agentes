@@ -1,6 +1,6 @@
 import { Dialog } from "./Dialog";
 import { organizeMsg } from "../messages-organize";
-import { cancelDocOp, useDocOpJob } from "../../state/extract-actions";
+import { cancelDocOp, useDocOpJob, type JobProgressText } from "../../state/extract-actions";
 import styles from "./DocOpProgress.module.css";
 
 export interface DocOpProgressProps {
@@ -8,6 +8,8 @@ export interface DocOpProgressProps {
   readonly label: string;
   readonly done: number;
   readonly total: number;
+  /** Texto del progreso; por defecto «Copiando páginas…». */
+  readonly progressText?: JobProgressText;
   readonly onCancel: () => void;
 }
 
@@ -16,6 +18,7 @@ export function DocOpProgress({
   label,
   done,
   total,
+  progressText = organizeMsg.progressExtract,
   onCancel,
 }: DocOpProgressProps) {
   const max = total > 0 ? total : 1;
@@ -40,7 +43,7 @@ export function DocOpProgress({
         />
       </div>
       <p className={styles.count}>
-        {organizeMsg.progressExtract(Math.min(done + 1, max), max)}
+        {progressText(Math.min(done + 1, max), max)}
       </p>
     </Dialog>
   );
@@ -51,12 +54,14 @@ export function DocOpJobProgress() {
   const label = useDocOpJob((s) => s.label);
   const done = useDocOpJob((s) => s.done);
   const total = useDocOpJob((s) => s.total);
+  const progressText = useDocOpJob((s) => s.progressText);
   if (label === null) return null;
   return (
     <DocOpProgress
       label={label}
       done={done}
       total={total}
+      {...(progressText === null ? {} : { progressText })}
       onCancel={cancelDocOp}
     />
   );
