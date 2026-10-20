@@ -21,6 +21,14 @@ export const compareMsg = {
   onlyInB: (n: number): string => `La página ${n.toLocaleString('es-ES')} solo está en el otro documento.`,
   tooDifferent: (n: number): string =>
     `La página ${n.toLocaleString('es-ES')} es muy distinta: compárala con la superposición.`,
-  /** Hueco del panel de páginas (lo rellena PDF-117). */
+  /** Panel de páginas de la comparación (PDF-117). */
   selectChange: 'Selecciona un cambio',
+  previousChange: 'Cambio anterior',
+  nextChange: 'Cambio siguiente',
+  viewMode: 'Modo de comparación',
+  sideBySide: 'Lado a lado',
+  overlay: 'Superposición',
+  openDocument: 'Documento abierto',
+  missingPage: 'No existe en este documento',
+  overlayLegend: 'Negro: igual. Color: diferente.',
 } as const;

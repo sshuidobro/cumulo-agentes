@@ -108,9 +108,15 @@
 .pages {
   flex: 1 1 auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  min-width: 0;
   padding: 1rem;
+  box-sizing: border-box;
   color: var(--color-text-muted);
-  overflow: auto;
+  overflow: hidden;
+}
+
+.hint {
+  margin: auto;
+  text-align: center;
 }

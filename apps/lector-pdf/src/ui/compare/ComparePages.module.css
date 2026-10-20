@@ -1,0 +1,129 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding-bottom: 0.5rem;
+  color: var(--color-text-muted);
+}
+
+.modes {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.modeButton {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.modeButton[aria-pressed='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.modeButton:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.legend {
+  margin: 0;
+}
+
+.columns {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.column {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Área con desplazamiento; su padding (1rem = 16 px) se descuenta al calcular el ancho de la página. */
+.area {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1rem;
+  box-sizing: border-box;
+  overflow: auto;
+  background: var(--color-surface-2);
+}
+
+.page {
+  position: relative;
+  margin: 0 auto;
+  background: var(--color-paper);
+  box-shadow: var(--shadow-page);
+}
+
+.canvas {
+  display: block;
+}
+
+/* Capa de texto solo para medir: ocupa la página, es invisible y no se puede seleccionar. */
+.text {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.highlights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mark {
+  position: absolute;
+  border-radius: 2px;
+}
+
+.mark[data-change='removed'] {
+  background: color-mix(in srgb, var(--compare-removed) 35%, transparent);
+}
+
+.mark[data-change='added'] {
+  background: color-mix(in srgb, var(--compare-added) 35%, transparent);
+}
+
+.mark[data-change='replaced'] {
+  background: color-mix(in srgb, var(--compare-replaced) 35%, transparent);
+}
+
+.missing {
+  margin: 2rem auto;
+  color: var(--color-text-muted);
+  text-align: center;
+}
