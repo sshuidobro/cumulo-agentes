@@ -14,6 +14,7 @@ import { SelectionActions } from './viewer/SelectionActions';
 import { PrintContainer } from './print/PrintContainer';
 import { PrintProgress } from './print/PrintProgress';
 import { ExportProgress } from './export/ExportProgress';
+import { DocOpJobProgress } from './kit/DocOpProgress';
 import './print/print.css';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
@@ -38,6 +39,7 @@ import { openPrintDialog, usePrintDialog } from '../state/print-actions';
 import { useCompare } from '../state/compare-actions';
 import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
 import { useExportDialog } from '../state/export-actions';
+import { useExtractDialog } from '../state/extract-actions';
 import { useOrganize } from '../state/organize-store';
 import { organizeRedo, organizeUndo } from '../state/organize-actions';
 import { useViewer } from '../state/viewer-store';
@@ -58,6 +60,8 @@ const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m
 const CompareView = lazy(() => import('./compare/CompareView').then((m) => ({ default: m.CompareView })));
 // Organizar páginas (PDF-125): sustituye al visor mientras está abierta; se carga al abrirla.
 const OrganizeView = lazy(() => import('./organize/OrganizeView').then((m) => ({ default: m.OrganizeView })));
+const ExtractDialog = lazy(() => import('./organize/ExtractDialog').then((m) => ({ default: m.ExtractDialog })));
+const SplitDialog = lazy(() => import('./organize/SplitDialog').then((m) => ({ default: m.SplitDialog })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -143,6 +147,7 @@ export function App() {
   const propertiesOpen = usePropertiesDialog((s) => s.open);
   const printOpen = usePrintDialog((s) => s.open);
   const exportOpen = useExportDialog((s) => s.open);
+  const extractDialog = useExtractDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
   const organizeOpen = useOrganize((s) => s.open);
@@ -233,6 +238,17 @@ export function App() {
       )}
       <PrintProgress />
       <ExportProgress />
+      {extractDialog === 'extract' && (
+        <Suspense fallback={null}>
+          <ExtractDialog />
+        </Suspense>
+      )}
+      {extractDialog === 'split' && (
+        <Suspense fallback={null}>
+          <SplitDialog />
+        </Suspense>
+      )}
+      <DocOpJobProgress />
       <PrintContainer />
       {platform.kind === 'web' && (
         <>

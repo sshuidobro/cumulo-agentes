@@ -10,6 +10,7 @@ import { openPrintDialog } from '../../state/print-actions';
 import { openExportDialog } from '../../state/export-actions';
 import { startCompare } from '../../state/compare-actions';
 import { openOrganize } from '../../state/organize-actions';
+import { openExtractDialog, openSplitDialog } from '../../state/extract-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -48,6 +49,20 @@ export function DocumentMenu() {
           label: organizeMsg.menuItem,
           disabled: !ready,
           onSelect: () => { void openOrganize(); },
+        },
+        {
+          kind: 'action',
+          label: organizeMsg.extractMenu,
+          disabled: !copyAllowed,
+          disabledReason: organizeMsg.extractBlocked,
+          onSelect: () => { openExtractDialog(); },
+        },
+        {
+          kind: 'action',
+          label: organizeMsg.splitMenu,
+          disabled: !copyAllowed,
+          disabledReason: organizeMsg.extractBlocked,
+          onSelect: () => { openSplitDialog(); },
         },
         {
           kind: 'action',
