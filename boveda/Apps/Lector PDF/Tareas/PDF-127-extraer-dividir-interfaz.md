@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-127
 titulo: Extraer y dividir - diálogos, progreso y guardado
 app: pdf
-estado: hecha
+estado: en-test
 depende_de: [PDF-054, PDF-126, COM-018]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -90,15 +90,3 @@ Lint y typecheck sin errores; 22 tests unit/UI y 6 e2e de la ficha en verde. Cri
 1. (opcional) `src/state/extract-actions.ts` / `OrganizeToolbar.tsx` — el extraer desde Organizar ignora los giros del plan (duda 1 del programador): el líder debería decidir si la op `extract` de PDF-054 acepta giros (ficha aparte).
 2. (opcional) `progressExtract` se reutiliza para dividir: texto propio «Dividiendo…» sería más claro.
 3. (opcional) `OrganizeToolbar.tsx:42` — los huecos `imported` también deshabilitan «Extraer»; revisar al llegar PDF-128.
-
-### [tester] ronda 1 — 2026-10-20 — PASA
-| Criterio | Resultado | Evidencia |
-|---|---|---|
-| E2E extraer 3-7, marcadores 10/10/9/1, resaltado sin guardar, Organizar, owner-only, teclado+axe+oscuro | OK | `playwright test tests/e2e/extract-split.spec.ts`: 6 passed |
-| Unit (cancelar, error, exportFile ZIP) | OK | dentro de `pnpm coverage`, verde (líneas 98,33 %) |
-| bundle:check | OK | 591 097 de 600 000 bytes |
-| lint, typecheck, coverage | OK | código 0 |
-| e2e completo | OK con reserva | 342 passed, 2 failed, ambos `@perf` de `iteration4-performance.spec.ts` (cifrado, ratio; fichero ajeno a esta ficha, modificado sin commit); no tocan extraer/dividir |
-
-Tests añadidos: ninguno nuevo (los del programador cubren cada criterio). Rendimiento: sin presupuesto propio.
-Pendiente (no bloquea): giros del plan no se aplican al extraer desde Organizar; `progressExtract` reutilizado en dividir; huecos `imported` deshabilitan «Extraer».
