@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-142
 titulo: Regresión de memoria del lienzo de detalle con zoom alto (385 MB > 300 MB)
 app: pdf
-estado: pendiente
+estado: bloqueada
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, formatos-ofimatica]
@@ -47,3 +47,12 @@ Que `tests/e2e/detail.spec.ts:212` («con zoom alto, 20 s de desplazamiento…»
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: ninguno en `src/` ni `tests/` (solo esta ficha: `estado: bloqueada`). Worktree temporal `../wt-bisect` creado y retirado; fichero temporal `tests/e2e/zz-probe.spec.ts` creado para medir y borrado.
+- Qué he hecho: paso 1. Ejecutado `detail.spec.ts:212` (`chromium-perf`, `--no-deps`, `LECTOR_E2E_PORT=4403`) en `defec48` y en HEAD. **Premisa no cumplida: la prueba también falla en `defec48`**, así que no hay commit bueno que marcar y no tiene sentido bisectar (paso 2 omitido). Según la ficha, paro aquí y dejo la decisión al líder.
+  - `defec48`: falla en la aserción de MB con **385,43 MB** (límite 300). Presupuesto de lienzos (0) y long tasks pasaban en esa ejecución.
+  - HEAD (`db4b579`): medido con una copia temporal de la prueba que solo sustituye las aserciones por `console.log`: presupuesto de lienzos 0 (cumple), **384,06 MB**, long tasks entre 50 y 95 ms en esa ejecución. En una ejecución anterior de la prueba original, HEAD falló por una long task de 114 ms antes de llegar a la aserción de MB (test intermitente en esa aserción).
+  - Conclusión: la regresión de memoria no está entre `defec48` y HEAD; ya existe en `defec48`, o el entorno mide distinto a la fecha de PDF-051. Hace falta mirar commits anteriores (p. ej. `2f33d73` y antes) o revisar si PDF-051 se validó con otra configuración.
+- Comandos ejecutados y resultado: `pnpm exec playwright test tests/e2e/detail.spec.ts:212 --project=chromium-perf --no-deps` en HEAD: 1 fallo (long task 114 ms antes de la aserción de MB). En `defec48`: 1 fallo, `Expected <= 300, Received 385.43`. Probe en HEAD: 1 pasa, MB 384,06. `pnpm install --frozen-lockfile` en el worktree: OK.
+- Dudas o cosas que no he podido hacer: pasos 2 a 6 no ejecutados (bisect sin commit bueno; diagnóstico y arreglo no tienen sentido hasta saber si el objetivo es `defec48` u otro commit). Decisión pendiente del líder: ¿buscar un commit anterior válido (`git bisect` con `2f33d73` o previo como bueno) o revisar si el presupuesto de 300 MB casa con el número de lienzos de ADR-0025? Aviso: `git status` muestra cambios sin commitear en PDF-095 y PDF-141 que no son míos y no los he tocado.
