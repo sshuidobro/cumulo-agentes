@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-138
 titulo: Firma digital - validar las firmas de un PDF (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-066]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -86,3 +86,14 @@ export async function verifySignatures(source: ByteSource, reader: ObjectReader)
 - `pnpm lint` y `pnpm typecheck` OK. `pnpm coverage`: 3696/3697 tests; el único fallo (`protect-ops.test.ts`, timeout de 5 s bajo carga) pasa solo (11/11), no es de esta ficha. `verify.test.ts` 26/26; `verify.ts` 95,7 % de líneas; pdfsig contrastado en valid/invalid.
 1. (opcional) `verify.ts:213` — no se comprueba que el hueco `[b, c)` coincida con la posición de `/Contents` (defensa contra «signature wrapping»); valdría un criterio en una ficha futura.
 2. (opcional) Dudas del programador 1-4 aceptadas como interpretación razonable; documentar ECDSA sin `signedAttrs` → `unknown` en el Manual. Falta test de PDF cifrado (duda 5) y de campos con `/Kids` (duda 6), recomendable en PDF-139.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Casos de la ficha (válido, byte cambiado, incremento posterior, ECDSA openssl, sha1) | OK | `verify.test.ts` 26/26 dentro de `pnpm coverage` |
+| pdfsig coincide en valid/invalid | OK | tests con `pdfsig` (líneas 170, 181, 220, 240) |
+| Sin firmas y `form-full.pdf` → `ok([])` | OK | test línea 308 |
+| Cobertura `verify.ts` ≥ 90 % | OK | 95,71 % líneas |
+| lint, typecheck, coverage con código 0 | OK | lint y typecheck limpios; coverage exit=0, 283 ficheros, 3697/3697 tests |
+
+Sin tests añadidos. Pendientes recomendados (no bloquean): PDF cifrado y campos con `/Kids` (PDF-139), según el revisor.
