@@ -110,6 +110,7 @@ function TabItem({ tab, active, registerRef, onKeyDown }: TabItemProps) {
         className={styles.tab}
         aria-selected={active}
         aria-controls={TAB_PANEL_ID}
+        aria-keyshortcuts="Delete"
         tabIndex={active ? 0 : -1}
         title={tab.title}
         onClick={() => { switchTab(tab.id); }}
@@ -130,7 +131,8 @@ function TabItem({ tab, active, registerRef, onKeyDown }: TabItemProps) {
       <button
         type="button"
         className={styles.close}
-        aria-label={tabsMsg.closeNamed(tab.title)}
+        aria-hidden="true"
+        title={tabsMsg.closeNamed(tab.title)}
         tabIndex={-1}
         onClick={() => { void closeTabById(tab.id); }}
       >
