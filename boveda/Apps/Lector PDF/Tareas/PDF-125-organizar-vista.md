@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-125
 titulo: Organizar - vista de cuadrícula con selección, teclado y barra
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-124, PDF-114]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
 actualizado: 2026-10-20
@@ -68,3 +68,10 @@ export function neighbour(m: GridMetrics, count: number, index: number, key: 'Ar
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `npx vitest run --coverage` (raíz, directorio de informes propio): 294 ficheros, 3797 tests OK, código 0 (una primera pasada dio un timeout de 5 s en `page-tree.test.ts` PDF-052 con la máquina cargada; relanzado solo, 18/18, y la pasada completa siguiente fue verde). Cobertura de `grid.ts`: 100 % líneas. `vite build` a un directorio de la sesión (no `dist/`, para no interferir con el E2E ajeno) y `check-bundle`: arranque 539 292 bytes, presupuesto 600 000 OK.
 - Dudas o cosas que no he podido hacer: (1) **Atajos**: el registro rechaza atajos duplicados y `Alt+←/→` (atrás/adelante) y `Retroceso` (pantalla completa) ya están usados. Por eso `organize-move-left` y `organize-move-right` van con `chords: []` y la cuadrícula atiende Alt+flechas y Retroceso directamente; `organize-delete` tiene solo `Supr`. Revisar si el líder prefiere otra solución. (2) La ficha pide `setDocOpsRunner(inProcessDocOps())` con `basic-5.pdf`: en jsdom no se puede (los fixtures usan `import.meta.url` y pdf.js necesita Node). El test usa una operación falsa que devuelve los giros de basic-5 (5 páginas, sin girar). (3) **axe** no se ha ejecutado: `axe-core` solo llega como dependencia de `@axe-core/playwright` (raíz), no del app; queda para el E2E del tester. (4) Criterio «Ctrl+] anuncia girada 90°»: el giro actúa sobre la selección (sin selección no hace nada, sin volver al foco); el test pulsa Inicio antes. (5) Decisiones menores que tomé: tamaño de miniatura por defecto 180 px (el selector no se guarda); al abrir, el primer hueco tiene foco sin selección; `pageOption(n, rotation)` recibe el giro para la frase «girada N°»; el tamaño de una página se intercambia si el giro del hueco es 90 o 270, igual que en `insertBlank`. (6) `visibleCells` corta en 12 filas: con un viewport muy alto (más de ~12 filas) las filas de abajo no se montan.
 
+
+### [revisor] ronda 1 — 2026-10-20 — CAMBIOS
+Lint, typecheck y los 8 ficheros de tests de organize (137 tests) en verde. No he lanzado e2e. Código correcto en general; faltan criterios:
+1. Criterio axe (claro y oscuro) sin cubrir — no hay ninguna comprobación; aplazarlo al tester no vale porque es criterio de esta ficha y la skill lo exige. Añadir un e2e específico `tests/e2e/organize-a11y.spec.ts` con `@axe-core/playwright` (como `iteration3-a11y.spec.ts`) que abra la vista en tema claro y oscuro y no dé violaciones (si hay que arreglar contraste/roles, hacerlo). Lanzarlo solo ese fichero.
+2. `tests/ui/organize-view.test.tsx:219-221` — «todos los botones de icono tienen aria-label y title» solo se comprueba en 2 botones. Recorrer todos los botones de `role="toolbar"` y comprobar nombre accesible y `title` no vacíos.
+3. `src/core/organize/grid.ts` (`visibleCells`, tope de 12 filas) — con tamaño 120 y ventana alta (~2000 px, ~11 filas visibles + overscan 4) las filas inferiores visibles no se montan (huecos en blanco). Hacer que el tope no recorte las filas realmente visibles (recortar solo el overscan) y añadir test unitario.
+4. (opcional) `OrganizeView.tsx:245` — Escape en la cuadrícula depende de `cancel-tool`; confirmar que está cubierto por el test (el criterio lo pide) y que no choca con otros usos de Escape.
