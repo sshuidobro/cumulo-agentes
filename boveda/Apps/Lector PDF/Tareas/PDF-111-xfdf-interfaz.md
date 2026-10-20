@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-111
 titulo: Exportar e importar comentarios en XFDF desde el panel
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-110, PDF-116, COM-018, PDF-108]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, anotaciones, ui]
 ---
 
@@ -56,3 +56,9 @@ export async function importComments(): Promise<'imported' | 'cancelled' | 'fail
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/state/xfdf-actions.ts` (nuevo: `XFDF_FILTERS`, `MAX_XFDF_BYTES`, `exportComments`, `importComments`, `hasExportableComments`), `apps/lector-pdf/src/ui/messages-comments.ts` (textos del menú y avisos), `apps/lector-pdf/src/ui/sidebar/CommentsPanel.tsx` (segundo `MenuButton` con `IconMore`), `apps/lector-pdf/tests/unit/xfdf-actions.test.ts` (nuevo, 9 tests), `apps/lector-pdf/tests/e2e/xfdf.spec.ts` (nuevo, 2 tests).
+- Qué he hecho: exportar con `exportFile` (nombre `<base>.xfdf`, `href` con el nombre del PDF) e importar con `importFile` → `importXfdf` → `addAnnotations('importar comentarios', …)`, con aviso y pestaña «Comentarios». El menú «Más opciones de comentarios» deshabilita «Exportar» sin comentarios editables. Todos los criterios de la ficha tienen test.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; cobertura con `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>/cov-111` (el directorio `coverage` estaba bloqueado por otra ejecución): 297 ficheros, 3853 tests OK; `pnpm --filter lector-pdf e2e` (con `LECTOR_E2E_PORT=4313`): 314 passed, código 0 (una primera pasada tuvo 2 fallos de carga en `shapes` y `search`, que pasaron 7/7 al repetirlos y en la pasada completa).
+- Dudas o cosas que no he podido hacer: (1) Con `exportFile` devuelve `downloaded` (Chromium sin selector) no hay aviso «Comentarios exportados.», porque la ficha solo lo pide para `saved`; decidir si debe avisar también. (2) La comprobación «Exportar no añade nada a Recientes» del E2E compara el menú «Abrir recientes», que está vacío en ese flujo: es una comprobación débil. (3) En el E2E la importación quita `showOpenFilePicker` para usar el `<input type=file>` (el selector nativo no se puede automatizar). (4) Pluralización del aviso: «Se ha importado 1 comentario.» / «Se han importado N comentarios.»; la ficha no lo fija.

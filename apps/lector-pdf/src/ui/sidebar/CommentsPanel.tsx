@@ -26,11 +26,13 @@ import {
 import { useAnnotations } from '../../state/annotation-store';
 import { goToPage } from '../../state/navigation';
 import { useViewer } from '../../state/viewer-store';
+import { exportComments, hasExportableComments, importComments } from '../../state/xfdf-actions';
 import {
   IconComment,
   IconFreeText,
   IconHighlight,
   IconInk,
+  IconMore,
   IconNote,
   IconStrikeout,
   IconTrash,
@@ -376,6 +378,24 @@ export function CommentsPanel(): ReactElement {
     }
   }
 
+  const moreEntries: readonly MenuEntry[] = [
+    {
+      kind: 'action',
+      label: commentsMsg.exportXfdf,
+      disabled: !hasExportableComments(effective.values()),
+      onSelect: () => {
+        void exportComments();
+      },
+    },
+    {
+      kind: 'action',
+      label: commentsMsg.importXfdf,
+      onSelect: () => {
+        void importComments();
+      },
+    },
+  ];
+
   return (
     <div className={styles.panel}>
       <div className={styles.head}>
@@ -405,6 +425,9 @@ export function CommentsPanel(): ReactElement {
           />
           <MenuButton label={msg.commentsFilter} entries={filterEntries} disabled={filterEntries.length === 0}>
             <span className={styles.filterLabel}>{msg.commentsFilter}</span>
+          </MenuButton>
+          <MenuButton label={commentsMsg.menu} entries={moreEntries}>
+            <IconMore />
           </MenuButton>
           <IconButton
             label={msg.commentDeleteActive}
