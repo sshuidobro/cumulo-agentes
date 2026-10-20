@@ -24,7 +24,9 @@ export type PdfErrorCode =
   | 'p12-no-key'
   | 'p12-unsupported-key'
   | 'sign-encrypted'
-  | 'sign-too-big';
+  | 'sign-too-big'
+  | 'edit-line-missing'
+  | 'edit-text-invalid';
 
 export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'empty': 'El fichero está vacío (0 bytes).',
@@ -51,6 +53,8 @@ export const PDF_ERROR_MESSAGES: Readonly<Record<PdfErrorCode, string>> = {
   'p12-unsupported-key': 'Solo se admiten certificados con clave RSA.',
   'sign-encrypted': 'No se puede firmar un PDF protegido con contraseña: quita la protección antes.',
   'sign-too-big': 'La firma no cabe en el espacio reservado para ella.',
+  'edit-line-missing': 'No se ha podido guardar: una de las líneas editadas ya no se encuentra en la página. Vuelve a editarla.',
+  'edit-text-invalid': 'No se puede guardar el texto editado: contiene caracteres que los tipos de letra estándar no admiten o saltos de línea.',
 };
 
 /** Crea un error de PDF con mensaje en español. `cause` conserva el error original para diagnóstico. */

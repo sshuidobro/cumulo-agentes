@@ -24,6 +24,7 @@ import {
   type SplitMode,
 } from '../../organize/split';
 import { p12Info, signPdf, verifySignaturesOp } from './signature';
+import { EDIT_TEXT_OPS } from './edit-text';
 import type { DocOp, DocOpRegistry, OpContext } from '../protocol';
 
 interface PageRotationsArgs {
@@ -716,4 +717,5 @@ export const DOC_OPS: DocOpRegistry = {
   'p12-info': p12Info,
   sign: signPdf,
   'verify-signatures': verifySignaturesOp,
+  ...EDIT_TEXT_OPS,
 };
