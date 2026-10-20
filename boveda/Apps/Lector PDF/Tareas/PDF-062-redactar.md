@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-062
 titulo: Redactar - analizador e intérprete de contenido con cajas de glifos (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-052, PDF-059]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
@@ -108,3 +108,14 @@ export function intersects(q: Quad, rect: readonly [number, number, number, numb
 - `pnpm lint`, `pnpm typecheck` y `pnpm coverage` en verde (código 0). Los 7 criterios cubiertos por tests reales (comparación con pdf.js, `/L` con `EI` en datos, Type0, imagen `[50,600,250,700]`, `PdfSyntaxError`).
 - Fórmulas de `Trm` y avance conformes a ISO 32000-1 §9.4; nada fuera de alcance; núcleo sin React/Tauri.
 - (opcional) `interpreter.ts:386-392` — operandos incorrectos en `cm`/`Tc`… rechazan toda la página; aceptable para PDF-135 (página no soportada), pero valorar tolerancia si aparecen PDF reales con operandos sobrantes.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Round-trip parse/serialize (basic-5, compressed, annotated, BI con EI y /L) | OK | `vitest run tests/unit/content`: 68 tests en verde |
+| Glifos «Página 1 de 5» vs pdf.js (≤1 pt) y Tc/Tw/Tz/Ts/TJ (≤0,5 pt) | OK | tests de `interpreter.test.ts` en verde |
+| Type0 Identity-H con /W; Type3/CMap no Identity en `unmeasured` | OK | `font-metrics.test.ts` / `interpreter.test.ts` |
+| Imagen `[50,600,250,700]`, q/Q restauran CTM | OK | `interpreter.test.ts` |
+| Sintaxis rota → `PdfSyntaxError` | OK | `interpreter.test.ts` |
+| Cobertura ≥ 90 % en `core/content/` y lint/typecheck/coverage | OK | 99,5-100 % por fichero (informe en directorio propio); global líneas 98,61 %; lint y typecheck sin errores |
+Casos límite (contenido vacío, Q sin q) ya cubiertos por los tests existentes. Tests añadidos: ninguno. Rendimiento: no aplica. E2E: no aplica (núcleo sin interfaz).
