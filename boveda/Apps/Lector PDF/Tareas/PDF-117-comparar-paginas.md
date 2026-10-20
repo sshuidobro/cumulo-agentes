@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-117
 titulo: Comparar - páginas lado a lado con cambios resaltados y superposición
 app: pdf
-estado: cambios-pedidos
+estado: en-curso
 depende_de: [PDF-112]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
