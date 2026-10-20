@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -184,3 +184,7 @@ Reglas:
   - Nota: en dos ejecuciones completas anteriores falló un test distinto cada vez (`encrypted-save` «firma dibujada» y `xfdf` «toBeFocused»), ambas mientras otro proceso `chromium-perf` ajeno corría en la misma máquina. Ambos pasan en aislado (`xfdf` y `encrypted-save`: 10/10 en dos ejecuciones) y la suite completa pasó después, sin carga externa. Parece inestabilidad por carga, no por el cambio.
   - Un `pnpm coverage` falló una vez porque otro proceso de Vitest usaba `coverage/`; se repitió tras terminar ese proceso.
 - Dudas o cosas que no he podido hacer: ninguna en esta ronda. Margen del presupuesto: 724 B; la siguiente ficha que añada código al arranque debe diferir más (ver replanificación 2).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+1. Pasos 6a, 6b y 7a-7c aplicados tal como están en la ficha (diff de `App.tsx` limpio, solo diferido de componentes). `pnpm --filter lector-pdf build` OK: arranque 599 276 B (máx. 600 000). typecheck OK; eslint de `apps/lector-pdf/src` y `tests` sin errores.
+2. (opcional, limpieza) `apps/lector-pdf/dist-prog-129/` es una salida de build ignorada por git pero no por ESLint: `pnpm lint` en la raíz falla con 14 068 errores mientras exista. Borrarla antes de que el tester ejecute `pnpm lint` (añadirla a `ignores` en `eslint.config.*` si se vuelve a usar `LECTOR_E2E_OUTDIR`).
