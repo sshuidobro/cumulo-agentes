@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
