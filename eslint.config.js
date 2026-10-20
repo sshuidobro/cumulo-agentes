@@ -8,6 +8,7 @@ const noTauri = { group: ['@tauri-apps/*'], message: 'Usa @suite/platform (ADR-0
 const noNode = { group: ['node:*'], message: 'Este código corre en el navegador.' };
 const noPdfjs = { group: ['pdfjs-dist', 'pdfjs-dist/*'], message: 'Solo src/engine importa pdfjs-dist (ADR-0007).' };
 const noTesseract = { group: ['tesseract.js', 'tesseract.js/*'], message: 'Solo src/engine/ocr.ts importa tesseract.js (ADR-0038).' };
+const noForge = { group: ['node-forge'], message: 'Solo src/core/signature/digital importa node-forge (ADR-0040).' };
 const noUi = { group: ['react', 'react-dom', 'react-dom/*', 'zustand'], message: 'core/ es lógica pura sin React (stack-typescript-react).' };
 
 export default defineConfig(
@@ -34,6 +35,7 @@ export default defineConfig(
   { files: ['apps/*/src/engine/**/*.{ts,tsx}'], ignores: ['apps/*/src/engine/ocr.ts'], rules: { 'no-restricted-imports': ['error', { patterns: [noTauri, noNode, noTesseract] }] } },
   { files: ['apps/*/src/engine/ocr.ts'], rules: { 'no-restricted-imports': ['error', { patterns: [noTauri, noNode] }] } },
   { files: ['apps/*/src/core/**/*.ts'], rules: { 'no-restricted-imports': ['error', { patterns: [noPdfjs, noTesseract, noTauri, noNode, noUi] }] } },
+  { files: ['apps/*/src/core/**/*.ts'], ignores: ['apps/*/src/core/signature/digital/**'], rules: { 'no-restricted-imports': ['error', { patterns: [noForge] }] } },
   { files: ['packages/platform/src/**/*.ts'], ignores: ['packages/platform/src/tauri/**'], rules: { 'no-restricted-imports': ['error', { patterns: [noTauri, noNode] }] } },
   { files: ['apps/*/tests/e2e/**/*.ts'], rules: { 'no-restricted-properties': ['error', { property: 'waitForTimeout', message: 'Espera a una condición (expect, page.clock o settle), no a un tiempo fijo.' }] } },
   { files: ['**/*.cjs'], languageOptions: { sourceType: 'commonjs', globals: { module: 'writable', require: 'readonly' } } },

@@ -38,6 +38,7 @@ export function DocumentMenu() {
           kind: 'action',
           label: exportMsg.menuItem,
           disabled: !copyAllowed,
+          disabledReason: exportMsg.blocked,
           onSelect: () => { openExportDialog(); },
         },
       ]}

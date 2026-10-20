@@ -293,6 +293,23 @@ export function IconArrow() {
   );
 }
 
+export function IconPolygon() {
+  return (
+    <Svg>
+      <path d="M10 3.5 16 8l-2.3 7.5H6.3L4 8z" />
+    </Svg>
+  );
+}
+
+export function IconStamp() {
+  return (
+    <Svg>
+      <rect x="4" y="3.5" width="12" height="5" rx="1" />
+      <path d="M7 12.5h6M10 12.5v4" />
+    </Svg>
+  );
+}
+
 export function IconColor() {
   return (
     <Svg>

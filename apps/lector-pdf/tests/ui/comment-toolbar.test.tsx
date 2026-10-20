@@ -131,8 +131,8 @@ describe('barra «Comentar» · teclado', () => {
     const toolbar = await openCommentBar(user);
     const resaltar = within(toolbar).getByRole('button', { name: 'Resaltar' });
     const subrayar = within(toolbar).getByRole('button', { name: 'Subrayar' });
-    // «Flecha» es el último control de la barra (PDF-108: tras «Dibujar» van las formas).
-    const flecha = within(toolbar).getByRole('button', { name: 'Flecha' });
+    // «Sello» es el último control de la barra con la herramienta en «ninguna» (PDF-115: tras «Polígono» va el menú de sellos).
+    const sello = within(toolbar).getByRole('button', { name: 'Sello' });
     act(() => {
       resaltar.focus();
     });
@@ -140,11 +140,11 @@ describe('barra «Comentar» · teclado', () => {
     await user.keyboard('{ArrowRight}');
     expect(subrayar).toHaveFocus();
     await user.keyboard('{End}');
-    expect(flecha).toHaveFocus();
+    expect(sello).toHaveFocus();
     await user.keyboard('{Home}');
     expect(resaltar).toHaveFocus();
     await user.keyboard('{ArrowLeft}');
-    expect(flecha).toHaveFocus();
+    expect(sello).toHaveFocus();
     await user.keyboard('{ArrowRight}');
     expect(resaltar).toHaveFocus();
 
@@ -186,8 +186,8 @@ describe('barra «Comentar» · teclado', () => {
     const toolbar = await openCommentBar(user);
     const resaltar = within(toolbar).getByRole('button', { name: 'Resaltar' });
     const subrayar = within(toolbar).getByRole('button', { name: 'Subrayar' });
-    // «Flecha» es el último control de la barra (PDF-108).
-    const flecha = within(toolbar).getByRole('button', { name: 'Flecha' });
+    // «Sello» es el último control de la barra con la herramienta en «ninguna» (PDF-115).
+    const sello = within(toolbar).getByRole('button', { name: 'Sello' });
     const spy = vi.fn();
     window.addEventListener('keydown', spy);
     act(() => {
@@ -201,7 +201,7 @@ describe('barra «Comentar» · teclado', () => {
       expect(useViewer.getState().navRequest).toBeNull();
 
       await user.keyboard('{End}');
-      expect(flecha).toHaveFocus();
+      expect(sello).toHaveFocus();
       expect(useViewer.getState().currentPage).toBe(2);
       expect(useViewer.getState().navRequest).toBeNull();
 
@@ -211,7 +211,7 @@ describe('barra «Comentar» · teclado', () => {
       expect(useViewer.getState().navRequest).toBeNull();
 
       await user.keyboard('{ArrowLeft}');
-      expect(flecha).toHaveFocus();
+      expect(sello).toHaveFocus();
       expect(useViewer.getState().currentPage).toBe(2);
       expect(useViewer.getState().navRequest).toBeNull();
 

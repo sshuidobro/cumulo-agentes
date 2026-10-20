@@ -148,6 +148,12 @@ export const msg = {
   toolCircle: 'Elipse',
   toolLine: 'Línea',
   toolArrow: 'Flecha',
+  toolPolygon: 'Polígono',
+  toolStamp: 'Sello',
+  /** Encabezado del menú de sellos (PDF-115). */
+  stampMenu: 'Elegir sello',
+  /** Ayuda de la barra mientras se dibuja un polígono; se anuncia con `aria-live`. */
+  polygonHint: 'Haz clic para añadir vértices; doble clic o Intro para terminar',
   color: 'Color',
   inkWidth: 'Grosor',
   fontSize: 'Tamaño de letra',

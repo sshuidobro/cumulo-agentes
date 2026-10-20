@@ -8,6 +8,7 @@ import {
   type FreeTextAnnotation,
   type RectPt,
   type SignatureAnnotation,
+  type StampAnnotation,
 } from '../../core/annotations/model';
 import { freeTextClickRect, freeTextDragRect, resizeFreeTextRect } from '../../core/annotations/freetext';
 import { newInkAnnotation } from '../../core/annotations/ink';
@@ -40,7 +41,7 @@ import { AnnotationShape, ZoneShape } from './annotation-shapes';
 import { FreeTextEditor } from './FreeTextEditor';
 import { toPx } from './freetext-box';
 import { drawInkSegments, prepareInkCanvas, type InkDrawingContext } from './ink-preview';
-import { ShapeSketch } from './ShapeSketch';
+import { PolygonDraft, ShapeSketch } from './ShapeSketch';
 import { useShapeTool } from './use-shape-tool';
 import styles from './AnnotationLayer.module.css';
 import viewerStyles from './Viewer.module.css';
@@ -71,7 +72,7 @@ const MOVABLE: ReadonlySet<AnnotationType> = new Set<AnnotationType>([
   'stamp',
 ]);
 /** Tipos con tirador de tamaño en la esquina inferior derecha cuando están seleccionados. */
-type Resizable = FreeTextAnnotation | SignatureAnnotation | BoxShapeAnnotation;
+type Resizable = FreeTextAnnotation | SignatureAnnotation | BoxShapeAnnotation | StampAnnotation;
 /** Marcador del foco tras borrar: se lleva el foco al visor (la región del documento). */
 const FOCUS_VIEWER = 'viewer';
 /** Tolerancia de la simplificación de un trazo a mano alzada al soltar, en puntos PDF (PDF-035). */
@@ -569,9 +570,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
     }
   }
 
-  // Tirador del texto libre o de la firma seleccionados, en la esquina inferior derecha (PDF-034, PDF-043); no aparece mientras se edita.
+  // Tirador del texto libre, la firma, la forma o el sello seleccionados, en la esquina inferior derecha (PDF-034, PDF-043,
+  // PDF-115); no aparece mientras se edita.
   const selectedResizable = items.find(
-    (a): a is Resizable => a.id === selectedId && (a.type === 'freetext' || a.type === 'signature' || a.type === 'square' || a.type === 'circle'),
+    (a): a is Resizable =>
+      a.id === selectedId && (a.type === 'freetext' || a.type === 'signature' || a.type === 'square' || a.type === 'circle' || a.type === 'stamp'),
   );
   const handleRect =
     selectedResizable === undefined ? undefined : resizing?.id === selectedResizable.id ? resizing.rect : selectedResizable.rect;
@@ -588,9 +591,13 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
         width={viewport.width}
         height={viewport.height}
         onPointerDown={onLayerPointerDown}
-        onPointerMove={moveInk}
+        onPointerMove={(e) => {
+          moveInk(e);
+          shapeTool.onPointerMove(e);
+        }}
         onPointerUp={endInk}
         onPointerCancel={cancelInkPointer}
+        onDoubleClick={shapeTool.onDoubleClick}
       >
         {sketch !== null && (
           <g transform={`matrix(${viewport.transform.join(' ')})`}>
@@ -600,6 +607,11 @@ export function AnnotationLayer({ pageIndex, viewport }: AnnotationLayerProps) {
         {shapeTool.sketch !== null && (
           <g transform={`matrix(${viewport.transform.join(' ')})`}>
             <ShapeSketch sketch={shapeTool.sketch} width={shapeWidth} />
+          </g>
+        )}
+        {shapeTool.polygon !== null && (
+          <g transform={`matrix(${viewport.transform.join(' ')})`}>
+            <PolygonDraft polygon={shapeTool.polygon} />
           </g>
         )}
         {items.length > 0 && (

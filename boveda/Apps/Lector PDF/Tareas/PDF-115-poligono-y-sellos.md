@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-115
 titulo: Herramientas Polígono y Sello en la barra Comentar
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-108, PDF-107]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -87,3 +87,18 @@ Lint, typecheck y tests de la ficha (576) en verde; criterios cubiertos. Un prob
 
 ### [revisor] ronda 2 — 2026-10-20 — APROBADO
 La fuga queda corregida: el handler se guarda en `polygonKey` (ref) y `stopPolygon` quita exactamente ese. Test nuevo de doble clic con espías en verde (19/19), eslint y typecheck limpios en la ficha. Sin problemas pendientes.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit addPolygonVertex/defaultPolygon | OK | `pnpm coverage`: 279 ficheros, 3622 tests, código 0; `shape-drag.ts` y `shapes.ts` al 100 % |
+| UI polígono (4 clics + doble clic, Esc, Retroceso) y sello (menú, clic, teclado) | OK | `tests/ui/shape-tool.test.tsx` dentro de coverage |
+| E2E basic-5: polígono + sellos APROBADO/NO APROBADO, proporción, Ctrl+S, recarga, editables | OK | `shapes.spec.ts:162 poligono y sellos…` ✓ (3.9 s); `pnpm --filter lector-pdf e2e` → 295 passed (8.9 min), código 0 |
+| qpdf --check 0 y `(APROBADO) Tj` en /AP | OK | aserciones en `shapes.spec.ts:194-201`, ✓ |
+| Manual «Comprobar en Adobe» | OK | punto 7 en `Manual.md` (lo comprueba el usuario; no bloquea) |
+| aria-label/title/foco/menú con flechas | OK | tests de `comment-toolbar.test.tsx` y `MenuButton` en verde |
+| lint, typecheck, coverage, e2e | OK | `pnpm lint` sin avisos, `pnpm typecheck` limpio (el fallo de `signature/digital` de la ronda 1 ya no aparece), coverage global líneas 98,64 %, e2e código 0 |
+
+Flaky: ninguno en esta pasada (el timeout de `commands.test.ts` del programador no se reprodujo; pasó bajo carga).
+Tests añadidos: ninguno (la cobertura de la ficha era suficiente).
+Rendimiento: `@perf` de formas (`pages-5000: arrastrar un rectángulo`, 34.8 s de prueba, sin long tasks) y resto de `@perf` en verde.

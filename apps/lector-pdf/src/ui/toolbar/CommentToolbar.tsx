@@ -12,7 +12,8 @@ import {
   setToolColor,
 } from '../../state/annotation-actions';
 import { useAnnotations, type AnnotationTool, type ColorTool } from '../../state/annotation-store';
-import { addShapeFromKeyboard, isShapeTool, setShapeColor, setShapeWidth } from '../../state/shape-actions';
+import { addShapeFromKeyboard, chooseStamp, isShapeTool, setShapeColor, setShapeWidth } from '../../state/shape-actions';
+import { STAMP_LABELS, STAMP_NAMES, type StampName } from '../../core/annotations/shapes';
 import { isMarkupTool, markupSelection } from '../../state/markup-actions';
 import {
   IconArrow,
@@ -25,7 +26,9 @@ import {
   IconInkWidth,
   IconLine,
   IconNote,
+  IconPolygon,
   IconSquare,
+  IconStamp,
   IconStrikeout,
   IconUnderline,
 } from '../icons';
@@ -52,10 +55,11 @@ const TOOLS: readonly ToolSpec[] = [
   { tool: 'circle', label: msg.toolCircle, Icon: IconCircle },
   { tool: 'line', label: msg.toolLine, Icon: IconLine },
   { tool: 'arrow', label: msg.toolArrow, Icon: IconArrow },
+  { tool: 'polygon', label: msg.toolPolygon, Icon: IconPolygon },
 ];
 
 /** Controles con foco itinerante: las herramientas y los menús visibles. */
-type ControlId = ColorTool | 'color' | 'width' | 'fontSize';
+type ControlId = ColorTool | 'stamp' | 'color' | 'width' | 'fontSize';
 
 /**
  * Lo que hay seleccionado y admite «Color», «Grosor» o «Tamaño de letra» aunque la herramienta activa sea otra. `shape`:
@@ -79,6 +83,7 @@ type WidthTarget = 'ink' | 'shape';
  */
 function visibleControls(tool: AnnotationTool, selection: Selection): ControlId[] {
   const list: ControlId[] = TOOLS.map((spec) => spec.tool);
+  list.push('stamp');
   if (tool !== 'none' || selection.text || selection.ink || selection.shape !== null) list.push('color');
   if (widthTargetOf(tool, selection) !== null) list.push('width');
   if (tool === 'freetext' || selection.text) list.push('fontSize');
@@ -93,13 +98,13 @@ function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTarget 
   if (selection.text) return 'freetext';
   if (selection.ink) return 'ink';
   if (selection.shape !== null) return 'shape';
-  return tool === 'none' || tool === 'signature' ? null : tool;
+  return tool === 'none' || tool === 'signature' || tool === 'stamp' ? null : tool;
 }
 
 /** A qué afecta «Grosor»: el dibujo o la forma seleccionados, o la herramienta activa. `null` si ninguna aplica. */
 function widthTargetOf(tool: AnnotationTool, selection: Selection): WidthTarget | null {
   if (selection.ink || (selection.shape === null && tool === 'ink')) return 'ink';
-  if (selection.shape !== null || isShapeTool(tool)) return 'shape';
+  if (selection.shape !== null || isShapeTool(tool) || tool === 'polygon') return 'shape';
   return null;
 }
 
@@ -114,8 +119,8 @@ function onToolClick(id: ColorTool, tool: AnnotationTool, fromKeyboard: boolean)
     addNoteFromKeyboard();
     return;
   }
-  // Una forma activada con teclado (PDF-108) se crea en la página actual, como la nota.
-  if (isShapeTool(id) && fromKeyboard && tool !== id) {
+  // Una forma activada con teclado (PDF-108) se crea en la página actual, como la nota; también el polígono (PDF-115).
+  if ((isShapeTool(id) || id === 'polygon') && fromKeyboard && tool !== id) {
     addShapeFromKeyboard(id);
     return;
   }
@@ -160,6 +165,24 @@ function applyColor(target: ColorTarget, rgb: Rgb): void {
   else if (target === 'ink') setInkColor(rgb);
   else if (target === 'shape') setShapeColor(rgb);
   else setToolColor(target, rgb);
+}
+
+/**
+ * Entradas del menú «Sello» (PDF-115): los catorce sellos, en el orden de `STAMP_NAMES`, con el elegido marcado. Elegir
+ * una la activa; con Intro (`fromKeyboard`) además se coloca en la página actual, como las formas con teclado.
+ */
+function stampEntries(pending: StampName): readonly MenuEntry[] {
+  const heading: MenuEntry = { kind: 'heading', label: msg.stampMenu };
+  const items = STAMP_NAMES.map((name): MenuEntry => ({
+    kind: 'radio',
+    label: STAMP_LABELS[name],
+    checked: name === pending,
+    onSelect: (fromKeyboard) => {
+      chooseStamp(name);
+      if (fromKeyboard) addShapeFromKeyboard('stamp');
+    },
+  }));
+  return [heading, ...items];
 }
 
 function widthEntries(target: WidthTarget, inkWidth: (typeof INK_WIDTHS)[number], shapeWidth: (typeof INK_WIDTHS)[number]): readonly MenuEntry[] {
@@ -216,6 +239,7 @@ export function CommentToolbar() {
     }
   });
   const shapeWidth = useAnnotations((s) => s.shapeWidth);
+  const pendingStamp = useAnnotations((s) => s.pendingStamp);
   const selection: Selection = { text: textSelected, ink: inkSelected, shape: shapeColor };
   const colorTarget = colorTargetOf(tool, selection);
   const widthTarget = widthTargetOf(tool, selection);
@@ -313,6 +337,14 @@ export function CommentToolbar() {
         </IconButton>
       ))}
       <MenuButton
+        label={msg.toolStamp}
+        tabIndex={tabIndexOf('stamp')}
+        ref={register('stamp')}
+        entries={stampEntries(pendingStamp)}
+      >
+        <IconStamp />
+      </MenuButton>
+      <MenuButton
         label={msg.color}
         disabled={colorTarget === null}
         tabIndex={tabIndexOf('color')}
@@ -330,6 +362,11 @@ export function CommentToolbar() {
         >
           <IconInkWidth />
         </MenuButton>
+      )}
+      {tool === 'polygon' && (
+        <p className={styles.hint} aria-live="polite">
+          {msg.polygonHint}
+        </p>
       )}
       {(tool === 'freetext' || textSelected) && (
         <MenuButton

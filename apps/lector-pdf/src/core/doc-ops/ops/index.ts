@@ -21,6 +21,7 @@ import {
   splitPartNames,
   type SplitMode,
 } from '../../organize/split';
+import { p12Info, signPdf } from './signature';
 import type { DocOp, DocOpRegistry, OpContext } from '../protocol';
 
 interface PageRotationsArgs {
@@ -622,4 +623,6 @@ export const DOC_OPS: DocOpRegistry = {
   unprotect,
   rewrite,
   'ocr-layer': ocrLayer,
+  'p12-info': p12Info,
+  sign: signPdf,
 };

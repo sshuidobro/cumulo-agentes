@@ -9,6 +9,7 @@ import {
 } from '../core/annotations/model';
 import type { ForeignAnnotation } from '../core/annotations/import';
 import type { SignatureArt } from '../core/annotations/model';
+import type { StampName } from '../core/annotations/shapes';
 import {
   DEFAULT_AUTHOR,
   DEFAULT_FONT_SIZE,
@@ -18,7 +19,11 @@ import {
   type INK_WIDTHS,
 } from '../core/annotations/palette';
 
-/** `signature`: la firma elegida se coloca con un clic o con Intro (PDF-043). No tiene color propio. */
+/**
+ * `signature`: la firma elegida se coloca con un clic o con Intro (PDF-043). No tiene color propio. `stamp` (PDF-115):
+ * el sello pendiente se coloca con un clic o con Intro; su color lo fija el nombre. `polygon` (PDF-115): cada clic añade
+ * un vértice.
+ */
 export type AnnotationTool =
   | 'none'
   | 'highlight'
@@ -31,8 +36,10 @@ export type AnnotationTool =
   | 'circle'
   | 'line'
   | 'arrow'
-  | 'signature';
-export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature'>;
+  | 'polygon'
+  | 'signature'
+  | 'stamp';
+export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature' | 'stamp'>;
 export type ScanState = 'idle' | 'scanning' | 'done' | 'lazy';
 
 /**
@@ -67,6 +74,8 @@ export interface AnnotationState {
   readonly tool: AnnotationTool;
   /** Firma elegida con «Firmar» y pendiente de colocar (herramienta `signature`), o ninguna (PDF-043). */
   readonly pendingSignature: SignatureArt | null;
+  /** Sello elegido en «Sello» (PDF-115): el que se coloca con la herramienta `stamp`. Es preferencia global. */
+  readonly pendingStamp: StampName;
   /** Cuadro de texto libre que se edita en el sitio, o ninguno (PDF-034). */
   readonly editing: FreeTextEditing | null;
   readonly colors: Readonly<Record<ColorTool, Rgb>>;
@@ -105,6 +114,7 @@ export function initialAnnotationState(): AnnotationState {
     openPopupId: null,
     tool: 'none',
     pendingSignature: null,
+    pendingStamp: 'Approved',
     editing: null,
     colors: { ...DEFAULT_TOOL_COLORS },
     inkWidth: DEFAULT_INK_WIDTH,

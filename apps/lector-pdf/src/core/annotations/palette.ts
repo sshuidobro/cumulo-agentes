@@ -32,6 +32,7 @@ export const DEFAULT_TOOL_COLORS = {
   circle: RED,
   line: RED,
   arrow: RED,
+  polygon: RED,
 } as const satisfies Record<string, Rgb>;
 
 /** Grosores de trazo permitidos (pt). */

@@ -58,13 +58,15 @@
 .viewer[data-tool='square'] .annotationLayer,
 .viewer[data-tool='circle'] .annotationLayer,
 .viewer[data-tool='line'] .annotationLayer,
-.viewer[data-tool='arrow'] .annotationLayer {
+.viewer[data-tool='arrow'] .annotationLayer,
+.viewer[data-tool='polygon'] .annotationLayer {
   pointer-events: auto;
   cursor: crosshair;
 }
 
-/* Con «Firmar», un clic en la página coloca la firma pendiente (PDF-043). */
-.viewer[data-tool='signature'] .annotationLayer {
+/* Con «Firmar», un clic en la página coloca la firma pendiente (PDF-043); con «Sello», el sello elegido (PDF-115). */
+.viewer[data-tool='signature'] .annotationLayer,
+.viewer[data-tool='stamp'] .annotationLayer {
   pointer-events: auto;
   cursor: copy;
 }
@@ -74,7 +76,8 @@
 .viewer[data-tool='square'] .annotationLayer,
 .viewer[data-tool='circle'] .annotationLayer,
 .viewer[data-tool='line'] .annotationLayer,
-.viewer[data-tool='arrow'] .annotationLayer {
+.viewer[data-tool='arrow'] .annotationLayer,
+.viewer[data-tool='polygon'] .annotationLayer {
   touch-action: none;
 }
 

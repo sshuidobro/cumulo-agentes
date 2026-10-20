@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-135
 titulo: Redactar - aplicar (texto, imágenes enteras, anotaciones, página en imagen) y reescritura
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-062, PDF-131]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]

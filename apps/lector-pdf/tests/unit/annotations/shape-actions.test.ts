@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStorageStore, memorySource, type Platform } from '@suite/platform';
 import { createFakePlatform, openedFile } from '../../helpers/fake-platform';
 import type { LoadedPdf } from '../../../src/engine';
-import type { BoxShapeAnnotation, LineShapeAnnotation } from '../../../src/core/annotations/model';
+import type { BoxShapeAnnotation, LineShapeAnnotation, RectPt } from '../../../src/core/annotations/model';
+import { stampColor } from '../../../src/core/annotations/shapes';
 import { DEFAULT_TOOL_COLORS, DEFAULT_INK_WIDTH } from '../../../src/core/annotations/palette';
 import { PageDimsTable } from '../../../src/core/page-dims';
 import {
@@ -15,9 +16,12 @@ import {
 import { initialAnnotationState, useAnnotations } from '../../../src/state/annotation-store';
 import {
   addShapeFromKeyboard,
+  chooseStamp,
   createBox,
   createLine,
+  createPolygon,
   isShapeTool,
+  placeStamp,
   resizeShape,
   selectedShape,
   setShapeColor,
@@ -238,5 +242,88 @@ describe('preferencias de formas (PDF-108)', () => {
     startAnnotationSession(fakeLazyDoc(), new AbortController().signal);
     expect(useAnnotations.getState().colors.square).toEqual(RED);
     expect(useAnnotations.getState().colors.highlight).toEqual(DEFAULT_TOOL_COLORS.highlight);
+  });
+});
+
+describe('polígono y sello (PDF-115)', () => {
+  it('createPolygon: polígono con el color de «Polígono» y el grosor de formas, seleccionado; la herramienta sigue activa', () => {
+    setTool('polygon');
+    const id = createPolygon(0, [10, 10, 100, 10, 100, 80]);
+    const a = getEffective().get(id);
+    expect(a?.type).toBe('polygon');
+    expect(a?.color).toEqual(DEFAULT_TOOL_COLORS.polygon);
+    expect(a?.type === 'polygon' && a.vertices).toEqual([10, 10, 100, 10, 100, 80]);
+    expect(useAnnotations.getState().selectedId).toBe(id);
+    expect(useAnnotations.getState().tool).toBe('polygon');
+    expect(useAnnotations.getState().undo.undoLabel).toBe('añadir polígono');
+  });
+
+  it('chooseStamp fija el sello pendiente, lo guarda como preferencia y activa «stamp»', () => {
+    chooseStamp('Draft');
+    expect(useAnnotations.getState().pendingStamp).toBe('Draft');
+    expect(useAnnotations.getState().tool).toBe('stamp');
+    expect(platform.prefs.get('pendingStamp', (v): v is string => v === 'Draft')).toBe('Draft');
+  });
+
+  it('el sello pendiente por defecto es «Approved» y la preferencia guardada se lee al arrancar', () => {
+    expect(useAnnotations.getState().pendingStamp).toBe('Approved');
+    setup({ pendingStamp: 'NotApproved' });
+    endAnnotationSession();
+    startAnnotationSession(fakeLazyDoc(), new AbortController().signal);
+    expect(useAnnotations.getState().pendingStamp).toBe('NotApproved');
+  });
+
+  it('placeStamp coloca el sello pendiente centrado en el punto, seleccionado, y devuelve la herramienta a «ninguna»', () => {
+    chooseStamp('Approved');
+    const id = placeStamp(1, [300, 400], [0, 0, PAGE_W, PAGE_H]);
+    const a = getEffective().get(id);
+    expect(a?.type).toBe('stamp');
+    expect(a?.type === 'stamp' && a.name).toBe('Approved');
+    expect(a?.pageIndex).toBe(1);
+    expect(a?.color).toEqual(stampColor('Approved'));
+    const cx = a !== undefined ? (a.rect[0] + a.rect[2]) / 2 : NaN;
+    const cy = a !== undefined ? (a.rect[1] + a.rect[3]) / 2 : NaN;
+    expect(cx).toBeCloseTo(300, 6);
+    expect(cy).toBeCloseTo(400, 6);
+    expect(useAnnotations.getState().selectedId).toBe(id);
+    expect(useAnnotations.getState().tool).toBe('none');
+  });
+
+  it('placeStamp desplaza el sello que sobresale de la página para que quede dentro', () => {
+    chooseStamp('Confidential');
+    const id = placeStamp(0, [2, 2], [0, 0, PAGE_W, PAGE_H]);
+    const a = getEffective().get(id);
+    expect(a?.rect[0]).toBeGreaterThanOrEqual(0);
+    expect(a?.rect[1]).toBeGreaterThanOrEqual(0);
+  });
+
+  it('addShapeFromKeyboard con «polygon» crea el polígono por defecto en la página actual; con «stamp» coloca el sello', () => {
+    setTool('polygon');
+    const polyId = addShapeFromKeyboard('polygon');
+    const poly = polyId === null ? undefined : getEffective().get(polyId);
+    expect(poly?.type === 'polygon' && poly.vertices).toHaveLength(10);
+    expect(poly?.pageIndex).toBe(0);
+    expect(useAnnotations.getState().tool).toBe('none');
+
+    chooseStamp('Final');
+    const stampId = addShapeFromKeyboard('stamp');
+    const stamp = stampId === null ? undefined : getEffective().get(stampId);
+    expect(stamp?.type).toBe('stamp');
+    expect(stamp?.pageIndex).toBe(0);
+    expect(useAnnotations.getState().tool).toBe('none');
+  });
+
+  it('resizeShape acepta un sello: cambia su cuadro; sin cambio real no crea entrada de deshacer', () => {
+    chooseStamp('Approved');
+    const id = placeStamp(0, [300, 400], [0, 0, PAGE_W, PAGE_H]);
+    const before = getEffective().get(id);
+    if (before?.type !== 'stamp') throw new Error('sin sello');
+    const depth = useAnnotations.getState().undo.undoDepth;
+    resizeShape(id, before.rect);
+    expect(useAnnotations.getState().undo.undoDepth).toBe(depth);
+    const bigger: RectPt = [before.rect[0], before.rect[1], before.rect[2] + 40, before.rect[3] + 20];
+    resizeShape(id, bigger);
+    expect(getEffective().get(id)?.rect).toEqual(bigger);
+    expect(useAnnotations.getState().undo.undoLabel).toBe('cambiar tamaño');
   });
 });
