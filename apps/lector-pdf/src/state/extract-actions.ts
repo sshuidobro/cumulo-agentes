@@ -8,7 +8,7 @@ import {
   splitZipName,
   type SPLIT_SIZES_MB,
   type SplitMode,
-} from "../core/organize/split";
+} from "../core/organize/split-names";
 import type { RunOptions } from "../core/doc-ops/client";
 import { organizeMsg } from "../ui/messages-organize";
 import { nowIso } from "./annotation-actions";
