@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-151
 titulo: Que la firma o imagen recién colocada quede seleccionada con su tirador
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional]
@@ -50,3 +50,14 @@ Tras colocar una firma («Firmar») o una imagen («Añadir imagen») con un cli
 
 ### [revisor] ronda 1 — 2026-10-20 — APROBADO
 1. Cambio mínimo y correcto (`stopPropagation` con comentario en `createSignatureAt`); 3 tests nuevos pasan; typecheck y ficheros tocados limpios en eslint. Nota: `pnpm lint` global falla en el árbol de trabajo porque `apps/lector-pdf/dist-pdf151/` (salida E2E del programador, ignorada por git pero no por eslint) mete 28 000 errores; no es defecto del código. (opcional) borrar `dist-pdf151` y los `dist-*` sobrantes antes de lint global.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Colocar con clic → seleccionada + tirador; clic en vacío deselecciona | OK | 3 tests PDF-151 en `signature-layer.test.tsx`; E2E `edit-content` y `signature` pasan |
+| Teclado sigue seleccionada | OK | test `placeSignatureFromKeyboard` en `signature-layer.test.tsx` (en `pnpm coverage`) |
+| Ctrl+Z quita en un paso | OK | test con `undo()` en `signature-layer.test.tsx` |
+| lint / typecheck / tests | OK | `pnpm lint` 0 (tras borrar `dist-firma`, `dist-pdf151`, `dist-qa049`), `pnpm typecheck` 0, `pnpm coverage` 0 (98,33 % líneas) |
+| E2E completo | 330 OK, 1 fallo ajeno | `protect.spec.ts:110` (timeout; spec modificada por otro agente en el árbol, nada que ver con firma). edit-content+signature 100 % OK |
+
+Nota: `dist-qa049` tenía ficheros versionados en git (aparecen como borrados); decidir si se confirma ese borrado.
