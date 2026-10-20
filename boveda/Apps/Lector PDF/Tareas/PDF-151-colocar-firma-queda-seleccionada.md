@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-151
 titulo: Que la firma o imagen recién colocada quede seleccionada con su tirador
 app: pdf
-estado: en-revision
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional]
@@ -47,3 +47,17 @@ Tras colocar una firma («Firmar») o una imagen («Añadir imagen») con un cli
 - Qué he hecho: el clic que coloca la firma o imagen ya no llega al visor, así que queda seleccionada con su tirador. Los tests nuevos fallaban antes del arreglo (rojo) y pasan después. Un clic posterior en zona vacía sigue deseleccionando. `tests/e2e/signature.spec.ts` no tenía clic extra antes del tirador (ahí se mueve arrastrando la firma), así que no se ha tocado.
 - Comandos ejecutados y resultado: `pnpm lint` (0); `pnpm typecheck` (0); `pnpm coverage` (0; 310 ficheros, 4025 tests en verde); `LECTOR_E2E_PORT=4151 LECTOR_E2E_OUTDIR=dist-pdf151 pnpm --filter lector-pdf e2e tests/e2e/edit-content.spec.ts tests/e2e/signature.spec.ts` (9/9 OK). El puerto por defecto 4173 estaba ocupado por el E2E de otro agente, por eso el puerto propio.
 - Dudas o cosas que no he podido hacer: el test de interacción replica el manejador de `Viewer` (`clearAnnotationSelection`, no exportado) con un wrapper en `signature-layer.test.tsx`, porque montar `Viewer` completo con una página renderizada es complejo. El E2E sí recorre el visor real. No he ejecutado `pnpm --filter lector-pdf e2e` completo (lo hace el tester o el coordinador).
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+1. Cambio mínimo y correcto (`stopPropagation` con comentario en `createSignatureAt`); 3 tests nuevos pasan; typecheck y ficheros tocados limpios en eslint. Nota: `pnpm lint` global falla en el árbol de trabajo porque `apps/lector-pdf/dist-pdf151/` (salida E2E del programador, ignorada por git pero no por eslint) mete 28 000 errores; no es defecto del código. (opcional) borrar `dist-pdf151` y los `dist-*` sobrantes antes de lint global.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Colocar con clic → seleccionada + tirador; clic en vacío deselecciona | OK | 3 tests PDF-151 en `signature-layer.test.tsx`; E2E `edit-content` y `signature` pasan |
+| Teclado sigue seleccionada | OK | test `placeSignatureFromKeyboard` en `signature-layer.test.tsx` (en `pnpm coverage`) |
+| Ctrl+Z quita en un paso | OK | test con `undo()` en `signature-layer.test.tsx` |
+| lint / typecheck / tests | OK | `pnpm lint` 0 (tras borrar `dist-firma`, `dist-pdf151`, `dist-qa049`), `pnpm typecheck` 0, `pnpm coverage` 0 (98,33 % líneas) |
+| E2E completo | 330 OK, 1 fallo ajeno | `protect.spec.ts:110` (timeout; spec modificada por otro agente en el árbol, nada que ver con firma). edit-content+signature 100 % OK |
+
+Nota: `dist-qa049` tenía ficheros versionados en git (aparecen como borrados); decidir si se confirma ese borrado.

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-150
 titulo: Arreglar «Cancelar» a mitad de la exportación (E2E @perf rojo en HEAD)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, calidad-profesional]
@@ -58,3 +58,6 @@ Que la prueba `tests/e2e/export.spec.ts` › «exportar pages-5000 (@perf) › �
   - `pnpm test`/`coverage` no están en verde por `open.test.tsx` (rojo previo, fuera de alcance). Hace falta decidir quién lo arregla.
   - Ajena a esta ficha: en el árbol de trabajo hay borrados sin commit los directorios versionados `apps/lector-pdf/dist-firma/` y `dist-qa049/`, y un `stash@{0}` de otra rama. No los he tocado.
   - Los procesos del equipo en paralelo impiden medir `@perf` de forma fiable; conviene no lanzar lint/vitest mientras se mide.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+1. Lint, typecheck y tests de export-dialog y open (15/15) en verde. El test nuevo de Escape cubre cancelar con teclado sin guardar. Causa raíz (contención de CPU, sin bug de producto) documentada y creíble. (opcional) El tester debe confirmar el E2E en reposo con --repeat-each=5.
