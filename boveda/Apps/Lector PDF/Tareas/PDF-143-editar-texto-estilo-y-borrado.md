@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-143
 titulo: Editar texto - estilo de cada operación de texto y borrado de glifos reutilizable (núcleo)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
