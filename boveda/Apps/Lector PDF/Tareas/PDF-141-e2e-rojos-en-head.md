@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-141
 titulo: Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 1
 skills: [pruebas-calidad, stack-typescript-react]
@@ -113,3 +113,16 @@ Causa del fallo: son pruebas de presupuesto de tiempo de reloj sin `{ tag: '@per
 3. `apps/lector-pdf/tests/e2e/sidebar-f4-reopen.spec.ts` — prueba nueva válida, cubre F4 abrir/cerrar tras reabrir.
 4. Criterio «E2E completo dos veces» sigue condicionado a `detail.spec.ts:212` (PDF-142, fuera de alcance).
 5. (opcional) `render.spec.ts:87` tiene presupuesto de tiempo sin `@perf`; etiquetar si se vuelve intermitente.
+
+### [tester] ronda 2 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E completo en verde dos veces seguidas | OK | `LECTOR_E2E_PORT=4711 pnpm --filter lector-pdf e2e` x2: 286 passed (8,3 min) en ambas, exit 0 (incluye `detail.spec.ts:212`, resuelto por PDF-142) |
+| flow + foreign + notes | OK | dentro de la suite completa |
+| performance/render/outline x20 y `@perf` x10 | OK | aportado en ronda 2 del programador (220/220 y 160/160) y las tres pruebas de tiempo ahora van en `chromium-perf`; también verdes en la suite completa |
+| F4 abre/cierra tras reabrir | OK | `sidebar-f4-reopen.spec.ts` verde en ambas pasadas |
+| Sin relajar pruebas | OK | `git diff 2aa6f30 -- apps/lector-pdf` (líneas añadidas): sin skip/fixme/only/retries/timeout |
+| lint / typecheck / coverage | OK | lint exit 0, typecheck OK, líneas 98,61 %, ramas 90,57 % |
+
+No repetí los 20x de repeat-each por duración (~25 min); me apoyo en la ronda 2 del programador y las dos pasadas completas, ambas verdes.
+Tests añadidos: ninguno. Rendimiento: pruebas `@perf` verdes en ambas pasadas.
