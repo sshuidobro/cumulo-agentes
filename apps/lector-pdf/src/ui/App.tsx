@@ -13,6 +13,7 @@ import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
 import { PrintContainer } from './print/PrintContainer';
 import { PrintProgress } from './print/PrintProgress';
+import { ExportProgress } from './export/ExportProgress';
 import './print/print.css';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
@@ -33,6 +34,7 @@ import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/
 import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen } from '../state/fullscreen-actions';
 import { openProperties, usePropertiesDialog } from '../state/properties-store';
 import { openPrintDialog, usePrintDialog } from '../state/print-actions';
+import { useExportDialog } from '../state/export-actions';
 import { useViewer } from '../state/viewer-store';
 import { useTabs } from '../state/tabs';
 import { closeActiveTab, stepTab } from '../state/tab-actions';
@@ -43,6 +45,7 @@ import styles from './App.module.css';
 // Diálogos diferidos (ADR-0027): su código no entra en el arranque y se carga al abrirlos.
 const PropertiesDialog = lazy(() => import('./properties/PropertiesDialog').then((m) => ({ default: m.PropertiesDialog })));
 const PrintDialog = lazy(() => import('./print/PrintDialog').then((m) => ({ default: m.PrintDialog })));
+const ExportDialog = lazy(() => import('./export/ExportDialog').then((m) => ({ default: m.ExportDialog })));
 // Barra de comentarios y panel lateral (PDF-140): no se muestran al arrancar, se cargan al abrirlos.
 const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) => ({ default: m.CommentToolbar })));
 const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m.Sidebar })));
@@ -122,6 +125,7 @@ export function App() {
   const sidebar = useViewer((s) => s.sidebar);
   const propertiesOpen = usePropertiesDialog((s) => s.open);
   const printOpen = usePrintDialog((s) => s.open);
+  const exportOpen = useExportDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
 
   // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
@@ -190,7 +194,13 @@ export function App() {
           <PrintDialog />
         </Suspense>
       )}
+      {exportOpen && (
+        <Suspense fallback={null}>
+          <ExportDialog />
+        </Suspense>
+      )}
       <PrintProgress />
+      <ExportProgress />
       <PrintContainer />
       {platform.kind === 'web' && (
         <>
