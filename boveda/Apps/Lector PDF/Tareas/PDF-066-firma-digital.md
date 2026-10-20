@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-066
 titulo: Firma digital - abrir certificado PKCS#12 y firmar PAdES B-B por incremento (núcleo)
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-043, PDF-052, PDF-118]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -91,3 +91,8 @@ export async function buildSignatureUpdate(input: SignInput): Promise<Result<{ r
   - Decisiones menores que no estaban en la ficha: mensaje de `sign-too-big` («La firma no cabe en el espacio reservado para ella.»); clave RSA sin certificado que le corresponda → `p12-invalid` (no se puede generar con openssl, rama sin test); la fecha de la apariencia se muestra en hora local, `/M` va en UTC; `/Fields` y `/AcroForm` indirectos y `/Annots` indirecto/directo cubiertos con un PDF generado en el test.
   - La lista de comprobación en Adobe Acrobat es manual (no ejecutada), para el Manual.
   - El F = 132 del widget, el `/Name` (CN) y el resto de atributos siguen la ficha tal cual.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- `pnpm typecheck` OK; eslint sobre los ficheros de la ficha 0 errores (no existe `dist-pdf115`). `pnpm coverage`: 3621 pasan, 1 falla `tests/unit/organize/split.test.ts` (5000 páginas, sensible a carga; ajeno, pasa en solitario junto con los 126 tests de firma). Cobertura de `signature/digital/`: 95,2 % sentencias, 99,2 % líneas (ramas 85,5 %).
+- Revisado: `raw` del DeltaWriter, `/ByteRange` y hueco, resumen por bloques, `/AcroForm`/`/Fields`/`/Annots` directos e indirectos, `sign-encrypted`/`sign-too-big`, regla de lint de `node-forge`. Sin problemas bloqueantes.
+- (opcional) `sign-pdf.ts`: `now` inválido llega como `save-unreadable` en vez de un error propio; la rama de ramas de `cms.ts` 74-90 queda sin cubrir.
