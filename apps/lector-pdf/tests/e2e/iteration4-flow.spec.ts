@@ -215,7 +215,9 @@ test('iteración 4: cifrado en doble página con resaltado y nota, zoom en el ot
   // Vuelta al cifrado: el resaltado y la nota siguen ahí, sin guardar.
   await tabNamed(page, CIPHER).click();
   await expect(tabNamed(page, CIPHER)).toHaveAttribute('aria-selected', 'true');
-  await expectViewerReady(page);
+  // El foco se queda en la barra de pestañas al cambiar con el ratón (PDF-095): no se exige el foco del visor.
+  await expect(page.getByTestId('viewer')).toBeVisible();
+  await expect(page.locator('[data-page-index]').first()).toBeVisible();
   await waitPageRendered(page, 2);
   await expect(zoneOf(page, 2, 'Resaltado de Usuario')).toHaveCount(1);
   await expect(zoneOf(page, 2, 'Nota de Usuario')).toHaveCount(1);
@@ -225,6 +227,8 @@ test('iteración 4: cifrado en doble página con resaltado y nota, zoom en el ot
   await page.getByTestId('viewer').focus();
   await page.keyboard.press('Control+s');
   await expect.poll(() => page.title()).not.toContain('•');
+  // El título cambia antes de que acabe el guardado: el botón «Guardar» se deshabilita hasta terminar.
+  await expect(page.getByRole('button', { name: msg.save, exact: true })).toBeEnabled();
   const saved = testInfo.outputPath(`guardado-${CIPHER}`);
   writeFileSync(saved, await opfsBytes(page, CIPHER));
   const check = qpdfCheck(saved, USER);
@@ -236,9 +240,11 @@ test('iteración 4: cifrado en doble página con resaltado y nota, zoom en el ot
   expect(subtypes.filter((s) => s === 'Highlight')).toHaveLength(1);
   expect(subtypes.filter((s) => s === 'Text')).toHaveLength(1);
 
-  // Cerrar las dos pestañas (Ctrl+W cierra la activa).
+  // Cerrar las dos pestañas (Ctrl+W cierra la activa). Ctrl+W se ignora mientras hay un guardado en curso.
   await page.keyboard.press('Control+w');
-  await expect(tabNamed(page, PLAIN)).toHaveAttribute('aria-selected', 'true');
+  // Con una sola pestaña abierta la barra de pestañas se oculta (TabBar): queda el documento en claro.
+  await expect(page.getByRole('tablist')).toHaveCount(0);
+  await expect(page).toHaveTitle(new RegExp(PLAIN.replace('.', '\\.')));
   await page.keyboard.press('Control+w');
   await expect(page.getByRole('tab')).toHaveCount(0);
   await expect(page.getByRole('region', RECENT_REGION)).toBeVisible();

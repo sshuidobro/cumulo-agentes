@@ -41,7 +41,7 @@ test('basic-5: arrastrar la página 1 detrás de la 3 y guardar; luego girar la 
   await result.close();
 });
 
-test('outline.pdf: mover el Capítulo 2 (página 11) al principio; el índice del resultado lo lleva a la página 1', async ({ page }, testInfo) => {
+test('outline.pdf: mover el capitulo 2 (pagina 11) al principio; el indice del resultado lo lleva a la pagina 1', async ({ page }, testInfo) => {
   await openWithDownloads(page, fixture('outline.pdf'));
   const grid = await openOrganize(page);
   await expect(grid).toBeFocused();
@@ -65,7 +65,7 @@ test('outline.pdf: mover el Capítulo 2 (página 11) al principio; el índice de
   await waitPageVisible(reopened, 2, 30);
 });
 
-test('links.pdf: mover la página 3 al final; el enlace «(a) Destino explícito a la página 3» lleva a la última', async ({ page }, testInfo) => {
+test('links.pdf: mover la pagina 3 al final; el enlace (a) Destino explicito lleva a la ultima pagina', async ({ page }, testInfo) => {
   await openWithDownloads(page, fixture('links.pdf'));
   const grid = await openOrganize(page);
   await expect(grid).toBeFocused();

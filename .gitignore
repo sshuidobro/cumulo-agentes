@@ -15,3 +15,4 @@ apps/lector-pdf/dist-firma/
 apps/lector-pdf/dist-pdf090/
 apps/lector-pdf/dist-pdf*/
 .claude/worktrees/
+apps/lector-pdf/dist-*/
