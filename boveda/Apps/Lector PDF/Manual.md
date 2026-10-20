@@ -84,6 +84,16 @@ En macOS, Ctrl es ⌘.
 | Borrar la anotación seleccionada | Supr |
 | Mover la anotación seleccionada | Flechas |
 | Colocar una nota con la herramienta «Nota» | Intro |
+| Leer esta página en voz alta · Leer hasta el final | Ctrl+Mayús+V · Ctrl+Mayús+B |
+| Pausar o reanudar la lectura · Parar | Ctrl+Mayús+C · Ctrl+Mayús+E |
+
+## Leer en voz alta
+- Menú «Vista»: «Leer esta página en voz alta» y «Leer hasta el final». Con los atajos de la tabla hace lo mismo.
+- Aparece una barra abajo, en el centro del visor: pausar o reanudar, parar, velocidad (0,5× a 2×) y voz. Esc con la barra enfocada la cierra. Espacio pausa o reanuda cuando la barra tiene el foco.
+- La frase que se lee se resalta en la página y la página se sigue sola al pasar a la siguiente.
+- Solo usa voces instaladas en el equipo. Si no hay ninguna, el menú lo indica y la función queda deshabilitada: el texto no sale del ordenador.
+- La velocidad y la voz elegidas se recuerdan.
+- Chrome y Edge pueden reservar Ctrl+Mayús+C (herramientas de desarrollo) y Ctrl+Mayús+B (marcadores). En ese caso usa los botones de la barra.
 
 ## Limitaciones actuales
 - PDFs con contraseña: iteración 4. Formularios: se ven, pero no se rellenan (iteración 3). Imprimir: iteración 3.
@@ -101,3 +111,12 @@ Para confirmar que lo guardado se ve igual en Adobe (pendiente de hacer por el u
 5. Responder a una nota en Adobe y guardar (Ctrl+S) sin mensajes de error.
 6. Reabrir el fichero en el Lector PDF: las anotaciones siguen ahí; en `estandar-annotated.pdf` también las que ya traía el fichero y en `estandar-form.pdf` el formulario.
 7. Con el Lector PDF, en una copia de `estandar-basic-5.pdf`: dibujar un polígono y colocar los sellos «APROBADO» y «NO APROBADO», guardar (Ctrl+S) y abrir el fichero con Adobe. El panel de comentarios de Adobe debe listar el sello como «Sello» y el polígono como «Polígono», y el sello «APROBADO» debe verse con su texto.
+
+## Comprobación manual de la lectura en voz alta
+Con una voz española real de Windows o macOS, sin conexión a internet (pendiente de hacer por el usuario; no bloquea la ficha PDF-114):
+1. Abrir `basic-5.pdf` y pulsar Ctrl+Mayús+V: la voz lee la página 1 con frases completas y la frase en curso aparece subrayada.
+2. Pausar con Ctrl+Mayús+C o el botón de la barra: no se oye nada más. Reanudar: repite la frase pausada y sigue.
+3. Desde la página 4, «Leer hasta el final»: la lectura pasa a la página 5 y el visor la muestra.
+4. Cambiar a 1,5× y elegir otra voz española en la barra; cerrar y reabrir la app: la velocidad y la voz se recuerdan.
+5. Parar (Ctrl+Mayús+E): la barra desaparece y no queda ningún subrayado.
+6. Comprobar que las voces en red (p. ej. «Google español») no aparecen en el selector.

@@ -51,6 +51,8 @@ export interface MenuButtonProps {
   readonly disabled?: boolean;
   /** Orden de tabulación del botón (barras con foco itinerante). */
   readonly tabIndex?: number;
+  /** Se llama al abrir el menú (clic o teclado), antes de mostrarlo. */
+  readonly onOpen?: () => void;
   /** Referencia al botón (React 19: `ref` es una prop normal). */
   readonly ref?: Ref<HTMLButtonElement>;
 }
@@ -73,7 +75,7 @@ function itemsOf(menu: HTMLElement | null): HTMLElement[] {
  * primer elemento; ↑/↓ (con Inicio y Fin) mueven el foco; Intro o Espacio activan; Esc y Tab cierran y devuelven
  * el foco al botón; un clic fuera cierra sin robar el foco.
  */
-export function MenuButton({ label, entries, children, disabled, tabIndex, ref }: MenuButtonProps) {
+export function MenuButton({ label, entries, children, disabled, tabIndex, onOpen, ref }: MenuButtonProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -152,6 +154,7 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, ref }
   const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
     if (open || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return;
     event.preventDefault();
+    onOpen?.();
     setOpen(true);
   };
 
@@ -168,6 +171,7 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, ref }
         disabled={disabled}
         tabIndex={tabIndex}
         onClick={() => {
+          if (!open) onOpen?.();
           setOpen((value) => !value);
         }}
         onKeyDown={onButtonKeyDown}
