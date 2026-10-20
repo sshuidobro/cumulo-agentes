@@ -72,11 +72,37 @@ describe('visibleCells', () => {
     expect(visibleCells(m, 200, 100, 0)).toEqual({ first: 0, last: 7 });
   });
 
-  it('nunca monta más de 12 filas de celdas', () => {
-    const tall = gridMetrics(100, 1000, 120); // 1 columna
-    const range = visibleCells(tall, 0, 100_000, 2);
+  it('con un viewport de ~4 filas y margen grande, no monta más de 12 filas de celdas', () => {
+    const tall = gridMetrics(100, 1000, 120); // 1 columna, filas de 220 px
+    const range = visibleCells(tall, 0, 1000, 20); // visibles 0..4; margen de 20 recortado
     expect(range.first).toBe(0);
     expect(range.last).toBe(GRID_MAX_MOUNTED_ROWS - 1);
+  });
+
+  it('el tope recorta el margen y nunca una fila visible (ventana de ~10 filas, margen 4)', () => {
+    // 1 columna, filas de 220 px; ventana de 2000 px en scroll 0 → filas 0..9 visibles (la 9 ocupa 1980-2200).
+    const oneColumn = gridMetrics(100, 1000, 120);
+    const range = visibleCells(oneColumn, 0, 2000, 4);
+    // Visibles 0..9 (10 filas) + margen por abajo recortado a 2 filas → 0..11.
+    expect(range).toEqual({ first: 0, last: 11 });
+  });
+
+  it('monta todas las filas visibles aunque el viewport muestre más filas que el tope', () => {
+    const oneColumn = gridMetrics(100, 1000, 120);
+    // 20 filas visibles (0..19): no se puede bajar del viewport, así que se montan todas.
+    const range = visibleCells(oneColumn, 0, 20 * oneColumn.rowHeight, 2);
+    expect(range).toEqual({ first: 0, last: 19 });
+  });
+
+  it('con el scroll al final el tope recorta el margen de arriba y deja visibles las últimas filas', () => {
+    const oneColumn = gridMetrics(100, 30, 120); // 30 filas
+    const top = 25 * oneColumn.rowHeight; // fila 25 es la primera visible
+    const range = visibleCells(oneColumn, top, oneColumn.rowHeight * 2, 4); // visibles 25..26
+    // Margen: 21..29 (9 filas) ≤ 12, sin recortar.
+    expect(range).toEqual({ first: 21, last: 29 });
+    const longer = visibleCells(oneColumn, 10 * oneColumn.rowHeight, oneColumn.rowHeight * 3, 10);
+    // Visibles 10..12; margen 0..22 (23 filas) se recorta a 12: 10 filas de margen arriba, 1 abajo → 10..21.
+    expect(longer).toEqual({ first: 10, last: 21 });
   });
 
   it('sin filas no devuelve celdas', () => {

@@ -232,3 +232,13 @@
   background: var(--color-accent);
   transition: width 0.15s linear;
 }
+
+/* Título de la vista: oculto a la vista pero leído por los lectores de pantalla (encabezado de nivel 1). */
+.heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
