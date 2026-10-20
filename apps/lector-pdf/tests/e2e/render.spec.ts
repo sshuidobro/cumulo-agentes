@@ -67,7 +67,7 @@ function seeded(seed: number): () => number {
   };
 }
 
-test('basic-5: la página 1 se dibuja en menos de 1 s desde que se elige el fichero', async ({ page }) => {
+test('basic-5: la página 1 se dibuja en menos de 1 s desde que se elige el fichero', { tag: '@perf' }, async ({ page }) => {
   const started = await openFixture(page, 'basic-5.pdf');
   await expect(page.locator(`${pageSelector(0)}[data-rendered="true"]`)).toBeVisible();
   const elapsed = Date.now() - started;
@@ -158,8 +158,12 @@ test('images-200: al recorrer las 20 primeras páginas, las visibles se dibujan 
 test('annotated: la página 1 muestra el resaltado amarillo del fichero', async ({ page }) => {
   await openFixture(page, 'annotated.pdf');
   await expect(page.locator(`${pageSelector(0)}[data-rendered="true"]`)).toBeVisible();
+  // `data-rendered` se marca aunque el lienzo aún mida 0 px (la página se dibujó antes de conocer sus medidas);
+  // se espera a que se redibuje con tamaño antes de leer sus píxeles.
+  const canvas = page.locator(`${pageSelector(0)} canvas`);
+  await expect.poll(() => canvas.evaluate((el) => (el as HTMLCanvasElement).width)).toBeGreaterThan(0);
 
-  const yellow = await page.locator(`${pageSelector(0)} canvas`).evaluate((canvas) => {
+  const yellow = await canvas.evaluate((canvas) => {
     const cv = canvas as HTMLCanvasElement;
     const ctx = cv.getContext('2d');
     if (ctx === null) return -1;

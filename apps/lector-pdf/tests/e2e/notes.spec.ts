@@ -96,6 +96,12 @@ test('la ventana es un diálogo no modal con nombres accesibles; Tab recorre com
   await expect(dialog(page)).not.toHaveAttribute('aria-modal', 'true');
   await expect(comment(page)).toBeFocused();
 
+  // Entre el comentario y «Borrar» van el campo de respuesta y el menú «Estado» (PDF-109); «Responder» está
+  // desactivado sin texto y no recibe el foco.
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('textbox', { name: 'Escribe una respuesta' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Estado', exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Borrar', exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
@@ -119,7 +125,9 @@ test('Esc cierra la ventana y devuelve el foco a la zona activa de la nota', asy
 test('Ctrl+Z con el foco fuera del comentario deja la nota con el texto vacío', async ({ page }) => {
   await openFixture(page, 'basic-5.pdf');
   await createNote(page);
-  await page.keyboard.type('hola');
+  // Una sola escritura («fill») es una sola entrada de deshacer; teclear letra a letra depende del tiempo entre
+  // teclas (la agrupación de deshacer es por ventana de tiempo) y con la CPU ocupada se partía en dos.
+  await comment(page).fill('hola');
   await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
   await expect(dialog(page)).toHaveCount(0);
 

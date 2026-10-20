@@ -5,7 +5,7 @@
  */
 import { join } from 'node:path';
 import { expect, type Download, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { fixture, pageFrame, waitPageRendered } from './helpers.ts';
+import { fixture, pageFrame, showSidebarTab, waitPageRendered } from './helpers.ts';
 import { expectViewerReady } from './viewer-ready.ts';
 
 /** Autor por defecto de las anotaciones creadas en la app. */
@@ -122,9 +122,7 @@ export function commentRows(page: Page): Locator {
 
 /** Abre el panel lateral (F4 si hace falta) en la pestaña «Comentarios». */
 export async function openCommentsPanel(page: Page): Promise<void> {
-  const tab = page.getByRole('tab', { name: 'Comentarios' });
-  if (!(await tab.isVisible())) await page.keyboard.press('F4');
-  await tab.click();
+  await showSidebarTab(page, 'Comentarios');
   await expect(page.getByRole('listbox', { name: 'Comentarios del documento' })).toBeVisible();
 }
 

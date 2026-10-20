@@ -6,7 +6,7 @@ const PDFJS_CHUNK = '**/assets/pdf-*.js';
 const CHUNK_DELAY_MS = 400;
 const OPEN_BUDGET_MS = 1_000 + CHUNK_DELAY_MS;
 
-test('abrir basic-5 con el chunk de pdf.js aún en vuelo (retraso de red de 400 ms) muestra la página 1 sin errores', async ({ page }, testInfo) => {
+test('abrir basic-5 con el chunk de pdf.js aún en vuelo (retraso de red de 400 ms) muestra la página 1 sin errores', { tag: '@perf' }, async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   let chunkRequests = 0;

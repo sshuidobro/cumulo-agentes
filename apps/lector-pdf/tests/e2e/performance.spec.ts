@@ -69,7 +69,7 @@ async function assertBoundedDom(page: Page, context: string): Promise<{ canvases
   return { canvases, frames };
 }
 
-test('abrir un PDF de ≤ 20 páginas (basic-5) muestra la página 1 en menos de 1 s', async ({ page }, testInfo) => {
+test('abrir un PDF de ≤ 20 páginas (basic-5) muestra la página 1 en menos de 1 s', { tag: '@perf' }, async ({ page }, testInfo) => {
   const elapsed = await timeToFirstPage(page, 'basic-5.pdf');
   recordMeasure(testInfo, `abrir basic-5 (5 páginas) hasta ver la página 1: ${elapsed.toFixed(0)} ms`);
   expect(elapsed).toBeLessThan(OPEN_SMALL_MS);
