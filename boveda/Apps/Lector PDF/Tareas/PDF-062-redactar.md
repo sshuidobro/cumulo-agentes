@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-062
 titulo: Redactar - analizador e intérprete de contenido con cajas de glifos (núcleo)
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-052, PDF-059]
 intentos: 0
 skills: [formatos-ofimatica, stack-typescript-react, pruebas-calidad]
 creado: 2026-10-17
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, seguridad, edicion, nucleo]
 ---
 
@@ -97,3 +97,9 @@ export function intersects(q: Quad, rect: readonly [number, number, number, numb
 
 ### [líder] detalle — 2026-10-19
 - Ficha detallada con [[ADR-0039-redaccion-real]]. Depende también de PDF-059 (`page-content.ts`). La redacción se parte en intérprete (aquí), aplicar ([[PDF-135-redactar-aplicar]]), imágenes parciales ([[PDF-136-redactar-imagenes]]) e interfaz ([[PDF-137-redactar-interfaz]]). El criterio original (`pdftotext` sin el texto) pasa a PDF-135 y PDF-137.
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/content/content-parser.ts`, `font-metrics.ts`, `interpreter.ts`, `index.ts` (nuevos); `apps/lector-pdf/tests/unit/content/helpers.ts`, `content-parser.test.ts`, `font-metrics.test.ts`, `interpreter.test.ts` (nuevos); esta ficha.
+- Qué he hecho: parser y serializador de contenido (imágenes en línea con `/L` o búsqueda de `EI`), métricas de fuente (simples con `/Widths`, Helvetica, Courier; Type0 Identity-H con `/W` y `/DW`) e intérprete (`q`/`Q`, `cm`, `BT`/`ET`, operadores de texto, `Do` de imagen y de formulario, `BI`) con cajas de glifo, imagen y formulario. Type3, CMap distinta de Identity-H y `Tf` sin fuente quedan en `unmeasured`. Además exporto `pageContentBytes` (para los tests de round-trip) y un `index.ts` del módulo.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (269 ficheros, 3502 tests en verde); cobertura de `src/core/content/` 99,72 % de líneas. Incidencias del entorno: una ejecución de cobertura chocó con otro proceso de vitest que usaba el mismo directorio de informes (pid 23387, ajeno a esta ficha), así que lancé la cobertura con `--coverage.reportsDirectory` propio. Un test de `page-tree.test.ts` (pages-5000) dio timeout de 5 s bajo esa carga, pasó al repetirlo aislado y en la ejecución completa. E2E no se ha ejecutado: la ficha no pide E2E.
+- Dudas o cosas que no he podido hacer: (1) un código WinAnsi sin entrada en la tabla de Helvetica (p. ej. 0x81) mide 1000: decisión mía por «tapar de más», la ficha no lo fija. (2) Si `/L` no cae sobre un `EI` delimitado, se recae en la búsqueda de `EI`. (3) Un byte suelto al final de una cadena de 2 bytes se mide como código de 1 byte. (4) Operandos de tipo incorrecto en operadores de texto o de gráficos lanzan `PdfSyntaxError` (la página se rechaza). (5) No he validado pdf.js frente a Tz, Ts y TJ en otros fixtures distintos de los construidos en el test.
