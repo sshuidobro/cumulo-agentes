@@ -275,7 +275,8 @@ Detalladas el 2026-10-19 ([[ADR-0028-reescribir-pdfs]] a [[ADR-0040-firma-digita
 | [[PDF-110-xfdf-nucleo]] | XFDF - parser XML seguro, exportar e importar comentarios (núcleo) | PDF-058 | pendiente |
 | [[PDF-111-xfdf-interfaz]] | Exportar e importar comentarios en XFDF desde el panel | PDF-110, PDF-116, COM-018, PDF-108 | pendiente |
 | [[PDF-059-anadir-texto-imagen]] | Añadir texto e imagen al contenido de la página - núcleo (aplanar) | PDF-052, PDF-058, PDF-110 | pendiente |
-| [[PDF-130-anadir-texto-imagen-interfaz]] | Añadir texto e imagen - barra «Editar» y herramientas | PDF-059, PDF-129, PDF-115, PDF-116 | pendiente |
+| [[PDF-149-texto-libre-sin-borde]] | Texto libre sin borde (`borderless` en el modelo) | — | pendiente |
+| [[PDF-130-anadir-texto-imagen-interfaz]] | Añadir texto e imagen - barra «Editar» y herramientas | PDF-059, PDF-129, PDF-115, PDF-116, PDF-149 | pendiente |
 | [[PDF-060-proteger]] | Proteger - crear el cifrado AES-256 (R6) y los permisos (núcleo) | PDF-052, PDF-047 | pendiente |
 | [[PDF-131-reescribir-documento]] | Reescribir el documento completo (con o sin cifrado nuevo) | PDF-060, PDF-121 | pendiente |
 | [[PDF-132-proteger-interfaz]] | Proteger con contraseña y quitar protección - interfaz | PDF-131, PDF-130 | pendiente |

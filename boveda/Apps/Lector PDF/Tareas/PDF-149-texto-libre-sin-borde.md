@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-149
 titulo: Texto libre sin borde (campo borderless en el modelo)
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, formatos-ofimatica]
