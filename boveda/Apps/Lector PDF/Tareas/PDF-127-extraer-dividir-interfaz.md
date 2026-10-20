@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-127
 titulo: Extraer y dividir - diálogos, progreso y guardado
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-054, PDF-126, COM-018]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]

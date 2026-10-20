@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-126
 titulo: Organizar - arrastrar y soltar, e2e y rendimiento
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-125]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -57,3 +57,13 @@ Reordenar arrastrando miniaturas (una o varias seleccionadas) con indicador de i
 - Dudas o cosas que no he podido hacer: (a) Ctrl+W no siempre cierra pestaña justo después de Ctrl+S si el guardado sigue en curso: el test ahora espera al botón «Guardar» habilitado, pero conviene que el tester mire si es un fallo de UX (el atajo se ignora sin aviso). (b) Los ficheros `dist-firma/` y `dist-qa049/` siguen committeados en git; no los he tocado. (c) No he revisado la cobertura por módulo de `organize/grid.ts` más allá de que el test unitario de `insertionIndex` pasa.
 
 - Revisor: APROBADO (coordinador actualiza estado a en-test). Obs.: dist-* trackeados en git; Ctrl+W ignorado durante guardado (valorar UX).
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unit insertionIndex, UI arrastre/Escape/deshacer | OK | `pnpm coverage` exit 0, lineas 98,33 % |
+| e2e organize + @perf con puerta de reposo | OK | `pnpm --filter lector-pdf e2e`: 322 passed (10,1 min) |
+| lint, typecheck | OK | exit 0 |
+
+UX Ctrl+W durante guardado: `tabsLocked()` (`src/state/tab-actions.ts`) lo ignora en silencio. Es deliberado (PDF-095) y de ventana corta, no bloquea; mejora opcional: aviso breve «Guardando...» o encolar el cierre. No es motivo de rechazo.
+Tests añadidos: ninguno. Rendimiento: @perf sin long tasks > 100 ms, guardado < 3 s (pasan).
