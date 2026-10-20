@@ -1,0 +1,2 @@
+var e=new Map,t=new Set;function n(){for(let e of t)e()}function r(t,r){e.set(t,r),n()}function i(t){e.delete(t)&&n()}function a(t){return e.get(t)}function o(){return e}function s(e){return t.add(e),()=>{t.delete(e)}}export{i as a,s as i,a as n,r,o as t};
+//# sourceMappingURL=text-layer-registry-BPSOQYTS.js.map

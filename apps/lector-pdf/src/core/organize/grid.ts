@@ -116,3 +116,23 @@ export function fitBox(cell: number, width: number, height: number): { readonly 
   const scale = Math.min(cell / width, (cell * GRID_MAX_ASPECT) / height);
   return { width: width * scale, height: height * scale };
 }
+
+/**
+ * Hueco de inserción (0..`count`) para un punto `(x, y)` en px CSS del contenido de la cuadrícula, medido desde la
+ * izquierda de la primera columna y desde arriba de la primera fila. Mitad izquierda de una celda → antes de ella;
+ * mitad derecha → después. Por debajo de la última fila, o en el hueco vacío de una fila incompleta → `count`.
+ * Coordenadas no finitas → `count`.
+ */
+export function insertionIndex(m: GridMetrics, count: number, x: number, y: number): number {
+  if (count <= 0) return 0;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return count;
+  const columns = Math.max(1, m.columns);
+  const pitch = m.cell + m.gap;
+  const row = Math.floor(Math.max(y, 0) / m.rowHeight);
+  if (row >= Math.ceil(count / columns)) return count;
+  const col = Math.min(columns - 1, Math.max(0, Math.floor(x / pitch)));
+  const index = row * columns + col;
+  if (index >= count) return count;
+  const local = x - col * pitch;
+  return local < m.cell / 2 ? index : Math.min(index + 1, count);
+}

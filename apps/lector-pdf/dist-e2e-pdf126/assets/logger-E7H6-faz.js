@@ -1,0 +1,2 @@
+var e={debug:0,info:1,warn:2,error:3},t={sink:(e,t,n,r)=>{let i=`[${t}] ${n}`,a=globalThis.console[e];r===void 0?a(i):a(i,r)},minLevel:`warn`};function n(n){let r=(r,i,a)=>{let{sink:o,minLevel:s}=t;o===null||e[r]<e[s]||(a===void 0?o(r,n,i):o(r,n,i,a))};return{debug:(e,t)=>r(`debug`,e,t),info:(e,t)=>r(`info`,e,t),warn:(e,t)=>r(`warn`,e,t),error:(e,t)=>r(`error`,e,t)}}export{n as t};
+//# sourceMappingURL=logger-E7H6-faz.js.map

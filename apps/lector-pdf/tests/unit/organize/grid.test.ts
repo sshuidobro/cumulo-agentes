@@ -5,6 +5,7 @@ import {
   GRID_LABEL,
   GRID_MAX_MOUNTED_ROWS,
   gridMetrics,
+  insertionIndex,
   neighbour,
   ORGANIZE_CELL_SIZES,
   visibleCells,
@@ -182,5 +183,54 @@ describe('fitBox', () => {
   it('una medida no válida da una caja vacía', () => {
     expect(fitBox(100, 0, 100)).toEqual({ width: 0, height: 0 });
     expect(fitBox(100, Number.NaN, 100)).toEqual({ width: 0, height: 0 });
+  });
+});
+
+describe('insertionIndex', () => {
+  // 3 columnas de 180 px con hueco de 16 px (paso 196); filas de 310 px. 7 huecos: filas de 3, 3 y 1.
+  const m = gridMetrics(3 * 180 + 2 * GRID_GAP, 7, 180);
+  const ROW = 310;
+  const PITCH = 196;
+
+  it('calcula las columnas y filas de la cuadrícula de prueba', () => {
+    expect(m.columns).toBe(3);
+    expect(m.rowHeight).toBe(ROW);
+  });
+
+  it('mitad izquierda de una celda inserta antes; mitad derecha, después', () => {
+    expect(insertionIndex(m, 7, 10, 10)).toBe(0);
+    expect(insertionIndex(m, 7, 89, 10)).toBe(0);
+    expect(insertionIndex(m, 7, 91, 10)).toBe(1);
+    expect(insertionIndex(m, 7, 170, 10)).toBe(1);
+    expect(insertionIndex(m, 7, PITCH + 10, 10)).toBe(1);
+    expect(insertionIndex(m, 7, 2 * PITCH + 170, 10)).toBe(3);
+  });
+
+  it('en la siguiente fila cuenta desde su primera celda', () => {
+    expect(insertionIndex(m, 7, 10, ROW + 10)).toBe(3);
+    expect(insertionIndex(m, 7, PITCH + 170, ROW + 10)).toBe(5);
+  });
+
+  it('antes de la primera columna o en el hueco entre celdas se trata como borde', () => {
+    expect(insertionIndex(m, 7, -50, 10)).toBe(0);
+    expect(insertionIndex(m, 7, 180, 10)).toBe(1);
+  });
+
+  it('por debajo de la última fila devuelve count', () => {
+    expect(insertionIndex(m, 7, 10, 3 * ROW)).toBe(7);
+    expect(insertionIndex(m, 7, 10, 10_000)).toBe(7);
+  });
+
+  it('en una fila incompleta, el hueco vacío y el lado derecho de la última celda dan count', () => {
+    expect(insertionIndex(m, 7, 10, 2 * ROW + 10)).toBe(6);
+    expect(insertionIndex(m, 7, 170, 2 * ROW + 10)).toBe(7);
+    expect(insertionIndex(m, 7, PITCH + 10, 2 * ROW + 10)).toBe(7);
+    expect(insertionIndex(m, 7, 2 * PITCH + 10, 2 * ROW + 10)).toBe(7);
+  });
+
+  it('sin huecos o con coordenadas no finitas devuelve count o 0', () => {
+    expect(insertionIndex(m, 0, 10, 10)).toBe(0);
+    expect(insertionIndex(m, 7, Number.NaN, 10)).toBe(7);
+    expect(insertionIndex(m, 7, 10, Number.POSITIVE_INFINITY)).toBe(7);
   });
 });

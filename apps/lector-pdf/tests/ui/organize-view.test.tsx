@@ -297,3 +297,83 @@ describe('Organizar páginas · virtualización (PDF-125)', () => {
     expect(options().length).toBeLessThanOrEqual(12);
   });
 });
+
+/** Celda `i` de la cuadrícula; falla si no existe (error del test). */
+function optionAt(i: number): HTMLElement {
+  const el = options()[i];
+  if (el === undefined) throw new Error(`No hay celda ${String(i)}`);
+  return el;
+}
+
+/** Fuente original de cada hueco del plan, en orden (-1 para huecos que no son originales). */
+function order(): number[] {
+  return useOrganize.getState().plan.slots.map((slot) => (slot.kind === 'original' ? slot.source : -1));
+}
+
+describe('Organizar páginas · arrastrar y soltar (PDF-126)', () => {
+  it('arrastrar dos seleccionadas a la posición 0 deja el orden esperado y un único paso de deshacer', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const list = await openFromMenu(user);
+    // Selecciona las páginas 3 y 4 (índices 2 y 3).
+    await user.keyboard('{ArrowRight}{ArrowRight}{Shift>}{ArrowRight}{/Shift}');
+    expect(screen.getByText('5 páginas · 2 seleccionadas')).toBeInTheDocument();
+
+    await user.pointer([
+      { keys: '[MouseLeft>]', target: optionAt(3), coords: { clientX: 300, clientY: 20 } },
+      { target: list, coords: { clientX: 200, clientY: 30 } },
+      { target: list, coords: { clientX: 5, clientY: 20 } },
+    ]);
+    // Durante el arrastre: imagen con el número de páginas y barra de inserción en el hueco 0.
+    expect(screen.getByText('2 páginas')).toBeInTheDocument();
+    expect(screen.getByTestId('organize-drop-bar')).toBeInTheDocument();
+
+    await user.pointer({ keys: '[/MouseLeft]', target: list, coords: { clientX: 5, clientY: 20 } });
+
+    expect(order()).toEqual([2, 3, 0, 1, 4]);
+    expect(screen.queryByTestId('organize-drop-bar')).toBeNull();
+    expect(screen.getByText(organizeMsg.moved(1))).toBeInTheDocument();
+
+    // Un solo paso de deshacer: tras Ctrl+Z no queda nada más que deshacer.
+    await user.keyboard('{Control>}z{/Control}');
+    expect(order()).toEqual([0, 1, 2, 3, 4]);
+    expect(screen.getByRole('button', { name: organizeMsg.undo })).toBeDisabled();
+  });
+
+  it('Escape durante el arrastre cancela: el plan no cambia y la vista sigue abierta', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const list = await openFromMenu(user);
+    await user.keyboard('{Home}');
+
+    await user.pointer([
+      { keys: '[MouseLeft>]', target: optionAt(0), coords: { clientX: 10, clientY: 20 } },
+      { target: list, coords: { clientX: 400, clientY: 20 } },
+    ]);
+    expect(screen.getByTestId('organize-drop-bar')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByTestId('organize-drop-bar')).toBeNull();
+    await user.pointer({ keys: '[/MouseLeft]', target: list, coords: { clientX: 400, clientY: 20 } });
+
+    expect(order()).toEqual([0, 1, 2, 3, 4]);
+    expect(useOrganize.getState().open).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: organizeMsg.undo })).toBeDisabled();
+  });
+
+  it('Alt+Inicio y Alt+Fin mueven la selección al principio y al final, y lo anuncian', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await openFromMenu(user);
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+
+    await user.keyboard('{Alt>}{Home}{/Alt}');
+    expect(order()).toEqual([2, 0, 1, 3, 4]);
+    expect(screen.getByText(organizeMsg.moved(1))).toBeInTheDocument();
+
+    await user.keyboard('{Alt>}{End}{/Alt}');
+    expect(order()).toEqual([0, 1, 3, 4, 2]);
+    expect(screen.getByText(organizeMsg.moved(5))).toBeInTheDocument();
+  });
+});

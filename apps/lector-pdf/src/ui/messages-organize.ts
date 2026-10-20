@@ -41,6 +41,13 @@ export const organizeMsg = {
   /** Descripción de los atajos Alt+← y Alt+→ (mover la selección). */
   moveLeft: 'Mover la selección a la izquierda',
   moveRight: 'Mover la selección a la derecha',
+  /** Descripción de los atajos Alt+Inicio y Alt+Fin (mover la selección al principio o al final). */
+  moveFirst: 'Mover la selección al principio',
+  moveLast: 'Mover la selección al final',
+  /** Anuncio (región «aria-live») tras mover: posición nueva de la primera página movida. */
+  moved: (n: number): string => `Páginas movidas a la posición ${String(n)}.`,
+  /** Imagen que acompaña al puntero al arrastrar: número de páginas que se mueven. */
+  dragGhost: (n: number): string => (n === 1 ? '1 página' : `${String(n)} páginas`),
   /** Selector de tamaño de miniatura. */
   thumbSize: 'Tamaño de miniatura',
   /** Texto de una opción del selector de tamaño (ancho en px CSS). */
