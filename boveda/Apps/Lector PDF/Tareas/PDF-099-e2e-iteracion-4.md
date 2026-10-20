@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
