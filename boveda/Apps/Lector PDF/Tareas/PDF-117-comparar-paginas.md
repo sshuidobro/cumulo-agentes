@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-117
 titulo: Comparar - páginas lado a lado con cambios resaltados y superposición
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-112]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -65,3 +65,11 @@ Al seleccionar un cambio, la vista de comparación pinta la página de cada docu
 
 ### [revisor] ronda 2 — 2026-10-20 — APROBADO
 1. Los dos puntos de la ronda 1 están resueltos: el E2E de superposición espera con `expect.poll` al color antes de leer píxeles, y `eslint.config.js` ignora `.claude/worktrees/**`. `pnpm lint` y `pnpm typecheck` salen limpios y los tests de comparar (57) pasan. El E2E `@perf` y el `e2e` completo quedan para el tester, con la máquina en reposo.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E resaltados lado a lado, superposición, @perf (20 x "Cambio siguiente", max 3 canvas, sin long tasks > 100 ms) | OK | `pnpm --filter lector-pdf e2e`: 310 passed (10,5 min), exit 0, incluye `chromium-perf` con la máquina en reposo |
+| UI cancela render anterior, accesibilidad | OK | `pnpm coverage` exit 0 (Lines 97,64 %, Branches 89,08 %) |
+| lint, typecheck, coverage, e2e | OK | los cuatro con código 0 |
+Tests añadidos: ninguno. Rendimiento: @perf de comparar pasa dentro de presupuesto.
