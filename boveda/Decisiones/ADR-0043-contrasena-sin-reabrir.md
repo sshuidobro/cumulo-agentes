@@ -50,3 +50,14 @@ Medida y presupuesto de PDF-099 (a) **sin cambios** (≤ 1,5 ×, restando el tie
 
 ## Nota 2026-10-20 · cómo se mide (a)
 - Las esperas de la medida (a) usan `page.waitForFunction(..., { polling: 'raf' })`, no `expect().toBeVisible()`: los reintentos de 100/250/500/1000 ms de este último cuantizan el tiempo y producían una distribución bimodal falsa (~430/~925 ms) ([[PDF-148-contrasena-sin-reabrir]], paso 6). Umbral ≤ 1,5 × sin cambios.
+
+## Revisión 2 · 2026-10-20 · presupuesto absoluto para (a)
+Hecho ([[PDF-148-contrasena-sin-reabrir|PDF-148]], ronda 6, medida con `raf`): sin cifrar, mediana de unos 310 ms. Cifrado, unos 560 ms. Sobrecoste estable de unos 250 ms: unos 145 ms hasta el diálogo (sondeo: xref y derivación de clave R6 con contraseña vacía) y unos 90 ms tras «Abrir» (pdf.js deriva la clave y descifra). Razón 1,76-1,86. El doble análisis (unos 930 ms) ya no está.
+
+| Opción | Veredicto |
+|---|---|
+| Optimizar el sondeo (leer solo tráiler y /Encrypt, sin la xref entera) | Diferida: ahorra 100 ms como mucho, no llega a 1,5 × y añade un segundo parser del tráiler. |
+| Mantener ≤ 1,5 × | Rechazada: el coste que queda es fijo (la derivación R6 es lenta a propósito) y no crece con el documento. Con una base de unos 310 ms, la razón castiga una base rápida, no un fallo. |
+| **Presupuesto absoluto** | **Elegida:** p1 pintada del cifrado ≤ la del sin cifrar **+ 350 ms** (medianas de 5, sin el tiempo del usuario). Detecta la regresión de reabrir (≥ 400 ms) y deja margen al ruido. |
+
+Sustituye al umbral «≤ 1,5 ×» de la Decisión y de las notas anteriores. El criterio «hasta diálogo < 100 ms» de PDF-148 se anula: se anota, pero no es presupuesto.
