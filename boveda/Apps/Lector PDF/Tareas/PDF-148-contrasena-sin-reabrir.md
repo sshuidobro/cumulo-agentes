@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: en-curso
+estado: cambios-pedidos
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -234,4 +234,19 @@ Es el mismo patrón que `switchAndMeasure` (línea 146). `typePassword` no cambi
 ### [lider] replanificación 3 — 2026-10-20
 - La bimodalidad (~430/~925 ms) cuadra con el escalón de reintento de 500 ms de `expect().toBeVisible()` de Playwright. Es un fallo de la medida, no de la app, y tampoco es ruido aleatorio que se arregle con más repeticiones.
 - Decisión: medir con `waitForFunction` y `polling: 'raf'` en `timeToFirstPage` (paso 6). El umbral sigue en ≤ 1,5 ×. La medida se afina; el umbral no se relaja.
+
+### [programador] ronda 6 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/iteration4-performance.spec.ts` (solo las dos esperas de `timeToFirstPage`: diálogo y p1 pintada con `waitForFunction` y `polling: 'raf'`). Ningún otro cambio.
+- Qué he hecho: paso 6a aplicado tal cual. `waitPageRendered` no se toca (lo usan otras pruebas). Umbral 1,5, `OPEN_RUNS = 5`, calentamiento y resta del tiempo de usuario sin cambios.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: código 0, sin avisos. `pnpm typecheck`: código 0.
+  - `pnpm --filter lector-pdf exec playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3 --reporter=json`: 11 pasados, 1 fallido en las 3 repeticiones (la (a)). Código 1. El JSON trae un texto extra al final; los datos de la (a) son los de sus anotaciones `medida`.
+  - Tabla (a), 5 aperturas por repetición, medianas (ms). Sin cifrar / cifrado / razón. Desglose cifrado: hasta diálogo / tras «Abrir»:
+    - Rep. 1: 349, 314, 314, 297, 282 (mediana 314) / 582, 588, 552, 595, 585 (mediana 585) / **1,86** (fallo). Desglose: 142/439, 139/449, 151/401, 149/446, 134/451.
+    - Rep. 2: 309, 305, 295, 302, 316 (mediana 305) / 545, 535, 487, 617, 531 (mediana 535) / **1,76** (fallo). Desglose: 137/408, 144/391, 134/353, 129/488, 145/385.
+    - Rep. 3: 364, 282, 312, 282, 340 (mediana 312) / 569, 562, 509, 544, 626 (mediana 562) / **1,80** (fallo). Desglose: 178/392, 165/397, 149/360, 153/391, 175/450.
+  - Bimodalidad: máximo − mínimo «tras Abrir» = 50, 135 y 90 ms (< 200 ms en las 3). La bimodalidad anterior desaparece.
+  - Hasta diálogo: 129–178 ms (esperado < 100 ms: no se cumple). Tras «Abrir»: 353–488 ms, cerca del sin cifrar.
+  - No he ejecutado la e2e `-g "contraseña|cifrad|iteration4"` ni `pnpm coverage`: el criterio (a) ya falla, así que no tiene sentido completar la batería antes de la decisión del líder.
+- Dudas o cosas que no he podido hacer: el criterio (a) ≤ 1,5 no se cumple en ninguna de las 3 repeticiones, así que no paso la ficha a `en-revision`. No he tocado umbral ni medida. Para el líder: con la medida afinada, el sobrecoste sigue en ~250 ms (~150 antes del diálogo, que incluye el sondeo `needsUserPassword` y el análisis del xref, y ~100 tras «Abrir»). La causa no la he investigado. No he hecho commit porque la ficha no está lista (mismo criterio que rondas 3–5).
 - Ficha a `pendiente`, `intentos: 0`.
