@@ -24,7 +24,7 @@ import { qpdfCheck } from '../support/qpdf.ts';
 /**
  * Presupuestos de rendimiento de la iteración 4 (PDF-099), en el proyecto `chromium-perf` (en serie, con la CPU en
  * reposo; ADR-0016):
- *  (a) abrir un cifrado AES-256 de 1 000 páginas hasta la p1 pintada ≤ 1,5 × el mismo documento sin cifrar;
+ *  (a) abrir un cifrado AES-256 de 1 000 páginas hasta la p1 pintada ≤ el mismo sin cifrar + 350 ms (medianas, sin el tiempo del usuario);
  *  (b) guardar una nota en ese cifrado < 2 s (desde Ctrl+S hasta la descarga);
  *  (c) cambio de pestaña (PDF-095) y cambio a doble página (PDF-050) en el cifrado siguen en presupuesto.
  * Los presupuestos de PDF-022, PDF-039 y PDF-090 los cubren sus propias pruebas `@perf`, que se ejecutan en este mismo
@@ -38,7 +38,8 @@ const PLAIN_B_NAME = 'pages-1000-b.pdf';
 const CIPHER_NAME = 'pages-1000-aes256.pdf';
 const CIPHER_ARGS = ['--encrypt', USER, OWNER, '256', '--'] as const;
 
-const OPEN_RATIO_MAX = 1.5;
+/** Sobrecoste máximo de abrir el cifrado frente al mismo sin cifrar (medianas, sin el tiempo del usuario; ADR-0043). */
+const OPEN_OVERHEAD_MAX_MS = 350;
 const OPEN_RUNS = 5;
 const SAVE_NOTE_BUDGET_MS = 2_000;
 const NOTE_TEXT = 'Nota de rendimiento';
@@ -159,7 +160,7 @@ async function switchAndMeasure(page: Page, next: string): Promise<number> {
 }
 
 test(
-  'cifrado AES-256 de 1 000 páginas: p1 pintada ≤ 1,5 × la del mismo sin cifrar',
+  'cifrado AES-256 de 1 000 páginas: p1 pintada ≤ sin cifrar + 350 ms',
   { tag: '@perf' },
   async ({ page }, testInfo: TestInfo) => {
     await disableFileSystemAccess(page);
@@ -176,14 +177,15 @@ test(
     }
     const encryptedMs = encrypted.map((timing) => timing.ms);
     const ratio = median(encryptedMs) / median(plain);
+    const overhead = median(encryptedMs) - median(plain);
     const breakdown = encrypted
       .map((timing) => `hasta diálogo ${(timing.toDialog ?? 0).toFixed(0)} ms, tras «Abrir» ${(timing.ms - (timing.toDialog ?? 0)).toFixed(0)} ms`)
       .join('; ');
     recordMeasure(
       testInfo,
-      `abrir ${PLAIN_NAME} sin cifrar: ${plain.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(plain).toFixed(0)}); cifrado AES-256: ${encryptedMs.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(encryptedMs).toFixed(0)}); razón de medianas ${ratio.toFixed(2)} (presupuesto ≤ ${String(OPEN_RATIO_MAX)}); desglose cifrado: ${breakdown}`,
+      `abrir ${PLAIN_NAME} sin cifrar: ${plain.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(plain).toFixed(0)}); cifrado AES-256: ${encryptedMs.map((ms) => ms.toFixed(0)).join(', ')} ms (mediana ${median(encryptedMs).toFixed(0)}); sobrecoste ${overhead.toFixed(0)} ms (presupuesto ≤ ${String(OPEN_OVERHEAD_MAX_MS)} ms), razón ${ratio.toFixed(2)}; desglose cifrado: ${breakdown}`,
     );
-    expect(ratio).toBeLessThanOrEqual(OPEN_RATIO_MAX);
+    expect(overhead).toBeLessThanOrEqual(OPEN_OVERHEAD_MAX_MS);
   },
 );
 
