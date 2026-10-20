@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
