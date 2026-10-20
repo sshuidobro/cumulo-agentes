@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-132
 titulo: Proteger con contraseña y quitar protección - interfaz
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-131, PDF-130]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -95,3 +95,17 @@ El presupuesto **no** sube ([[ADR-0041-presupuesto-arranque-600kb]]). Lo hecho e
 - [ ] `pnpm --filter lector-pdf build` y `bundle:check`: arranque ≤ 575 000 B (dato en el Registro).
 - [ ] `grep -n "^import" apps/lector-pdf/src/core/organize/split-names.ts` no devuelve nada.
 - [ ] `tests/unit/organize/split.test.ts` sigue en verde sin cambios.
+
+### [programador] ronda 3 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/organize/split-names.ts` (nuevo), `src/core/organize/split.ts`, `src/state/extract-actions.ts`, `src/ui/organize/ExtractDialog.tsx`, `src/ui/organize/SplitDialog.tsx`; esta ficha.
+- Qué he hecho: paso 6. Movidos `SplitMode`, `SPLIT_SIZES_MB`, `extractFileName`, `splitZipName` y `splitPartNames` a `split-names.ts` (sin imports, código y comentarios iguales). `split.ts` los re-exporta, así que `doc-ops/ops/index.ts` y `split.test.ts` no cambian. Los tres consumidores de la interfaz importan de `split-names`.
+- Comandos ejecutados y resultado:
+  - `grep -n "^import" src/core/organize/split-names.ts`: vacío (OK).
+  - `pnpm lint`: OK. `pnpm typecheck`: OK.
+  - `pnpm exec vitest run tests/unit/organize/split.test.ts`: 23/23 OK, sin cambios en el test.
+  - `pnpm build` (incluye `bundle:check`): **arranque 565 531 B** (máximo 600 000; criterio ≤ 575 000 cumplido).
+  - `pnpm exec playwright test tests/e2e/protect.spec.ts tests/e2e/extract-split.spec.ts tests/e2e/organize*.spec.ts --project=chromium`: 20/20 OK.
+  - `pnpm coverage`: **ROJO** con 1 fallo: `tests/ui/open.test.tsx` › «Cancelar aborta la carga y vuelve al estado vacío» (no encuentra el `heading` «Abre un PDF para empezar»). **Ya falla en `HEAD` sin mis cambios** (comprobado en un worktree limpio). Lo introduce el commit `b0ec064` (PDF-148), fuera de esta ficha; no lo he tocado. Hace falta que el líder lo asigne. El resto de la suite (4034 tests) pasa.
+- Dudas o cosas que no he podido hacer:
+  1. `pnpm coverage` no sale con código 0 por el fallo de `open.test.tsx` previo a esta ficha. Bloquea el último criterio hasta que se arregle en PDF-148 o en una ficha nueva.
+  2. No he ejecutado la suite E2E completa, solo los specs de protección, división/extracción y organizar.

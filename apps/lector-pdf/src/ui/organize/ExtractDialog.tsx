@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
 import type { OpenedFile } from "@suite/platform";
 import { exportBaseName } from "../../core/export/plan";
 import { parsePageRange } from "../../core/print/range";
-import { extractFileName } from "../../core/organize/split";
+import { extractFileName } from "../../core/organize/split-names";
 import { readCipher } from "../../engine";
 import { Dialog } from "../kit/Dialog";
 import { organizeMsg } from "../messages-organize";

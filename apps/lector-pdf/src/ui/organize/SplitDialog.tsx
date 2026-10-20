@@ -1,5 +1,5 @@
 import { useId, type KeyboardEvent } from "react";
-import { SPLIT_SIZES_MB } from "../../core/organize/split";
+import { SPLIT_SIZES_MB } from "../../core/organize/split-names";
 import { Dialog } from "../kit/Dialog";
 import { organizeMsg } from "../messages-organize";
 import {
