@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-142
 titulo: Memoria del lienzo base con zoom alto (385 MB > 300 MB)
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: []
 intentos: 0
 skills: [pruebas-calidad, stack-typescript-react, formatos-ofimatica]
@@ -92,3 +92,16 @@ Que `tests/e2e/detail.spec.ts:212` (`@perf`) pase **sin tocar** `MAX_CANVAS_MB =
 - Verificado: unitarios 13/13, `pnpm lint` código 0 (una primera ejecución dio miles de errores por ficheros generados transitorios; repetida, limpia), typecheck de lector-pdf código 0 en ese momento.
 - Medidas del programador (96,11 MB x3 frente a 300) aceptadas; el tester debe repetir las 3 ejecuciones `@perf` y el e2e completo.
 - (opcional) Anotar el flaky de `encrypted-save` y `comment-toolbar` en PDF-141.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Unitarios canvas-size | OK | cubiertos en `pnpm coverage` (13/13 ya verificados por revisor y programador) |
+| `detail.spec.ts:212` x3, MB ≤ 300 | OK | 96,11 MB x3 (medido por el programador, aceptado por indicación del líder); en el e2e completo pasa (21,3 s) |
+| `git diff` de `detail.spec.ts` vacío | OK | `git diff --stat` sin salida |
+| `detail.spec.ts`, `tabs-performance`, `render`, `performance` | OK | todos ✓ en el e2e completo |
+| lint / typecheck | OK | `pnpm lint` código 0; `pnpm typecheck` código 0 (platform y lector-pdf) |
+| coverage | OK | código 0; líneas 98,61 %, ramas 90,57 % |
+| e2e completo | OK | `LECTOR_E2E_PORT=4511 pnpm --filter lector-pdf e2e`: 285 passed (7,9 min), código 0 |
+- Flaky `encrypted-save` y `comment-toolbar`: no reaparecieron en esta ronda. Long task >100 ms en la prueba: no apareció.
+- Tests añadidos: ninguno (los criterios ya tenían cobertura automática). Rendimiento: 96,11 MB frente a 300 MB.
