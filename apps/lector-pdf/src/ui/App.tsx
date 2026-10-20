@@ -14,7 +14,6 @@ import { SelectionActions } from './viewer/SelectionActions';
 import { PrintContainer } from './print/PrintContainer';
 import { PrintProgress } from './print/PrintProgress';
 import { ExportProgress } from './export/ExportProgress';
-import { DocOpJobProgress } from './kit/DocOpProgress';
 import './print/print.css';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
@@ -39,7 +38,7 @@ import { openPrintDialog, usePrintDialog } from '../state/print-actions';
 import { useCompare } from '../state/compare-actions';
 import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
 import { useExportDialog } from '../state/export-actions';
-import { useExtractDialog } from '../state/extract-actions';
+import { useDocOpJob, useExtractDialog } from '../state/extract-actions';
 import { useCombineDialog } from '../state/combine-actions';
 import { useImagesDialog } from '../state/images-dialog-store';
 import { useOrganize } from '../state/organize-store';
@@ -66,6 +65,7 @@ const ExtractDialog = lazy(() => import('./organize/ExtractDialog').then((m) => 
 const SplitDialog = lazy(() => import('./organize/SplitDialog').then((m) => ({ default: m.SplitDialog })));
 const CombineDialog = lazy(() => import('./organize/CombineDialog').then((m) => ({ default: m.CombineDialog })));
 const ImagesDialog = lazy(() => import('./organize/ImagesDialog').then((m) => ({ default: m.ImagesDialog })));
+const DocOpJobProgress = lazy(() => import('./kit/DocOpProgress').then((m) => ({ default: m.DocOpJobProgress })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -152,6 +152,7 @@ export function App() {
   const printOpen = usePrintDialog((s) => s.open);
   const exportOpen = useExportDialog((s) => s.open);
   const extractDialog = useExtractDialog((s) => s.open);
+  const docOpRunning = useDocOpJob((s) => s.label !== null);
   const combineOpen = useCombineDialog((s) => s.open);
   const imagesOpen = useImagesDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
@@ -264,7 +265,11 @@ export function App() {
           <ImagesDialog />
         </Suspense>
       )}
-      <DocOpJobProgress />
+      {docOpRunning && (
+        <Suspense fallback={null}>
+          <DocOpJobProgress />
+        </Suspense>
+      )}
       <PrintContainer />
       {platform.kind === 'web' && (
         <>

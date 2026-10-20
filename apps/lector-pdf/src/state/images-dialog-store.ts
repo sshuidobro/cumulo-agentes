@@ -38,4 +38,7 @@ export const useImagesDialog = create<ImagesDialogState>()(() => ({
  */
 export const IMAGES_MENU_ITEM = 'Crear PDF desde imágenes…';
 
-/** Abre el diálogo a través de sus acciones, cargadas al usarlas. */
+/** Carga las acciones y abre el diálogo (un único `import()` para la pantalla de inicio y «Más acciones»). */
+export function requestImagesDialog(): void {
+  void import('./images-pdf-actions').then((a) => a.openImagesDialog());
+}

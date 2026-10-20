@@ -1,7 +1,7 @@
 import { pickAndOpen } from '../../state/document-actions';
 import { useRecent } from '../../state/recent-actions';
 import { openCombineDialog } from '../../state/combine-actions';
-import { IMAGES_MENU_ITEM } from '../../state/images-dialog-store';
+import { IMAGES_MENU_ITEM, requestImagesDialog } from '../../state/images-dialog-store';
 import { services } from '../../state/services';
 import { formatOpenShortcut } from '../shortcuts';
 import { msg } from '../messages';
@@ -32,7 +32,7 @@ export function EmptyState() {
       <button type="button" className={styles.secondary} onClick={openCombineDialog}>
         {organizeMsg.combine}
       </button>
-      <button type="button" className={styles.secondary} onClick={() => { void import('../../state/images-pdf-actions').then((a) => a.openImagesDialog()); }}>
+      <button type="button" className={styles.secondary} onClick={requestImagesDialog}>
         {IMAGES_MENU_ITEM}
       </button>
       {unsupported && <p className={styles.hint}>{tabsMsg.recentUnsupported}</p>}
