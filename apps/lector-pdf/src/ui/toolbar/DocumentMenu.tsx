@@ -6,7 +6,7 @@ import { exportMsg } from '../messages-export';
 import { propertiesMsg } from '../messages-properties';
 import { compareMsg } from '../messages-compare';
 import { organizeMsg } from '../messages-organize';
-import { IMAGES_MENU_ITEM } from '../../state/images-dialog-store';
+import { IMAGES_MENU_ITEM, requestImagesDialog } from '../../state/images-dialog-store';
 import { openPrintDialog } from '../../state/print-actions';
 import { openExportDialog } from '../../state/export-actions';
 import { startCompare } from '../../state/compare-actions';
@@ -60,7 +60,7 @@ export function DocumentMenu() {
         {
           kind: 'action',
           label: IMAGES_MENU_ITEM,
-          onSelect: () => { void import('../../state/images-pdf-actions').then((a) => a.openImagesDialog()); },
+          onSelect: requestImagesDialog,
         },
         {
           kind: 'action',

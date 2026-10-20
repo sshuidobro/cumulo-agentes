@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: pendiente
+estado: cambios-pedidos
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -119,3 +119,17 @@ En `EmptyState.tsx` y `DocumentMenu.tsx`, sustituir las dos lambdas `void import
 - `bundle:check` 600 415 > 600 000. No se sube el presupuesto: [[ADR-0041-presupuesto-arranque-600kb]] es una decisión del usuario y manda diferir. Se difieren `DocOpJobProgress`, que solo se ve durante una operación, y el doble `import()` de las entradas. Paso 6.
 - Dudas 2-5 resueltas en la ficha («Respuestas a las dudas de la ronda 1»).
 - Ficha a `pendiente`, `intentos: 0`.
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/state/images-dialog-store.ts` (añadido `requestImagesDialog`), `src/ui/open/EmptyState.tsx` y `src/ui/toolbar/DocumentMenu.tsx` (usan `requestImagesDialog`), `src/ui/App.tsx` (`DocOpJobProgress` en `lazy` dentro de `Suspense`, montado solo con `docOpRunning = useDocOpJob((s) => s.label !== null)`). Ficha: estado y Registro.
+- Qué he hecho: paso 6a y 6b aplicados tal como están escritos. Sin cambios en tests: `images-dialog.test.tsx` y los E2E de progreso siguen verdes sin cambiar ninguna aserción.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: OK. `pnpm typecheck`: OK. `pnpm coverage`: OK (código 0; Statements 95,04 %, Branches 89,73 %, Functions 97,9 %, Lines 98,33 %).
+  - `pnpm --filter lector-pdf build`: **FALLA** en `bundle:check`. Arranque **600 580 B** (máximo 600 000; objetivo 599 000). Medido tras 6a y 6b; la ronda 1 anotó 600 415 B, así que estos pasos suman +165 B en vez de restar. No he tocado el presupuesto.
+  - Cinco ficheros estáticos más grandes del arranque: `assets/index-DxAKpYkj.js` 309 171 B; `assets/view-actions-7vsnk1JM.js` 73 680 B; `assets/crypt-rules-BmCK6Udh.js` 28 570 B; `assets/to-pdf-DnIkaSql.js` 16 921 B; `assets/notice-CmE54Vo5.js` 14 966 B.
+  - `pnpm --filter lector-pdf e2e --project=chromium` (completo, sin @perf): 320/320 OK. Subconjunto `-g "imágenes|extraer|dividir|combinar"`: 13/13 OK.
+  - `e2e --project=chromium-perf --no-deps -g "20 JPEG"`: 1/1 OK.
+  - Nota: el puerto 4173 lo ocupaba otro proceso ajeno (`vite preview`, arrancado a las 16:18). Las ejecuciones de e2e usan `LECTOR_E2E_PORT=4311` y `LECTOR_E2E_OUTDIR=dist-prog-129`.
+- Dudas o cosas que no he podido hacer:
+  1. **Presupuesto de bundle (bloquea la ficha).** Según el paso 6c, la ficha queda en `cambios-pedidos` para el líder. Con 6a y 6b el arranque sigue 580 B por encima del máximo. Para cumplirlo hay que decidir entre subir `ENTRY_JS_BUDGET_BYTES` (ADR-0041 lo prohíbe sin decisión del usuario) o diferir más código. Esto último no lo he hecho porque no está en la ficha.
+  2. El criterio «`pnpm --filter lector-pdf build` con código 0» no se cumple, así que no pongo la ficha en `en-revision`.
