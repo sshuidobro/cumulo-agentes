@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-148
 titulo: Pedir la contraseña sobre la misma carga de pdf.js, sin reabrir el documento
 app: pdf
-estado: pendiente
+estado: cambios-pedidos
 depende_de: []
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad, formatos-ofimatica]
@@ -132,3 +132,16 @@ const result = cancelledBeforeLoad
 - Causa confirmada: pdf.js 6.4.299 reanaliza tras `updatePassword`. Descartado parchear el worker y relajar el umbral (motivos en [[ADR-0043-contrasena-sin-reabrir]], «Revisión»).
 - Decisión: A + C. Se añade el paso 4 (sondeo `needsUserPassword` con `ObjectReader.open` ya existente) y sus criterios. Presupuesto de PDF-099 (a) sin cambios (≤ 1,5 ×).
 - Ficha a `pendiente`, `intentos: 0`. Lo hecho en la ronda 1 se conserva.
+
+### [programador] ronda 3 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/core/pdf/password-probe.ts` (nuevo, paso 4a), `apps/lector-pdf/src/core/pdf/index.ts` (exporta `needsUserPassword`), `apps/lector-pdf/src/state/document-actions.ts` (paso 4b: sondeo antes de `loadPdf`, `cancelledBeforeLoad`, import de `err` y `needsUserPassword`), `apps/lector-pdf/tests/unit/password-probe.test.ts` (nuevo, 5 casos), `apps/lector-pdf/tests/unit/document-password.test.ts` (caso nuevo «owner-only sin diálogo y una sola carga»; los existentes sin cambios).
+- Qué he hecho: el sondeo `needsUserPassword` (ObjectReader.open, solo `wrong-password` = true) decide si se pide la contraseña antes de `loadPdf`; `loadPdf` se llama una vez con la contraseña ya dada, y `requestPassword` queda para la contraseña incorrecta. Compilan lint y typecheck; los 5 casos del sondeo y los de `document-password`, `load-password`, `password-dialog`, `tab-actions` y `compare-actions` pasan.
+- Comandos ejecutados y resultado:
+  - `pnpm lint` y `pnpm typecheck`: código 0.
+  - `pnpm coverage` (con `--coverage.reportsDirectory` propio: otro vitest tenía el directorio bloqueado): 3949 tests, 3948 en verde. **Falla 1**: `tests/unit/document-actions.test.ts` > «con dos aperturas seguidas (A lenta, B rápida)…», falla de forma determinista (también al ejecutarlo solo). Causa: con el sondeo, A queda bloqueada en `needsUserPassword` (lee a través de la fuente con puerta); B toma el relevo y aborta A; al liberarse la puerta, `loadPdf` ve `signal.aborted` (`engine/load.ts` línea 72) y devuelve `cancelled` sin cargar, así que A nunca crea documento y el aserto `destroyed` contiene 0 no se cumple. El comportamiento para el usuario es correcto (no hay fuga), pero el test encodifica el orden antiguo.
+  - `playwright test tests/e2e/iteration4-performance.spec.ts --project=chromium-perf --no-deps --repeat-each=3`: 11 pasados, 1 fallido. Falla (a) en la repetición 2: razón de medianas **2,43** (presupuesto ≤ 1,5). Las repeticiones 1 y 3 de (a) pasan, pero no he capturado sus números ni el desglose (el log de Playwright solo muestra el fallo).
+  - No he ejecutado `e2e --project=chromium -g "contraseña|cifrad|iteration4"` ni `pnpm lint` tras el último cambio de tests (los de `document-actions` no se tocaron).
+- Dudas o cosas que no he podido hacer:
+  - **Para el líder (decisión, no la tomo yo):** el test de `document-actions.test.ts` (líneas 130-145) asume que A llega a cargarse y se destruye. Opciones: (1) actualizar su aserto a «A nunca se carga y no queda ningún documento vivo que no sea B» (cambio de un test existente, decisión del líder); (2) que el sondeo no bloquee la cancelación de A (p. ej. comprobar `signal.aborted` antes de `loadPdf`, que ya ocurre: no lo veo como arreglo sin cambiar el comportamiento). No he modificado ese test.
+  - (a) no cumple el presupuesto en la repetición 2 (2,43) y no tengo medianas ni desglose completos. Hace falta repetir la medición con el desglose (hasta diálogo / tras «Abrir») antes de decidir sobre ADR-0043 o PDF-099 (a).
+  - Dejo la ficha en `cambios-pedidos`, no en `en-revision`, porque hay un test rojo y un criterio de rendimiento incumplido.
