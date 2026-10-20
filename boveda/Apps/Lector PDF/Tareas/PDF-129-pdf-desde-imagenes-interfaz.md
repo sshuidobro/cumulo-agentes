@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-129
 titulo: Crear PDF desde imágenes - diálogo y guardado
 app: pdf
-estado: bloqueada
+estado: pendiente
 depende_de: [PDF-056, PDF-128]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -63,6 +63,40 @@ export async function createPdfFromImages(): Promise<'saved' | 'downloaded' | 'c
 ## Fuera de alcance
 - HEIC y TIFF multipágina. Arrastrar imágenes a la ventana. Recortar o girar imágenes en el diálogo. OCR automático.
 
+## Replanificación (líder, 2026-10-20) · paso 6: volver al presupuesto de arranque
+Lo hecho en la ronda 1 (commit `3e809cc`) **se conserva**. El presupuesto **no** sube: [[ADR-0041-presupuesto-arranque-600kb]] lo fijó el usuario y, por encima, manda diferir código. Hay que bajar al menos 415 B. Objetivo: arranque ≤ 599 000 B (1 KB de margen).
+
+6a. **Una sola carga diferida del diálogo.** En `src/state/images-dialog-store.ts` añadir:
+```ts
+/** Carga las acciones y abre el diálogo (un único `import()` para la pantalla de inicio y «Más acciones»). */
+export function requestImagesDialog(): void {
+  void import('./images-pdf-actions').then((a) => a.openImagesDialog());
+}
+```
+En `EmptyState.tsx` y `DocumentMenu.tsx`, sustituir las dos lambdas `void import('../../state/images-pdf-actions')…` por `requestImagesDialog` (`onClick={requestImagesDialog}` y `onSelect: requestImagesDialog`). Así Vite genera un solo envoltorio `__vitePreload` en lugar de dos.
+
+6b. **Progreso de operaciones en diferido.** `DocOpJobProgress` (con `DocOpProgress` y su CSS) solo se ve durante una operación y hoy entra en el arranque. En `src/ui/App.tsx`:
+- Quitar `import { DocOpJobProgress } from './kit/DocOpProgress';`.
+- Añadir `const DocOpJobProgress = lazy(() => import('./kit/DocOpProgress').then((m) => ({ default: m.DocOpJobProgress })));`, junto a los demás `lazy`.
+- Añadir `import { useDocOpJob } from '../state/extract-actions';` (en la importación que ya existe de ese módulo) y `const docOpRunning = useDocOpJob((s) => s.label !== null);`.
+- Sustituir `<DocOpJobProgress />` por `{docOpRunning && (<Suspense fallback={null}><DocOpJobProgress /></Suspense>)}`.
+- `DocOpProgress.tsx` no cambia.
+- Si algún test de UI busca el progreso con `getBy…` justo después de lanzar la operación, se cambia **solo** a `await findBy…` con la misma consulta. No se cambia ninguna otra aserción.
+
+6c. Medir. Si después de 6a y 6b sigue por encima de 600 000 B: no tocar el presupuesto, anotar los bytes y los cinco ficheros más grandes de `staticFiles`, y dejar la ficha en `cambios-pedidos` para el líder.
+
+### Respuestas a las dudas de la ronda 1
+1. Bundle: ver paso 6.
+2. Aceptado `maxCount = Number.MAX_SAFE_INTEGER` y contar en la app. Leer el lote entero antes de rechazar es aceptable: los ficheros los ha elegido el usuario y hay un límite de 50 MB por fichero.
+3. Aceptado `images-dialog-store.ts` y las funciones añadidas.
+4. Correcto: «Más acciones» solo se usa con un documento abierto. La entrada principal está en la pantalla de inicio.
+5. Aceptados los cambios en `beginJob` y en `DocOpProgress`.
+
+### Criterios añadidos (paso 6)
+- [ ] `pnpm --filter lector-pdf build` (incluye `bundle:check`) con código 0. El arranque queda en ≤ 600 000 B, y anotar los bytes en el Registro. Objetivo ≤ 599 000.
+- [ ] Siguen en verde: `tests/ui/images-dialog.test.tsx`, los tests de extraer, dividir y combinar, y `pnpm --filter lector-pdf e2e --project=chromium -g "imágenes|extraer|dividir|combinar"`.
+- [ ] Todos los criterios de aceptación de arriba repetidos y con código 0. Después, commit y ficha a `en-revision`.
+
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
 
@@ -80,3 +114,8 @@ export async function createPdfFromImages(): Promise<'saved' | 'downloaded' | 'c
   3. La ficha pedía `useImagesDialog` en `images-pdf-actions.ts`. Está en `images-dialog-store.ts` y se re-exporta desde allí, para que la pantalla de inicio no cargue el módulo de acciones. Añadidos `closeImagesDialog`, `setImagesPageSize`, `setImagesMargin`, `IMAGES_MENU_ITEM` y `openImagesDialog` (carga diferida desde los botones).
   4. «Más acciones» está deshabilitado sin documento abierto (como «Combinar»), así que su entrada solo se usa con un documento. Confirmar que es lo esperado.
   5. Dos cambios en ficheros compartidos (opcionales, sin efecto en los existentes): `beginJob` y `DocOpProgress`.
+
+### [lider] replanificación — 2026-10-20
+- `bundle:check` 600 415 > 600 000. No se sube el presupuesto: [[ADR-0041-presupuesto-arranque-600kb]] es una decisión del usuario y manda diferir. Se difieren `DocOpJobProgress`, que solo se ve durante una operación, y el doble `import()` de las entradas. Paso 6.
+- Dudas 2-5 resueltas en la ficha («Respuestas a las dudas de la ronda 1»).
+- Ficha a `pendiente`, `intentos: 0`.
