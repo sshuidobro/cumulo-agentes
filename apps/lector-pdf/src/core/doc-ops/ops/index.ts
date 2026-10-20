@@ -12,6 +12,8 @@ import type { ObjectReader } from '../../pdf/object-reader';
 import type { NewSecurityInput, PermissionChoice } from '../../pdf/crypto';
 import { PERMISSION_FLAG } from '../../permissions';
 import { rewriteDocument } from '../../pdf/rewrite';
+import { concatSource } from '../../pdf/concat-source';
+import { buildRedactionUpdate, planRedaction, type RedactArea } from '../../redact/apply';
 import { readTopLevelOutline } from '../../pdf/outline-copy';
 import {
   checkZipBudget,
@@ -21,7 +23,7 @@ import {
   splitPartNames,
   type SplitMode,
 } from '../../organize/split';
-import { p12Info, signPdf } from './signature';
+import { p12Info, signPdf, verifySignaturesOp } from './signature';
 import type { DocOp, DocOpRegistry, OpContext } from '../protocol';
 
 interface PageRotationsArgs {
@@ -611,6 +613,81 @@ const ocrLayer: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> =>
   return ok({ delta: built.value.delta });
 };
 
+interface RedactArgs {
+  readonly password: string | null;
+  readonly areas: readonly RedactArea[];
+  readonly rasterPages: ReadonlyMap<number, Uint8Array>;
+  readonly now: string;
+}
+
+/** Igual que `parseOcrLayerArgs`: un argumento mal formado es un bug de la app. La validación de las zonas es de `planRedaction`. */
+function parseRedactArgs(op: string, args: unknown, full: boolean): RedactArgs {
+  if (typeof args !== 'object' || args === null || !('password' in args) || !('areas' in args)) {
+    throw new TypeError(`${op}: argumentos no válidos.`);
+  }
+  const { password, areas } = args;
+  if (password !== null && typeof password !== 'string') throw new TypeError(`${op}: la contraseña debe ser texto o null.`);
+  if (!Array.isArray(areas)) throw new TypeError(`${op}: las zonas deben ser una lista.`);
+  const parsedAreas = areas.map((item: unknown): RedactArea => parseRedactArea(op, item));
+  if (!full) return { password, areas: parsedAreas, rasterPages: new Map(), now: '' };
+  if (!('rasterPages' in args) || !('now' in args) || typeof args.now !== 'string' || !Array.isArray(args.rasterPages)) {
+    throw new TypeError(`${op}: faltan las páginas en imagen o la fecha.`);
+  }
+  const rasterPages = new Map<number, Uint8Array>();
+  for (const entry of args.rasterPages) {
+    if (!Array.isArray(entry) || entry.length !== 2) throw new TypeError(`${op}: página en imagen no válida.`);
+    const [pageIndex, bytes] = entry;
+    if (typeof pageIndex !== 'number' || !(bytes instanceof Uint8Array)) throw new TypeError(`${op}: página en imagen no válida.`);
+    rasterPages.set(pageIndex, bytes);
+  }
+  return { password, areas: parsedAreas, rasterPages, now: args.now };
+}
+
+function parseRedactArea(op: string, value: unknown): RedactArea {
+  if (typeof value !== 'object' || value === null || !('pageIndex' in value) || !('rect' in value)) {
+    throw new TypeError(`${op}: zona no válida.`);
+  }
+  const { pageIndex, rect } = value;
+  if (typeof pageIndex !== 'number' || !Array.isArray(rect) || rect.length !== 4 || !rect.every((v) => typeof v === 'number')) {
+    throw new TypeError(`${op}: zona no válida.`);
+  }
+  const [x0 = 0, y0 = 0, x1 = 0, y1 = 0] = rect as readonly number[];
+  return { pageIndex, rect: [x0, y0, x1, y1] };
+}
+
+/** Zonas por página: plan de redacción (PDF-135). Sin escribir nada. */
+const redactPlan: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const { password, areas } = parseRedactArgs('redact-plan', args, false);
+  const opened = await openSource(ctx, password);
+  if (!opened.ok) return opened;
+  return planRedaction(opened.value, areas);
+};
+
+/** Redacta las zonas y reescribe el fichero completo conservando su cifrado (PDF-135). */
+const redact: DocOp = async (args, ctx): Promise<Result<unknown, AppError>> => {
+  const { password, areas, rasterPages, now } = parseRedactArgs('redact', args, true);
+  const source = ctx.sources[0];
+  if (source === undefined) throw new RangeError('redact: falta el documento (fuente 0).');
+  const opened = await openSource(ctx, password);
+  if (!opened.ok) return opened;
+  const built = await buildRedactionUpdate({ source, reader: opened.value, areas, rasterPages, now, signal: ctx.signal });
+  if (!built.ok) return built;
+  const reopened = await openForSave(concatSource(source, built.value.delta), password ?? undefined);
+  if (!reopened.ok) return reopened;
+  const written = await rewriteDocument({
+    reader: reopened.value,
+    encryption: null,
+    keepEncryption: true,
+    now,
+    signal: ctx.signal,
+    onProgress: (done, total) => {
+      ctx.progress(done, total);
+    },
+  });
+  if (!written.ok) return written;
+  return ok({ bytes: written.value.bytes });
+};
+
 /** Registro de operaciones del Worker. Cada ficha que añade una operación la registra aquí. */
 export const DOC_OPS: DocOpRegistry = {
   'page-rotations': pageRotations,
@@ -623,6 +700,9 @@ export const DOC_OPS: DocOpRegistry = {
   unprotect,
   rewrite,
   'ocr-layer': ocrLayer,
+  'redact-plan': redactPlan,
+  redact,
   'p12-info': p12Info,
   sign: signPdf,
+  'verify-signatures': verifySignaturesOp,
 };

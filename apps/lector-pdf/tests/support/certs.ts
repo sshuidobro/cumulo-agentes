@@ -16,10 +16,18 @@ export const TEST_CN = 'Prueba Cúmulo';
 export interface CertFixtures {
   /** RSA 2048 autofirmado, PKCS#12 con AES (el de por defecto de openssl). */
   readonly rsaAes: Uint8Array;
+  /** Certificado RSA de `rsaAes` en PEM. */
+  readonly rsaCertPem: string;
+  /** Clave privada RSA de `rsaAes` en PEM. */
+  readonly rsaKeyPem: string;
   /** Mismo certificado con 3DES y MAC SHA-1: formato heredado de Windows y de la FNMT. */
   readonly rsa3des: Uint8Array;
-  /** Clave EC P-256: no soportada. */
+  /** Clave EC P-256 en PKCS#12: `openP12` la rechaza (no soportada para firmar). */
   readonly ec: Uint8Array;
+  /** Certificado EC P-256 autofirmado en PEM (para firmar con `openssl cms` en las pruebas de validación). */
+  readonly ecCertPem: string;
+  /** Clave privada EC P-256 en PEM. */
+  readonly ecKeyPem: string;
   /** Certificado de hoja firmado por una CA, con la CA en el mismo `.p12` (cadena de un elemento). */
   readonly chain: Uint8Array;
   /** Certificado RSA sin CN (solo O y C): el nombre que se muestra es el DN completo. */
@@ -53,12 +61,16 @@ function makeCertFixtures(): CertFixtures {
 
     openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'k.pem', '-out', 'c.pem', '-days', '3650', '-subj', `/CN=${TEST_CN}`, '-utf8']);
     const rsaAes = p12('aes.p12', ['-inkey', 'k.pem', '-in', 'c.pem']);
+    const rsaCertPem = readFileSync(join(dir, 'c.pem'), 'utf8');
+    const rsaKeyPem = readFileSync(join(dir, 'k.pem'), 'utf8');
     const rsa3des = p12('3des.p12', ['-inkey', 'k.pem', '-in', 'c.pem', '-certpbe', 'PBE-SHA1-3DES', '-keypbe', 'PBE-SHA1-3DES', '-macalg', 'sha1']);
     const certOnly = p12('nokey.p12', ['-nokeys', '-in', 'c.pem']);
 
     openssl(['ecparam', '-name', 'prime256v1', '-genkey', '-noout', '-out', 'ec.pem']);
     openssl(['req', '-x509', '-new', '-key', 'ec.pem', '-out', 'ecc.pem', '-days', '3650', '-subj', '/CN=Prueba EC']);
     const ec = p12('ec.p12', ['-inkey', 'ec.pem', '-in', 'ecc.pem']);
+    const ecCertPem = readFileSync(join(dir, 'ecc.pem'), 'utf8');
+    const ecKeyPem = readFileSync(join(dir, 'ec.pem'), 'utf8');
 
     openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'ca.key', '-out', 'ca.pem', '-days', '3650', '-subj', '/CN=Prueba CA']);
     openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'leaf.key', '-out', 'leaf.csr', '-subj', `/CN=${TEST_CN}`, '-utf8']);
@@ -68,7 +80,7 @@ function makeCertFixtures(): CertFixtures {
     openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'n.key', '-out', 'n.pem', '-days', '3650', '-subj', '/O=Prueba/C=ES']);
     const noCn = p12('nocn.p12', ['-inkey', 'n.key', '-in', 'n.pem']);
 
-    return { rsaAes, rsa3des, ec, chain, noCn, certOnly };
+    return { rsaAes, rsaCertPem, rsaKeyPem, rsa3des, ec, ecCertPem, ecKeyPem, chain, noCn, certOnly };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

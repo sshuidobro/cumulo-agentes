@@ -56,6 +56,21 @@ export async function updateAcroForm(
   additions: AcroFormAdditions | null,
 ): Promise<number> {
   const widgets = await widgetsOf(reader, removedPages);
+  return removeWidgetRefs(reader, writer, widgets, catalog, additions);
+}
+
+/**
+ * Quita de `/AcroForm` las referencias a los widgets `widgets` (nums de objeto) y, si `additions` no es `null`,
+ * añade lo indicado en el mismo incremento. Lo usa la redacción (PDF-135) para los widgets de las páginas que
+ * redacta. Devuelve `widgets.size`.
+ */
+export async function removeWidgetRefs(
+  reader: ObjectReader,
+  writer: DeltaWriter,
+  widgets: ReadonlySet<number>,
+  catalog: PdfRef,
+  additions: AcroFormAdditions | null = null,
+): Promise<number> {
   const extraFields = additions?.fields ?? [];
   const extraFonts = additions?.fonts ?? new Map<string, PdfValue>();
   if (widgets.size === 0 && additions === null) return 0;

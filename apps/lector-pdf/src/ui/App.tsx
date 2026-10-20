@@ -34,6 +34,7 @@ import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/
 import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen } from '../state/fullscreen-actions';
 import { openProperties, usePropertiesDialog } from '../state/properties-store';
 import { openPrintDialog, usePrintDialog } from '../state/print-actions';
+import { useCompare } from '../state/compare-actions';
 import { useExportDialog } from '../state/export-actions';
 import { useViewer } from '../state/viewer-store';
 import { useTabs } from '../state/tabs';
@@ -49,6 +50,8 @@ const ExportDialog = lazy(() => import('./export/ExportDialog').then((m) => ({ d
 // Barra de comentarios y panel lateral (PDF-140): no se muestran al arrancar, se cargan al abrirlos.
 const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) => ({ default: m.CommentToolbar })));
 const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m.Sidebar })));
+// Comparación de dos PDFs (PDF-112): la vista solo se carga al comparar.
+const CompareView = lazy(() => import('./compare/CompareView').then((m) => ({ default: m.CompareView })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -127,6 +130,7 @@ export function App() {
   const printOpen = usePrintDialog((s) => s.open);
   const exportOpen = useExportDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
+  const compareStatus = useCompare((s) => s.status);
 
   // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
   useShortcuts({
@@ -182,6 +186,11 @@ export function App() {
         )}
       </main>
       <Notice notice={notice} onExpire={dismissNotice} />
+      {compareStatus !== 'idle' && (
+        <Suspense fallback={null}>
+          <CompareView />
+        </Suspense>
+      )}
       <ChoiceDialog />
       <PasswordDialog />
       {propertiesOpen && (
