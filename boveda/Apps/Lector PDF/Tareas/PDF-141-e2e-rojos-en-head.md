@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-141
 titulo: Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: []
 intentos: 1
 skills: [pruebas-calidad, stack-typescript-react]
@@ -95,3 +95,14 @@ Los testers de otras fichas reportan fallos ajenos a sus cambios:
 | F4 cierra tras reabrir | Sin prueba automática | sigue sin cubrirse |
 
 Causa del fallo: son pruebas de presupuesto de tiempo de reloj sin `{ tag: '@perf' }` en el proyecto `chromium` (con carga se pasan del presupuesto). Según la ficha (paso 3) deben ir a `chromium-perf` con espera de reposo ([[ADR-0016-e2e-long-tasks-en-serie]]) sin subir presupuestos. Repetir: `LECTOR_E2E_PORT=4402 pnpm --filter lector-pdf e2e performance.spec.ts render.spec.ts outline.spec.ts --project=chromium --repeat-each=20` con la máquina cargada (~16 min).
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/performance.spec.ts` (etiquetas `{ tag: '@perf' }` en las pruebas de presupuesto de tiempo que fallaban con carga: «abrir … en menos de 5 s» y «Fin … en menos de 1,5 s» del bucle de `pages-100000`, y «la 1.ª coincidencia de «marcador-1»…» de `pages-5000`); `apps/lector-pdf/tests/e2e/sidebar-f4-reopen.spec.ts` (nuevo: F4 abre y cierra el panel lateral tras reabrir un PDF guardado); esta ficha.
+- Qué he hecho: los cambios pedidos por el tester son los tres `expect` de tiempo de reloj de `performance.spec.ts` (`:79`, `:85`, `:155`), que no llevaban `@perf` y se pasaban de presupuesto con la máquina cargada. Según [[ADR-0016-e2e-long-tasks-en-serie]] (revisión final: las pruebas de tiempo con margen amplio que se vuelven intermitentes por carga se etiquetan `@perf`) ahora van en `chromium-perf`, en serie y con la puerta de reposo. No se ha tocado ningún presupuesto, timeout ni `retries`. Además, para cubrir el criterio «F4 abre y cierra tras reabrir» (que el tester marcó «sin prueba automática») añado la prueba `sidebar-f4-reopen.spec.ts`: crea una nota, guarda con Ctrl+S, reabre en otra pestaña y comprueba con F4 el `aria-pressed` del botón «Panel lateral» en ambos sentidos.
+- Comandos ejecutados y resultado:
+  - `LECTOR_E2E_PORT=4402 pnpm --filter lector-pdf e2e performance.spec.ts render.spec.ts outline.spec.ts --project=chromium-perf --no-deps --repeat-each=10`: 160/160 OK (15,7 min).
+  - `... --project=chromium --repeat-each=20` sobre los mismos tres ficheros: 220/220 OK (7,7 min).
+  - `... sidebar-f4-reopen.spec.ts --project=chromium --repeat-each=3`: 3/3 OK (primera versión sin cambio previo: falló porque Ctrl+S sin modificaciones no descarga nada; corregido añadiendo una nota antes de guardar).
+  - `pnpm lint` OK (exit 0); `pnpm typecheck` OK (tras corregir un tipo en la prueba nueva); `pnpm coverage` OK: 272 ficheros / 3542 tests en verde, líneas 98,61 %, ramas 90,57 %.
+  - `git diff HEAD -- apps/lector-pdf | grep -nE "skip|fixme|\.only|retries|timeout"` sobre las líneas añadidas: sin coincidencias.
+- Dudas o cosas que no he podido hacer: (1) no he vuelto a ejecutar la batería E2E completa dos veces: sigue bloqueada por `detail.spec.ts:212` (PDF-142, fuera de alcance), que falla de forma determinista. (2) Las repeticiones de `chromium-perf` y `chromium` se han hecho sin carga añadida a propósito (para no mezclar con otras ejecuciones); el fallo original del tester se produjo con carga, y la corrección es estructural (etiqueta `@perf` + puerta de reposo), no depende de la carga. (3) `render.spec.ts:87` («pages-5000: la página 1 se dibuja en menos de 5 s») también tiene un presupuesto de tiempo sin `@perf`; no ha fallado en las repeticiones, así que no lo he tocado; si el tester lo ve intermitente, etiquetarlo igual.

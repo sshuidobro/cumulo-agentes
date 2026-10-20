@@ -76,13 +76,13 @@ test('abrir un PDF de ≤ 20 páginas (basic-5) muestra la página 1 en menos de
 });
 
 for (const name of HUGE_FIXTURES) {
-  test(`abrir ${name} muestra la página 1 en menos de 5 s`, async ({ page }, testInfo) => {
+  test(`abrir ${name} muestra la página 1 en menos de 5 s`, { tag: '@perf' }, async ({ page }, testInfo) => {
     const elapsed = await timeToFirstPage(page, name);
     recordMeasure(testInfo, `abrir ${name} hasta ver la página 1: ${elapsed.toFixed(0)} ms`);
     expect(elapsed).toBeLessThan(OPEN_HUGE_MS);
   });
 
-  test(`${name}: Fin muestra la última página visible en menos de 1,5 s`, async ({ page }, testInfo) => {
+  test(`${name}: Fin muestra la última página visible en menos de 1,5 s`, { tag: '@perf' }, async ({ page }, testInfo) => {
     await openFixture(page, name);
     const total = totalOf(name);
     await waitPageRendered(page, 1);
@@ -152,7 +152,7 @@ async function waitSearchComplete(page: Page): Promise<void> {
   await expect(page.getByRole('search').locator('progress')).toHaveCount(0, { timeout: SEARCH_FULL_MS });
 }
 
-test('pages-5000: la 1.ª coincidencia de «marcador-1» aparece en menos de 1 s y el recorrido completo en menos de 15 s', async ({
+test('pages-5000: la 1.ª coincidencia de «marcador-1» aparece en menos de 1 s y el recorrido completo en menos de 15 s', { tag: '@perf' }, async ({
   page,
 }, testInfo) => {
   await openFixture(page, 'pages-5000.pdf');
