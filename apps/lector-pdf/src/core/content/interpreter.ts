@@ -3,6 +3,7 @@
  * texto y de cada imagen en coordenadas de página, sin dibujar nada. Las operaciones de texto que no se pueden medir
  * (fuente no soportada, `Tf` sin fuente) se listan en `unmeasured`. Los Form XObjects no se recorren.
  */
+import type { Rgb } from '../annotations/model';
 import { decodeStreamData } from '../pdf/filters';
 import type { ObjectReader } from '../pdf/object-reader';
 import { effectiveResources } from '../pdf/page-content';
@@ -40,6 +41,19 @@ export interface PageContent {
   readonly forms: readonly FormBox[];
   /** Operaciones de texto que no se han podido medir (fuente no soportada, Tf sin fuente): su índice. */
   readonly unmeasured: readonly number[];
+  /** Una por operación de texto medida (Tj, TJ, ', "), en el orden de las operaciones. */
+  readonly runs: readonly TextRun[];
+}
+
+/** Una por operación de texto medida (Tj, TJ, ', "), en el orden de las operaciones. */
+export interface TextRun {
+  readonly op: number; // índice en ops
+  readonly fontResource: string; // nombre en /Resources /Font, sin barra
+  readonly fontSize: number; // Tfs × hypot(m[2], m[3]), m = Tm × CTM al empezar a mostrar
+  readonly angle: number; // grados: atan2(m[1], m[0]) × 180 / π
+  readonly origin: readonly [number, number]; // (m[4], m[5]): línea base al empezar a mostrar (sin Ts)
+  readonly fill: Rgb;
+  readonly renderMode: number;
 }
 
 /** [a b c d e f] en convención de fila: un punto `(x, y)` se transforma como `[x y 1] × M`. */
@@ -58,6 +72,7 @@ const MAX_SAVED_STATES = 64;
 const SPACE_CODE = 32;
 const GLYPH_SCALE = 1000;
 const PERCENT = 100;
+const BLACK: Rgb = [0, 0, 0];
 
 interface TextState {
   charSpacing: number; // Tc
@@ -67,11 +82,14 @@ interface TextState {
   rise: number; // Ts
   fontSize: number; // Tfs
   font: FontMetrics | null; // null = sin fuente medible
+  fontResource: string | null; // nombre del operando de Tf, sin barra
+  renderMode: number; // Tr
 }
 
 interface GraphicsState {
   ctm: Matrix;
   text: TextState;
+  fill: Rgb;
 }
 
 /** Estado mutable de una pasada por el contenido. */
@@ -95,8 +113,9 @@ export async function interpretPage(reader: ObjectReader, page: PdfDict): Promis
   const images: ImageBox[] = [];
   const forms: FormBox[] = [];
   const unmeasured: number[] = [];
+  const runs: TextRun[] = [];
   const machine: Machine = {
-    graphics: { ctm: IDENTITY, text: initialText() },
+    graphics: { ctm: IDENTITY, text: initialText(), fill: BLACK },
     stack: [],
     tm: IDENTITY,
     tlm: IDENTITY,
@@ -110,6 +129,7 @@ export async function interpretPage(reader: ObjectReader, page: PdfDict): Promis
     }
     machine.graphics.text.font = fontCache.get(fontName) ?? null;
     machine.graphics.text.fontSize = size;
+    machine.graphics.text.fontResource = fontName;
   };
 
   const showOp = (index: number, pieces: readonly Piece[]): void => {
@@ -119,6 +139,7 @@ export async function interpretPage(reader: ObjectReader, page: PdfDict): Promis
       unmeasured.push(index);
       return;
     }
+    if (text.fontResource !== null) runs.push(runOf(machine, index, text.fontResource));
     let code = 0;
     for (const piece of pieces) {
       if ('adjust' in piece) {
@@ -145,7 +166,7 @@ export async function interpretPage(reader: ObjectReader, page: PdfDict): Promis
     switch (op.op) {
       case 'q': {
         if (machine.stack.length >= MAX_SAVED_STATES) throw syntaxError('demasiados niveles de q');
-        machine.stack.push({ ctm: machine.graphics.ctm, text: { ...machine.graphics.text } });
+        machine.stack.push({ ctm: machine.graphics.ctm, text: { ...machine.graphics.text }, fill: machine.graphics.fill });
         break;
       }
       case 'Q': {
@@ -178,6 +199,25 @@ export async function interpretPage(reader: ObjectReader, page: PdfDict): Promis
         break;
       case 'Ts':
         machine.graphics.text.rise = numbers(op, 1)[0] ?? 0;
+        break;
+      case 'Tr':
+        machine.graphics.text.renderMode = numbers(op, 1)[0] ?? 0;
+        break;
+      case 'g':
+        machine.graphics.fill = colorOf(op, 1);
+        break;
+      case 'rg':
+        machine.graphics.fill = colorOf(op, 3);
+        break;
+      case 'k':
+        machine.graphics.fill = colorOf(op, 4);
+        break;
+      case 'cs':
+        machine.graphics.fill = BLACK;
+        break;
+      case 'sc':
+      case 'scn':
+        machine.graphics.fill = fillOf(op.operands);
         break;
       case 'Td': {
         const [tx = 0, ty = 0] = numbers(op, 2);
@@ -246,7 +286,48 @@ export async function interpretPage(reader: ObjectReader, page: PdfDict): Promis
     }
   }
 
-  return { ops, glyphs, images, forms, unmeasured };
+  return { ops, glyphs, images, forms, unmeasured, runs };
+}
+
+/** Color de relleno de `op` si tiene exactamente `count` operandos numéricos; si no, negro. */
+function colorOf(op: ContentOp, count: number): Rgb {
+  return op.operands.length === count ? fillOf(op.operands) : BLACK;
+}
+
+/**
+ * Color de relleno de operandos numéricos (fijados a [0, 1]): 1 → gris, 3 → RGB, 4 → CMYK. Cualquier otro caso
+ * (nombre de patrón, otro número de componentes) → negro.
+ */
+function fillOf(operands: readonly PdfValue[]): Rgb {
+  const values: number[] = [];
+  for (const operand of operands) {
+    if (typeof operand !== 'number') return BLACK;
+    values.push(clamp01(operand));
+  }
+  const [a = 0, b = 0, c = 0, d = 0] = values;
+  if (values.length === 1) return [a, a, a];
+  if (values.length === 3) return [a, b, c];
+  if (values.length === 4) return [(1 - a) * (1 - d), (1 - b) * (1 - d), (1 - c) * (1 - d)];
+  return BLACK;
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
+}
+
+/** Operación de texto medida: origen, tamaño y ángulo en espacio de página (`Tm` × `CTM` al empezar a mostrar). */
+function runOf(machine: Machine, index: number, fontResource: string): TextRun {
+  const { text, fill } = machine.graphics;
+  const m = multiply(machine.tm, machine.graphics.ctm);
+  return {
+    op: index,
+    fontResource,
+    fontSize: text.fontSize * Math.hypot(m[2], m[3]),
+    angle: (Math.atan2(m[1], m[0]) * 180) / Math.PI,
+    origin: [m[4], m[5]],
+    fill,
+    renderMode: text.renderMode,
+  };
 }
 
 /** Caja envolvente de un cuadrilátero: `[xmin, ymin, xmax, ymax]`. */
@@ -267,7 +348,17 @@ export function intersects(q: Quad, rect: readonly [number, number, number, numb
 }
 
 function initialText(): TextState {
-  return { charSpacing: 0, wordSpacing: 0, horizontalScale: 1, leading: 0, rise: 0, fontSize: 0, font: null };
+  return {
+    charSpacing: 0,
+    wordSpacing: 0,
+    horizontalScale: 1,
+    leading: 0,
+    rise: 0,
+    fontSize: 0,
+    font: null,
+    fontResource: null,
+    renderMode: 0,
+  };
 }
 
 /** Caja de un glifo: `[0, descent] – [w0, ascent]` en espacio de glifo, transformada por `Trm`. */
