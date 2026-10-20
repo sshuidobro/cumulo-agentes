@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-095
 titulo: Barra de pestañas y atajos para varios documentos
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-100, PDF-101, PDF-049, PDF-097]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -83,3 +83,6 @@ Como en Adobe Reader, con más de un documento abierto aparece una barra de pest
 - Comandos ejecutados y resultado: `pnpm lint`: exit 0. `pnpm typecheck`: exit 0. `tests/ui/tab-bar.test.tsx`: 15/15. `playwright test tests/e2e/tabs.spec.ts --project=chromium`: 7/7. `pnpm coverage`: exit 0 (líneas 98.63 %, sentencias 95.64 %, ramas 90.66 %, funciones 97.73 %). No he lanzado de nuevo `tabs-performance.spec.ts` en esta ronda (sin cambios de rendimiento; medido en ronda 1: p95 97 ms, 0 long tasks).
 - Para el Manual: «Cerrar pestaña: botón ×, clic central, Supr con la pestaña enfocada o Ctrl+W». En el navegador Chrome no llegan Ctrl+Tab ni Ctrl+W a la página: se usa la barra con ratón o teclado; en la app de escritorio funcionan.
 - Dudas o cosas que no he podido hacer: pendiente de verificar en `tauri dev` (máquina del usuario): Ctrl+Tab, Ctrl+W y «Abrir con» con dos PDF.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Verificado: lint y typecheck OK; `tab-bar.test.tsx` 15/15; `tabs.spec.ts` 7/7. El × cumple la decisión del líder (aria-hidden, tabIndex -1, title, sin aria-label), `aria-keyshortcuts="Delete"` en cada tab, roving tabindex y teclado conformes a la ficha. Rendimiento (ronda 1) y cobertura (ronda 4) tomados del Registro del programador; el tester debe confirmarlos con `tabs-performance.spec.ts` y `pnpm coverage`. Sin problemas bloqueantes.
