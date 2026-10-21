@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { editMsg } from '../../src/ui/messages-edit.ts';
 import { editTextMsg } from '../../src/ui/messages-edit-text.ts';
+import { buildDocument } from '../fixtures/document.ts';
 import { openWithDownloads, storeDownload, wordBox } from './annotations-kit.ts';
 import { fixture, waitPageRendered } from './helpers.ts';
 
@@ -23,29 +25,58 @@ async function activateEditText(page: Page) {
   return bar;
 }
 
-/** Doble clic sobre la palabra `word` de la página `n`. */
-async function doubleClickWord(page: Page, n: number, word: string): Promise<void> {
-  // La palabra puede quedar fuera de la ventana: se lleva al centro del visor antes de medir su caja.
+/** Lleva al centro del visor el texto `text` de la página `n` (1-based) y devuelve su caja en la ventana. */
+async function revealText(page: Page, n: number, text: string) {
+  // El texto puede quedar fuera de la ventana: se lleva al centro del visor antes de medir su caja.
   await page.evaluate(
-    ({ index, text }) => {
+    ({ index, needle }) => {
       const layer = document.querySelector(`[data-testid=viewer] [data-page-index="${String(index)}"] .textLayer`);
       const walker = document.createTreeWalker(layer ?? document.body, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-        if ((node.textContent ?? '').includes(text)) {
+        if ((node.textContent ?? '').includes(needle)) {
           node.parentElement?.scrollIntoView({ block: 'center' });
           return;
         }
       }
     },
-    { index: n - 1, text: word },
+    { index: n - 1, needle: text },
   );
-  const box = await wordBox(page, n, word);
+  return wordBox(page, n, text);
+}
+
+/** Doble clic sobre la palabra `word` de la página `n`. */
+async function doubleClickWord(page: Page, n: number, word: string): Promise<void> {
+  const box = await revealText(page, n, word);
   await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
 }
 
 /** Cuadro de edición de la página 2 (nombre accesible del `input`). */
 function editor(page: Page) {
   return page.getByRole('textbox', { name: editTextMsg.editorLabel(2), exact: true });
+}
+
+/**
+ * Comprueba que el cuadro abierto sobre la página 2 coincide con la línea original ±2 px: borde izquierdo y centro
+ * vertical frente a la primera palabra de la línea («Texto»). El centro se compara porque la caja de la capa de texto
+ * de pdf.js es algo más alta que `line.bounds`: los bordes superior e inferior se separan unos píxeles, el centro no.
+ */
+async function expectEditorAligned(page: Page): Promise<void> {
+  const line = await wordBox(page, 2, 'Texto');
+  const box = await editor(page).boundingBox();
+  if (box === null) throw new Error('el cuadro de edición no tiene caja');
+  expect(Math.abs(box.x - line.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(box.y + box.height / 2 - (line.y + line.height / 2))).toBeLessThanOrEqual(2);
+}
+
+/**
+ * Axe sobre la página. Las dos reglas de página («un único h1» y «regiones») describen la estructura de la aplicación,
+ * no la herramienta: se excluyen aquí. Cualquier otra violación cuenta.
+ */
+async function expectNoAxeViolations(page: Page): Promise<void> {
+  const results = await new AxeBuilder({ page }).analyze();
+  const APP_SHELL_RULES = ['page-has-heading-one', 'region'];
+  const own = results.violations.filter((v) => !APP_SHELL_RULES.includes(v.id));
+  expect(own.map((v) => `${v.id} (${String(v.nodes.length)})`)).toEqual([]);
 }
 
 test.describe('editar texto en basic-5.pdf (PDF-147)', () => {
@@ -143,6 +174,66 @@ test.describe('editar texto en basic-5.pdf (PDF-147)', () => {
     await expect(editor(page)).toHaveValue(ORIGINAL);
   });
 
+  test('F2 con texto seleccionado a mano abre el cuadro de esa línea', async ({ page }) => {
+    await openWithDownloads(page, fixture('basic-5.pdf'));
+    const box = await revealText(page, 2, 'búsqueda');
+    const middle = box.y + box.height / 2;
+    await page.mouse.move(box.x + 1, middle);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 1, middle, { steps: 8 });
+    await page.mouse.up();
+    await page.keyboard.press('F2');
+    await expect(editor(page)).toHaveValue(ORIGINAL);
+  });
+
+  test('doble clic en texto oculto (modo 3, p. ej. OCR) avisa y no abre el cuadro', async ({ page }, testInfo) => {
+    const path = testInfo.outputPath('texto-oculto.pdf');
+    writeFileSync(path, buildDocument(1, () => ({ content: 'BT /F1 18 Tf 72 720 Td 3 Tr (Texto oculto de prueba) Tj ET' })));
+    await openWithDownloads(page, path);
+    await waitPageRendered(page, 1);
+    await activateEditText(page);
+
+    await doubleClickWord(page, 1, 'Texto oculto de prueba');
+    await expect(page.getByText(editTextMsg.issue.invisible, { exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: editTextMsg.editorLabel(1), exact: true })).toHaveCount(0);
+  });
+
+  test('con zoom 125 % y 150 % el cuadro sigue alineado con la línea (±2 px)', async ({ page }) => {
+    await openWithDownloads(page, fixture('basic-5.pdf'));
+    await activateEditText(page);
+    const zoom = page.getByRole('textbox', { name: 'Zoom' });
+    await page.getByRole('combobox', { name: 'Ajuste de zoom' }).selectOption({ label: 'Tamaño real' });
+    await expect(zoom).toHaveValue('100 %');
+    await page.locator('[data-testid=viewer]').click({ position: { x: 4, y: 4 } });
+
+    // Ctrl++ pasa de 100 % a 110, 125 y 150 %.
+    await page.keyboard.press('Control+Equal');
+    await page.keyboard.press('Control+Equal');
+    await expect(zoom).toHaveValue('125 %');
+    await doubleClickWord(page, 2, 'búsqueda');
+    await expectEditorAligned(page);
+    await page.keyboard.press('Escape');
+    await expect(editor(page)).toHaveCount(0);
+
+    await page.keyboard.press('Control+Equal');
+    await expect(zoom).toHaveValue('150 %');
+    await doubleClickWord(page, 2, 'búsqueda');
+    await expectEditorAligned(page);
+  });
+
+  test('tema oscuro: herramienta activa y cuadro abierto sin violaciones de axe', async ({ page }, testInfo) => {
+    testInfo.annotations.push({ type: 'tema', description: 'colorScheme dark' });
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await openWithDownloads(page, fixture('basic-5.pdf'));
+    await activateEditText(page);
+    await doubleClickWord(page, 2, 'búsqueda');
+    await expect(editor(page)).toBeVisible();
+    await waitPageRendered(page, 2);
+    expect(await page.evaluate(() => window.matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true);
+
+    await expectNoAxeViolations(page);
+  });
+
   test('axe sin violaciones con la herramienta activa y el cuadro abierto', async ({ page }) => {
     await openWithDownloads(page, fixture('basic-5.pdf'));
     await activateEditText(page);
@@ -150,11 +241,6 @@ test.describe('editar texto en basic-5.pdf (PDF-147)', () => {
     await expect(editor(page)).toBeVisible();
     await waitPageRendered(page, 2);
 
-    const results = await new AxeBuilder({ page }).analyze();
-    // Las dos reglas de página («un único h1» y «regiones») describen la estructura de la aplicación, no la herramienta:
-    // se excluyen aquí y se siguen midiendo en las demás pruebas de accesibilidad. Cualquier otra violación cuenta.
-    const APP_SHELL_RULES = ['page-has-heading-one', 'region'];
-    const own = results.violations.filter((v) => !APP_SHELL_RULES.includes(v.id));
-    expect(own.map((v) => `${v.id} (${String(v.nodes.length)})`)).toEqual([]);
+    await expectNoAxeViolations(page);
   });
 });

@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-147
 titulo: Editar texto - herramienta en la barra Editar, cuadro sobre la línea y E2E
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-146, PDF-139]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -80,3 +80,13 @@ El usuario activa «Editar texto» en la barra «Editar», hace doble clic en un
 
 ### [revisor] ronda 2 — 2026-10-21 — APROBADO
 1. Lint, typecheck, test de UI (13/13) y E2E de la ficha (11/11) en verde. Los puntos 1 a 4 de la ronda 1 están cubiertos con tests reales; la exclusión de axe (`page-has-heading-one`, `region`, nivel moderate) es aceptable. (opcional) Línea base de 0,8 em y contraste del texto nuevo en modo noche: queda para el líder.
+
+### [tester] ronda 1 — 2026-10-21 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Lint, typecheck | OK | `pnpm lint`, `pnpm typecheck` código 0 |
+| Cobertura | OK | `pnpm coverage`: 95,06 % sentencias, 98,34 % líneas, umbrales cumplidos |
+| E2E completo | OK | `pnpm --filter lector-pdf e2e`: 396 passed, código 0 |
+| Criterio original, Escape/Ctrl+Z/Y, Cancelar, cierre de pestaña, emoji, texto oculto 3 Tr, F2 (búsqueda y selección), zoom 125/150 %, axe claro/oscuro | OK | 11 E2E en `tests/e2e/edit-text.spec.ts`, sin skip ni only |
+Tests añadidos: ninguno. Rendimiento: los @perf del E2E pasan.
+Notas: alineación medida con centro vertical y borde izquierdo (no línea base); contraste en modo noche queda para el líder.
