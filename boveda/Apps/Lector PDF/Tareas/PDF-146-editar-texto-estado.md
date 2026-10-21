@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-146
 titulo: Editar texto - localizar la línea con pdf.js, ediciones pendientes con deshacer y guardado
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-145, PDF-137]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -117,3 +117,12 @@ Lint, typecheck y tests de los dos ficheros OK; cobertura line-hint 100 %, edit-
 
 ### [revisor] ronda 2 — 2026-10-21 — APROBADO
 Lint, typecheck y 43 tests de la ficha OK. El `catch` con `log.warn` y `readFailed` (guardado por generación) y la guarda `status !== 'idle'` están en `edit-text-actions.ts:127,172-175`. 0 problemas. Nota para PDF-147 (de la dudas del programador): pasar el texto del cuadro a `setEditTextTool` e impedir abrir Organizar/Redactar con ediciones pendientes.
+
+### [tester] ronda 1 — 2026-10-21 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lineHintAt, probe rotated, commit emoji/igual, undo/redo 3 pasos, otherPending, saveTextEdits (cancelar/guardar/firmas/error) | OK | `vitest run line-hint + edit-text-actions`: 43 tests pasan |
+| Sin textos fuera de messages-edit-text.ts | OK | grep sin coincidencias en `edit-text-actions.ts` |
+| Cobertura ≥ 90 % | OK | `line-hint.ts` 100 % líneas; `edit-text-actions.ts` ≥ 99 % líneas (módulo conjunto 99,5 %) |
+| lint + typecheck + coverage | OK | exit 0; resumen global líneas 98,34 % |
+Tests añadidos: ninguno (la cobertura de la ficha es suficiente). Rendimiento: no aplica (lógica sin UI).
