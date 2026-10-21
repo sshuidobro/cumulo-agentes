@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-147
 titulo: Editar texto - herramienta en la barra Editar, cuadro sobre la línea y E2E
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-146, PDF-139]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -77,3 +77,6 @@ El usuario activa «Editar texto» en la barra «Editar», hace doble clic en un
 - Qué he hecho: cierro los puntos 1 a 4 del revisor con tests reales. Punto 2: la línea base de 0,8 em no se toca. Medido: el borde superior del cuadro difiere ~2,6 px de la caja de la capa de texto de pdf.js a 125 % (esa caja es más alta que `line.bounds`: 33 px frente a 30 px), pero el centro vertical queda dentro de ±2 px. El E2E compara borde izquierdo y centro vertical; no se cambió `edit-text-box.ts`. Punto 5 (axe): el filtro de `serious`/`critical` de los otros E2E de axe no excluye `page-has-heading-one` ni `region` (son `moderate`). Sin la exclusión, esas dos reglas fallan con un nodo cada una en este visor, así que la exclusión es la misma en efecto que la de los otros E2E: solo se omiten esas dos reglas de estructura de la app. Modo noche: sin cambios (punto opcional, pendiente del líder).
 - Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm exec vitest run apps/lector-pdf/tests/ui/edit-text-tool.test.tsx` 13/13 OK; `pnpm --filter lector-pdf exec playwright test tests/e2e/edit-text.spec.ts --project=chromium` 11/11 OK; `pnpm coverage` OK (cobertura 95,06 % líneas-sentencias, umbrales cumplidos); `pnpm --filter lector-pdf e2e` completo: 396 OK, código 0. En una ejecución anterior, `compare.spec.ts` (PDF-112, teclado) falló una vez; repetido solo, 5/5 OK, y en la suite completa siguiente pasó (no tiene relación con la herramienta).
 - Dudas o cosas que no he podido hacer: el criterio de alineación ±2 px se mide en E2E con el centro vertical y el borde izquierdo, no con la línea base de la fuente (no hay forma de medirla desde el DOM). Si el usuario o el revisor quieren la línea base exacta, hay que usar las métricas de la fuente en `edit-text-box.ts`; no lo he hecho por ser una decisión de geometría.
+
+### [revisor] ronda 2 — 2026-10-21 — APROBADO
+1. Lint, typecheck, test de UI (13/13) y E2E de la ficha (11/11) en verde. Los puntos 1 a 4 de la ronda 1 están cubiertos con tests reales; la exclusión de axe (`page-has-heading-one`, `region`, nivel moderate) es aceptable. (opcional) Línea base de 0,8 em y contraste del texto nuevo en modo noche: queda para el líder.
