@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-137
 titulo: Redactar - marcar zonas, texto y resultados de búsqueda, y aplicar
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-136, PDF-134]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -83,3 +83,13 @@ Lint, typecheck y los 19 tests de redact (unit + UI) en verde. No he lanzado la 
 2. (opcional) `redact-actions.ts:150` — `markSearchResults` devuelve el número de coincidencias y el aviso cuenta zonas; coherente, pero conviene documentarlo.
 3. (opcional) Miles de marcas = miles de nodos sin virtualizar (riesgo ya anotado por el programador); medir en el tester con 10 000 coincidencias.
 4. Para el tester: comprobar axe en el visor completo y el tema oscuro (el programador solo lo hizo en la barra).
+
+### [tester] ronda 1 — 2026-10-21 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| coverage | OK | `pnpm coverage` código 0; líneas 98,33 % |
+| E2E completo | OK | `pnpm --filter lector-pdf e2e`: 375 pasan, código 0 (incluye 4 de `redact.spec.ts`: criterio original con pdftotext/qpdf, imagen de `scanned-es-3.pdf`, deshacer/Escape/Cancelar, cierre de pestaña) |
+| Unit/UI de redacción | OK | `redact-match-rects`, `redact-actions`, `redact-tool` dentro de la batería |
+
+No he añadido tests nuevos. Pendiente sin verificar (no bloquea): axe en el visor completo, prueba visual del tema oscuro y rendimiento con 10 000 marcas (nodos DOM sin virtualizar); conviene una ficha de seguimiento.
