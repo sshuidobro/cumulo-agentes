@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-137
 titulo: Redactar - marcar zonas, texto y resultados de búsqueda, y aplicar
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-136, PDF-134]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -76,3 +76,10 @@ export async function applyRedactions(): Promise<SaveResult | 'cancelled'>;
   - Las etiquetas de «Deshacer» de las marcas son cadenas fijas en `redact-actions.ts`, no están en `messages-redact.ts`.
   - El aviso «Redacción aplicada en N páginas» cuenta las páginas con marcas, no solo las rasterizadas.
 
+
+### [revisor] ronda 1 — 2026-10-21 — APROBADO
+Lint, typecheck y los 19 tests de redact (unit + UI) en verde. No he lanzado la e2e completa (la usa otro agente): me fío del resultado del programador (375 OK, incluidas las 4 de `redact.spec.ts`). Código revisado: `match-rects.ts`, `redact-render.ts`, `redact-actions.ts`, `RedactLayer.tsx`; cumple la ficha y no hay nada fuera de alcance.
+1. (opcional) `redact-actions.ts:53-160` — las etiquetas de deshacer («marcar zona», etc.) están fijas en el código; pasarlas a `messages-redact.ts`.
+2. (opcional) `redact-actions.ts:150` — `markSearchResults` devuelve el número de coincidencias y el aviso cuenta zonas; coherente, pero conviene documentarlo.
+3. (opcional) Miles de marcas = miles de nodos sin virtualizar (riesgo ya anotado por el programador); medir en el tester con 10 000 coincidencias.
+4. Para el tester: comprobar axe en el visor completo y el tema oscuro (el programador solo lo hizo en la barra).
