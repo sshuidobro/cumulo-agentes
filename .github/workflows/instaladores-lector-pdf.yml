@@ -115,8 +115,12 @@ jobs:
         run: |
           shopt -s nullglob
           # Nombre fijo para Windows: el enlace .../releases/latest/download/Instalar-Lector-PDF.exe no cambia entre versiones.
+          # El artefacto conserva las subcarpetas (nsis/, deb/…): se aplanan antes de subir.
+          find instaladores -mindepth 2 -type f -exec mv -t instaladores {} +
+          find instaladores -mindepth 1 -type d -empty -delete
           for f in instaladores/*-setup.exe; do mv "$f" instaladores/Instalar-Lector-PDF.exe; done
           files=(instaladores/*)
+          ls -la instaladores
           if [ ${#files[@]} -eq 0 ]; then echo "No hay instaladores que publicar"; exit 1; fi
           version=$(node -p "require('./apps/lector-pdf/src-tauri/tauri.conf.json').version")
           tag="lector-pdf-v$version"
