@@ -1,0 +1,36 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.button,
+.apply {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--color-control-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.apply {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.button:disabled,
+.apply:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button:focus-visible,
+.apply:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

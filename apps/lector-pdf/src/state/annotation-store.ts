@@ -43,9 +43,10 @@ export type AnnotationTool =
   | 'signature'
   | 'stamp'
   | 'page-text'
-  | 'page-image';
+  | 'page-image'
+  | 'redact';
 /** Herramientas con color propio. `page-image` no tiene: la imagen trae sus colores (PDF-130). */
-export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature' | 'stamp' | 'page-image'>;
+export type ColorTool = Exclude<AnnotationTool, 'none' | 'signature' | 'stamp' | 'page-image' | 'redact'>;
 export type ScanState = 'idle' | 'scanning' | 'done' | 'lazy';
 
 /**

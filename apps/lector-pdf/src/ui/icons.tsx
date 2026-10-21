@@ -391,6 +391,16 @@ export function IconPageImage() {
   );
 }
 
+/** Herramienta «Redactar» (PDF-137): un bloque negro sobre una línea de texto. */
+export function IconRedact() {
+  return (
+    <Svg>
+      <rect x="3" y="4" width="14" height="5" rx="1" />
+      <rect x="3" y="11" width="9" height="5" rx="1" fill="currentColor" />
+    </Svg>
+  );
+}
+
 export function IconSignature() {
   return (
     <Svg>

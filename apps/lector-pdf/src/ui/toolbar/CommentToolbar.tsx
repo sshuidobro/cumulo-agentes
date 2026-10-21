@@ -98,7 +98,7 @@ function colorTargetOf(tool: AnnotationTool, selection: Selection): ColorTarget 
   if (selection.text) return 'freetext';
   if (selection.ink) return 'ink';
   if (selection.shape !== null) return 'shape';
-  return tool === 'none' || tool === 'signature' || tool === 'stamp' || tool === 'page-image' ? null : tool;
+  return tool === 'none' || tool === 'signature' || tool === 'stamp' || tool === 'page-image' || tool === 'redact' ? null : tool;
 }
 
 /** A qué afecta «Grosor»: el dibujo o la forma seleccionados, o la herramienta activa. `null` si ninguna aplica. */

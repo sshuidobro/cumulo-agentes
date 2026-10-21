@@ -2,10 +2,12 @@ import { useAnnotations } from '../../state/annotation-store';
 import { choosePageImage, setEditBarOpen, setTool } from '../../state/annotation-actions';
 import { IconButton } from '../kit/IconButton';
 import { MenuButton } from '../kit/MenuButton';
-import { IconClose, IconColor, IconFontSize, IconFreeText, IconPageImage } from '../icons';
+import { IconClose, IconColor, IconFontSize, IconFreeText, IconPageImage, IconRedact } from '../icons';
 import { editMsg } from '../messages-edit';
 import { msg } from '../messages';
+import { redactMsg } from '../messages-redact';
 import { colorEntries, fontSizeEntries } from './CommentToolbar';
+import { RedactBar } from './RedactBar';
 import styles from './CommentToolbar.module.css';
 
 /**
@@ -43,6 +45,16 @@ export function EditToolbar() {
       <MenuButton label={msg.color} entries={colorEntries('page-text', colors, null)}>
         <IconColor />
       </MenuButton>
+      <IconButton
+        label={redactMsg.tool}
+        pressed={tool === 'redact'}
+        onClick={() => {
+          setTool(tool === 'redact' ? 'none' : 'redact');
+        }}
+      >
+        <IconRedact />
+      </IconButton>
+      {tool === 'redact' && <RedactBar />}
       <IconButton
         label={editMsg.close}
         onClick={() => {

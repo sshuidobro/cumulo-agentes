@@ -3,10 +3,13 @@ import { createLogger } from '@suite/shared';
 import { useAnnotations } from '../../state/annotation-store';
 import { useViewer } from '../../state/viewer-store';
 import { markupSelection, type MarkupType } from '../../state/markup-actions';
+import { markSelection } from '../../state/redact-actions';
+import { setTool } from '../../state/annotation-actions';
 import { normalizeUnicode } from '../../engine/text';
-import { IconCopy, IconHighlight, IconStrikeout, IconUnderline } from '../icons';
+import { IconCopy, IconHighlight, IconRedact, IconStrikeout, IconUnderline } from '../icons';
 import { IconButton } from '../kit/IconButton';
 import { msg } from '../messages';
+import { redactMsg } from '../messages-redact';
 import { securityMsg } from '../messages-security';
 import { selectionPageRects } from './selection-to-pages';
 import styles from './SelectionActions.module.css';
@@ -15,9 +18,9 @@ const log = createLogger('viewer');
 
 /** Separación entre el texto seleccionado y la barra, en píxeles. */
 const GAP_PX = 8;
-/** Alto y ancho aproximados de la barra (4 botones), en píxeles; sirven para colocarla dentro de la ventana. */
+/** Alto y ancho aproximados de la barra (5 botones), en píxeles; sirven para colocarla dentro de la ventana. */
 const BAR_HEIGHT_PX = 40;
-const BAR_WIDTH_PX = 160;
+const BAR_WIDTH_PX = 200;
 
 interface Placement {
   readonly top: number;
@@ -132,6 +135,17 @@ export function SelectionActions() {
         onClick={copySelection}
       >
         <IconCopy />
+      </IconButton>
+      <IconButton
+        label={redactMsg.tool}
+        onClick={() => {
+          // Marca el texto y pasa a «Redactar» (la barra se oculta sola con la herramienta activa).
+          markSelection();
+          setPlacement(null);
+          setTool('redact');
+        }}
+      >
+        <IconRedact />
       </IconButton>
     </div>
   );
