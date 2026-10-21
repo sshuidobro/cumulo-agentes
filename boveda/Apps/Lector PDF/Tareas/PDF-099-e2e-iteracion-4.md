@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148, PDF-150]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -115,3 +115,9 @@ Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias p
 - Dudas o cosas que no he podido hacer:
   1. La razón de medianas cifrado/sin cifrar queda en 1,75-1,93 (fuera del ≤ 1,5 de la ronda 1). El presupuesto vigente es el absoluto de [[ADR-0043-contrasena-sin-reabrir]], «Revisión 2», así que no lo cuento como fallo; anótalo si quieres revisarlo.
   2. Lista manual para Adobe: la de la ronda 1 sigue vigente (muestras en `apps/lector-pdf/interop-samples/`, sin versionar; contraseña «usuario»).
+
+### [revisor] ronda 1 — 2026-10-21 — APROBADO
+- Lint y typecheck en 0 (revisados ahora). El resto (e2e ×3, perf, coverage, build) se toma del Registro del programador; que el tester los repita.
+- Cubiertos los criterios: medidas en tabla, 12 vistas de axe, qpdf 0, sin `waitForTimeout`/`skip`/`.only`, y búsqueda de «usuario»/«propietario» en localStorage, sessionStorage, IndexedDB y consola (`iteration4-flow.spec.ts`).
+- (opcional) Hay 1 violación leve de axe en la barra de pestañas con 3 documentos; el líder puede abrir una ficha.
+- (opcional) La razón cifrado/sin cifrar es 1,75-1,93, pero el presupuesto vigente es el absoluto de ADR-0043 y se cumple.
