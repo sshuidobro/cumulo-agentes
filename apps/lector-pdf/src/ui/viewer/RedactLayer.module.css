@@ -1,0 +1,39 @@
+/* Capa de «Redactar» (PDF-137): sin puntero salvo con la herramienta activa. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+/* Marca: borde rojo y relleno rayado, para que se vea también en tema oscuro. */
+.mark {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--color-danger);
+  background: repeating-linear-gradient(45deg, rgba(179, 38, 30, 0.35) 0 4px, rgba(179, 38, 30, 0.12) 4px 8px);
+  pointer-events: none;
+}
+
+.active .mark {
+  pointer-events: auto;
+}
+
+.mark:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Arrastre en curso. */
+.sketch {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px dashed var(--color-danger);
+  background: rgba(179, 38, 30, 0.15);
+  pointer-events: none;
+}

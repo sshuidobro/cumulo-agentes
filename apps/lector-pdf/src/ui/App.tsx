@@ -42,6 +42,7 @@ import { useCombineDialog } from '../state/combine-actions';
 import { useImagesDialog } from '../state/images-dialog-store';
 import { useOrganize } from '../state/organize-store';
 import { organizeRedo, organizeUndo } from '../state/organize-actions';
+import { redactRedo, redactUndo } from '../state/redact-actions';
 import { useViewer } from '../state/viewer-store';
 import { useTabs } from '../state/tabs';
 import { closeActiveTab, stepTab } from '../state/tab-actions';
@@ -176,7 +177,11 @@ export function App() {
   // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
   useShortcuts({
     open: () => void pickAndOpen(),
-    ...(organizeOpen ? { undo: organizeUndo, redo: organizeRedo } : { undo, redo }),
+    ...(organizeOpen
+      ? { undo: organizeUndo, redo: organizeRedo }
+      : tool === 'redact'
+        ? { undo: redactUndo, redo: redactRedo }
+        : { undo, redo }),
     ...(fullscreen ? FULLSCREEN_SHORTCUTS : tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
     ...(status === 'ready' && !organizeOpen ? VIEW_SHORTCUTS : {}),
     ...TAB_SHORTCUTS,
