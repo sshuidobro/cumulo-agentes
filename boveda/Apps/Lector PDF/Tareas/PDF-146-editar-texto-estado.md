@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-146
 titulo: Editar texto - localizar la línea con pdf.js, ediciones pendientes con deshacer y guardado
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-145, PDF-137]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -114,3 +114,6 @@ Lint, typecheck y tests de los dos ficheros OK; cobertura line-hint 100 %, edit-
 - Qué he hecho: (1) `beginLineEdit` con `catch` que registra `log.warn` y muestra `editTextMsg.readFailed` (solo si la generación no ha cambiado), sin lanzar; test con `getTextContent` rechazado. (2) Opcional: `beginLineEdit` retorna si `status !== 'idle'`, para no lanzar dos consultas en un doble clic; test que comprueba una sola llamada a `edit-text-probe`.
 - Comandos ejecutados y resultado: `pnpm lint` exit 0. `pnpm typecheck` exit 0. `pnpm coverage` exit 0: 4158 tests pasan. `line-hint.ts` 100 % líneas; `edit-text-actions.ts` cubierto por la suite. Una ejecución anterior de `pnpm lint`/`pnpm coverage` dio 3 errores de ESLint y 1 test fallido en ficheros de firma digital (de otro agente, sin commit); en la repetición no reaparecieron.
 - Dudas o cosas que no he podido hacer: ninguna en esta ronda.
+
+### [revisor] ronda 2 — 2026-10-21 — APROBADO
+Lint, typecheck y 43 tests de la ficha OK. El `catch` con `log.warn` y `readFailed` (guardado por generación) y la guarda `status !== 'idle'` están en `edit-text-actions.ts:127,172-175`. 0 problemas. Nota para PDF-147 (de la dudas del programador): pasar el texto del cuadro a `setEditTextTool` e impedir abrir Organizar/Redactar con ediciones pendientes.
