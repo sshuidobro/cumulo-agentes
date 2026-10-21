@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-139
 titulo: Firma digital - firmar con certificado y panel de firmas
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-138, PDF-137, COM-018]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
 actualizado: 2026-10-21
@@ -85,3 +85,9 @@ export async function refreshSignatures(): Promise<void>;         // op 'verify-
   8. Margen del presupuesto de arranque: 7,3 KB (592 711 de 600 000). La siguiente ficha que añada código al arranque lo notará.
   9. En Playwright, `setInputFiles` no abre un PDF cuya ruta tiene tildes o «ñ» (la carpeta de salida del test contenía el título). Las descargas se guardan ahora en una carpeta temporal ASCII. No he comprobado si pasa con rutas reales del usuario en otros navegadores.
   10. La comprobación en Adobe Acrobat queda como lista manual en el Manual (no ejecutada). Lo que la app no verifica: cadena de confianza, revocación, sello de tiempo.
+
+### [revisor] ronda 1 — 2026-10-21 — CAMBIOS
+Lint, typecheck y `pnpm coverage` OK (98,34 % líneas); tests de la ficha en verde. Cambiar `getFieldObjects` por `getSignatures` se acepta (dudas 1, 4, 5 y 6 aceptadas; 9 y 10 aceptadas).
+1. `apps/lector-pdf/src/ui/signature/DigitalSignDialog.tsx:69` — la contraseña escrita vive en el estado local `password` del componente, que sigue montado al cerrar el diálogo: si se escribe, se cancela y se reabre (o se elige otro certificado con `chooseCertificate`) la contraseña anterior reaparece en el campo. Incumple «contraseña solo en memoria mientras el diálogo está abierto» — hay que vaciar `password` al cerrar y al cambiar de certificado (p. ej. con `key` ligada a `open`/nombre del certificado, o leyendo el valor del store), y añadir un test de ui que lo cubra (escribir, cancelar, reabrir → campo vacío).
+2. `apps/lector-pdf/tests/unit/digital-signature-actions.test.ts` (criterio «borradores») — solo se espía `prefs.set`; el criterio exige también el almacén de borradores. Añadir un espía del almacén de borradores (o una aserción de que no se invoca su escritura durante la firma).
+3. `tests/e2e/digital-signature.spec.ts` / criterio «firmar con teclado de principio a fin» — el diálogo se abre con ratón. Añadir un E2E (o test ui) que abra «Firmar con certificado…» y recorra el diálogo solo con teclado (Tab/Intro/Espacio) hasta «Firmar».
