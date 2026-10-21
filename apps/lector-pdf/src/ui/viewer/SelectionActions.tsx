@@ -5,10 +5,12 @@ import { useViewer } from '../../state/viewer-store';
 import { markupSelection, type MarkupType } from '../../state/markup-actions';
 import { markSelection } from '../../state/redact-actions';
 import { setTool } from '../../state/annotation-actions';
+import { editSelectedLine } from '../../state/edit-text-actions';
 import { normalizeUnicode } from '../../engine/text';
-import { IconCopy, IconHighlight, IconRedact, IconStrikeout, IconUnderline } from '../icons';
+import { IconCopy, IconEdit, IconHighlight, IconRedact, IconStrikeout, IconUnderline } from '../icons';
 import { IconButton } from '../kit/IconButton';
 import { msg } from '../messages';
+import { editTextMsg } from '../messages-edit-text';
 import { redactMsg } from '../messages-redact';
 import { securityMsg } from '../messages-security';
 import { selectionPageRects } from './selection-to-pages';
@@ -135,6 +137,16 @@ export function SelectionActions() {
         onClick={copySelection}
       >
         <IconCopy />
+      </IconButton>
+      <IconButton
+        label={editTextMsg.tool}
+        onClick={() => {
+          // Abre el cuadro de la línea seleccionada con «Editar texto» activa (igual que F2).
+          editSelectedLine();
+          setPlacement(null);
+        }}
+      >
+        <IconEdit />
       </IconButton>
       <IconButton
         label={redactMsg.tool}

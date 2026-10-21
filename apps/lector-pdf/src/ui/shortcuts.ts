@@ -6,6 +6,7 @@ import { viewMsg } from './messages-view';
 import { tabsMsg } from './messages-tabs';
 import { readAloudMsg } from './messages-read-aloud';
 import { organizeMsg } from './messages-organize';
+import { editTextMsg } from './messages-edit-text';
 
 /** Acciones de la app que tienen atajo. Cada ficha añade las suyas aquí. */
 export type ShortcutId =
@@ -54,7 +55,8 @@ export type ShortcutId =
   | 'organize-move-left'
   | 'organize-move-right'
   | 'organize-move-first'
-  | 'organize-move-last';
+  | 'organize-move-last'
+  | 'edit-line';
 
 /** Registro único de atajos de la app (COM-011). */
 export const shortcuts = new ShortcutRegistry<ShortcutId>([
@@ -109,6 +111,8 @@ export const shortcuts = new ShortcutRegistry<ShortcutId>([
   { id: 'organize-move-right', chords: [], description: organizeMsg.moveRight },
   { id: 'organize-move-first', chords: ['Alt+Home'], description: organizeMsg.moveFirst },
   { id: 'organize-move-last', chords: ['Alt+End'], description: organizeMsg.moveLast },
+  // Editar texto (PDF-147): F2 abre el cuadro de la línea de la selección o del resultado de búsqueda actual.
+  { id: 'edit-line', chords: ['F2'], description: editTextMsg.editLine },
 ]);
 
 /** Atajo de una acción formateado para mostrar (p. ej. «Ctrl+O»); vacío si no tiene. */

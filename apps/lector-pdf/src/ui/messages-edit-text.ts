@@ -52,4 +52,8 @@ export const editTextMsg = {
   undoRestore: 'restauración de línea',
   /** Nombre accesible del cuadro de edición de una línea. */
   editorLabel: (page: number): string => `Editar línea de la página ${page}`,
+  /** Atajo F2: edita la línea de la selección o del resultado de búsqueda actual. */
+  editLine: 'Editar la línea de la selección',
+  /** Texto del cuadro de edición de línea visible sobre la página, con el texto editado. */
+  editBoxLabel: (page: number, text: string): string => `Editar línea de la página ${page}: ${text}`,
 };

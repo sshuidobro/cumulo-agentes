@@ -46,6 +46,8 @@ import { useImagesDialog } from '../state/images-dialog-store';
 import { useOrganize } from '../state/organize-store';
 import { organizeRedo, organizeUndo } from '../state/organize-actions';
 import { redactRedo, redactUndo } from '../state/redact-actions';
+import { editSelectedLine, editTextRedo, editTextUndo, setEditTextTool } from '../state/edit-text-actions';
+import { useEditText } from '../state/edit-text-store';
 import { useViewer } from '../state/viewer-store';
 import { useTabs } from '../state/tabs';
 import { closeActiveTab, stepTab } from '../state/tab-actions';
@@ -177,19 +179,33 @@ export function App() {
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
   const organizeOpen = useOrganize((s) => s.open);
+  const editTextActive = useEditText((s) => s.active);
 
   // Con «Organizar páginas» abierta, deshacer/rehacer son los de la vista y los atajos del visor no actúan
   // (la vista atiende sus propios atajos, PDF-125).
   // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
+  // Con «Editar texto» activa, deshacer/rehacer son los de las ediciones de línea (PDF-147); F2 abre el cuadro.
   useShortcuts({
     open: () => void pickAndOpen(),
     ...(organizeOpen
       ? { undo: organizeUndo, redo: organizeRedo }
-      : tool === 'redact'
-        ? { undo: redactUndo, redo: redactRedo }
-        : { undo, redo }),
-    ...(fullscreen ? FULLSCREEN_SHORTCUTS : tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
+      : editTextActive
+        ? { undo: editTextUndo, redo: editTextRedo }
+        : tool === 'redact'
+          ? { undo: redactUndo, redo: redactRedo }
+          : { undo, redo }),
+    ...(fullscreen
+      ? FULLSCREEN_SHORTCUTS
+      : tool === 'none' && !editTextActive
+        ? {}
+        : {
+            'cancel-tool': () => {
+              if (editTextActive) setEditTextTool(false);
+              else setTool('none');
+            },
+          }),
     ...(status === 'ready' && !organizeOpen ? VIEW_SHORTCUTS : {}),
+    ...(status === 'ready' && !organizeOpen && !fullscreen ? { 'edit-line': () => { editSelectedLine(); } } : {}),
     ...TAB_SHORTCUTS,
   });
 

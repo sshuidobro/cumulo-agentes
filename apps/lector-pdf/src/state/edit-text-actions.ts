@@ -9,13 +9,15 @@ import { lineHintAt, type TextItemLike } from '../engine/line-hint';
 import type { TextContent } from '../engine/pdfjs';
 import { getPageTextContent } from '../engine/text';
 import { editTextMsg } from '../ui/messages-edit-text';
-import { nowIso } from './annotation-actions';
+import { nowIso, setTool } from './annotation-actions';
+import { useAnnotations } from './annotation-store';
 import { askChoice } from './choice';
 import { currentPassword } from './document-actions';
 import { runDocOp } from './doc-ops';
 import { beginJob, endJob, jobOptions } from './extract-actions';
 import { initialEditTextState, useEditText, type LineEditDraft } from './edit-text-store';
 import { showNotice } from './notice';
+import { useSearch } from './search-store';
 import { isSwitchingTab, registerTabParticipant, type TabParticipant } from './tabs';
 import {
   buildCurrentDelta,
@@ -26,6 +28,7 @@ import {
   type SaveResult,
 } from './save-actions';
 import { useViewer } from './viewer-store';
+import { selectionPageRects } from '../ui/viewer/selection-to-pages';
 
 const log = createLogger('edit-text-actions');
 
@@ -108,7 +111,10 @@ function textItems(items: TextContent['items']): TextItemLike[] {
   return out;
 }
 
-/** Activa o desactiva la herramienta. Al desactivar con el cuadro abierto, confirma el texto `currentText` (si lo hay). */
+/**
+ * Activa o desactiva la herramienta. Activarla quita la herramienta de anotación; al desactivar con el cuadro abierto,
+ * confirma el texto `currentText` (si lo hay).
+ */
 export function setEditTextTool(active: boolean, currentText?: string): void {
   const { editing } = useEditText.getState();
   if (!active && editing !== null && currentText !== undefined) {
@@ -116,7 +122,60 @@ export function setEditTextTool(active: boolean, currentText?: string): void {
     if (validateLineText(currentText) !== null) return;
     commitLineEdit(currentText);
   }
+  if (active) setTool('none');
   useEditText.setState({ active, editing: active ? useEditText.getState().editing : null });
+}
+
+/* Solo una herramienta a la vez: si otra herramienta de anotación se activa, «Editar texto» se desactiva. */
+useAnnotations.subscribe((next, prev) => {
+  if (next.tool !== prev.tool && next.tool !== 'none' && useEditText.getState().active) {
+    useEditText.setState({ active: false, editing: null });
+  }
+});
+
+/** Punto de la selección de texto (centro del primer rectángulo de la página más baja), o `null`. */
+function selectionTarget(): { readonly pageIndex: number; readonly point: readonly [number, number] } | null {
+  const sel = document.getSelection();
+  if (sel === null || sel.isCollapsed) return null;
+  const pages = [...selectionPageRects(sel).entries()]
+    .filter(([, rects]) => rects.length > 0)
+    .sort(([a], [b]) => a - b);
+  const first = pages[0];
+  const rect = first?.[1][0];
+  if (first === undefined || rect === undefined) return null;
+  return { pageIndex: first[0], point: [(rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2] };
+}
+
+/** Punto del resultado de búsqueda actual (centro de su primer rectángulo), o `null`. */
+async function searchTarget(): Promise<{ readonly pageIndex: number; readonly point: readonly [number, number] } | null> {
+  const { current, matchesByPage } = useSearch.getState();
+  const pdf = useViewer.getState().pdf;
+  const match = current === null ? undefined : matchesByPage.get(current.page)?.[current.index];
+  if (match === undefined || pdf === null) return null;
+  const { matchRects } = await import('../engine/match-rects');
+  const rect = (await matchRects(pdf.doc, match))[0];
+  if (rect === undefined) return null;
+  return { pageIndex: match.pageIndex, point: [(rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2] };
+}
+
+/**
+ * Atajo F2 y botón «Editar texto» de la selección (PDF-147): activa la herramienta y abre el cuadro de la línea de la
+ * selección de texto o, sin selección, la del resultado de búsqueda actual.
+ */
+export function editSelectedLine(): void {
+  const fromSelection = selectionTarget();
+  if (fromSelection !== null) {
+    setEditTextTool(true);
+    void beginLineEdit(fromSelection.pageIndex, fromSelection.point);
+    return;
+  }
+  void searchTarget().then((target) => {
+    if (target === null) return;
+    setEditTextTool(true);
+    return beginLineEdit(target.pageIndex, target.point);
+  }, (error: unknown) => {
+    log.warn('editSelectedLine', error instanceof Error ? error.message : String(error));
+  });
 }
 
 /**

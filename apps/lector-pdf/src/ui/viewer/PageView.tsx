@@ -24,6 +24,7 @@ import { PageFrame } from './PageFrame';
 import { SearchHighlights } from './SearchHighlights';
 import { ReadAloudHighlight } from './ReadAloudHighlight';
 import { TextLayerView } from './TextLayerView';
+import { EditTextLayer } from './EditTextLayer';
 import styles from './Viewer.module.css';
 
 // Capas que solo hacen falta con campos de formulario o con un comentario abierto (PDF-140): se cargan bajo demanda.
@@ -316,6 +317,7 @@ export const PageView = memo(function PageView({
       <TextLayerView index={index} zoom={zoom} rotation={rotation} />
       {viewport !== null && <AnnotationLayer pageIndex={index} viewport={viewport} />}
       {viewport !== null && <RedactLayer pageIndex={index} viewport={viewport} />}
+      {viewport !== null && <EditTextLayer pageIndex={index} viewport={viewport} night={nightMode} />}
       {viewport !== null && <SignaturePlaceLayer pageIndex={index} viewport={viewport} />}
       {viewport !== null && hasForms && (
         <Suspense fallback={null}>
