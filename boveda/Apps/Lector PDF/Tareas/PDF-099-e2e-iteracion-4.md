@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
-estado: en-curso
+estado: en-revision
 depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148, PDF-150]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-18
-actualizado: 2026-10-20
+actualizado: 2026-10-21
 tags: [tarea, pdf, iteracion-4, e2e, rendimiento, accesibilidad]
 ---
 
@@ -87,3 +87,31 @@ Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias p
 
 ### [lider] dependencia nueva — 2026-10-20
 - Añadida [[PDF-150-exportar-cancelar-a-mitad]]: el criterio «`e2e` con código 0» no se puede cumplir mientras falle `export.spec.ts` «Cancelar» a mitad (preexistente, detectado en PDF-130).
+
+### [programador] ronda 2 — 2026-10-21
+- Ficheros cambiados: esta ficha (Registro y estado). Sin cambios de código: `iteration4-performance.spec.ts` ya usaba el presupuesto absoluto de PDF-148 y `iteration4-a11y.spec.ts`, `iteration4-flow.spec.ts` y las muestras quedaron como en la ronda 1.
+- Qué he hecho: (1) La (a) falló en la ronda 1 por la medida de razón; ahora pasa con el presupuesto de PDF-148 (sobrecoste ≤ 350 ms). (2) La primera ejecución de `iteration4-performance` se invalidó: otra batería Playwright (`compare`, `ocr`) corría a la vez y la puerta de reposo lo detectó (correcto). Esperé a que terminara y repetí. (3) Todas las pruebas `@perf` y no `@perf` pasan; no toqué tests ajenos.
+- Comandos ejecutados y resultado:
+  - `pnpm --filter lector-pdf e2e` (ambos proyectos, en serie): **371/371 pasan**, código 0.
+  - `pnpm --filter lector-pdf e2e --project=chromium --repeat-each=3`: **1005/1005**, código 0.
+  - `pnpm --filter lector-pdf e2e --project=chromium-perf --no-deps --repeat-each=3` (solo, sin otras baterías): **108/108**, código 0.
+  - `pnpm lint` (raíz): 0 (`dist-e2e-full/` ya no molesta). `pnpm typecheck`: 0. `pnpm coverage`: 0 (líneas 98,33 %, sentencias 95,04 %, ramas 89,74 %, funciones 97,91 %). `pnpm perf`: 0 (45/45). `pnpm --filter lector-pdf build`: 0, arranque 572 209 bytes de 600 000 (no hace falta diferir `@noble/*`).
+  - `qpdf --check --password=usuario` sobre las tres muestras de `apps/lector-pdf/interop-samples/`: 0 en las tres.
+  - `grep` de `waitForTimeout`, `test.skip`, `.only` en los specs `iteration4-*` y en `interop-samples.ts`: sin coincidencias.
+- Medidas (ms; presupuesto; valor en las 3 repeticiones de `chromium-perf`):
+
+| Medida | Presupuesto | Valor ×3 |
+|---|---|---|
+| (a) mediana sin cifrar, 1 000 páginas | — | 321, 277, 276 |
+| (a) mediana cifrado AES-256 (sin tiempo de usuario) | — | 562, 534, 492 |
+| (a) sobrecoste cifrado − sin cifrar (medianas) | ≤ 350 | 241, 257, 217 → **pasa** |
+| (b) guardar una nota en el cifrado | < 2 000 | 82, 74, 70 |
+| (c) cambio de pestaña, p95 de 20 cambios | ≤ 500 | 79, 66, 72 |
+| (c) long tasks en el cambio de pestaña | ≤ 200 | 0, 0, 0 |
+| (c) cambio a doble página en el cifrado | ≤ 200 | 156, 132, 159 |
+| PDF-022/039/090/095 (`tabs-performance`, `iteration3-performance`, etc.) | sus presupuestos | en verde en las 3 repeticiones |
+
+- Axe (`iteration4-a11y`, 12 comprobaciones): 0 `serious`/`critical` en las 12 vistas × 2 temas. Hay 1 violación leve (no grave) en la barra de pestañas con tres documentos, en ambos temas; no la he tocado porque el criterio no la exige. Conviene anotarla para el líder.
+- Dudas o cosas que no he podido hacer:
+  1. La razón de medianas cifrado/sin cifrar queda en 1,75-1,93 (fuera del ≤ 1,5 de la ronda 1). El presupuesto vigente es el absoluto de [[ADR-0043-contrasena-sin-reabrir]], «Revisión 2», así que no lo cuento como fallo; anótalo si quieres revisarlo.
+  2. Lista manual para Adobe: la de la ronda 1 sigue vigente (muestras en `apps/lector-pdf/interop-samples/`, sin versionar; contraseña «usuario»).
