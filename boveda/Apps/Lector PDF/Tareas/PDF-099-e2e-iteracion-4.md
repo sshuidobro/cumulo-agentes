@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-099
 titulo: E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4
 app: pdf
-estado: en-test
+estado: hecha
 depende_de: [PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148, PDF-150]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -121,3 +121,18 @@ Cerrar la iteración 4 con evidencia: un flujo completo (abrir cifrado, varias p
 - Cubiertos los criterios: medidas en tabla, 12 vistas de axe, qpdf 0, sin `waitForTimeout`/`skip`/`.only`, y búsqueda de «usuario»/«propietario» en localStorage, sessionStorage, IndexedDB y consola (`iteration4-flow.spec.ts`).
 - (opcional) Hay 1 violación leve de axe en la barra de pestañas con 3 documentos; el líder puede abrir una ficha.
 - (opcional) La razón cifrado/sin cifrar es 1,75-1,93, pero el presupuesto vigente es el absoluto de ADR-0043 y se cumple.
+
+### [tester] ronda 1 — 2026-10-21 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| e2e código 0 (ambos proyectos) | OK | `pnpm --filter lector-pdf e2e`: 375 pasan, código 0 |
+| Repeticiones ×3 | OK | `iteration4-flow` + `iteration4-a11y` ×3 (chromium): 39/39; `iteration4-performance` ×3 (chromium-perf): 12/12 en 2 ejecuciones limpias |
+| Medidas (a)-(c) | OK | Mismas pruebas @perf en verde; resto de @perf (PDF-022/039/050/090/095) en verde |
+| Axe 12 vistas | OK | `iteration4-a11y` 12/12 ×3 |
+| qpdf --check --password=usuario | OK | las 3 muestras de `interop-samples/`: 0 |
+| Sin waitForTimeout/skip/only | OK | grep sin coincidencias |
+| Contraseñas fuera de storage/consola | OK | cubierto en `iteration4-flow` (pasa ×3) |
+| lint, typecheck, coverage, perf, build | OK | todos 0; cobertura líneas 98,33 %; `pnpm perf` 45/45; arranque 582 797 de 600 000 B |
+
+- Aviso (no bloquea): en una primera ejecución ×3 de `iteration4-performance`, 1 de 12 falló en «cambiar a doble página … ≤ 200 ms» (cifrado, valores habituales 132-190 ms, margen estrecho). No se reprodujo en 3 repeticiones sueltas ni en 2 ejecuciones completas ×3. Candidata a prueba intermitente; conviene vigilarla.
+- Tests añadidos: ninguno. Rendimiento: sin regresión.
