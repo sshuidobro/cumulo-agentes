@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EditableLine } from '../../src/core/edit-text';
 import type { PageViewport } from '../../src/engine/pdfjs';
 import { App } from '../../src/ui/App';
 import { editMsg } from '../../src/ui/messages-edit';
 import { editTextMsg } from '../../src/ui/messages-edit-text';
 import { EditTextLayer } from '../../src/ui/viewer/EditTextLayer';
+import { selectionPageRects } from '../../src/ui/viewer/selection-to-pages';
 import { endAnnotationSession, setTool } from '../../src/state/annotation-actions';
 import { initialAnnotationState, useAnnotations } from '../../src/state/annotation-store';
 import { editTextRedo, editTextUndo, setEditTextTool } from '../../src/state/edit-text-actions';
@@ -15,6 +16,13 @@ import { initialEditTextState, useEditText, type LineEditDraft } from '../../src
 import { initServices } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
 import { createFakePlatform } from '../helpers/fake-platform';
+
+// jsdom no mide la capa de texto: las cajas de la selección se leen de `selectionPageRects`, que solo se fija en el
+// test de F2 con selección (el resto de tests usa la implementación real).
+vi.mock('../../src/ui/viewer/selection-to-pages', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, selectionPageRects: vi.fn(actual.selectionPageRects as typeof selectionPageRects) };
+});
 
 /** Página de 792 pt de alto a escala 2, sin rotación (la matriz de pdf.js: y hacia abajo). */
 const PAGE_HEIGHT = 792;
@@ -224,5 +232,29 @@ describe('ediciones sobre la página (PDF-147)', () => {
     expect(useEditText.getState().active).toBe(true);
     await user.keyboard('{Escape}');
     expect(useEditText.getState().active).toBe(false);
+  });
+
+  it('F2 con texto seleccionado activa la herramienta y consulta las cajas de la selección', async () => {
+    const user = userEvent.setup();
+    const paragraph = document.createElement('p');
+    paragraph.textContent = ORIGINAL;
+    document.body.append(paragraph);
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    vi.mocked(selectionPageRects).mockClear();
+    vi.mocked(selectionPageRects).mockReturnValueOnce(new Map([[1, [[72, 700, 300, 712]]]]));
+
+    try {
+      render(<App />);
+      await user.keyboard('{F2}');
+      expect(selectionPageRects).toHaveBeenCalledTimes(1);
+      expect(useEditText.getState().active).toBe(true);
+    } finally {
+      selection?.removeAllRanges();
+      paragraph.remove();
+    }
   });
 });
