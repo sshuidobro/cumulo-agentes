@@ -407,7 +407,8 @@ export function Viewer() {
     if (event.ctrlKey || event.altKey || event.metaKey) return;
     // Con la herramienta «Firmar», Intro coloca la firma en la página actual, a un tercio de lo visible (PDF-043).
     // Va antes de comprobar `scaled`: un documento que cabe entero también debe poder firmarse con teclado.
-    if (event.key === 'Enter' && useAnnotations.getState().tool === 'signature') {
+    const placing = useAnnotations.getState().tool;
+    if (event.key === 'Enter' && (placing === 'signature' || placing === 'page-image')) {
       event.preventDefault();
       const pagePx = layout?.heights[useViewer.getState().currentPage] ?? 0;
       placeSignatureFromKeyboard(pagePx > 0 ? Math.min(1, vh / pagePx) : 1);

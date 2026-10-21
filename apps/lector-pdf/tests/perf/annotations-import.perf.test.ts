@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { loadPdf, scanAnnotations } from '../../src/engine';
+import { loadPdf } from '../../src/engine';
+import { scanAnnotations } from '../../src/engine/annotations-import';
 import { fixtureSource, nodeAssetBase } from '../helpers/pdfjs-node';
 
 // Asserts de tiempo de reloj (ADR-0012): solo se ejecutan con `pnpm perf`, nunca en `pnpm test` ni `pnpm coverage`.

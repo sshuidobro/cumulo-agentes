@@ -14,6 +14,7 @@ import { rgbaArt } from '../../src/core/signature/image-art';
 import type { Annotation, RectPt } from '../../src/core/annotations/model';
 import { additionsDiff, saveAnnotations, SAVE_NOW } from './save-annotations';
 import { standardAnnotations } from './standard-annotations';
+import { qpdfEncrypt } from '../fixtures/encrypted';
 
 /** Muestra del formulario relleno (PDF-042): `form-full.pdf` con los valores del criterio 1. */
 const FORM_SAMPLE = 'formulario-relleno.pdf';
@@ -25,6 +26,16 @@ const SIGNED_SAMPLE = 'firmado.pdf';
 const PAGE_BOX: RectPt = [0, 0, 612, 792];
 /** Grosor del trazo dibujado, en puntos PDF (como el de la ventana de firma). */
 const INK_WIDTH = 2;
+
+/** Contraseña de usuario de las muestras cifradas (PDF-047, PDF-048): Adobe la pedirá al abrirlas. */
+export const SAMPLE_PASSWORD = 'usuario';
+const SAMPLE_OWNER = 'propietario';
+/** Muestras cifradas (PDF-099): anotadas con AES-256 y RC4 128 bits, y el formulario relleno. */
+const CIPHER_AES_SAMPLE = 'cifrado-anotado-aes256.pdf';
+const CIPHER_RC4_SAMPLE = 'cifrado-anotado-rc4.pdf';
+const CIPHER_FORM_SAMPLE = 'cifrado-formulario.pdf';
+/** Muestras cifradas: nombres, en el orden en que se escriben. */
+export const ENCRYPTED_SAMPLE_NAMES = [CIPHER_AES_SAMPLE, CIPHER_RC4_SAMPLE, CIPHER_FORM_SAMPLE] as const;
 
 /** Nombres de las muestras: conjunto estándar sobre tres documentos de partida distintos, el formulario relleno y la firmada. */
 export const SAMPLE_NAMES = ['estandar-basic-5.pdf', 'estandar-annotated.pdf', 'estandar-form.pdf', FORM_SAMPLE, SIGNED_SAMPLE] as const;
@@ -69,6 +80,11 @@ function signedAdditions(): Annotation[] {
   ];
 }
 
+/** Anotaciones de la muestra cifrada: resaltado, nota y el resto del conjunto estándar, más las dos firmas. */
+function encryptedAnnotations(): Annotation[] {
+  return [...standardAnnotations(0), ...signedAdditions()];
+}
+
 /** Escribe las muestras en `outDir` (se crea si no existe) y devuelve sus rutas absolutas. */
 export async function writeInteropSamples(outDir: string): Promise<string[]> {
   mkdirSync(outDir, { recursive: true });
@@ -91,5 +107,16 @@ export async function writeInteropSamples(outDir: string): Promise<string[]> {
   const signedPath = join(outDir, SIGNED_SAMPLE);
   writeFileSync(signedPath, signed.data);
   paths.push(signedPath);
+  // Muestras cifradas (contraseña «usuario»): el resultado de guardar anotaciones o rellenar el formulario, cifrado.
+  const annotated = await saveAnnotations(basic, additionsDiff(encryptedAnnotations()));
+  const aesPath = join(outDir, CIPHER_AES_SAMPLE);
+  writeFileSync(aesPath, qpdfEncrypt(annotated.data, ['--encrypt', SAMPLE_PASSWORD, SAMPLE_OWNER, '256', '--']));
+  paths.push(aesPath);
+  const rc4Path = join(outDir, CIPHER_RC4_SAMPLE);
+  writeFileSync(rc4Path, qpdfEncrypt(annotated.data, ['--allow-weak-crypto', '--encrypt', SAMPLE_PASSWORD, SAMPLE_OWNER, '128', '--use-aes=n', '--']));
+  paths.push(rc4Path);
+  const cipherFormPath = join(outDir, CIPHER_FORM_SAMPLE);
+  writeFileSync(cipherFormPath, qpdfEncrypt(data, ['--encrypt', SAMPLE_PASSWORD, SAMPLE_OWNER, '256', '--']));
+  paths.push(cipherFormPath);
   return paths;
 }

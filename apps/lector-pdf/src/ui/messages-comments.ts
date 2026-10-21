@@ -24,4 +24,23 @@ export const commentsMsg = {
   replyRowName: (author: string): string => `Respuesta de ${author}`,
   /** Grupo «Estado» del menú de filtro del panel de comentarios (PDF-116). */
   filterStates: 'Estado',
+  /** Nombre accesible del menú «Más opciones» del panel de comentarios (PDF-111). */
+  menu: 'Más opciones de comentarios',
+  /** Entrada del menú: guarda los comentarios en un fichero XFDF (PDF-111). */
+  exportXfdf: 'Exportar comentarios…',
+  /** Entrada del menú: añade los comentarios de un fichero XFDF (PDF-111). */
+  importXfdf: 'Importar comentarios…',
+  /** Aviso tras guardar el XFDF. */
+  exported: 'Comentarios exportados.',
+  /** Aviso si el XFDF elegido supera el tamaño máximo. */
+  tooLarge: 'El fichero de comentarios es demasiado grande (máximo 20 MB).',
+  /** Aviso tras importar: «Se han importado 3 comentarios.» y, si procede, los omitidos y los ya existentes. */
+  imported: (n: number, skipped: number, duplicates: number): string => {
+    let text = n === 1 ? 'Se ha importado 1 comentario.' : `Se han importado ${String(n)} comentarios.`;
+    if (skipped === 1) text += ' Se ha omitido 1 que no se puede importar.';
+    else if (skipped > 1) text += ` Se han omitido ${String(skipped)} que no se pueden importar.`;
+    if (duplicates === 1) text += ' 1 ya estaba en el documento.';
+    else if (duplicates > 1) text += ` ${String(duplicates)} ya estaban en el documento.`;
+    return text;
+  },
 } as const;

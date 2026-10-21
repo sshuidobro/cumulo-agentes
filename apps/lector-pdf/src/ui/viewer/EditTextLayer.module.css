@@ -1,0 +1,51 @@
+/* Capa de «Editar texto» (PDF-147): cubre la página. Sin herramienta, deja pasar el puntero (salvo las ediciones).
+   Con la herramienta activa, el doble clic llega a la capa y el cursor es de texto. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.active {
+  pointer-events: auto;
+  cursor: text;
+}
+
+.wait,
+.wait * {
+  cursor: progress;
+}
+
+/* Una edición: tapa la línea original con el papel de la página y escribe el texto nuevo encima. Se gira con la
+   matriz de la página (CSS `transform` desde `viewport.transform`). */
+.box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  transform-origin: 0 0;
+  border: 1px dashed transparent;
+  pointer-events: auto;
+  cursor: text;
+}
+
+.box:hover,
+.box:focus-visible {
+  border-color: #1a73e8;
+}
+
+.box:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 1px;
+}
+
+.text {
+  position: absolute;
+  left: 0;
+  transform: translateY(-80%);
+  transform-origin: 0 0;
+  line-height: 1;
+  white-space: pre;
+  pointer-events: none;
+}

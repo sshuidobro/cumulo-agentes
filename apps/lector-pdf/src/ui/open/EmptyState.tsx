@@ -1,9 +1,12 @@
 import { pickAndOpen } from '../../state/document-actions';
 import { useRecent } from '../../state/recent-actions';
+import { openCombineDialog } from '../../state/combine-actions';
+import { IMAGES_MENU_ITEM, requestImagesDialog } from '../../state/images-dialog-store';
 import { services } from '../../state/services';
 import { formatOpenShortcut } from '../shortcuts';
 import { msg } from '../messages';
 import { tabsMsg } from '../messages-tabs';
+import { organizeMsg } from '../messages-organize';
 import { RecentList } from './RecentList';
 import styles from './open.module.css';
 
@@ -25,6 +28,12 @@ export function EmptyState() {
       <p className={styles.hint}>{msg.openShortcutHint(shortcut)}</p>
       <button type="button" className={styles.primary} onClick={() => void pickAndOpen()}>
         {msg.open}
+      </button>
+      <button type="button" className={styles.secondary} onClick={openCombineDialog}>
+        {organizeMsg.combine}
+      </button>
+      <button type="button" className={styles.secondary} onClick={requestImagesDialog}>
+        {IMAGES_MENU_ITEM}
       </button>
       {unsupported && <p className={styles.hint}>{tabsMsg.recentUnsupported}</p>}
       {!unsupported && recent.length > 0 && <RecentList entries={recent} />}

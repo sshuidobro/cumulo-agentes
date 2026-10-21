@@ -15,7 +15,8 @@ import {
 import type { ObjectReader } from '../../../src/core/pdf/object-reader';
 import { dict, name, ref, type PdfDict, type PdfValue } from '../../../src/core/pdf/objects';
 import { openForSave } from '../../../src/core/pdf/incremental';
-import { loadPdf, readPageAnnotations } from '../../../src/engine';
+import { loadPdf } from '../../../src/engine';
+import { readPageAnnotations } from '../../../src/engine/annotations-import';
 import { FIXTURES_DIR } from '../../fixtures/paths';
 import { nodeAssetBase } from '../../helpers/pdfjs-node';
 import { additionsDiff, saveAnnotations } from '../../support/save-annotations';

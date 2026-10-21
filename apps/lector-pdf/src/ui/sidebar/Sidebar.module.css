@@ -9,14 +9,16 @@
   border-right: 1px solid var(--color-border);
 }
 
+/* Con cuatro pestañas (PDF-139, «Firmas») no caben en 232 px: se parten en varias filas en vez de quedar recortadas. */
 .tabs {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--color-border);
 }
 
 .tab {
-  flex: 1;
+  flex: 1 1 auto;
   padding: 0.5rem 0.25rem;
   border: none;
   border-bottom: 2px solid transparent;

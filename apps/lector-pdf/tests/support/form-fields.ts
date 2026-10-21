@@ -7,7 +7,8 @@ import { diffAnnotations, type AnnotationDiff } from '../../src/core/annotations
 import { EMPTY_EDITS } from '../../src/core/annotations/model';
 import { mergeFields, type FieldChange, type FieldValue, type FormField } from '../../src/core/forms';
 import { buildIncrementalUpdate, openForSave } from '../../src/core/pdf/incremental';
-import { loadPdf, readPageAnnotations } from '../../src/engine';
+import { loadPdf } from '../../src/engine';
+import { readPageAnnotations } from '../../src/engine/annotations-import';
 import { nodeAssetBase } from '../helpers/pdfjs-node';
 import { concat, SAVE_NOW } from './save-annotations';
 

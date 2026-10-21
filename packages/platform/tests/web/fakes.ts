@@ -49,6 +49,7 @@ export function fakeEnv(overrides: Partial<WebEnv> = {}): WebEnv {
     showOpenFilePicker: undefined,
     showSaveFilePicker: undefined,
     pickWithInput: vi.fn(async (): Promise<File | null> => null),
+    pickManyWithInput: vi.fn(async (): Promise<readonly File[] | null> => null),
     download: vi.fn(),
     closeWindow: vi.fn(),
     print: vi.fn(),

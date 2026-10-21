@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-128
 titulo: Insertar desde archivo y combinar archivos - interfaz
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-055, PDF-127, COM-019]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-5, organizar, ui]
 ---
 
@@ -73,3 +73,40 @@ export async function combineFiles(): Promise<'saved' | 'downloaded' | 'cancelle
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `src/state/import-pdf.ts` (nuevo: comprobar y abrir un PDF importado, contraseña), `src/state/combine-actions.ts` (nuevo), `src/state/organize-actions.ts` (`insertFromFile`, `MAX_IMPORT_BYTES`, importados en el guardado y en pestañas), `src/state/organize-store.ts` (`imported`), `src/state/extract-actions.ts` (exporta `beginJob`, `endJob`, `jobOptions`, `sourceWithChanges`), `src/ui/organize/CombineDialog.tsx` + `.module.css` (nuevos), `src/ui/organize/OrganizeCell.tsx`, `OrganizeToolbar.tsx`, `OrganizeView.module.css`, `src/ui/toolbar/DocumentMenu.tsx`, `src/ui/open/EmptyState.tsx`, `open.module.css`, `src/ui/App.tsx`, `src/ui/messages-organize.ts`; tests `tests/unit/combine-actions.test.ts` (nuevo), `tests/unit/organize-actions.test.ts` (casos nuevos), `tests/ui/combine-dialog.test.tsx` (nuevo), `tests/e2e/insert-combine.spec.ts` (nuevo, 6 casos).
+- Qué he hecho: «Desde archivo…» (antes/después del foco, o al final) con contraseña, miniaturas y deshacer; «Combinar archivos» desde el menú y la pantalla de inicio, con lista ordenable (botones y Alt+↑/↓), guardado con el diálogo del sistema y progreso. Los importados viajan como fuentes `1..k` en `organize` y se liberan al cerrar la vista o la pestaña.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (304 ficheros, 3943 tests); `pnpm --filter lector-pdf bundle:check` OK (596 912 de 600 000 bytes, margen de ~3 KB); `pnpm --filter lector-pdf e2e` (completo): 349 pasan, 1 falla: `iteration4-performance.spec.ts` «cifrado AES-256 … p1 pintada ≤ 1,5 ×» (medido 1,95). Falla igual sin mis cambios (`git stash`), es previa y no la he tocado. E2E `insert-combine.spec.ts`: 6/6.
+- Dudas o cosas que no he podido hacer:
+  1. `memorySource` de la ficha no existe en la app: uso `bytesSource` (`core/doc-ops/bytes.ts`).
+  2. `ImportedDoc` lleva además `close` (libera el `LoadedPdf`) junto a `doc`.
+  3. Límite de 50 ficheros contando el documento abierto, con el mensaje nuevo `organizeMsg.combineLimit` (el selector devuelve `out-of-range` tanto por número como por tamaño y no se distingue). Mensajes añadidos: `importFailed`, `combineHint`, `pagesOf`, `fromFileBefore/After` (en lugar de un único `insertFromFile`).
+  4. En la web, «Guardar como» descarga y no abre la pestaña: el criterio «se abre una pestaña con 35 páginas» lo cubre el test unitario de la ruta `saved`; el E2E comprueba el PDF descargado (35 páginas, ramas «basic-5» y «outline»).
+  5. Tema oscuro: no tengo test específico; queda sin verificar.
+  6. Ajustes por axe: los botones de fila van fuera del `listbox`, y la celda importada incluye el nombre del fichero en su nombre accesible.
+
+### [revisor] ronda 1 — 2026-10-20 — CAMBIOS
+Comprobado: lint, typecheck y coverage OK (98,3 % líneas); bundle:check OK (591 097 de 600 000); `insert-combine.spec.ts` 6/6. Lógica de `combine-actions`, `import-pdf` e `insertFromFile` correcta (generación, liberación de `doc`, cancelar, límite 50/512 MB).
+1. `tests/e2e/insert-combine.spec.ts:192` — el criterio «axe sin violaciones en diálogo y vista; tema oscuro» no está cubierto: el test de axe corre solo en tema claro y el programador lo declara «sin verificar» — repetir el test de axe (diálogo «Combinar archivos» y vista Organizar con importado) en claro y oscuro con `page.emulateMedia({ colorScheme })` como en `tests/e2e/organize-a11y.spec.ts:29`, y corregir los contrastes de `CombineDialog.module.css` y del nombre de fichero de `OrganizeCell` si fallan.
+2. (opcional) Ficha, criterio `e2e` con código 0: el fallo de `iteration4-performance.spec.ts` (AES-256 ≤ 1,5×) se dice previo; confirmar en la ronda siguiente que sigue siendo ajeno al cambio o anotarlo para el líder.
+
+### [programador] ronda 2 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/tests/e2e/insert-combine.spec.ts` (el test de axe y teclado se repite en tema claro y oscuro con `colorScheme`, comprobando `prefers-color-scheme` como en `organize-a11y.spec.ts`).
+- Qué he hecho: atendido el comentario 1 del revisor. Sin cambios de CSS: axe no encuentra violaciones en el diálogo ni en la vista con tema oscuro, así que no hizo falta corregir contrastes.
+- Comandos ejecutados y resultado: `pnpm --filter lector-pdf e2e -- tests/e2e/insert-combine.spec.ts` 7/7 OK (incluye claro y oscuro); `pnpm lint` OK; `pnpm typecheck` OK.
+- Dudas o cosas que no he podido hacer: el comentario 2 (opcional) sobre `iteration4-performance.spec.ts` no se ha tocado en esta ronda; no está relacionado con esta ficha.
+
+### [revisor] ronda 2 — 2026-10-20 — APROBADO
+Lint y typecheck OK; `insert-combine.spec.ts` 7/7 (axe y teclado en claro y oscuro con `prefers-color-scheme` verificado). Comentario 1 resuelto. El fallo previo de `iteration4-performance.spec.ts` (AES-256) no pertenece a esta ficha (PDF-148 lo trata); el tester debe confirmarlo.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E insertar outline.pdf (35 pág., «Página 1 de 30» en la 3.ª), cifrado AES-256 (cancelar / `usuario`), Ctrl+Z, combinar (35 pág., ramas basic-5 y outline), inicio con «Bajar» | OK | `insert-combine.spec.ts` 7/7 sobre HEAD limpio (worktree) |
+| Axe y teclado, tema claro y oscuro | OK | tests 6 y 7 del mismo spec |
+| Unit/UI (límites, errores, cancelar) | OK | `pnpm coverage`: 98,31 % líneas, todo verde |
+| lint, typecheck | OK | 0 avisos |
+| bundle:check | OK en HEAD (596 912 / 600 000). Con el árbol de trabajo actual da 627 248: lo causan los cambios sin commitear de PDF-148 (`password-probe.ts`, `document-actions.ts`), ajenos a esta ficha. Aviso para el líder/PDF-148. |
+| Fallo previo `iteration4-performance` AES-256 | Ajeno (PDF-148) | No tocado por esta ficha |
+Tests añadidos: ninguno adicional. Rendimiento: sin presupuesto propio.

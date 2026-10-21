@@ -8,12 +8,13 @@ import { DropOverlay } from './open/DropOverlay';
 import { EmptyState } from './open/EmptyState';
 import { ErrorState } from './open/ErrorState';
 import { IoErrorBanner } from './open/IoErrorBanner';
+import { SignatureBanner } from './signature/SignatureBanner';
+import { SignaturePlacementKeys } from './signature/SignaturePlacement';
+import { useSignDialog } from '../state/digital-signature-actions';
 import { LoadingState } from './open/LoadingState';
 import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
 import { PrintContainer } from './print/PrintContainer';
-import { PrintProgress } from './print/PrintProgress';
-import { ExportProgress } from './export/ExportProgress';
 import './print/print.css';
 import { Notice } from './kit/Notice';
 import { ChoiceDialog } from './kit/ChoiceDialog';
@@ -33,9 +34,20 @@ import { dismissNotice } from '../state/notice';
 import { rotateView, setViewTool, setZoomMode, zoomIn, zoomOut } from '../state/view-actions';
 import { exitFullscreen, toggleFullscreen, useFullscreen, watchSystemFullscreen } from '../state/fullscreen-actions';
 import { openProperties, usePropertiesDialog } from '../state/properties-store';
-import { openPrintDialog, usePrintDialog } from '../state/print-actions';
+import { openPrintDialog, usePrintDialog, usePrintJob } from '../state/print-actions';
 import { useCompare } from '../state/compare-actions';
-import { useExportDialog } from '../state/export-actions';
+import { startReading, stopReading, togglePause, useReadAloud } from '../state/read-aloud-actions';
+import { useExportDialog, useExportJob } from '../state/export-actions';
+import { useOcrDialog } from '../state/ocr-actions';
+import { useDocOpJob, useExtractDialog } from '../state/extract-actions';
+import { useProtectDialog } from '../state/protect-actions';
+import { useCombineDialog } from '../state/combine-actions';
+import { useImagesDialog } from '../state/images-dialog-store';
+import { useOrganize } from '../state/organize-store';
+import { organizeRedo, organizeUndo } from '../state/organize-actions';
+import { redactRedo, redactUndo } from '../state/redact-actions';
+import { editSelectedLine, editTextRedo, editTextUndo, setEditTextTool } from '../state/edit-text-actions';
+import { useEditText } from '../state/edit-text-store';
 import { useViewer } from '../state/viewer-store';
 import { useTabs } from '../state/tabs';
 import { closeActiveTab, stepTab } from '../state/tab-actions';
@@ -47,11 +59,27 @@ import styles from './App.module.css';
 const PropertiesDialog = lazy(() => import('./properties/PropertiesDialog').then((m) => ({ default: m.PropertiesDialog })));
 const PrintDialog = lazy(() => import('./print/PrintDialog').then((m) => ({ default: m.PrintDialog })));
 const ExportDialog = lazy(() => import('./export/ExportDialog').then((m) => ({ default: m.ExportDialog })));
+const OcrDialog = lazy(() => import('./ocr/OcrDialog').then((m) => ({ default: m.OcrDialog })));
 // Barra de comentarios y panel lateral (PDF-140): no se muestran al arrancar, se cargan al abrirlos.
 const CommentToolbar = lazy(() => import('./toolbar/CommentToolbar').then((m) => ({ default: m.CommentToolbar })));
+const EditToolbar = lazy(() => import('./toolbar/EditToolbar').then((m) => ({ default: m.EditToolbar })));
 const Sidebar = lazy(() => import('./sidebar/Sidebar').then((m) => ({ default: m.Sidebar })));
 // Comparación de dos PDFs (PDF-112): la vista solo se carga al comparar.
 const CompareView = lazy(() => import('./compare/CompareView').then((m) => ({ default: m.CompareView })));
+// Organizar páginas (PDF-125): sustituye al visor mientras está abierta; se carga al abrirla.
+const OrganizeView = lazy(() => import('./organize/OrganizeView').then((m) => ({ default: m.OrganizeView })));
+const ExtractDialog = lazy(() => import('./organize/ExtractDialog').then((m) => ({ default: m.ExtractDialog })));
+const SplitDialog = lazy(() => import('./organize/SplitDialog').then((m) => ({ default: m.SplitDialog })));
+const CombineDialog = lazy(() => import('./organize/CombineDialog').then((m) => ({ default: m.CombineDialog })));
+const ImagesDialog = lazy(() => import('./organize/ImagesDialog').then((m) => ({ default: m.ImagesDialog })));
+const DocOpJobProgress = lazy(() => import('./kit/DocOpProgress').then((m) => ({ default: m.DocOpJobProgress })));
+const ReadAloudBar = lazy(() => import('./read-aloud/ReadAloudBar').then((m) => ({ default: m.ReadAloudBar })));
+const ExportProgress = lazy(() => import('./export/ExportProgress').then((m) => ({ default: m.ExportProgress })));
+const PrintProgress = lazy(() => import('./print/PrintProgress').then((m) => ({ default: m.PrintProgress })));
+// Proteger con contraseña (PDF-132): el diálogo solo se carga al abrirlo.
+const ProtectDialog = lazy(() => import('./security/ProtectDialog').then((m) => ({ default: m.ProtectDialog })));
+// Firmar con certificado (PDF-139): el diálogo solo se carga al abrirlo.
+const DigitalSignDialog = lazy(() => import('./signature/DigitalSignDialog').then((m) => ({ default: m.DigitalSignDialog })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -93,6 +121,14 @@ const VIEW_SHORTCUTS = {
   properties: () => { openProperties(); },
   print: () => { openPrintDialog(); },
   fullscreen: () => { toggleFullscreen(); },
+  // Leer en voz alta (PDF-114). Pausa solo si hay lectura: si no, el atajo no se consume.
+  'read-page': () => { void startReading('page'); },
+  'read-to-end': () => { void startReading('document'); },
+  'read-pause': () => {
+    if (useReadAloud.getState().status === 'idle') return false;
+    togglePause();
+  },
+  'read-stop': () => { stopReading(); },
 } as const;
 
 /** Atajos con la pantalla completa activa (PDF-097). Escape sale antes que «cancelar herramienta». */
@@ -124,21 +160,52 @@ export function App() {
   const numPages = useViewer((s) => s.pdf?.numPages ?? null);
   const tool = useAnnotations((s) => s.tool);
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
+  const editBarOpen = useAnnotations((s) => s.editBarOpen);
   const notice = useViewer((s) => s.notice);
   const sidebar = useViewer((s) => s.sidebar);
   const propertiesOpen = usePropertiesDialog((s) => s.open);
   const printOpen = usePrintDialog((s) => s.open);
   const exportOpen = useExportDialog((s) => s.open);
+  const ocrOpen = useOcrDialog((s) => s.open);
+  const extractDialog = useExtractDialog((s) => s.open);
+  const docOpRunning = useDocOpJob((s) => s.label !== null);
+  const readAloudActive = useReadAloud((s) => s.status !== 'idle');
+  const exportRunning = useExportJob((s) => s.job.status === 'running');
+  const printPreparing = usePrintJob((s) => s.job.status === 'preparing');
+  const combineOpen = useCombineDialog((s) => s.open);
+  const imagesOpen = useImagesDialog((s) => s.open);
+  const protectOpen = useProtectDialog((s) => s.open);
+  const signOpen = useSignDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
+  const organizeOpen = useOrganize((s) => s.open);
+  const editTextActive = useEditText((s) => s.active);
 
+  // Con «Organizar páginas» abierta, deshacer/rehacer son los de la vista y los atajos del visor no actúan
+  // (la vista atiende sus propios atajos, PDF-125).
   // Escape solo se consume si hay una herramienta de anotación activa (o si estamos en pantalla completa).
+  // Con «Editar texto» activa, deshacer/rehacer son los de las ediciones de línea (PDF-147); F2 abre el cuadro.
   useShortcuts({
     open: () => void pickAndOpen(),
-    undo,
-    redo,
-    ...(fullscreen ? FULLSCREEN_SHORTCUTS : tool === 'none' ? {} : { 'cancel-tool': () => { setTool('none'); } }),
-    ...(status === 'ready' ? VIEW_SHORTCUTS : {}),
+    ...(organizeOpen
+      ? { undo: organizeUndo, redo: organizeRedo }
+      : editTextActive
+        ? { undo: editTextUndo, redo: editTextRedo }
+        : tool === 'redact'
+          ? { undo: redactUndo, redo: redactRedo }
+          : { undo, redo }),
+    ...(fullscreen
+      ? FULLSCREEN_SHORTCUTS
+      : tool === 'none' && !editTextActive
+        ? {}
+        : {
+            'cancel-tool': () => {
+              if (editTextActive) setEditTextTool(false);
+              else setTool('none');
+            },
+          }),
+    ...(status === 'ready' && !organizeOpen ? VIEW_SHORTCUTS : {}),
+    ...(status === 'ready' && !organizeOpen && !fullscreen ? { 'edit-line': () => { editSelectedLine(); } } : {}),
     ...TAB_SHORTCUTS,
   });
 
@@ -162,7 +229,14 @@ export function App() {
           <CommentToolbar />
         </Suspense>
       )}
+      {chrome && status === 'ready' && editBarOpen && (
+        <Suspense fallback={null}>
+          <EditToolbar />
+        </Suspense>
+      )}
       <IoErrorBanner />
+      <SignatureBanner />
+      <SignaturePlacementKeys />
       <main id={TAB_PANEL_ID} className={status === 'ready' ? styles.mainReady : styles.main}>
         {status === 'empty' && <EmptyState />}
         {status === 'loading' && <LoadingState />}
@@ -172,16 +246,23 @@ export function App() {
             <div className={styles.srOnly} data-testid="document-ready">
               {msg.pageCount(numPages)}
             </div>
-            <div className={styles.body}>
-              {chrome && sidebar !== 'none' && (
-                <Suspense fallback={null}>
-                  <Sidebar />
-                </Suspense>
-              )}
-              <Viewer />
-            </div>
+            {organizeOpen ? (
+              <Suspense fallback={null}>
+                <OrganizeView />
+              </Suspense>
+            ) : (
+              <div className={styles.body}>
+                {chrome && sidebar !== 'none' && (
+                  <Suspense fallback={null}>
+                    <Sidebar />
+                  </Suspense>
+                )}
+                <Viewer />
+              </div>
+            )}
             <SelectionActions />
             <SearchBar />
+            {readAloudActive && (<Suspense fallback={null}><ReadAloudBar /></Suspense>)}
           </>
         )}
       </main>
@@ -208,8 +289,48 @@ export function App() {
           <ExportDialog />
         </Suspense>
       )}
-      <PrintProgress />
-      <ExportProgress />
+      {ocrOpen && (
+        <Suspense fallback={null}>
+          <OcrDialog />
+        </Suspense>
+      )}
+      {printPreparing && (<Suspense fallback={null}><PrintProgress /></Suspense>)}
+      {exportRunning && (<Suspense fallback={null}><ExportProgress /></Suspense>)}
+      {extractDialog === 'extract' && (
+        <Suspense fallback={null}>
+          <ExtractDialog />
+        </Suspense>
+      )}
+      {extractDialog === 'split' && (
+        <Suspense fallback={null}>
+          <SplitDialog />
+        </Suspense>
+      )}
+      {combineOpen && (
+        <Suspense fallback={null}>
+          <CombineDialog />
+        </Suspense>
+      )}
+      {imagesOpen && (
+        <Suspense fallback={null}>
+          <ImagesDialog />
+        </Suspense>
+      )}
+      {protectOpen && (
+        <Suspense fallback={null}>
+          <ProtectDialog />
+        </Suspense>
+      )}
+      {signOpen && (
+        <Suspense fallback={null}>
+          <DigitalSignDialog />
+        </Suspense>
+      )}
+      {docOpRunning && (
+        <Suspense fallback={null}>
+          <DocOpJobProgress />
+        </Suspense>
+      )}
       <PrintContainer />
       {platform.kind === 'web' && (
         <>

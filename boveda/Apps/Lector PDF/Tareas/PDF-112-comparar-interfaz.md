@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-112
 titulo: Comparar - elegir el segundo PDF, progreso y lista de cambios
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-063, PDF-113, PDF-046]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-6, comparar, ui]
 ---
 
@@ -71,3 +71,23 @@ export function comparedDocument(): LoadedPdf | null;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: ninguno en esta ronda. La implementación ya estaba en el commit `754027e` (trabajo de una ronda interrumpida): `src/state/compare-actions.ts`, `src/ui/compare/CompareView.tsx` + `.module.css`, `src/ui/messages-compare.ts`, montaje `lazy` en `src/ui/App.tsx`, entrada en `src/ui/toolbar/DocumentMenu.tsx`, tests `tests/unit/compare-actions.test.ts`, `tests/ui/compare-view.test.tsx`, `tests/e2e/compare.spec.ts`.
+- Qué he hecho: he revisado la implementación contra los criterios de aceptación y cada uno tiene su test. He verificado lint, typecheck, cobertura, E2E y presupuesto del bundle.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (exit 0; líneas 98,13 %); `pnpm --filter lector-pdf e2e` con 298 pasadas y 1 fallo en `tests/e2e/annotations-layer.spec.ts:151` (`@perf`, long tasks, fuera de esta ficha). Al relanzarlo solo con `--project=chromium-perf --no-deps` pasa (exit 0), así que es inestable por carga. `pnpm --filter lector-pdf build` y `bundle:check` OK (arranque 519 069 bytes de 600 000).
+- Dudas o cosas que no he podido hacer: el E2E completo tiene un test `@perf` ajeno (`annotations-layer`) que falló una vez por carga; conviene que lo mire el tester o el líder. No he comprobado visualmente el tema claro/oscuro en navegador; solo en CSS.
+
+- Revisor (coordinador anota): APROBADO, 0 problemas; lint, typecheck y 19 tests OK. Pasa a en-test.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E basic-5 vs changed, consigo mismo, teclado | OK | `playwright --project=chromium compare.spec.ts`: 3 passed |
+| E2E @perf pages-5000 | OK | pasa en la tanda completa y suelto (1.3 s) |
+| Unit/UI (cifrado, no PDF, destroy/closeFile) | OK | `pnpm coverage` exit 0, líneas 98,31 % |
+| lint, typecheck, build, bundle:check | OK | arranque 519 069 de 600 000 bytes |
+| e2e completo | 297 pasadas, 2 fallos @perf ajenos | detail.spec:212 y shapes.spec:236; sueltos pasan |
+
+Inestabilidad @perf: en esta tanda falló detail:212 y shapes:236 (no annotations-layer:151, que pasó); sueltos con `--project=chromium-perf --no-deps` pasan los cuatro. Es inestabilidad por carga de la máquina (cambia de test entre ejecuciones), no por PDF-112. Recomendación: seguir en PDF-078/ADR-0016 (reposo de CPU más estricto).
+Tests añadidos: ninguno nuevo.

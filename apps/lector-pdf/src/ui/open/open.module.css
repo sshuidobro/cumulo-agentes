@@ -17,6 +17,16 @@
   color: var(--color-text-muted);
 }
 
+.secondary {
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
 .primary {
   padding: 0.5rem 1.25rem;
   border: 1px solid var(--color-accent);

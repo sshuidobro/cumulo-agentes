@@ -1,16 +1,16 @@
 ---
 tipo: plan
 app: pdf
-estado: en-curso
-iteracion: 3
+estado: hecho
+iteracion: 6
 creado: 2026-10-17
-actualizado: 2026-10-20
+actualizado: 2026-10-21
 tags: [plan, pdf]
 ---
 
 # Plan · Lector PDF
 
-Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0014-localizar-paginas-por-count]] · [[ADR-0015-modo-noche-por-pixeles]] · [[ADR-0016-e2e-long-tasks-en-serie]] · [[ADR-0017-carga-diferida-de-pdfjs]] · [[ADR-0018-vista-previa-del-trazo-en-canvas]] · [[ADR-0019-formularios-acroform]] · [[ADR-0020-firma-visual]] · [[ADR-0021-impresion]] · [[ADR-0022-pdf-cifrados]] · [[ADR-0023-pestanas-y-recientes]] · [[ADR-0024-modos-de-pagina]] · [[ADR-0025-lienzo-de-detalle]] · [[ADR-0028-reescribir-pdfs]] · [[ADR-0029-formas-y-sellos]] · [[ADR-0030-respuestas-estados-xfdf]] · [[ADR-0031-comparar-pdfs]] · [[ADR-0032-exportar-imagenes-y-texto]] · [[ADR-0033-leer-en-voz-alta]] · [[ADR-0034-operaciones-en-worker]] · [[ADR-0035-organizar-en-la-app]] · [[ADR-0036-anadir-contenido-aplanando]] · [[ADR-0037-proteger-reescritura-aes256]] · [[ADR-0038-ocr-local-tesseract]] · [[ADR-0039-redaccion-real]] · [[ADR-0040-firma-digital]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]]
+Investigación: [[Paridad Adobe Acrobat]] · [[Librerias y arquitectura PDF]] · Decisiones: [[ADR-0007-motor-y-visor-pdf]] · [[ADR-0008-plataforma-ficheros]] · [[ADR-0009-anotaciones-escritor-incremental]] · [[ADR-0010-stack-apps-web-y-pruebas]] · [[ADR-0011-documentos-de-prueba-pdf]] · [[ADR-0014-localizar-paginas-por-count]] · [[ADR-0015-modo-noche-por-pixeles]] · [[ADR-0016-e2e-long-tasks-en-serie]] · [[ADR-0017-carga-diferida-de-pdfjs]] · [[ADR-0018-vista-previa-del-trazo-en-canvas]] · [[ADR-0019-formularios-acroform]] · [[ADR-0020-firma-visual]] · [[ADR-0021-impresion]] · [[ADR-0022-pdf-cifrados]] · [[ADR-0023-pestanas-y-recientes]] · [[ADR-0024-modos-de-pagina]] · [[ADR-0025-lienzo-de-detalle]] · [[ADR-0028-reescribir-pdfs]] · [[ADR-0029-formas-y-sellos]] · [[ADR-0030-respuestas-estados-xfdf]] · [[ADR-0031-comparar-pdfs]] · [[ADR-0032-exportar-imagenes-y-texto]] · [[ADR-0033-leer-en-voz-alta]] · [[ADR-0034-operaciones-en-worker]] · [[ADR-0035-organizar-en-la-app]] · [[ADR-0036-anadir-contenido-aplanando]] · [[ADR-0037-proteger-reescritura-aes256]] · [[ADR-0038-ocr-local-tesseract]] · [[ADR-0039-redaccion-real]] · [[ADR-0040-firma-digital]] · [[ADR-0042-editar-texto-linea-simple]] · [[ADR-0043-contrasena-sin-reabrir]] · Base común: [[Apps/Comun/Plan|Plan de Comun]] · Manual: [[Apps/Lector PDF/Manual|Manual]]
 
 ## Objetivo
 Sustituir a Adobe Acrobat Reader (y a lo más usado de Acrobat Pro) para uso personal, en escritorio (Tauri) y navegador.
@@ -22,12 +22,12 @@ Interpretación ("Reader premium" no existe como producto, ver [[Paridad Adobe A
 |---|---|---|---|
 | 1 | Visor robusto | Abrir (web y escritorio), leer cualquier PDF de cualquier tamaño, miniaturas, índice, buscar, zoom, girar vista, ir a página, copiar texto, enlaces, recordar página, tema oscuro | cerrada (2026-10-18) |
 | 2 | Anotaciones | Resaltar, subrayar, tachar, notas, texto libre, dibujo, panel de comentarios, deshacer/rehacer, guardar dentro del PDF y recuperar tras cierre inesperado | cerrada (2026-10-18) |
-| 3 | Formularios, firma e impresión | Rellenar y guardar AcroForm, firma visual, imprimir, propiedades y fuentes | detallada, en curso |
-| 4 | Contraseñas y comodidad | Abrir con contraseña, anotar PDFs cifrados, permisos, recientes, pestañas, doble página, pantalla completa, zoom alto nítido | detallada |
-| 5 | Organizar páginas | Girar, borrar, reordenar, extraer, dividir, insertar, combinar, crear desde imágenes | detallada (2026-10-19) |
-| 6 | Funciones Pro | Formas y sellos, respuestas y XFDF, añadir texto/imagen, proteger, OCR, redactar, comparar, exportar, editar texto, firma digital, leer en voz alta | detallada (2026-10-19) salvo editar texto (PDF-065, bloqueada: decisión del usuario) |
+| 3 | Formularios, firma e impresión | Rellenar y guardar AcroForm, firma visual, imprimir, propiedades y fuentes | cerrada (2026-10-21) |
+| 4 | Contraseñas y comodidad | Abrir con contraseña, anotar PDFs cifrados, permisos, recientes, pestañas, doble página, pantalla completa, zoom alto nítido | cerrada (2026-10-21) |
+| 5 | Organizar páginas | Girar, borrar, reordenar, extraer, dividir, insertar, combinar, crear desde imágenes | cerrada (2026-10-21) |
+| 6 | Funciones Pro | Formas y sellos, respuestas y XFDF, añadir texto/imagen, proteger, OCR, redactar, comparar, exportar, editar texto, firma digital, leer en voz alta | cerrada (2026-10-21); editar texto con el alcance A ([[ADR-0042-editar-texto-linea-simple]]) |
 
-Iteraciones 5-6 detalladas el 2026-10-19 (ADR-0028 a ADR-0040). Solo [[PDF-065-editar-texto]] espera una decisión del usuario.
+Todas las iteraciones están cerradas (2026-10-21). Lo que queda son las «Mejoras conocidas» del final, sin planificar.
 
 ## Alcance de la iteración 1 · Visor robusto
 **Entra:** base común ([[COM-004-monorepo-para-apps|COM-004]] a [[COM-011-registro-de-atajos|COM-011]], salvo COM-012 y COM-013, que son de la iteración 2); abrir con botón, Ctrl+O, arrastrar, "Abrir con" del SO (Tauri); lectura por rangos; visor virtualizado igual con 5, 5 000 o 100 000 páginas; miniaturas; índice; búsqueda incremental con resaltado y opciones (mayúsculas, palabra completa, tildes); zoom (pasos, %, ajustar ancho/página, tamaño real, Ctrl+rueda); rotación de vista; ir a página (con etiquetas de página); selección y copia de texto; herramienta mano; enlaces internos y externos (con confirmación) y atrás/adelante; recordar última página y zoom; tema claro/oscuro/sistema y modo noche de páginas; estados vacío/carga/error en español; app de escritorio Tauri (asociación .pdf, instancia única); fixtures generados + corpus público; E2E y presupuestos de rendimiento.
@@ -180,126 +180,135 @@ Paralelo desde el inicio: COM-004 y COM-008. Tras COM-004: COM-005, COM-011, PDF
 
 Cadena del formato (puede avanzar en paralelo a la iteración 1): PDF-023 → PDF-025 → PDF-026 → (PDF-027 ∥ PDF-068) → PDF-028 → PDF-029. PDF-031 y PDF-069 en paralelo (ambas tras PDF-030; PDF-031 tras PDF-013, PDF-069 tras PDF-020). Tras PDF-031 y PDF-069: PDF-032 a PDF-035 en paralelo; PDF-036 solo necesita PDF-031 y PDF-015. Correcciones de accesibilidad y teclado salidas de PDF-039: PDF-070 ∥ PDF-071 → PDF-072 (tras ambas) → PDF-039. Estabilidad de las medidas de long tasks: (PDF-074 → PDF-075) ∥ PDF-076 ∥ PDF-077 → PDF-078 → PDF-073 (verificación) → PDF-039.
 
-### Iteración 3 · Formularios, firma e impresión
+### Iteración 3 · Formularios, firma e impresión · cerrada
 | Id | Título | Depende de | Estado |
 |---|---|---|---|
-| [[COM-014-imprimir-desde-la-plataforma]] | Platform.print() - imprimir la ventana en web y en Tauri | — | pendiente |
-| [[PDF-040-formularios-adr]] | Generar el documento de prueba de formularios completo (form-full.pdf) | — | pendiente |
-| [[PDF-079-formularios-modelo-e-importacion]] | Núcleo de formularios - modelo de campos e importación desde pdf.js | PDF-040 | pendiente |
-| [[PDF-080-valores-de-campo-en-el-historial]] | Valores de campo en el historial común y en los borradores | PDF-079 | pendiente |
-| [[PDF-081-estado-de-formularios]] | Estado de formularios y sincronización con el lienzo de pdf.js | PDF-080 | pendiente |
-| [[PDF-082-apariencias-de-campos]] | Apariencias /AP de campos de texto, combo y lista | PDF-079 | pendiente |
-| [[PDF-041-rellenar-formularios]] | Rellenar campos de texto, combos y listas en pantalla | PDF-081 | pendiente |
-| [[PDF-042-guardar-formularios]] | Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental | PDF-081, PDF-082, PDF-087 | pendiente |
-| [[PDF-083-casillas-opciones-y-tabulacion]] | Casillas, botones de opción, tabulación entre páginas y E2E de formularios | PDF-041, PDF-042 | pendiente |
-| [[PDF-084-objetos-de-imagen-pdf]] | Objetos de imagen PDF desde RGBA y JPEG | — | pendiente |
-| [[PDF-085-anotacion-de-firma]] | Anotación de firma - modelo, apariencia, escritura y dibujo en la capa | PDF-084, PDF-080 | pendiente |
-| [[PDF-086-crear-firma]] | Crear firma (dibujar, escribir o imagen) y firmas guardadas | PDF-085 | pendiente |
-| [[PDF-043-firma-visual]] | Firmar - colocar, mover y redimensionar la firma en la página | PDF-086 | pendiente |
-| [[PDF-087-nucleo-de-impresion]] | Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento | — | pendiente |
-| [[PDF-045-propiedades]] | Propiedades del documento (Ctrl+D) y menú «Más acciones» | — | pendiente |
-| [[PDF-088-fuentes-del-documento]] | Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable | PDF-045 | cambios-pedidos |
-| [[PDF-044-imprimir]] | Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable | PDF-087, PDF-045, COM-014 | pendiente |
+| [[COM-014-imprimir-desde-la-plataforma]] | Platform.print() - imprimir la ventana en web y en Tauri | — | hecha |
+| [[PDF-040-formularios-adr]] | Generar el documento de prueba de formularios completo (form-full.pdf) | — | hecha |
+| [[PDF-079-formularios-modelo-e-importacion]] | Núcleo de formularios - modelo de campos e importación desde pdf.js | PDF-040 | hecha |
+| [[PDF-080-valores-de-campo-en-el-historial]] | Valores de campo en el historial común y en los borradores | PDF-079 | hecha |
+| [[PDF-081-estado-de-formularios]] | Estado de formularios y sincronización con el lienzo de pdf.js | PDF-080 | hecha |
+| [[PDF-082-apariencias-de-campos]] | Apariencias /AP de campos de texto, combo y lista | PDF-079 | hecha |
+| [[PDF-041-rellenar-formularios]] | Rellenar campos de texto, combos y listas en pantalla | PDF-081 | hecha |
+| [[PDF-042-guardar-formularios]] | Guardar formularios dentro del PDF (/V, /AS y /AP) por actualización incremental | PDF-081, PDF-082, PDF-087 | hecha |
+| [[PDF-083-casillas-opciones-y-tabulacion]] | Casillas, botones de opción, tabulación entre páginas y E2E de formularios | PDF-041, PDF-042 | hecha |
+| [[PDF-084-objetos-de-imagen-pdf]] | Objetos de imagen PDF desde RGBA y JPEG | — | hecha |
+| [[PDF-085-anotacion-de-firma]] | Anotación de firma - modelo, apariencia, escritura y dibujo en la capa | PDF-084, PDF-080 | hecha |
+| [[PDF-086-crear-firma]] | Crear firma (dibujar, escribir o imagen) y firmas guardadas | PDF-085 | hecha |
+| [[PDF-043-firma-visual]] | Firmar - colocar, mover y redimensionar la firma en la página | PDF-086 | hecha |
+| [[PDF-087-nucleo-de-impresion]] | Núcleo de impresión - rangos, plan de hoja y documento temporal con el incremento | — | hecha |
+| [[PDF-045-propiedades]] | Propiedades del documento (Ctrl+D) y menú «Más acciones» | — | hecha |
+| [[PDF-088-fuentes-del-documento]] | Propiedades - pestaña «Fuentes» con escaneo progresivo y cancelable | PDF-045 | hecha |
+| [[PDF-044-imprimir]] | Imprimir (Ctrl+P) con rango, comentarios, calidad y progreso cancelable | PDF-087, PDF-045, COM-014 | hecha |
 | [[PDF-089-esperas-fijas-e2e]] | Quitar las esperas fijas de las pruebas e2e y prohibirlas con ESLint | — | hecha |
-| [[PDF-103-etiqueta-firma-al-reabrir]] | Etiqueta «Firma» para sellos de la suite - núcleo (`ObjectReader`) | PDF-085 | pendiente |
-| [[PDF-104-etiqueta-firma-conexion]] | Etiqueta «Firma» al reabrir - conexión con la sesión de anotaciones | PDF-103 | pendiente |
-| [[PDF-105-vista-previa-trazo-offscreen]] | Vista previa del trazo en OffscreenCanvas (fuera del Commit del compositor) | — | pendiente |
-| [[PDF-090-e2e-iteracion-3]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3 | PDF-083, PDF-043, PDF-044, PDF-088, PDF-089, PDF-105 | pendiente |
+| [[PDF-103-etiqueta-firma-al-reabrir]] | Etiqueta «Firma» para sellos de la suite - núcleo (`ObjectReader`) | PDF-085 | hecha |
+| [[PDF-104-etiqueta-firma-conexion]] | Etiqueta «Firma» al reabrir - conexión con la sesión de anotaciones | PDF-103 | hecha |
+| [[PDF-105-vista-previa-trazo-offscreen]] | Vista previa del trazo en OffscreenCanvas (fuera del Commit del compositor) | — | hecha |
+| [[PDF-090-e2e-iteracion-3]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 3 | PDF-083, PDF-043, PDF-044, PDF-088, PDF-089, PDF-105 | hecha |
 
 Orden (sin dos fichas en paralelo sobre el mismo fichero): **ola A** en paralelo PDF-040, PDF-084, PDF-087, PDF-045, PDF-089, COM-014 → **ola B** PDF-079 ∥ PDF-088 ∥ PDF-044 → **ola C** PDF-080 ∥ PDF-082 → **ola D** PDF-081 ∥ PDF-085 → **ola E** PDF-041 ∥ PDF-086 → **ola F** PDF-042 (tras PDF-085, comparten `incremental.ts`) → **ola G** PDF-083 ∥ PDF-043 (ficheros distintos: `FormLayer` frente a `AnnotationLayer` y barra) → PDF-090.
 
-### Iteración 4 · Contraseñas y comodidad
+### Iteración 4 · Contraseñas y comodidad · cerrada
 | Id | Título | Depende de | Estado |
 |---|---|---|---|
-| [[COM-015-recientes-web]] | Documentos recientes en @suite/platform - tipos e implementación web | COM-014 | pendiente |
-| [[COM-016-recientes-tauri]] | Documentos recientes en Tauri (lista guardada por Rust) | COM-015 | pendiente |
-| [[COM-017-pantalla-completa]] | Pantalla completa en @suite/platform | COM-016 | pendiente |
-| [[PDF-091-fixtures-cifrados]] | Documentos de prueba cifrados y con permisos (qpdf) | PDF-040 | pendiente |
-| [[PDF-092-criptografia-pdf]] | Manejador de seguridad estándar - claves, contraseñas y cifrado por objeto | PDF-091 | pendiente |
-| [[PDF-093-lector-y-escritor-cifrados]] | Lector de objetos y escritor incremental con cifrado | PDF-092, PDF-090 | pendiente |
-| [[PDF-046-abrir-con-contrasena]] | Abrir PDF con contraseña | PDF-091, PDF-090 | pendiente |
-| [[PDF-047-anotar-pdf-cifrado]] | Guardar anotaciones, firmas y formularios en PDF cifrado | PDF-093, PDF-046 | pendiente |
-| [[PDF-048-permisos]] | Respetar los permisos del documento (copiar, imprimir) y avisar al anotar | PDF-046, PDF-044, PDF-045 | pendiente |
-| [[PDF-049-recientes-y-pestanas]] | Documentos recientes en la pantalla de inicio y en «Abrir recientes» | COM-015, COM-016, PDF-090 | pendiente |
-| [[PDF-094-sesiones-de-documento]] | Sesiones de documento - núcleo de pestañas (suspender y reanudar) | PDF-090, PDF-046 | pendiente |
-| [[PDF-100-pestanas-historial-busqueda-posicion]] | Pestañas - historial, búsqueda, posición y panel lateral por documento | PDF-094 | pendiente |
-| [[PDF-101-pestanas-anotaciones-formularios-borradores]] | Pestañas - anotaciones, formularios y borradores por documento | PDF-094, PDF-048 | pendiente |
-| [[PDF-095-pestanas]] | Barra de pestañas y atajos para varios documentos | PDF-100, PDF-101, PDF-049, PDF-097 | en-revision |
-| [[PDF-096-layout-doble-pagina]] | Layout de doble página (pares y con portada) | — | pendiente |
-| [[PDF-102-modo-de-vista-estado]] | Modo de vista - estado, preferencia y navegación por filas | PDF-096 | pendiente |
-| [[PDF-050-modos-de-pagina]] | Modos de página en el visor y menú «Vista» | PDF-102, PDF-049 | pendiente |
-| [[PDF-097-pantalla-completa]] | Modo pantalla completa (lectura y presentación) | PDF-050, COM-017 | pendiente |
-| [[PDF-098-plan-lienzo-detalle]] | Zoom hasta 6 400 % y cálculo de la zona de detalle | — | pendiente |
-| [[PDF-051-lienzo-de-detalle]] | Lienzo de detalle para zoom alto | PDF-098, PDF-050 | pendiente |
-| [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142 | pendiente |
+| [[COM-015-recientes-web]] | Documentos recientes en @suite/platform - tipos e implementación web | COM-014 | hecha |
+| [[COM-016-recientes-tauri]] | Documentos recientes en Tauri (lista guardada por Rust) | COM-015 | hecha |
+| [[COM-017-pantalla-completa]] | Pantalla completa en @suite/platform | COM-016 | hecha |
+| [[PDF-091-fixtures-cifrados]] | Documentos de prueba cifrados y con permisos (qpdf) | PDF-040 | hecha |
+| [[PDF-092-criptografia-pdf]] | Manejador de seguridad estándar - claves, contraseñas y cifrado por objeto | PDF-091 | hecha |
+| [[PDF-093-lector-y-escritor-cifrados]] | Lector de objetos y escritor incremental con cifrado | PDF-092, PDF-090 | hecha |
+| [[PDF-046-abrir-con-contrasena]] | Abrir PDF con contraseña | PDF-091, PDF-090 | hecha |
+| [[PDF-047-anotar-pdf-cifrado]] | Guardar anotaciones, firmas y formularios en PDF cifrado | PDF-093, PDF-046 | hecha |
+| [[PDF-048-permisos]] | Respetar los permisos del documento (copiar, imprimir) y avisar al anotar | PDF-046, PDF-044, PDF-045 | hecha |
+| [[PDF-049-recientes-y-pestanas]] | Documentos recientes en la pantalla de inicio y en «Abrir recientes» | COM-015, COM-016, PDF-090 | hecha |
+| [[PDF-094-sesiones-de-documento]] | Sesiones de documento - núcleo de pestañas (suspender y reanudar) | PDF-090, PDF-046 | hecha |
+| [[PDF-100-pestanas-historial-busqueda-posicion]] | Pestañas - historial, búsqueda, posición y panel lateral por documento | PDF-094 | hecha |
+| [[PDF-101-pestanas-anotaciones-formularios-borradores]] | Pestañas - anotaciones, formularios y borradores por documento | PDF-094, PDF-048 | hecha |
+| [[PDF-095-pestanas]] | Barra de pestañas y atajos para varios documentos | PDF-100, PDF-101, PDF-049, PDF-097 | hecha |
+| [[PDF-096-layout-doble-pagina]] | Layout de doble página (pares y con portada) | — | hecha |
+| [[PDF-102-modo-de-vista-estado]] | Modo de vista - estado, preferencia y navegación por filas | PDF-096 | hecha |
+| [[PDF-050-modos-de-pagina]] | Modos de página en el visor y menú «Vista» | PDF-102, PDF-049 | hecha |
+| [[PDF-097-pantalla-completa]] | Modo pantalla completa (lectura y presentación) | PDF-050, COM-017 | hecha |
+| [[PDF-098-plan-lienzo-detalle]] | Zoom hasta 6 400 % y cálculo de la zona de detalle | — | hecha |
+| [[PDF-051-lienzo-de-detalle]] | Lienzo de detalle para zoom alto | PDF-098, PDF-050 | hecha |
+| [[PDF-099-e2e-iteracion-4]] | E2E, accesibilidad, interoperabilidad y rendimiento de la iteración 4 | PDF-047, PDF-048, PDF-095, PDF-097, PDF-051, PDF-142, PDF-148, PDF-150 | hecha |
+| [[PDF-148-contrasena-sin-reabrir]] | Pedir la contraseña sin reabrir: sondeo previo + `onPassword` ([[ADR-0043-contrasena-sin-reabrir]], revisado) | — | hecha |
 
 Orden: pueden adelantarse durante la it. 3 (núcleo puro o paquetes sin choques): PDF-096, PDF-098, PDF-091 (tras PDF-040), PDF-092, PDF-102, COM-015 → COM-016 → COM-017 (tras COM-014; las cuatro de Comun tocan `types.ts` y van en serie). Tras PDF-090: PDF-093 ∥ PDF-046 ∥ PDF-049 → PDF-047 ∥ PDF-048 (tras PDF-046) ∥ PDF-050 (tras PDF-049) → PDF-094 ∥ PDF-097 ∥ PDF-051 → PDF-100 ∥ PDF-101 → PDF-095 → PDF-099.
 
 ### Iteraciones 5-6
 Detalladas el 2026-10-19 ([[ADR-0028-reescribir-pdfs]] a [[ADR-0040-firma-digital]]). Solo [[PDF-065-editar-texto]] queda bloqueada (decisión de producto del usuario).
 
-#### Iteración 5 · Organizar páginas
+#### Iteración 5 · Organizar páginas · cerrada
 | Id | Título | Depende de | Estado |
 |---|---|---|---|
 | [[PDF-106-escritor-de-incrementos]] | Separar el escritor de incrementos (delta-writer.ts) de incremental.ts | PDF-047, PDF-104 | hecha |
 | [[PDF-052-organizar-adr]] | Reorganizar páginas por actualización incremental (núcleo y medidas) | PDF-039, PDF-106 | hecha |
-| [[PDF-053-organizar-paginas]] | Organizar - modelo del plan de páginas, selección y deshacer (núcleo) | PDF-052 | pendiente |
-| [[PDF-118-worker-operaciones]] | Worker de operaciones de documento con lectura por mensajes | PDF-052 | pendiente |
-| [[PDF-119-organizar-escritura]] | Organizar - escribir el plan (páginas en blanco y limpieza de formularios) | PDF-053 | pendiente |
-| [[PDF-120-copiar-objetos]] | Copiar páginas y sus objetos entre PDFs (ObjectCopier) | PDF-052 | pendiente |
-| [[PDF-121-documento-nuevo]] | Escribir un PDF nuevo con páginas de uno o varios PDFs | PDF-119, PDF-120 | pendiente |
-| [[PDF-122-destinos-e-indice-al-copiar]] | Destinos con nombre e índice al copiar páginas | PDF-121 | pendiente |
-| [[PDF-123-formularios-al-copiar]] | Formularios al copiar páginas a un PDF nuevo | PDF-122 | pendiente |
-| [[PDF-124-organizar-estado]] | Organizar - estado, acciones, guardado encadenado y escrituras de documento | PDF-053, PDF-118, PDF-119, PDF-101 | pendiente |
-| [[PDF-125-organizar-vista]] | Organizar - vista de cuadrícula con selección, teclado y barra | PDF-124, PDF-114 | pendiente |
-| [[PDF-126-organizar-arrastrar-e2e]] | Organizar - arrastrar y soltar, e2e y rendimiento | PDF-125 | pendiente |
-| [[PDF-054-extraer-dividir]] | Extraer y dividir - planes y operaciones del núcleo | PDF-123, PDF-118 | pendiente |
-| [[PDF-127-extraer-dividir-interfaz]] | Extraer y dividir - diálogos, progreso y guardado | PDF-054, PDF-126, COM-018 | pendiente |
-| [[PDF-055-insertar-combinar]] | Insertar páginas de otro PDF y combinar PDFs - núcleo | PDF-119, PDF-123, PDF-124 | pendiente |
-| [[COM-019-importar-varios-ficheros]] | Platform.importFiles - elegir varios ficheros a la vez | COM-018 | pendiente |
-| [[PDF-128-insertar-combinar-interfaz]] | Insertar desde archivo y combinar archivos - interfaz | PDF-055, PDF-127, COM-019 | pendiente |
-| [[PDF-056-pdf-desde-imagenes]] | Crear PDF desde imágenes - núcleo | PDF-121, PDF-118 | pendiente |
-| [[PDF-129-pdf-desde-imagenes-interfaz]] | Crear PDF desde imágenes - diálogo y guardado | PDF-056, PDF-128 | pendiente |
+| [[PDF-053-organizar-paginas]] | Organizar - modelo del plan de páginas, selección y deshacer (núcleo) | PDF-052 | hecha |
+| [[PDF-118-worker-operaciones]] | Worker de operaciones de documento con lectura por mensajes | PDF-052 | hecha |
+| [[PDF-119-organizar-escritura]] | Organizar - escribir el plan (páginas en blanco y limpieza de formularios) | PDF-053 | hecha |
+| [[PDF-120-copiar-objetos]] | Copiar páginas y sus objetos entre PDFs (ObjectCopier) | PDF-052 | hecha |
+| [[PDF-121-documento-nuevo]] | Escribir un PDF nuevo con páginas de uno o varios PDFs | PDF-119, PDF-120 | hecha |
+| [[PDF-122-destinos-e-indice-al-copiar]] | Destinos con nombre e índice al copiar páginas | PDF-121 | hecha |
+| [[PDF-123-formularios-al-copiar]] | Formularios al copiar páginas a un PDF nuevo | PDF-122 | hecha |
+| [[PDF-124-organizar-estado]] | Organizar - estado, acciones, guardado encadenado y escrituras de documento | PDF-053, PDF-118, PDF-119, PDF-101 | hecha |
+| [[PDF-125-organizar-vista]] | Organizar - vista de cuadrícula con selección, teclado y barra | PDF-124, PDF-114 | hecha |
+| [[PDF-126-organizar-arrastrar-e2e]] | Organizar - arrastrar y soltar, e2e y rendimiento | PDF-125 | hecha |
+| [[PDF-054-extraer-dividir]] | Extraer y dividir - planes y operaciones del núcleo | PDF-123, PDF-118 | hecha |
+| [[PDF-127-extraer-dividir-interfaz]] | Extraer y dividir - diálogos, progreso y guardado | PDF-054, PDF-126, COM-018 | hecha |
+| [[PDF-055-insertar-combinar]] | Insertar páginas de otro PDF y combinar PDFs - núcleo | PDF-119, PDF-123, PDF-124 | hecha |
+| [[COM-019-importar-varios-ficheros]] | Platform.importFiles - elegir varios ficheros a la vez | COM-018 | hecha |
+| [[PDF-128-insertar-combinar-interfaz]] | Insertar desde archivo y combinar archivos - interfaz | PDF-055, PDF-127, COM-019 | hecha |
+| [[PDF-056-pdf-desde-imagenes]] | Crear PDF desde imágenes - núcleo | PDF-121, PDF-118 | hecha |
+| [[PDF-129-pdf-desde-imagenes-interfaz]] | Crear PDF desde imágenes - diálogo y guardado | PDF-056, PDF-128 | hecha |
 
-#### Iteración 6 · Funciones Pro
+#### Iteración 6 · Funciones Pro · cerrada
 | Id | Título | Depende de | Estado |
 |---|---|---|---|
 | [[PDF-057-formas-y-sellos]] | Formas y sellos - modelo, apariencias y escritura | PDF-039 | hecha |
-| [[PDF-107-importar-formas-y-sellos]] | Importar formas y sellos del fichero como editables | PDF-057, PDF-101, PDF-104 | pendiente |
-| [[PDF-108-herramientas-de-formas]] | Herramientas Rectángulo, Elipse, Línea y Flecha en la barra Comentar | PDF-057, PDF-101, PDF-050, PDF-051, PDF-097 | pendiente |
-| [[PDF-115-poligono-y-sellos]] | Herramientas Polígono y Sello en la barra Comentar | PDF-108, PDF-107 | pendiente |
-| [[PDF-058-respuestas-xfdf]] | Respuestas y estados de revisión - modelo, lectura y escritura | PDF-036, PDF-057, PDF-106 | pendiente |
-| [[PDF-109-respuestas-en-el-panel]] | Responder y cambiar el estado desde la ventana del comentario | PDF-058, PDF-101 | pendiente |
-| [[PDF-116-hilos-en-el-panel]] | Respuestas y estados en el panel de comentarios | PDF-109 | pendiente |
-| [[PDF-110-xfdf-nucleo]] | XFDF - parser XML seguro, exportar e importar comentarios (núcleo) | PDF-058 | pendiente |
-| [[PDF-111-xfdf-interfaz]] | Exportar e importar comentarios en XFDF desde el panel | PDF-110, PDF-116, COM-018, PDF-108 | pendiente |
-| [[PDF-059-anadir-texto-imagen]] | Añadir texto e imagen al contenido de la página - núcleo (aplanar) | PDF-052, PDF-058, PDF-110 | pendiente |
-| [[PDF-130-anadir-texto-imagen-interfaz]] | Añadir texto e imagen - barra «Editar» y herramientas | PDF-059, PDF-129, PDF-115, PDF-116 | pendiente |
-| [[PDF-060-proteger]] | Proteger - crear el cifrado AES-256 (R6) y los permisos (núcleo) | PDF-052, PDF-047 | pendiente |
-| [[PDF-131-reescribir-documento]] | Reescribir el documento completo (con o sin cifrado nuevo) | PDF-060, PDF-121 | pendiente |
-| [[PDF-132-proteger-interfaz]] | Proteger con contraseña y quitar protección - interfaz | PDF-131, PDF-130 | pendiente |
-| [[PDF-061-ocr]] | OCR - capa de texto invisible por incremento (núcleo) | PDF-059, PDF-118 | pendiente |
-| [[PDF-133-ocr-motor]] | OCR - motor local tesseract.js, recursos empaquetados y escaneado de prueba | PDF-052 | pendiente |
-| [[PDF-134-ocr-interfaz]] | OCR - diálogo «Reconocer texto», progreso y guardado | PDF-061, PDF-133, PDF-132 | pendiente |
-| [[PDF-062-redactar]] | Redactar - analizador e intérprete de contenido con cajas de glifos (núcleo) | PDF-052, PDF-059 | pendiente |
-| [[PDF-135-redactar-aplicar]] | Redactar - aplicar (texto, imágenes enteras, anotaciones, página en imagen) y reescritura | PDF-062, PDF-131 | pendiente |
-| [[PDF-136-redactar-imagenes]] | Redactar - imágenes parcialmente cubiertas sin convertir la página | PDF-135 | pendiente |
-| [[PDF-137-redactar-interfaz]] | Redactar - marcar zonas, texto y resultados de búsqueda, y aplicar | PDF-136, PDF-134 | pendiente |
+| [[PDF-107-importar-formas-y-sellos]] | Importar formas y sellos del fichero como editables | PDF-057, PDF-101, PDF-104 | hecha |
+| [[PDF-108-herramientas-de-formas]] | Herramientas Rectángulo, Elipse, Línea y Flecha en la barra Comentar | PDF-057, PDF-101, PDF-050, PDF-051, PDF-097 | hecha |
+| [[PDF-115-poligono-y-sellos]] | Herramientas Polígono y Sello en la barra Comentar | PDF-108, PDF-107 | hecha |
+| [[PDF-058-respuestas-xfdf]] | Respuestas y estados de revisión - modelo, lectura y escritura | PDF-036, PDF-057, PDF-106 | hecha |
+| [[PDF-109-respuestas-en-el-panel]] | Responder y cambiar el estado desde la ventana del comentario | PDF-058, PDF-101 | hecha |
+| [[PDF-116-hilos-en-el-panel]] | Respuestas y estados en el panel de comentarios | PDF-109 | hecha |
+| [[PDF-110-xfdf-nucleo]] | XFDF - parser XML seguro, exportar e importar comentarios (núcleo) | PDF-058 | hecha |
+| [[PDF-111-xfdf-interfaz]] | Exportar e importar comentarios en XFDF desde el panel | PDF-110, PDF-116, COM-018, PDF-108 | hecha |
+| [[PDF-059-anadir-texto-imagen]] | Añadir texto e imagen al contenido de la página - núcleo (aplanar) | PDF-052, PDF-058, PDF-110 | hecha |
+| [[PDF-149-texto-libre-sin-borde]] | Texto libre sin borde (`borderless` en el modelo) | — | hecha |
+| [[PDF-130-anadir-texto-imagen-interfaz]] | Añadir texto e imagen - barra «Editar» y herramientas | PDF-059, PDF-129, PDF-115, PDF-116, PDF-149 | hecha |
+| [[PDF-060-proteger]] | Proteger - crear el cifrado AES-256 (R6) y los permisos (núcleo) | PDF-052, PDF-047 | hecha |
+| [[PDF-131-reescribir-documento]] | Reescribir el documento completo (con o sin cifrado nuevo) | PDF-060, PDF-121 | hecha |
+| [[PDF-132-proteger-interfaz]] | Proteger con contraseña y quitar protección - interfaz | PDF-131, PDF-130 | hecha |
+| [[PDF-061-ocr]] | OCR - capa de texto invisible por incremento (núcleo) | PDF-059, PDF-118 | hecha |
+| [[PDF-133-ocr-motor]] | OCR - motor local tesseract.js, recursos empaquetados y escaneado de prueba | PDF-052 | hecha |
+| [[PDF-134-ocr-interfaz]] | OCR - diálogo «Reconocer texto», progreso y guardado | PDF-061, PDF-133, PDF-132 | hecha |
+| [[PDF-062-redactar]] | Redactar - analizador e intérprete de contenido con cajas de glifos (núcleo) | PDF-052, PDF-059 | hecha |
+| [[PDF-135-redactar-aplicar]] | Redactar - aplicar (texto, imágenes enteras, anotaciones, página en imagen) y reescritura | PDF-062, PDF-131 | hecha |
+| [[PDF-136-redactar-imagenes]] | Redactar - imágenes parcialmente cubiertas sin convertir la página | PDF-135 | hecha |
+| [[PDF-137-redactar-interfaz]] | Redactar - marcar zonas, texto y resultados de búsqueda, y aplicar | PDF-136, PDF-134 | hecha |
 | [[PDF-063-comparar]] | Comparar dos PDFs - núcleo de diferencias de texto | PDF-022 | hecha |
-| [[PDF-112-comparar-interfaz]] | Comparar - elegir el segundo PDF, progreso y lista de cambios | PDF-063, PDF-113, PDF-046 | pendiente |
-| [[PDF-117-comparar-paginas]] | Comparar - páginas lado a lado con cambios resaltados y superposición | PDF-112 | pendiente |
+| [[PDF-112-comparar-interfaz]] | Comparar - elegir el segundo PDF, progreso y lista de cambios | PDF-063, PDF-113, PDF-046 | hecha |
+| [[PDF-117-comparar-paginas]] | Comparar - páginas lado a lado con cambios resaltados y superposición | PDF-112 | hecha |
 | [[PDF-064-exportar]] | Exportar a imágenes y texto - núcleo y render | PDF-022 | hecha |
-| [[PDF-113-exportar-interfaz]] | Exportar - diálogo, progreso, permisos y guardado | PDF-064, COM-018, PDF-048, PDF-095, PDF-097 | pendiente |
-| [[PDF-065-editar-texto]] | Editar texto existente - decidir alcance | PDF-052, PDF-135 | bloqueada |
-| [[PDF-066-firma-digital]] | Firma digital - abrir certificado PKCS#12 y firmar PAdES B-B por incremento (núcleo) | PDF-043, PDF-052, PDF-118 | pendiente |
-| [[PDF-138-firma-digital-validar]] | Firma digital - validar las firmas de un PDF (núcleo) | PDF-066 | pendiente |
-| [[PDF-139-firma-digital-interfaz]] | Firma digital - firmar con certificado y panel de firmas | PDF-138, PDF-137, COM-018 | pendiente |
+| [[PDF-113-exportar-interfaz]] | Exportar - diálogo, progreso, permisos y guardado | PDF-064, COM-018, PDF-048, PDF-095, PDF-097 | hecha |
+| [[PDF-065-editar-texto]] | Editar texto existente - decidir alcance (opción A, [[ADR-0042-editar-texto-linea-simple]]) | PDF-052, PDF-135 | sustituida |
+| [[PDF-143-editar-texto-estilo-y-borrado]] | Editar texto - estilo de cada operación de texto y borrado de glifos reutilizable (núcleo) | — | hecha |
+| [[PDF-144-editar-texto-localizar-linea]] | Editar texto - localizar la línea editable y elegir la fuente estándar (núcleo) | PDF-143 | hecha |
+| [[PDF-145-editar-texto-aplicar]] | Editar texto - aplicar las líneas editadas y operaciones del Worker (núcleo) | PDF-144 | hecha |
+| [[PDF-146-editar-texto-estado]] | Editar texto - localizar la línea con pdf.js, ediciones pendientes con deshacer y guardado | PDF-145, PDF-137 | hecha |
+| [[PDF-147-editar-texto-interfaz]] | Editar texto - herramienta en la barra Editar, cuadro sobre la línea y E2E | PDF-146, PDF-139 | hecha |
+| [[PDF-066-firma-digital]] | Firma digital - abrir certificado PKCS#12 y firmar PAdES B-B por incremento (núcleo) | PDF-043, PDF-052, PDF-118 | hecha |
+| [[PDF-138-firma-digital-validar]] | Firma digital - validar las firmas de un PDF (núcleo) | PDF-066 | hecha |
+| [[PDF-139-firma-digital-interfaz]] | Firma digital - firmar con certificado y panel de firmas | PDF-138, PDF-137, COM-018 | hecha |
 | [[PDF-067-leer-en-voz-alta]] | Leer en voz alta - frases, voces y motor de lectura | PDF-022 | hecha |
-| [[PDF-114-leer-en-voz-alta-interfaz]] | Leer en voz alta - menú, barra de lectura, atajos y resaltado de la frase | PDF-067, PDF-050, PDF-051, PDF-112 | pendiente |
-| [[PDF-141-e2e-rojos-en-head]] | Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD (prioritaria, accionable ya) | — | pendiente |
-| [[PDF-142-memoria-lienzo-detalle]] | Regresión de memoria del lienzo de detalle con zoom alto (385 MB > 300 MB); bisectar y corregir (accionable ya) | — | pendiente |
+| [[PDF-114-leer-en-voz-alta-interfaz]] | Leer en voz alta - menú, barra de lectura, atajos y resaltado de la frase | PDF-067, PDF-050, PDF-051, PDF-112 | hecha |
+| [[PDF-141-e2e-rojos-en-head]] | Diagnosticar y arreglar los E2E rojos e intermitentes de HEAD (prioritaria, accionable ya) | — | hecha |
+| [[PDF-142-memoria-lienzo-detalle]] | Regresión de memoria del lienzo de detalle con zoom alto (385 MB > 300 MB); bisectar y corregir (accionable ya) | — | hecha |
+| [[PDF-150-exportar-cancelar-a-mitad]] | Arreglar «Cancelar» a mitad de la exportación (E2E @perf rojo en HEAD; accionable ya) | — | hecha |
+| [[PDF-151-colocar-firma-queda-seleccionada]] | La firma/imagen recién colocada queda seleccionada con su tirador (accionable ya) | — | hecha |
 
-**Orden y paralelo.** Ya accionables en paralelo (sin choques de ficheros): **PDF-053**, **PDF-118**, **PDF-120**, **PDF-060**, **PDF-133** (además de las de formas, comparar, exportar y voz ya detalladas). Cadenas del núcleo: PDF-053 → PDF-119 → PDF-121 (con PDF-120) → PDF-122 → PDF-123 → PDF-054/PDF-055; PDF-060 + PDF-121 → PDF-131; PDF-059 → PDF-061 y PDF-062 → PDF-135 → PDF-136; PDF-066 → PDF-138. Las fichas de interfaz van **en serie** porque tocan `App.tsx`, `DocumentMenu.tsx` y `organizeMsg`: PDF-114 → PDF-125 → PDF-126 → PDF-127 → PDF-128 → PDF-129 → PDF-130 → PDF-132 → PDF-134 → PDF-137 → PDF-139. Todas las operaciones pesadas van en el Worker de [[PDF-118-worker-operaciones]] ([[ADR-0034-operaciones-en-worker]]).
+**Orden y paralelo.** Ya accionables en paralelo (sin choques de ficheros): **PDF-053**, **PDF-118**, **PDF-120**, **PDF-060**, **PDF-133** (además de las de formas, comparar, exportar y voz ya detalladas). Cadenas del núcleo: PDF-053 → PDF-119 → PDF-121 (con PDF-120) → PDF-122 → PDF-123 → PDF-054/PDF-055; PDF-060 + PDF-121 → PDF-131; PDF-059 → PDF-061 y PDF-062 → PDF-135 → PDF-136; PDF-066 → PDF-138; PDF-143 → PDF-144 → PDF-145 (editar texto, [[ADR-0042-editar-texto-linea-simple]]). Las fichas de interfaz van **en serie** porque tocan `App.tsx`, `DocumentMenu.tsx` y `organizeMsg`: PDF-114 → PDF-125 → PDF-126 → PDF-127 → PDF-128 → PDF-129 → PDF-130 → PDF-132 → PDF-134 → PDF-137 → PDF-139 → PDF-147 (PDF-146, solo estado, puede ir en paralelo a PDF-139 cuando estén PDF-145 y PDF-137). Todas las operaciones pesadas van en el Worker de [[PDF-118-worker-operaciones]] ([[ADR-0034-operaciones-en-worker]]).
 
 ## Historial de iteraciones
 - 2026-10-17: plan creado. Iteraciones 1 y 2 detalladas; 3-6 con fichas de título y dependencias.
@@ -313,6 +322,7 @@ Detalladas el 2026-10-19 ([[ADR-0028-reescribir-pdfs]] a [[ADR-0040-firma-digita
 
 - 2026-10-19: **iteraciones 5-6 detalladas en parte** (líder). PDF-052 desbloqueada sin preguntar al usuario: pdf-lib es MIT y qpdf Apache-2.0, y además se decide el escritor propio sin dependencias ([[ADR-0028-reescribir-pdfs]]); la parte común sale a [[PDF-106-escritor-de-incrementos]]. Formas y sellos ([[ADR-0029-formas-y-sellos]]): PDF-057 + PDF-107, PDF-108, PDF-115. Respuestas, estados y XFDF ([[ADR-0030-respuestas-estados-xfdf]]): PDF-058 + PDF-109, PDF-116, PDF-110, PDF-111. Comparar ([[ADR-0031-comparar-pdfs]]): PDF-063 + PDF-112, PDF-117. Exportar ([[ADR-0032-exportar-imagenes-y-texto]]): PDF-064 + PDF-113 y [[COM-018-exportar-fichero]]. Leer en voz alta ([[ADR-0033-leer-en-voz-alta]], solo voces locales): PDF-067 + PDF-114.
 - 2026-10-19: **iteraciones 5-6 detalladas por completo** (líder). Las fichas «por detallar» se parten: organizar (PDF-053 núcleo del plan, [[PDF-118-worker-operaciones]], [[PDF-119-organizar-escritura]], [[PDF-124-organizar-estado]], [[PDF-125-organizar-vista]], [[PDF-126-organizar-arrastrar-e2e]]), documento nuevo ([[PDF-120-copiar-objetos]], [[PDF-121-documento-nuevo]], [[PDF-122-destinos-e-indice-al-copiar]], [[PDF-123-formularios-al-copiar]]), extraer/dividir (PDF-054 + [[PDF-127-extraer-dividir-interfaz]]), insertar/combinar (PDF-055 + [[PDF-128-insertar-combinar-interfaz]] y [[COM-019-importar-varios-ficheros]]), imágenes (PDF-056 + [[PDF-129-pdf-desde-imagenes-interfaz]]), añadir texto/imagen (PDF-059 + [[PDF-130-anadir-texto-imagen-interfaz]]), proteger (PDF-060 + [[PDF-131-reescribir-documento]] + [[PDF-132-proteger-interfaz]]), OCR (PDF-061 + [[PDF-133-ocr-motor]] + [[PDF-134-ocr-interfaz]]), redactar (PDF-062 + [[PDF-135-redactar-aplicar]] + [[PDF-136-redactar-imagenes]] + [[PDF-137-redactar-interfaz]]) y firma digital (PDF-066 + [[PDF-138-firma-digital-validar]] + [[PDF-139-firma-digital-interfaz]]). ADR-0034 a ADR-0040. Dependencias nuevas decididas por el líder: tesseract.js + datos de idioma (Apache-2.0/MIT) y node-forge (BSD-3). [[PDF-065-editar-texto]] bloqueada: pregunta de alcance al usuario.
+- 2026-10-21: **iteraciones 3 a 6 cerradas.** Las 151 fichas del Lector PDF están en `hecha` y [[PDF-065-editar-texto]] en `sustituida` (partida en PDF-143 a PDF-147, alcance A del usuario: editar una línea con fuente estándar parecida, sin reflujo, [[ADR-0042-editar-texto-linea-simple]]). Arranque a 600 KB ([[ADR-0041-presupuesto-arranque-600kb]]). Quedan las «Mejoras conocidas» de abajo, sin planificar.
 
 ## Mejoras conocidas (no planificadas)
 - Texto libre con caracteres no latinos: incrustar una fuente en la apariencia.

@@ -23,4 +23,93 @@ export const organizeMsg = {
   undoLabel: (label: string): string => `Deshacer ${label}`,
   /** Nombre de «Rehacer» con la última acción deshecha. */
   redoLabel: (label: string): string => `Rehacer ${label}`,
+  /** Cierra la vista (botón de la barra y de error). */
+  close: 'Cerrar',
+  /** Nombre de «Deshacer» sin nada que deshacer. */
+  undo: 'Deshacer',
+  /** Nombre de «Rehacer» sin nada que rehacer. */
+  redo: 'Rehacer',
+  /** Barra de herramientas de la vista. */
+  toolbar: 'Herramientas de organizar',
+  rotateLeft: 'Girar a la izquierda',
+  rotateRight: 'Girar a la derecha',
+  delete: 'Eliminar páginas',
+  insertBlank: 'Insertar página en blanco',
+  /** Opciones del menú de «Insertar página en blanco». */
+  before: 'Antes de la selección',
+  after: 'Después de la selección',
+  /** Descripción de los atajos Alt+← y Alt+→ (mover la selección). */
+  moveLeft: 'Mover la selección a la izquierda',
+  moveRight: 'Mover la selección a la derecha',
+  /** Descripción de los atajos Alt+Inicio y Alt+Fin (mover la selección al principio o al final). */
+  moveFirst: 'Mover la selección al principio',
+  moveLast: 'Mover la selección al final',
+  /** Anuncio (región «aria-live») tras mover: posición nueva de la primera página movida. */
+  moved: (n: number): string => `Páginas movidas a la posición ${String(n)}.`,
+  /** Imagen que acompaña al puntero al arrastrar: número de páginas que se mueven. */
+  dragGhost: (n: number): string => (n === 1 ? '1 página' : `${String(n)} páginas`),
+  /** Selector de tamaño de miniatura. */
+  thumbSize: 'Tamaño de miniatura',
+  /** Texto de una opción del selector de tamaño (ancho en px CSS). */
+  cellSize: (px: number): string => `${String(px)} px`,
+  /** Resumen de la barra: total de páginas y seleccionadas. */
+  count: (pages: number, selected: number): string =>
+    `${String(pages)} ${pages === 1 ? 'página' : 'páginas'} · ${String(selected)} ${selected === 1 ? 'seleccionada' : 'seleccionadas'}`,
+  /** Posición original de una página movida (etiqueta de la celda). */
+  was: (n: number): string => `(antes ${String(n)})`,
+  /** Nombre accesible de la celda: «Página n», con «, girada 90°» si tiene giro. */
+  pageOption: (n: number, rotation: number): string =>
+    rotation === 0 ? `Página ${String(n)}` : `Página ${String(n)}, girada ${String(rotation)}°`,
+  /** Mientras se guarda y aún no se sabe cuántas páginas van. */
+  savingStart: 'Guardando…',
+  /** Extraer páginas y dividir documento (PDF-127). */
+  extract: 'Extraer',
+  extractMenu: 'Extraer páginas…',
+  extractTitle: 'Extraer páginas',
+  extractCurrent: (n: number): string => `Página actual (${String(n)})`,
+  extractRange: 'Rango',
+  extractRangeField: 'Páginas a extraer',
+  extractRangeExample: 'p. ej. 3-7, 10',
+  split: 'Dividir',
+  splitMenu: 'Dividir documento…',
+  splitTitle: 'Dividir documento',
+  splitLegend: 'Cómo dividir',
+  everyPages: 'Cada',
+  everyPagesSuffix: 'páginas',
+  everyPagesField: 'Páginas por parte',
+  byBookmarks: 'Por marcadores de primer nivel',
+  bySize: 'Por tamaño máximo',
+  sizeField: 'Tamaño máximo de cada parte',
+  sizeOption: (mb: number): string => `${String(mb)} MB`,
+  noBookmarks: 'Este PDF no tiene marcadores.',
+  filesToCreate: (n: number): string => (n === 1 ? 'Se creará 1 archivo.' : `Se crearán ${String(n)} archivos.`),
+  willSave: (name: string): string => `Se guardará como “${name}”.`,
+  extractBlocked: 'Este PDF no permite copiar sus páginas.',
+  newIsUnprotected: 'El PDF nuevo no tendrá contraseña.',
+  unsavedNotIncluded: 'Hay cambios sin guardar que no se han podido incluir en el resultado.',
+  extracted: (name: string): string => `Páginas extraídas en “${name}”.`,
+  splitDone: (n: number): string => `Documento dividido en ${String(n)} partes.`,
+  oversized: (n: number): string =>
+    n === 1 ? '1 página supera el tamaño máximo y va sola en su parte.' : `${String(n)} páginas superan el tamaño máximo y van solas en su parte.`,
+  progressExtract: (done: number, total: number): string => `Copiando páginas: ${String(done)} de ${String(total)}…`,
+  progressLabel: 'Progreso de la operación',
+  /** Insertar páginas de otro PDF (PDF-128): opciones del menú de «Insertar». */
+  fromFileBefore: 'Desde archivo…, antes de la selección',
+  fromFileAfter: 'Desde archivo…, después de la selección',
+  /** El PDF elegido no se puede leer (no es un PDF o está dañado). */
+  importFailed: (name: string): string => `No se ha podido leer “${name}”. Puede que no sea un PDF válido.`,
+  importTooBig: 'El fichero es demasiado grande (máximo 512 MB).',
+  /** Combinar archivos (PDF-128). */
+  combine: 'Combinar archivos…',
+  combineTitle: 'Combinar archivos',
+  addFiles: 'Añadir archivos…',
+  moveUp: 'Subir',
+  moveDown: 'Bajar',
+  remove: 'Quitar',
+  pagesOf: (n: number): string => (n === 1 ? '1 página' : `${String(n)} páginas`),
+  combineAction: 'Combinar',
+  combineHint: 'Añade al menos dos PDF para combinarlos.',
+  combineLimit: 'No se pueden añadir más ficheros: máximo 50 en total, de 512 MB cada uno.',
+  combined: (name: string): string => `PDF combinado guardado como “${name}”.`,
+  progressCombine: (done: number, total: number): string => `Combinando páginas: ${String(done)} de ${String(total)}…`,
 };

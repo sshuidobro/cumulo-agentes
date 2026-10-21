@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-127
 titulo: Extraer y dividir - diálogos, progreso y guardado
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-054, PDF-126, COM-018]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, pdf, iteracion-5, organizar, ui]
 ---
 
@@ -67,3 +67,38 @@ export function cancelDocOp(): void;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `apps/lector-pdf/src/state/extract-actions.ts` (nuevo), `src/ui/kit/DocOpProgress.tsx` y `.module.css` (nuevos), `src/ui/organize/ExtractDialog.tsx`, `SplitDialog.tsx` y `ExtractDialog.module.css` (nuevos), `src/ui/organize/OrganizeToolbar.tsx`, `src/ui/toolbar/DocumentMenu.tsx`, `src/ui/App.tsx` (diálogos en diferido y progreso), `src/ui/messages-organize.ts`; tests nuevos `tests/unit/extract-actions.test.ts`, `tests/ui/extract-dialogs.test.tsx`, `tests/e2e/extract-split.spec.ts`.
+- Qué he hecho: acciones de extraer y dividir sobre las ops `extract` y `split` de PDF-054 (cambios sin guardar incluidos con `concatSource`, cancelables, aviso en español), diálogos «Extraer páginas» y «Dividir documento» con teclado y aviso de cifrado, botón «Extraer» en Organizar y entradas del menú «Más acciones» deshabilitadas sin permiso de copia. Progreso genérico `DocOpProgress` con Cancelar.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: sin errores en mis ficheros (en el último intento falló por `dist-e2e-full`, que ya he borrado).
+  - `pnpm --filter lector-pdf exec tsc -p tsconfig.json`: solo falla `tests/e2e/iteration4-performance.spec.ts` (fichero sin seguimiento que no es mío: `Page`/`TestInfo` no exportados desde `perf-fixture.ts`).
+  - `pnpm coverage`: código 0, todos los tests en verde (cobertura global: líneas 98,33 %, ramas 89,74 %).
+  - `vitest` unitario y de componentes de la ficha: 10 + 12 tests en verde.
+  - `playwright test tests/e2e/extract-split.spec.ts` (puerto propio `LECTOR_E2E_PORT=4311`): 6/6 en verde (outline 3-7, outline por marcadores 10/10/9/1, resaltado sin guardar en la página 2, Organizar 4 y 2, encrypted-owner-only deshabilitadas, teclado + axe en tema oscuro).
+  - E2E completo: 328 pasados; 4 `@perf` fallaron por CPU ocupada por otros procesos; al repetirlos en reposo, 9 de 10 pasan. El que falla (`iteration4-performance.spec.ts`, cifrado AES-256, ratio 2,10 frente a máximo 1,5) es de un fichero que no es mío y no toca estas rutas.
+  - `node tests/bundle/check-bundle.ts dist-extract` tras `vite build`: arranque 591 191 bytes de 600 000 máximo.
+- Dudas o cosas que no he podido hacer:
+  1. **Giros del plan no se aplican al extraer desde Organizar.** La op `extract` (PDF-054) solo recibe índices de página y usa los giros del original; si el usuario ha girado una página en la vista Organizar, el PDF extraído no lo lleva. Hace falta decidir si la op acepta giros (cambio en PDF-054) o si se extrae sin giros. No he tomado esa decisión.
+  2. Los huecos «imported» (PDF-128, aún no implementada) deshabilitan «Extraer» igual que los «blank», no solo los en blanco que pide la ficha.
+  3. El progreso reutiliza `organizeMsg.progressExtract` («Copiando páginas: X de Y…») también para dividir.
+  4. Los fallos del `tsc` y los ficheros `tests/e2e/iteration4-*.spec.ts` y `zz-debug-tmp.spec.ts` no son de esta ficha; no los he tocado.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+Lint y typecheck sin errores; 22 tests unit/UI y 6 e2e de la ficha en verde. Criterios cubiertos y sin salirse del alcance.
+1. (opcional) `src/state/extract-actions.ts` / `OrganizeToolbar.tsx` — el extraer desde Organizar ignora los giros del plan (duda 1 del programador): el líder debería decidir si la op `extract` de PDF-054 acepta giros (ficha aparte).
+2. (opcional) `progressExtract` se reutiliza para dividir: texto propio «Dividiendo…» sería más claro.
+3. (opcional) `OrganizeToolbar.tsx:42` — los huecos `imported` también deshabilitan «Extraer»; revisar al llegar PDF-128.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| E2E extraer 3-7, marcadores 10/10/9/1, resaltado sin guardar, Organizar, owner-only, teclado+axe+oscuro | OK | `playwright test tests/e2e/extract-split.spec.ts`: 6 passed |
+| Unit (cancelar, error, exportFile ZIP) | OK | dentro de `pnpm coverage`, verde (líneas 98,33 %) |
+| bundle:check | OK | 591 097 de 600 000 bytes |
+| lint, typecheck, coverage | OK | código 0 |
+| e2e completo | OK con reserva | 342 passed, 2 failed, ambos `@perf` de `iteration4-performance.spec.ts` (cifrado, ratio; fichero ajeno a esta ficha, modificado sin commit); no tocan extraer/dividir |
+
+Tests añadidos: ninguno nuevo (los del programador cubren cada criterio). Rendimiento: sin presupuesto propio.
+Pendiente (no bloquea): giros del plan no se aplican al extraer desde Organizar; `progressExtract` reutilizado en dividir; huecos `imported` deshabilitan «Extraer».

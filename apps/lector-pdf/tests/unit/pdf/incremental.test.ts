@@ -11,7 +11,8 @@ import {
 import { buildIncrementalUpdate, openForSave, type IncrementalOutput } from '../../../src/core/pdf/incremental';
 import { ObjectReader } from '../../../src/core/pdf/object-reader';
 import { dictGet, type PdfRef } from '../../../src/core/pdf/objects';
-import { loadPdf, readPageAnnotations, type LoadedPdf } from '../../../src/engine';
+import { loadPdf, type LoadedPdf } from '../../../src/engine';
+import { readPageAnnotations } from '../../../src/engine/annotations-import';
 import { appendIncrementalUpdate } from '../../fixtures/pdf-builder';
 import { FIXTURES_DIR } from '../../fixtures/paths';
 import { countingSource, nodeAssetBase } from '../../helpers/pdfjs-node';

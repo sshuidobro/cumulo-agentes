@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-137
 titulo: Redactar - marcar zonas, texto y resultados de búsqueda, y aplicar
 app: pdf
-estado: pendiente
+estado: hecha
 depende_de: [PDF-136, PDF-134]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-21
 tags: [tarea, pdf, iteracion-6, seguridad, edicion, ui]
 ---
 
@@ -63,3 +63,33 @@ export async function applyRedactions(): Promise<SaveResult | 'cancelled'>;
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-21
+- Ficheros cambiados: `apps/lector-pdf/src/engine/match-rects.ts`, `src/engine/redact-render.ts`, `src/state/redact-store.ts`, `src/state/redact-actions.ts`, `src/ui/messages-redact.ts`, `src/ui/viewer/RedactLayer.tsx` (+ `.module.css`), `src/ui/toolbar/RedactBar.tsx` (+ `.module.css`), `src/ui/toolbar/EditToolbar.tsx`, `src/ui/toolbar/CommentToolbar.tsx`, `src/ui/viewer/SelectionActions.tsx`, `src/ui/viewer/PageView.tsx`, `src/ui/App.tsx`, `src/ui/icons.tsx`, `src/state/annotation-store.ts` (tipo `'redact'`), `src/main.tsx`; tests `tests/unit/redact-match-rects.test.ts`, `tests/unit/redact-actions.test.ts`, `tests/ui/redact-tool.test.tsx`, `tests/e2e/redact.spec.ts`.
+- Qué he hecho: herramienta «Redactar» en «Editar» (arrastrar zona, Escape cancela, Supr quita la marca enfocada, Ctrl+Z/Ctrl+Y). Marcar texto seleccionado, marcar resultados de búsqueda (máx. 10 000), aplicar con dos confirmaciones y «Redactar» en la barra de selección. Historial propio y registro de cambios pendientes (Ctrl+S y cerrar pestaña preguntan); pestaña participante `redact`, orden 41.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` código 0, 317 ficheros y 4078 tests OK; `pnpm --filter lector-pdf e2e` código 0, 375 pruebas OK (incluidas 4 de `redact.spec.ts`: criterio original con `pdftotext` y `qpdf --qdf`, zonas/Escape/undo/Cancelar, cierre de pestaña con marcas, imagen de `scanned-es-3.pdf` con píxeles negros).
+- Dudas o cosas que no he podido hacer:
+  - Axe solo se ha comprobado en la barra «Redactar» (no en el visor completo); el tema oscuro solo tiene variables, sin prueba visual.
+  - Si ya hay otros cambios pendientes registrados (p. ej. «Organizar» abierto), las marcas no se registran: Ctrl+S guardará los otros. No he encontrado caso real que lo provoque; lo dejo anotado.
+  - Cada marca es un nodo DOM sin virtualizar: una página con miles de coincidencias marcadas creará miles de nodos. Riesgo de rendimiento que no he medido.
+  - «Redactar» desde la barra de selección marca el texto y activa la herramienta (decisión mía, la ficha no lo detalla).
+  - Las etiquetas de «Deshacer» de las marcas son cadenas fijas en `redact-actions.ts`, no están en `messages-redact.ts`.
+  - El aviso «Redacción aplicada en N páginas» cuenta las páginas con marcas, no solo las rasterizadas.
+
+
+### [revisor] ronda 1 — 2026-10-21 — APROBADO
+Lint, typecheck y los 19 tests de redact (unit + UI) en verde. No he lanzado la e2e completa (la usa otro agente): me fío del resultado del programador (375 OK, incluidas las 4 de `redact.spec.ts`). Código revisado: `match-rects.ts`, `redact-render.ts`, `redact-actions.ts`, `RedactLayer.tsx`; cumple la ficha y no hay nada fuera de alcance.
+1. (opcional) `redact-actions.ts:53-160` — las etiquetas de deshacer («marcar zona», etc.) están fijas en el código; pasarlas a `messages-redact.ts`.
+2. (opcional) `redact-actions.ts:150` — `markSearchResults` devuelve el número de coincidencias y el aviso cuenta zonas; coherente, pero conviene documentarlo.
+3. (opcional) Miles de marcas = miles de nodos sin virtualizar (riesgo ya anotado por el programador); medir en el tester con 10 000 coincidencias.
+4. Para el tester: comprobar axe en el visor completo y el tema oscuro (el programador solo lo hizo en la barra).
+
+### [tester] ronda 1 — 2026-10-21 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| lint / typecheck | OK | `pnpm lint`, `pnpm typecheck` sin errores |
+| coverage | OK | `pnpm coverage` código 0; líneas 98,33 % |
+| E2E completo | OK | `pnpm --filter lector-pdf e2e`: 375 pasan, código 0 (incluye 4 de `redact.spec.ts`: criterio original con pdftotext/qpdf, imagen de `scanned-es-3.pdf`, deshacer/Escape/Cancelar, cierre de pestaña) |
+| Unit/UI de redacción | OK | `redact-match-rects`, `redact-actions`, `redact-tool` dentro de la batería |
+
+No he añadido tests nuevos. Pendiente sin verificar (no bloquea): axe en el visor completo, prueba visual del tema oscuro y rendimiento con 10 000 marcas (nodos DOM sin virtualizar); conviene una ficha de seguimiento.

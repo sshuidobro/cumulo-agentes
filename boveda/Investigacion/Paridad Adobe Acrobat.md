@@ -3,7 +3,7 @@ tipo: investigacion
 app: pdf
 estado: completa
 creado: 2026-10-17
-actualizado: 2026-10-18
+actualizado: 2026-10-20
 tags: [investigacion, suite, pdf, paridad]
 ---
 
@@ -150,7 +150,7 @@ Firmar con firma propia es gratis en Reader; solicitar firmas es de pago ([compa
 ## 10. Edición Pro
 | Función | Prio | Adobe | Dific. | pdf.js / pdf-lib | Estado |
 |---|---|---|---|---|---|
-| Editar texto existente (reflujo, fuentes) | O | P | MA | ninguno; requiere motor de contenido propio. Fuera de alcance inicial | it. 6 (investigación, [[PDF-065-editar-texto|PDF-065]]) |
+| Editar texto existente (reflujo, fuentes) | O | P | MA | ninguno; requiere motor de contenido propio. Fuera de alcance inicial | it. 6: línea simple con fuente estándar, sin reflujo ([[ADR-0042-editar-texto-linea-simple]], [[PDF-143-editar-texto-estilo-y-borrado|PDF-143]]…[[PDF-147-editar-texto-interfaz|PDF-147]]) |
 | Editar/mover imágenes, objetos | O | P | A | pdf-lib de bajo nivel | no planificado |
 | Añadir texto / imagen nueva sobre la página | M | P | M | pdf-lib | it. 6 ([[PDF-059-anadir-texto-imagen|PDF-059]]) |
 | Enlaces, fondo, encabezado/pie, Bates | O | P | M | pdf-lib | no planificado |

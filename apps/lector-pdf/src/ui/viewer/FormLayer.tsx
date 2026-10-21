@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import { isFillable, type ChoiceOption, type FieldValue, type FormField, type FormWidget } from '../../core/forms';
+import { isFillable, type ChoiceOption, type FieldValue, type FormField, type FormWidget } from '../../core/forms/model';
 import type { RectPt } from '../../core/annotations/model';
 import type { PageViewport } from '../../engine/pdfjs';
 import { focusAdjacentPage, setFieldValue, takePendingFocus } from '../../state/form-actions';

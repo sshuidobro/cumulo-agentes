@@ -10,6 +10,8 @@ export interface WebEnv {
   readonly showSaveFilePicker: ShowSaveFilePicker | undefined;
   /** Crea un <input type=file accept=...>, hace click y resuelve con el fichero o null si llega el evento 'cancel'. */
   readonly pickWithInput: (accept: string) => Promise<File | null>;
+  /** Como `pickWithInput` pero con selección múltiple. Resuelve con los ficheros elegidos o null si se cancela. */
+  readonly pickManyWithInput: (accept: string) => Promise<readonly File[] | null>;
   /** Descarga un Blob con un <a download> y URL.createObjectURL (revoca la URL a los 10 s). */
   readonly download: (blob: Blob, name: string) => void;
   /** Cierra la pestaña o ventana. Por defecto `window.close()`; el navegador puede ignorarlo si no la abrió un script. */
@@ -46,6 +48,18 @@ function createInputPicker(win: Window): (accept: string) => Promise<File | null
   });
 }
 
+function createManyInputPicker(win: Window): (accept: string) => Promise<readonly File[] | null> {
+  return (accept) => new Promise<readonly File[] | null>((resolve) => {
+    const input = win.document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = accept;
+    input.addEventListener('change', () => { resolve(Array.from(input.files ?? [])); }, { once: true });
+    input.addEventListener('cancel', () => { resolve(null); }, { once: true });
+    input.click();
+  });
+}
+
 function createDownloader(win: Window): (blob: Blob, name: string) => void {
   return (blob, name) => {
     const url = URL.createObjectURL(blob);
@@ -70,6 +84,7 @@ export function defaultWebEnv(): WebEnv {
     showOpenFilePicker: win.showOpenFilePicker?.bind(win),
     showSaveFilePicker: win.showSaveFilePicker?.bind(win),
     pickWithInput: createInputPicker(win),
+    pickManyWithInput: createManyInputPicker(win),
     download: createDownloader(win),
     closeWindow: () => { win.close(); },
     print: () => { win.print(); },

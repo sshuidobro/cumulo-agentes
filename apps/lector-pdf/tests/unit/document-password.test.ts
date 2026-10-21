@@ -12,6 +12,14 @@ import { initServices } from '../../src/state/services';
 import { initialViewerState, useViewer } from '../../src/state/viewer-store';
 import { createFakePlatform, openedFile } from '../helpers/fake-platform';
 import { fixtureSource, nodeAssetBase } from '../helpers/pdfjs-node';
+import type * as EngineModule from '../../src/engine';
+import { loadPdf } from '../../src/engine';
+
+// Espía sobre loadPdf: pasa la llamada al original y permite contar las cargas (PDF-148: una sola).
+vi.mock('../../src/engine', async (importOriginal) => {
+  const actual = await importOriginal<typeof EngineModule>();
+  return { ...actual, loadPdf: vi.fn(actual.loadPdf) };
+});
 
 const assetBaseUrl = nodeAssetBase();
 const USER = 'usuario';
@@ -154,5 +162,29 @@ describe('openDocument con contraseña (PDF-046)', () => {
     const written = logged.map((part) => (part instanceof Error ? `${part.name}: ${part.message}` : JSON.stringify(part) ?? ''));
     expect(written.some((text) => text.includes(USER))).toBe(false);
     expect(JSON.stringify(prefsSet.mock.calls)).not.toContain(USER);
+  });
+
+  it('abrir un PDF solo con contraseña de propietario no muestra el diálogo (PDF-148, sondeo)', async () => {
+    vi.mocked(loadPdf).mockClear();
+    await openDocument(openedFile('encrypted-owner-only.pdf', fixtureSource('encrypted-owner-only.pdf')));
+
+    expect(usePasswordPrompt.getState().request).toBeNull();
+    expect(useViewer.getState().status).toBe('ready');
+    expect(loadPdf).toHaveBeenCalledTimes(1);
+  });
+
+  it('con contraseña incorrecta y luego correcta, el cifrado se carga una sola vez (PDF-148)', async () => {
+    vi.mocked(loadPdf).mockClear();
+    const opening = openDocument(openedFile(AES128, fixtureSource(AES128)));
+
+    await waitForPrompt();
+    submitPassword('mal');
+    await waitForPrompt();
+    submitPassword(USER);
+    await opening;
+
+    expect(useViewer.getState().status).toBe('ready');
+    expect(currentPassword()).toBe(USER);
+    expect(loadPdf).toHaveBeenCalledTimes(1);
   });
 });

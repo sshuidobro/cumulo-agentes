@@ -53,6 +53,9 @@ export interface Platform {
   exportFile(suggestedName: string, filters: readonly FileFilter[], bytes: Uint8Array): Promise<Result<ExportOutcome>>;
   /** Elige un fichero con el diálogo de abrir y devuelve su contenido completo; null = cancelado. Más de `maxBytes` → err('out-of-range') sin leerlo. No lo anota en recientes ni lo deja abierto. */
   importFile(filters: readonly FileFilter[], maxBytes: number): Promise<Result<ImportedFile | null>>;
+  /** Elige uno o varios ficheros (selección múltiple) y devuelve su contenido en el orden en que los da el sistema; null = cancelado.
+   * Más de `maxCount` ficheros, o alguno mayor que `maxBytesEach` → err('out-of-range') sin leer ninguno. No toca recientes. */
+  importFiles(filters: readonly FileFilter[], maxBytesEach: number, maxCount: number): Promise<Result<readonly ImportedFile[] | null>>;
   closeFile(file: OpenedFile): Promise<void>;
   onFileOpenedFromOS(cb: (file: OpenedFile) => void): () => void;
   openExternalUrl(url: string): Promise<Result<void>>;

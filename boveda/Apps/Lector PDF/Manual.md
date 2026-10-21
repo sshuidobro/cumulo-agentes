@@ -84,6 +84,27 @@ En macOS, Ctrl es ⌘.
 | Borrar la anotación seleccionada | Supr |
 | Mover la anotación seleccionada | Flechas |
 | Colocar una nota con la herramienta «Nota» | Intro |
+| Leer esta página en voz alta · Leer hasta el final | Ctrl+Mayús+V · Ctrl+Mayús+B |
+| Pausar o reanudar la lectura · Parar | Ctrl+Mayús+C · Ctrl+Mayús+E |
+
+## Leer en voz alta
+- Menú «Vista»: «Leer esta página en voz alta» y «Leer hasta el final». Con los atajos de la tabla hace lo mismo.
+- Aparece una barra abajo, en el centro del visor: pausar o reanudar, parar, velocidad (0,5× a 2×) y voz. Esc con la barra enfocada la cierra. Espacio pausa o reanuda cuando la barra tiene el foco.
+- La frase que se lee se resalta en la página y la página se sigue sola al pasar a la siguiente.
+- Solo usa voces instaladas en el equipo. Si no hay ninguna, el menú lo indica y la función queda deshabilitada: el texto no sale del ordenador.
+- La velocidad y la voz elegidas se recuerdan.
+- Chrome y Edge pueden reservar Ctrl+Mayús+C (herramientas de desarrollo) y Ctrl+Mayús+B (marcadores). En ese caso usa los botones de la barra.
+
+## Firmar con certificado
+- «Más acciones → Firmar con certificado…» firma el documento con un certificado personal `.p12` o `.pfx` (1 MiB como máximo).
+- Elige el certificado, escribe su contraseña y pulsa «Desbloquear». Se muestran el titular, el emisor y las fechas de validez. Si el certificado está caducado o aún no es válido, no se puede firmar con él.
+- Firma **invisible** (sin recuadro) o **visible**: en la visible, arrastra un recuadro sobre la página (mínimo 60×20 puntos). Con el teclado, Intro lo coloca en el centro de la página actual y Escape cancela.
+- Motivo y lugar son opcionales. La firma se hace en este equipo; no se usa ningún servicio externo ni sello de tiempo.
+- El certificado y su contraseña solo viven en memoria mientras firmas: no se guardan en preferencias ni en borradores.
+- El resultado se guarda como copia (o en el propio fichero si el navegador o el escritorio lo permiten), como en cualquier guardado.
+- Al abrir un PDF firmado aparece un aviso («Este documento está firmado digitalmente»). «Ver firmas» abre la pestaña «Firmas» del panel lateral, con cada firma: titular, fecha, motivo, lugar y su estado. Clic en una firma: va a la página de su recuadro.
+- Estados: «Firma válida» (la identidad del firmante no se ha verificado: no se comprueba la cadena de confianza ni la revocación); «No válida» (el documento se ha modificado después de firmarlo, o la firma no es correcta); «No comprobada» (tipo de firma no admitido para validar). «Se han hecho cambios después de firmar.» indica que hay cambios posteriores a la firma, aunque la firma sea válida: el banner aparece en rojo solo si alguna firma no es válida.
+- No se firman documentos cifrados con contraseña (quítales la protección antes), ni se firman campos de firma vacíos ya existentes (la firma crea un campo nuevo). No hay certificados del almacén del sistema ni DNIe.
 
 ## Limitaciones actuales
 - PDFs con contraseña: iteración 4. Formularios: se ven, pero no se rellenan (iteración 3). Imprimir: iteración 3.
@@ -101,3 +122,19 @@ Para confirmar que lo guardado se ve igual en Adobe (pendiente de hacer por el u
 5. Responder a una nota en Adobe y guardar (Ctrl+S) sin mensajes de error.
 6. Reabrir el fichero en el Lector PDF: las anotaciones siguen ahí; en `estandar-annotated.pdf` también las que ya traía el fichero y en `estandar-form.pdf` el formulario.
 7. Con el Lector PDF, en una copia de `estandar-basic-5.pdf`: dibujar un polígono y colocar los sellos «APROBADO» y «NO APROBADO», guardar (Ctrl+S) y abrir el fichero con Adobe. El panel de comentarios de Adobe debe listar el sello como «Sello» y el polígono como «Polígono», y el sello «APROBADO» debe verse con su texto.
+
+## Comprobación manual de la firma en Adobe Acrobat Reader
+Pendiente de hacer por el usuario (no la ejecuta el equipo):
+1. Firmar `basic-5.pdf` con un certificado de prueba (invisible) y guardar la copia.
+2. Abrir la copia con Adobe Acrobat Reader: el panel de firmas muestra la firma y la integridad correcta («el documento no se ha modificado»).
+3. Con aviso de identidad desconocida si el certificado no es de confianza (es lo esperado con un certificado de prueba).
+4. Repetir con una firma visible en la página 2 y comprobar que el recuadro «Firmado digitalmente por» aparece en esa página.
+
+## Comprobación manual de la lectura en voz alta
+Con una voz española real de Windows o macOS, sin conexión a internet (pendiente de hacer por el usuario; no bloquea la ficha PDF-114):
+1. Abrir `basic-5.pdf` y pulsar Ctrl+Mayús+V: la voz lee la página 1 con frases completas y la frase en curso aparece subrayada.
+2. Pausar con Ctrl+Mayús+C o el botón de la barra: no se oye nada más. Reanudar: repite la frase pausada y sigue.
+3. Desde la página 4, «Leer hasta el final»: la lectura pasa a la página 5 y el visor la muestra.
+4. Cambiar a 1,5× y elegir otra voz española en la barra; cerrar y reabrir la app: la velocidad y la voz se recuerdan.
+5. Parar (Ctrl+Mayús+E): la barra desaparece y no queda ningún subrayado.
+6. Comprobar que las voces en red (p. ej. «Google español») no aparecen en el selector.

@@ -1,5 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
-import type { FormField } from '../core/forms';
+import type { FormField } from '../core/forms/model';
 
 /** Campos del documento abierto (ADR-0019). Lo escriben solo las acciones de `form-actions.ts`. */
 export interface FormState {

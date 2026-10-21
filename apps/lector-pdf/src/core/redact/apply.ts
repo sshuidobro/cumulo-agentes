@@ -11,9 +11,10 @@ import {
   intersects,
   interpretPage,
   quadBounds,
+  removeGlyphs,
   serializeContent,
   type ContentOp,
-  type GlyphBox,
+  type ImageBox,
   type PageContent,
   type Quad,
 } from '../content';
@@ -21,13 +22,12 @@ import { pdfError } from '../errors';
 import { removeWidgetRefs } from '../organize/forms-cleanup';
 import type { RandomBytes } from '../pdf/crypt-rules';
 import { finishDelta, reserveXref, startDelta, type DeltaWriter } from '../pdf/delta-writer';
-import { flateEncode } from '../pdf/filters';
+import { decodeStreamData, flateEncode } from '../pdf/filters';
 import { jpegImageObject } from '../pdf/image';
 import type { ObjectReader } from '../pdf/object-reader';
 import { catalogRef, createAllocator, type ObjectAllocator } from '../pdf/page-tree';
 import { effectiveResources } from '../pdf/page-content';
 import {
-  bytesString,
   dict,
   dictGet,
   name,
@@ -37,7 +37,6 @@ import {
   type PdfDict,
   type PdfStream,
   type PdfRef,
-  type PdfString,
   type PdfValue,
 } from '../pdf/objects';
 import { toSaveError } from '../pdf/save-error';
@@ -50,10 +49,17 @@ export interface RedactArea {
   /** Espacio de usuario de la página. */
   readonly rect: RectPt;
 }
-/** Imagen parcialmente cubierta; la detalla PDF-136. */
+/** Imagen parcialmente cubierta de una página (PDF-136). */
 export interface PartialImage {
+  /** Nombre del XObject en `/Resources` de la página. */
   readonly name: string;
-  readonly op: number;
+  readonly kind: 'jpeg' | 'flate';
+  readonly width: number;
+  readonly height: number;
+  /** Zonas en píxeles de la imagen (origen arriba-izquierda), ya recortadas a la imagen: `[x0, y0, x1, y1)`, mitad abierta. */
+  readonly pixelRects: readonly RectPt[];
+  /** Solo `jpeg`: bytes del flujo tal cual. */
+  readonly jpeg?: Uint8Array;
 }
 /** Por página con zonas: si se puede redactar sin convertir la página en imagen, o por qué no. */
 export interface PagePlan {
@@ -67,6 +73,8 @@ export interface RedactInput {
   readonly areas: readonly RedactArea[];
   /** JPEG de la página entera sin girar (ya con las zonas en negro), para las páginas con `raster`. */
   readonly rasterPages: ReadonlyMap<number, Uint8Array>;
+  /** `"<página>:<nombre>"` → JPEG ya pintado de negro en sus zonas; solo para imágenes `jpeg` parcialmente cubiertas. */
+  readonly imageReplacements: ReadonlyMap<string, Uint8Array>;
   readonly now: string;
   readonly random?: RandomBytes;
   readonly signal?: AbortSignal;
@@ -79,8 +87,12 @@ type Box = readonly [number, number, number, number];
 const RASTER_NAME = 'SuiteRedact';
 /** Tolerancia al decidir si una imagen cabe entera en una zona (puntos). */
 const EPSILON = 1e-6;
+/** Tolerancia de redondeo de las zonas en píxeles (evita que 49.9999999 pase a 50 píxeles enteros). */
+const SNAP = 1e-9;
 /** Profundidad máxima de `/Parent` al buscar cajas y recursos heredados. */
 const MAX_INHERITANCE = 64;
+/** Claves de imagen que impiden redactarla por píxeles (PDF-136): máscaras, decodificación y máscara de tinta. */
+const UNSUPPORTED_IMAGE_KEYS: readonly string[] = ['SMask', 'Mask', 'Decode', 'ImageMask'];
 
 interface PageAnalysis {
   readonly plan: PagePlan;
@@ -96,6 +108,7 @@ interface Context {
   readonly writer: DeltaWriter;
   readonly alloc: ObjectAllocator;
   readonly rasterPages: ReadonlyMap<number, Uint8Array>;
+  readonly imageReplacements: ReadonlyMap<string, Uint8Array>;
   /** Refs de los widgets quitados de las páginas redactadas. */
   readonly widgets: Set<number>;
 }
@@ -135,6 +148,7 @@ async function writeRedaction(input: RedactInput): Promise<Result<{ readonly del
     writer: await startDelta(source, reader, input.random),
     alloc: createAllocator(reader.xref.size),
     rasterPages: input.rasterPages,
+    imageReplacements: input.imageReplacements,
     widgets: new Set<number>(),
   };
   for (const [pageIndex, boxes] of byPage) {
@@ -178,16 +192,155 @@ async function analyzePage(reader: ObjectReader, pageIndex: number, boxes: reado
   const pageDict = await reader.getDict(pageRef);
   if (pageDict === null) throw new PdfSyntaxError(`página ${String(pageIndex + 1)} ilegible`, 0);
   const content = await readContent(reader, pageDict);
-  const raster = content === null
+  const partialImages = content === null
     || content.unmeasured.length > 0
     || content.forms.some((form) => touchesAny(form.quad, boxes))
-    || content.images.some((image) => touchesAny(image.quad, boxes) && !containedInAny(image.quad, boxes));
+    ? null
+    : await partialImagesOf(reader, pageDict, content, boxes);
+  const raster = partialImages === null;
   return {
-    plan: { pageIndex, raster, partialImages: [] },
+    plan: { pageIndex, raster, partialImages: partialImages ?? [] },
     pageRef,
     pageDict,
     content: raster ? null : content,
   };
+}
+
+/**
+ * Imágenes por nombre que cubren una zona sin caber enteras en ella (PDF-136). `null` si alguna no se puede tratar sin
+ * convertir la página en imagen: dibujada en línea, con la CTM girada o sesgada, o de un tipo que no se redacta por píxeles.
+ */
+async function partialImagesOf(
+  reader: ObjectReader,
+  pageDict: PdfDict,
+  content: PageContent,
+  boxes: readonly Box[],
+): Promise<readonly PartialImage[] | null> {
+  const partial = content.images.filter((image) => touchesAny(image.quad, boxes) && !containedInAny(image.quad, boxes));
+  if (partial.length === 0) return [];
+  const xobjects = dictGet(await effectiveResources(reader, pageDict), 'XObject');
+  if (!isDict(xobjects)) return null;
+
+  const names = new Set<string>();
+  for (const image of partial) {
+    if (image.name === null) return null;
+    names.add(image.name);
+  }
+  const images: PartialImage[] = [];
+  for (const name of names) {
+    const stream = await imageStream(reader, xobjects, name);
+    const facts = stream === null ? null : await admittedImage(reader, stream.dict);
+    if (stream === null || facts === null) return null;
+    const rects: RectPt[] = [];
+    for (const use of content.images) {
+      if (use.name !== name || !touchesAny(use.quad, boxes)) continue;
+      const pixels = pixelRectsOf(use, boxes, facts.width, facts.height);
+      if (pixels === null) return null;
+      rects.push(...pixels);
+    }
+    images.push({
+      name,
+      kind: facts.kind,
+      width: facts.width,
+      height: facts.height,
+      pixelRects: rects,
+      ...(facts.kind === 'jpeg' ? { jpeg: stream.data } : {}),
+    });
+  }
+  return images;
+}
+
+/** Datos de una imagen que se redacta por píxeles. `components` es 1 (gris) o 3 (RGB). */
+interface ImageFacts {
+  readonly kind: 'jpeg' | 'flate';
+  readonly width: number;
+  readonly height: number;
+  readonly components: 1 | 3;
+}
+
+/**
+ * Imagen que se puede redactar por píxeles: `jpeg` con `/DCTDecode` solo, o `flate` con `/FlateDecode` solo y 8 bits,
+ * ambos en `/DeviceGray` o `/DeviceRGB`, sin máscaras ni `/Decode`. `null` si no.
+ */
+async function admittedImage(reader: ObjectReader, dict: PdfDict): Promise<ImageFacts | null> {
+  if (UNSUPPORTED_IMAGE_KEYS.some((key) => dictGet(dict, key) !== undefined)) return null;
+  const width = await reader.resolve(dictGet(dict, 'Width'));
+  const height = await reader.resolve(dictGet(dict, 'Height'));
+  if (!isPositiveInteger(width) || !isPositiveInteger(height)) return null;
+  const colorSpace = await reader.resolve(dictGet(dict, 'ColorSpace'));
+  if (!isName(colorSpace) || (colorSpace.value !== 'DeviceGray' && colorSpace.value !== 'DeviceRGB')) return null;
+  const components = colorSpace.value === 'DeviceGray' ? 1 : 3;
+  const filters = await filterNames(reader, dictGet(dict, 'Filter'));
+  if (filters.length !== 1) return null;
+  if (filters[0] === 'DCTDecode') return { kind: 'jpeg', width, height, components };
+  if (filters[0] !== 'FlateDecode') return null;
+  const bits = await reader.resolve(dictGet(dict, 'BitsPerComponent'));
+  return bits === 8 ? { kind: 'flate', width, height, components } : null;
+}
+
+/** Nombres de `/Filter` (un nombre o un array de nombres); `[]` si no hay filtro o algún elemento no es nombre. */
+async function filterNames(reader: ObjectReader, value: PdfValue | undefined): Promise<readonly string[]> {
+  const resolved = await reader.resolve(value);
+  if (isName(resolved)) return [resolved.value];
+  if (!Array.isArray(resolved)) return [];
+  const names: string[] = [];
+  for (const item of resolved) {
+    const element = await reader.resolve(item);
+    if (!isName(element)) return [];
+    names.push(element.value);
+  }
+  return names;
+}
+
+/** Flujo de imagen del XObject `imageName`, o `null` si no es un flujo. */
+async function imageStream(reader: ObjectReader, xobjects: PdfDict, imageName: string): Promise<PdfStream | null> {
+  const value = await reader.resolve(dictGet(xobjects, imageName));
+  return isStream(value) ? value : null;
+}
+
+/**
+ * Zonas en píxeles (`[x0, y0, x1, y1)`) que cubre `zones` dentro de la imagen dibujada en `use`, recortadas a ella y
+ * redondeadas hacia fuera. `null` si la CTM está girada o sesgada (`b` o `c` ≠ 0) o es degenerada.
+ */
+function pixelRectsOf(use: ImageBox, zones: readonly Box[], width: number, height: number): RectPt[] | null {
+  const [x0 = 0, y0 = 0, x1 = 0, y1 = 0, , , x3 = 0, y3 = 0] = use.quad;
+  // Con la imagen en el cuadrado unidad: el punto (1, 0) va a (a + e, b + f) y el (0, 1) a (c + e, d + f).
+  const a = x1 - x0;
+  const b = y1 - y0;
+  const c = x3 - x0;
+  const d = y3 - y0;
+  const e = x0;
+  const f = y0;
+  if (Math.abs(b) > EPSILON || Math.abs(c) > EPSILON || Math.abs(a) <= EPSILON || Math.abs(d) <= EPSILON) return null;
+  const [bx0, by0, bx1, by1] = normalize([e, f, e + a, f + d]);
+  const rects: RectPt[] = [];
+  for (const zone of zones) {
+    const ix0 = Math.max(zone[0], bx0);
+    const iy0 = Math.max(zone[1], by0);
+    const ix1 = Math.min(zone[2], bx1);
+    const iy1 = Math.min(zone[3], by1);
+    if (ix1 - ix0 <= 0 || iy1 - iy0 <= 0) continue;
+    const uA = clamp01((ix0 - e) / a);
+    const uB = clamp01((ix1 - e) / a);
+    const vA = clamp01((iy0 - f) / d);
+    const vB = clamp01((iy1 - f) / d);
+    const u0 = Math.min(uA, uB);
+    const u1 = Math.max(uA, uB);
+    const v0 = Math.min(vA, vB);
+    const v1 = Math.max(vA, vB);
+    // Fila 0 arriba: la fila de la coordenada v es (1 − v) · alto.
+    const px0 = Math.max(0, Math.floor(u0 * width + SNAP));
+    const px1 = Math.min(width, Math.ceil(u1 * width - SNAP));
+    const py0 = Math.max(0, Math.floor((1 - v1) * height + SNAP));
+    const py1 = Math.min(height, Math.ceil((1 - v0) * height - SNAP));
+    if (px1 <= px0 || py1 <= py0) continue;
+    rects.push([px0, py0, px1, py1]);
+  }
+  return rects;
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
 /** Contenido interpretado, o `null` si la página no se puede interpretar (entonces va como imagen). */
@@ -232,24 +385,19 @@ async function textChanges(
   content: PageContent,
   boxes: readonly Box[],
 ): Promise<Result<Record<string, PdfValue | undefined>>> {
-  const glyphsByOp = groupGlyphs(content.glyphs);
+  // Solo las imágenes que caben enteras en una zona desaparecen; las parciales se sustituyen (PDF-136).
   const removedImageOps = new Set<number>();
   for (const image of content.images) {
-    if (touchesAny(image.quad, boxes)) removedImageOps.add(image.op);
+    if (touchesAny(image.quad, boxes) && containedInAny(image.quad, boxes)) removedImageOps.add(image.op);
   }
-
-  const ops: ContentOp[] = [];
   const removedNames: string[] = [];
   for (const [index, op] of content.ops.entries()) {
-    if (removedImageOps.has(index)) {
-      const imageName = op.op === 'Do' ? nameOperand(op) : null;
-      if (imageName !== null) removedNames.push(imageName);
-      continue;
-    }
-    const glyphs = glyphsByOp.get(index);
-    if (glyphs === undefined) ops.push(op);
-    else ops.push(...editText(op, glyphs, boxes));
+    if (!removedImageOps.has(index)) continue;
+    const imageName = op.op === 'Do' ? nameOperand(op) : null;
+    if (imageName !== null) removedNames.push(imageName);
   }
+
+  const ops = removeGlyphs(content, (glyph) => touchesAny(glyph.quad, boxes), removedImageOps);
 
   const remaining = new Set(ops.flatMap((operation): string[] => {
     const used = operation.op === 'Do' ? nameOperand(operation) : null;
@@ -257,9 +405,15 @@ async function textChanges(
   }));
   const resources = await effectiveResources(ctx.reader, analysis.pageDict);
   const xobjects = dictGet(resources, 'XObject');
-  const unused = removedNames.filter((imageName) => !remaining.has(imageName));
-  const cleaned = isDict(xobjects) && unused.length > 0
-    ? withEntries(resources, { XObject: withEntries(xobjects, Object.fromEntries(unused.map((n): [string, undefined] => [n, undefined]))) })
+  const replaced = await partialImageObjects(ctx, analysis.plan, xobjects);
+  if (!replaced.ok) return replaced;
+  const xobjectChanges: Record<string, PdfValue | undefined> = {};
+  for (const imageName of removedNames) {
+    if (!remaining.has(imageName)) xobjectChanges[imageName] = undefined;
+  }
+  Object.assign(xobjectChanges, replaced.value);
+  const cleaned = isDict(xobjects) && Object.keys(xobjectChanges).length > 0
+    ? withEntries(resources, { XObject: withEntries(xobjects, xobjectChanges) })
     : resources;
 
   const contentRef = ctx.alloc.next();
@@ -268,6 +422,52 @@ async function textChanges(
   const annots = await filterAnnotations(ctx, analysis.pageDict, boxes);
   if (annots !== null) changes.Annots = annots.length === 0 ? undefined : annots;
   return ok(changes);
+}
+
+/**
+ * Objetos nuevos de las imágenes parcialmente cubiertas de la página, por nombre de XObject. Cada una es propia de la
+ * página: las demás páginas que comparten la imagen original no cambian.
+ */
+async function partialImageObjects(ctx: Context, plan: PagePlan, xobjects: PdfValue | undefined): Promise<Result<Record<string, PdfRef>>> {
+  const out: Record<string, PdfRef> = {};
+  for (const image of plan.partialImages) {
+    const stream = isDict(xobjects) ? await imageStream(ctx.reader, xobjects, image.name) : null;
+    const facts = stream === null ? null : await admittedImage(ctx.reader, stream.dict);
+    if (stream === null || facts === null) return err(pdfError('organize-invalid'));
+    let object: PdfStream;
+    if (image.kind === 'jpeg') {
+      const painted = ctx.imageReplacements.get(`${String(plan.pageIndex)}:${image.name}`);
+      if (painted === undefined) return err(pdfError('organize-invalid'));
+      const jpeg = jpegImageObject(painted);
+      if (!jpeg.ok) return jpeg;
+      object = jpeg.value;
+    } else {
+      const flate = blackenedFlate(stream, facts, image.pixelRects);
+      if (!flate.ok) return flate;
+      object = flate.value;
+    }
+    const ref = ctx.alloc.next();
+    ctx.writer.object(ref.num, 0, object);
+    out[image.name] = ref;
+  }
+  return ok(out);
+}
+
+/**
+ * Imagen `flate` con sus píxeles en `rects` a negro (todos los canales a 0), recodificada sin predictor y sin
+ * `/DecodeParms`. Un flujo cuyo tamaño no cuadra con sus dimensiones es `invalid-image`.
+ */
+function blackenedFlate(source: PdfStream, facts: ImageFacts, rects: readonly RectPt[]): Result<PdfStream> {
+  const pixels = Uint8Array.from(decodeStreamData(source));
+  const stride = facts.width * facts.components;
+  if (pixels.length !== stride * facts.height) return err(pdfError('invalid-image'));
+  for (const [x0, y0, x1, y1] of rects) {
+    for (let row = y0; row < y1; row += 1) {
+      pixels.fill(0, row * stride + x0 * facts.components, row * stride + x1 * facts.components);
+    }
+  }
+  const entries = [...source.dict.entries].filter(([key]) => key !== 'DecodeParms' && key !== 'Length');
+  return ok(stream(Object.fromEntries(entries), flateEncode(pixels)));
 }
 
 /** Contenido de una página con zonas: el original envuelto en `q`/`Q` y, después, un rectángulo negro por zona. */
@@ -351,94 +551,6 @@ interface AnnotEntry {
   readonly drop: boolean;
 }
 
-/**
- * Operaciones de texto con sus glifos quitados. Sin glifos que toquen una zona, la operación no cambia. Si un glifo
- * no tiene avance expresable (`Tfs` 0), se quita el texto de la operación. `'` y `"` conservan su `T*` (y `Tw`/`Tc`).
- */
-function editText(operation: ContentOp, glyphs: readonly GlyphBox[], boxes: readonly Box[]): readonly ContentOp[] {
-  const removed = glyphs.map((glyph) => touchesAny(glyph.quad, boxes));
-  if (!removed.some((flag) => flag)) return [operation];
-  const prefix = statePrefix(operation);
-  const unexpressible = glyphs.some((glyph, index) => removed[index] === true && glyph.shift === null);
-  if (unexpressible) return prefix;
-  const items = textItems(operation);
-  return [...prefix, { op: 'TJ', operands: [redactItems(items, glyphs, removed)] }];
-}
-
-/** Operaciones que hay que conservar delante de un `TJ` equivalente: `'` → `T*`; `"` → `aw Tw ac Tc T*`. */
-function statePrefix(operation: ContentOp): ContentOp[] {
-  if (operation.op === "'") return [opOf('T*')];
-  if (operation.op === '"') {
-    const [aw = 0, ac = 0] = operation.operands;
-    return [{ op: 'Tw', operands: [aw] }, { op: 'Tc', operands: [ac] }, opOf('T*')];
-  }
-  return [];
-}
-
-/** Cadenas y ajustes de la operación de texto, en orden. `Tj`/`'` tienen una cadena; `"`, la tercera operando. */
-function textItems(operation: ContentOp): readonly PdfValue[] {
-  if (operation.op === 'TJ') {
-    const [items] = operation.operands;
-    return Array.isArray(items) ? items : [];
-  }
-  const index = operation.op === '"' ? 2 : 0;
-  return [operation.operands[index] ?? null];
-}
-
-/**
- * Elementos de `TJ` con los glifos quitados sustituidos por su ajuste; los ajustes vecinos se suman. Los códigos que
- * se quedan van en cadenas del mismo tipo (literal o hexadecimal) que su original.
- */
-function redactItems(items: readonly PdfValue[], glyphs: readonly GlyphBox[], removed: readonly boolean[]): PdfValue[] {
-  const out: PdfValue[] = [];
-  let run: number[] = [];
-  let runHex = false;
-  const flush = (): void => {
-    if (run.length > 0) out.push(bytesString(Uint8Array.from(run), runHex));
-    run = [];
-  };
-  const addNumber = (value: number): void => {
-    flush();
-    const last = out[out.length - 1];
-    if (typeof last === 'number') out[out.length - 1] = last + value;
-    else out.push(value);
-  };
-
-  let index = 0;
-  for (const item of items) {
-    if (typeof item === 'number') {
-      addNumber(item);
-      continue;
-    }
-    if (!isString(item)) continue;
-    let at = 0;
-    while (at < item.bytes.length) {
-      const glyph = glyphs[index];
-      if (glyph === undefined || at + glyph.length > item.bytes.length) throw new RangeError('glifos desalineados con la cadena de texto');
-      if (removed[index] === true) {
-        addNumber(glyph.shift ?? 0);
-      } else {
-        if (run.length === 0) runHex = item.hex;
-        for (const byte of item.bytes.subarray(at, at + glyph.length)) run.push(byte);
-      }
-      at += glyph.length;
-      index += 1;
-    }
-  }
-  flush();
-  return out;
-}
-
-function groupGlyphs(glyphs: readonly GlyphBox[]): Map<number, GlyphBox[]> {
-  const groups = new Map<number, GlyphBox[]>();
-  for (const glyph of glyphs) {
-    const list = groups.get(glyph.op) ?? [];
-    list.push(glyph);
-    groups.set(glyph.op, list);
-  }
-  return groups;
-}
-
 /** Caja de la página en espacio de usuario: `/CropBox` o, si no, `/MediaBox`, heredadas. */
 async function pageBox(reader: ObjectReader, page: PdfDict): Promise<Box | null> {
   for (const key of ['CropBox', 'MediaBox'] as const) {
@@ -494,6 +606,10 @@ function isName(v: PdfValue | undefined): v is { readonly kind: 'name'; readonly
   return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'name';
 }
 
-function isString(v: PdfValue | undefined): v is PdfString {
-  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'string';
+function isStream(v: PdfValue | undefined): v is PdfStream {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'kind' in v && v.kind === 'stream';
+}
+
+function isPositiveInteger(v: PdfValue | undefined): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v > 0;
 }

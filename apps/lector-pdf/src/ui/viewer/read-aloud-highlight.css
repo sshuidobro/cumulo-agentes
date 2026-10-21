@@ -1,0 +1,23 @@
+/*
+ * Resaltado de la frase que se lee en voz alta (PDF-114): una caja `.read-aloud-current` por fragmento, con un
+ * rectángulo `.read-aloud-line` por renglón: subrayado grueso y fondo suave del color de acento.
+ * Clases globales (no módulo) para que las pruebas e2e puedan localizar `.read-aloud-current`.
+ */
+.read-aloud-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.read-aloud-highlight .read-aloud-current {
+  position: absolute;
+}
+
+.read-aloud-highlight .read-aloud-line {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 2px;
+  border-bottom: 3px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}

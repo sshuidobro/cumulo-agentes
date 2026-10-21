@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 import { fixture, pageNow, waitPageRendered } from './helpers.ts';
 
 /** PDF-075: pdf.js se carga en un chunk diferido; abrir un PDF antes de que acabe la precarga debe funcionar. */
-const PDFJS_CHUNK = '**/assets/pdf-*.js';
+// Solo el chunk de pdf.js (`pdf-<hash>.js`), no otros que empiecen igual, como `pdf-date-<hash>.js`.
+const PDFJS_CHUNK = /\/assets\/pdf-[\w-]{8}\.js$/;
 const CHUNK_DELAY_MS = 400;
 const OPEN_BUDGET_MS = 1_000 + CHUNK_DELAY_MS;
 

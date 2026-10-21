@@ -1,8 +1,9 @@
 import { IconButton } from '../kit/IconButton';
 import { MenuButton } from '../kit/MenuButton';
-import { IconAppearance, IconComment, IconFormFields, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
+import { IconAppearance, IconComment, IconEdit, IconFormFields, IconHand, IconNextPage, IconOpen, IconPrevPage, IconPrint, IconRedo, IconRotateLeft, IconRotateRight, IconSave, IconSaveAs, IconSelect, IconSidebar, IconUndo } from '../icons';
 import { SignatureMenu } from '../signature/SignatureMenu';
 import { msg } from '../messages';
+import { editMsg } from '../messages-edit';
 import { printMsg } from '../messages-print';
 import { securityMsg } from '../messages-security';
 import { formMsg } from '../messages-forms';
@@ -14,7 +15,7 @@ import { ViewMenu } from './ViewMenu';
 import { PageNavigator } from './PageNavigator';
 import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
-import { chooseSignature, redo, setCommentBarOpen, setTool, undo } from '../../state/annotation-actions';
+import { chooseSignature, redo, setCommentBarOpen, setEditBarOpen, setTool, undo } from '../../state/annotation-actions';
 import { useAnnotations, type AnnotationTool } from '../../state/annotation-store';
 import { save, saveAs, useSaving } from '../../state/save-actions';
 import { services } from '../../state/services';
@@ -38,6 +39,11 @@ function toggleCommentBar(open: boolean, annotationTool: AnnotationTool): void {
   }
 }
 
+/** Abre o cierra la barra «Editar» (PDF-130). Al cerrarla se deja la herramienta de «Editar» (no queda ninguna activa). */
+function toggleEditBar(open: boolean): void {
+  setEditBarOpen(!open);
+}
+
 /** Barra principal: abrir, deshacer/rehacer, zoom y giro de la vista. Lo de documento se activa con uno abierto. */
 export function MainToolbar() {
   const { platform } = services();
@@ -46,6 +52,7 @@ export function MainToolbar() {
   const undoState = useAnnotations((s) => s.undo);
   const annotationTool = useAnnotations((s) => s.tool);
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
+  const editBarOpen = useAnnotations((s) => s.editBarOpen);
   const tool = useViewer((s) => s.tool);
   const history = useViewer((s) => s.historyState);
   const sidebar = useViewer((s) => s.sidebar);
@@ -56,158 +63,168 @@ export function MainToolbar() {
   const formHighlight = useForms((s) => s.highlight);
 
   return (
-    <header className={styles.toolbar} role="toolbar" aria-label={msg.toolbarLabel}>
-      <IconButton
-        label={msg.open}
-        shortcut={formatOpenShortcut(platform.isMac)}
-        onClick={() => void pickAndOpen()}
-      >
-        <IconOpen />
-      </IconButton>
-      <RecentMenu />
-      <IconButton
-        label={msg.save}
-        shortcut={formatShortcut('save', platform.isMac)}
-        disabled={!ready || saving}
-        onClick={() => { void save(); }}
-      >
-        <IconSave />
-      </IconButton>
-      <IconButton
-        label={msg.saveAs}
-        shortcut={formatShortcut('save-as', platform.isMac)}
-        disabled={!ready || saving}
-        onClick={() => { void saveAs(); }}
-      >
-        <IconSaveAs />
-      </IconButton>
-      <IconButton
-        label={printMsg.print}
-        shortcut={formatShortcut('print', platform.isMac)}
-        disabled={!ready || !printAllowed}
-        {...(printAllowed ? {} : { description: securityMsg.printBlocked })}
-        onClick={() => { openPrintDialog(); }}
-      >
-        <IconPrint />
-      </IconButton>
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <IconButton
-        label={undoState.undoLabel === null ? msg.undo : msg.undoWith(undoState.undoLabel)}
-        shortcut={formatShortcut('undo', platform.isMac)}
-        disabled={!ready || !undoState.canUndo}
-        onClick={undo}
-      >
-        <IconUndo />
-      </IconButton>
-      <IconButton
-        label={undoState.redoLabel === null ? msg.redo : msg.redoWith(undoState.redoLabel)}
-        shortcut={formatShortcut('redo', platform.isMac)}
-        disabled={!ready || !undoState.canRedo}
-        onClick={redo}
-      >
-        <IconRedo />
-      </IconButton>
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <IconButton
-        label={msg.sidebar}
-        shortcut={formatShortcut('toggle-sidebar', platform.isMac)}
-        pressed={sidebar !== 'none'}
-        disabled={!ready}
-        onClick={toggleSidebar}
-      >
-        <IconSidebar />
-      </IconButton>
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <IconButton
-        label={msg.back}
-        shortcut={formatShortcut('back', platform.isMac)}
-        disabled={!history.canBack}
-        onClick={() => { goBack(); }}
-      >
-        <IconPrevPage />
-      </IconButton>
-      <IconButton
-        label={msg.forward}
-        shortcut={formatShortcut('forward', platform.isMac)}
-        disabled={!history.canForward}
-        onClick={() => { goForward(); }}
-      >
-        <IconNextPage />
-      </IconButton>
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <PageNavigator />
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <IconButton
-        label={msg.toolSelect}
-        shortcut={formatShortcut('tool-select', platform.isMac)}
-        pressed={tool === 'select'}
-        disabled={!ready}
-        onClick={() => { setViewTool('select'); }}
-      >
-        <IconSelect />
-      </IconButton>
-      <IconButton
-        label={msg.toolHand}
-        shortcut={formatShortcut('tool-hand', platform.isMac)}
-        pressed={tool === 'hand'}
-        disabled={!ready}
-        onClick={() => { setViewTool('hand'); }}
-      >
-        <IconHand />
-      </IconButton>
-      <IconButton
-        label={msg.commentToggle}
-        pressed={commentBarOpen}
-        disabled={!ready}
-        onClick={() => { toggleCommentBar(commentBarOpen, annotationTool); }}
-      >
-        <IconComment />
-      </IconButton>
-      <SignatureMenu onPick={chooseSignature} disabled={!ready} />
-      {hasFields && (
+    <header>
+      <div className={styles.toolbar} role="toolbar" aria-label={msg.toolbarLabel}>
         <IconButton
-          label={formMsg.highlight}
-          pressed={formHighlight}
-          onClick={() => { setFormHighlight(!formHighlight); }}
+          label={msg.open}
+          shortcut={formatOpenShortcut(platform.isMac)}
+          onClick={() => void pickAndOpen()}
         >
-          <IconFormFields />
+          <IconOpen />
         </IconButton>
-      )}
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <ZoomControls />
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <IconButton
-        label={msg.rotateLeft}
-        shortcut={formatShortcut('rotate-left', platform.isMac)}
-        disabled={!ready}
-        onClick={() => { rotateView(-1); }}
-      >
-        <IconRotateLeft />
-      </IconButton>
-      <IconButton
-        label={msg.rotateRight}
-        shortcut={formatShortcut('rotate-right', platform.isMac)}
-        disabled={!ready}
-        onClick={() => { rotateView(1); }}
-      >
-        <IconRotateRight />
-      </IconButton>
-      <ViewMenu />
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <MenuButton
-        label={msg.appearance}
-        entries={[
-          { kind: 'radio', label: msg.themeSystem, checked: theme === 'system', onSelect: () => { setTheme('system'); } },
-          { kind: 'radio', label: msg.themeLight, checked: theme === 'light', onSelect: () => { setTheme('light'); } },
-          { kind: 'radio', label: msg.themeDark, checked: theme === 'dark', onSelect: () => { setTheme('dark'); } },
-          'separator',
-          { kind: 'checkbox', label: msg.nightMode, checked: nightMode, onSelect: toggleNightMode },
-        ]}
-      >
-        <IconAppearance />
-      </MenuButton>
-      <div role="separator" aria-orientation="vertical" className={styles.separator} />
-      <DocumentMenu />
+        <RecentMenu />
+        <IconButton
+          label={msg.save}
+          shortcut={formatShortcut('save', platform.isMac)}
+          disabled={!ready || saving}
+          onClick={() => { void save(); }}
+        >
+          <IconSave />
+        </IconButton>
+        <IconButton
+          label={msg.saveAs}
+          shortcut={formatShortcut('save-as', platform.isMac)}
+          disabled={!ready || saving}
+          onClick={() => { void saveAs(); }}
+        >
+          <IconSaveAs />
+        </IconButton>
+        <IconButton
+          label={printMsg.print}
+          shortcut={formatShortcut('print', platform.isMac)}
+          disabled={!ready || !printAllowed}
+          {...(printAllowed ? {} : { description: securityMsg.printBlocked })}
+          onClick={() => { openPrintDialog(); }}
+        >
+          <IconPrint />
+        </IconButton>
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <IconButton
+          label={undoState.undoLabel === null ? msg.undo : msg.undoWith(undoState.undoLabel)}
+          shortcut={formatShortcut('undo', platform.isMac)}
+          disabled={!ready || !undoState.canUndo}
+          onClick={undo}
+        >
+          <IconUndo />
+        </IconButton>
+        <IconButton
+          label={undoState.redoLabel === null ? msg.redo : msg.redoWith(undoState.redoLabel)}
+          shortcut={formatShortcut('redo', platform.isMac)}
+          disabled={!ready || !undoState.canRedo}
+          onClick={redo}
+        >
+          <IconRedo />
+        </IconButton>
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <IconButton
+          label={msg.sidebar}
+          shortcut={formatShortcut('toggle-sidebar', platform.isMac)}
+          pressed={sidebar !== 'none'}
+          disabled={!ready}
+          onClick={toggleSidebar}
+        >
+          <IconSidebar />
+        </IconButton>
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <IconButton
+          label={msg.back}
+          shortcut={formatShortcut('back', platform.isMac)}
+          disabled={!history.canBack}
+          onClick={() => { goBack(); }}
+        >
+          <IconPrevPage />
+        </IconButton>
+        <IconButton
+          label={msg.forward}
+          shortcut={formatShortcut('forward', platform.isMac)}
+          disabled={!history.canForward}
+          onClick={() => { goForward(); }}
+        >
+          <IconNextPage />
+        </IconButton>
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <PageNavigator />
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <IconButton
+          label={msg.toolSelect}
+          shortcut={formatShortcut('tool-select', platform.isMac)}
+          pressed={tool === 'select'}
+          disabled={!ready}
+          onClick={() => { setViewTool('select'); }}
+        >
+          <IconSelect />
+        </IconButton>
+        <IconButton
+          label={msg.toolHand}
+          shortcut={formatShortcut('tool-hand', platform.isMac)}
+          pressed={tool === 'hand'}
+          disabled={!ready}
+          onClick={() => { setViewTool('hand'); }}
+        >
+          <IconHand />
+        </IconButton>
+        <IconButton
+          label={msg.commentToggle}
+          pressed={commentBarOpen}
+          disabled={!ready}
+          onClick={() => { toggleCommentBar(commentBarOpen, annotationTool); }}
+        >
+          <IconComment />
+        </IconButton>
+        <IconButton
+          label={editMsg.editButton}
+          pressed={editBarOpen}
+          disabled={!ready}
+          onClick={() => { toggleEditBar(editBarOpen); }}
+        >
+          <IconEdit />
+        </IconButton>
+        <SignatureMenu onPick={chooseSignature} disabled={!ready} />
+        {hasFields && (
+          <IconButton
+            label={formMsg.highlight}
+            pressed={formHighlight}
+            onClick={() => { setFormHighlight(!formHighlight); }}
+          >
+            <IconFormFields />
+          </IconButton>
+        )}
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <ZoomControls />
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <IconButton
+          label={msg.rotateLeft}
+          shortcut={formatShortcut('rotate-left', platform.isMac)}
+          disabled={!ready}
+          onClick={() => { rotateView(-1); }}
+        >
+          <IconRotateLeft />
+        </IconButton>
+        <IconButton
+          label={msg.rotateRight}
+          shortcut={formatShortcut('rotate-right', platform.isMac)}
+          disabled={!ready}
+          onClick={() => { rotateView(1); }}
+        >
+          <IconRotateRight />
+        </IconButton>
+        <ViewMenu />
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <MenuButton
+          label={msg.appearance}
+          entries={[
+            { kind: 'radio', label: msg.themeSystem, checked: theme === 'system', onSelect: () => { setTheme('system'); } },
+            { kind: 'radio', label: msg.themeLight, checked: theme === 'light', onSelect: () => { setTheme('light'); } },
+            { kind: 'radio', label: msg.themeDark, checked: theme === 'dark', onSelect: () => { setTheme('dark'); } },
+            'separator',
+            { kind: 'checkbox', label: msg.nightMode, checked: nightMode, onSelect: toggleNightMode },
+          ]}
+        >
+          <IconAppearance />
+        </MenuButton>
+        <div role="separator" aria-orientation="vertical" className={styles.separator} />
+        <DocumentMenu />
+      </div>
     </header>
   );
 }

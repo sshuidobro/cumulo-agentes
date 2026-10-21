@@ -8,6 +8,7 @@ import type { FreeTextAnnotation } from '../../src/core/annotations/model';
 import type { PageViewport } from '../../src/engine/pdfjs';
 import { newAnnotation } from '../unit/annotations/factories';
 import { AnnotationLayer } from '../../src/ui/viewer/AnnotationLayer';
+import { AnnotationShape } from '../../src/ui/viewer/annotation-shapes';
 import {
   addAnnotation,
   endAnnotationSession,
@@ -283,5 +284,26 @@ describe('texto libre · tamaño y color de la barra', () => {
     setFreeTextColor([0, 0, 1]);
 
     expect(getEffective().get('suite-t3')).toMatchObject({ textColor: [0, 0, 1], color: [1, 0, 0] });
+  });
+});
+
+describe('texto libre · borde (PDF-149)', () => {
+  const text = (over: Partial<FreeTextAnnotation> = {}): FreeTextAnnotation => ({
+    ...(newAnnotation('suite-ft', 'freetext') as FreeTextAnnotation),
+    rect: [50, 50, 250, 120],
+    contents: 'Hola',
+    color: [1, 0, 0],
+    ...over,
+  });
+
+  it('sin borderless se dibuja el rectángulo del borde', () => {
+    const { container } = render(<svg><AnnotationShape a={text()} /></svg>);
+    expect(container.querySelectorAll('rect[stroke]')).toHaveLength(1);
+  });
+
+  it('con borderless: true no hay ningún rectángulo con trazo, pero sí el texto', () => {
+    const { container } = render(<svg><AnnotationShape a={text({ borderless: true })} /></svg>);
+    expect(container.querySelectorAll('rect[stroke]')).toHaveLength(0);
+    expect(container.textContent).toContain('Hola');
   });
 });

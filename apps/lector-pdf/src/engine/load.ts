@@ -23,6 +23,8 @@ export interface LoadOptions {
   /** Carpeta de recursos de pdf.js (cmaps/, standard_fonts/, wasm/, iccs/). Termina en '/'. */
   readonly assetBaseUrl: string;
   readonly password?: string;
+  /** Si existe, pdf.js pide la contraseña sobre la misma carga (ADR-0043). `null` = el usuario cancela. */
+  readonly requestPassword?: (incorrect: boolean) => Promise<string | null>;
   readonly signal?: AbortSignal;
   readonly onProgress?: (loaded: number, total: number) => void;
 }
@@ -32,6 +34,8 @@ export interface LoadedPdf {
   readonly numPages: number;
   /** Huella estable del documento: `doc.fingerprints[0]` o, si no existe, `size-<n>-<hex de la cabecera>`. */
   readonly fingerprint: string;
+  /** Contraseña con la que se abrió: la última entregada a pdf.js, la de `opts.password` o `null`. Solo en memoria. */
+  readonly password: string | null;
   /** Registra un aviso para errores de lectura posteriores a la apertura. Devuelve la función para darse de baja. */
   onIoError(cb: (e: AppError) => void): () => void;
   /** Libera el documento. Idempotente: llamarla varias veces no lanza. */
@@ -92,6 +96,12 @@ async function openDocument(
     for (const listener of ioListeners) listener(pdfError('io', cause));
   });
 
+  let usedPassword: string | null = opts.password ?? null;
+  let cancelByUser: () => void = () => undefined;
+  const passwordCancelled = new Promise<OpenOutcome>((resolve) => {
+    cancelByUser = () => { resolve({ kind: 'aborted' }); };
+  });
+
   let loadingTask: PDFDocumentLoadingTask;
   try {
     loadingTask = lib.getDocument({
@@ -112,6 +122,23 @@ async function openDocument(
     return err(mapOpenError(cause));
   }
 
+  if (opts.requestPassword) {
+    const requestPassword = opts.requestPassword;
+    // La contraseña no se registra en ningún log ni se incluye en errores: solo viaja a pdf.js y a `usedPassword`.
+    loadingTask.onPassword = (update: (password: string) => void, reason: number) => {
+      requestPassword(reason === lib.PasswordResponses.INCORRECT_PASSWORD).then(
+        (password) => {
+          if (password === null) cancelByUser();
+          else {
+            usedPassword = password;
+            update(password);
+          }
+        },
+        () => { cancelByUser(); },
+      );
+    };
+  }
+
   if (opts.onProgress) {
     const onProgress = opts.onProgress;
     loadingTask.onProgress = ({ loaded, total }: { readonly loaded: number; readonly total: number }) => {
@@ -130,7 +157,7 @@ async function openDocument(
     (doc): OpenOutcome => ({ kind: 'opened', doc }),
     (cause: unknown): OpenOutcome => ({ kind: 'failed', cause }),
   );
-  const outcome = await Promise.race([opening, transportFailed, aborted]);
+  const outcome = await Promise.race([opening, transportFailed, aborted, passwordCancelled]);
   signal?.removeEventListener('abort', onAbort);
 
   if (outcome.kind !== 'opened') {
@@ -152,6 +179,7 @@ async function openDocument(
     doc,
     numPages: doc.numPages,
     fingerprint: doc.fingerprints[0] || sizeFingerprint(source.size, head),
+    password: usedPassword,
     onIoError(cb) {
       ioListeners.add(cb);
       return () => { ioListeners.delete(cb); };

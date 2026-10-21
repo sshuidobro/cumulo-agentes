@@ -9,7 +9,8 @@ import {
   type FormField,
   type FormWidget,
 } from '../../src/core/forms';
-import { loadPdf, readPageAnnotations } from '../../src/engine';
+import { loadPdf } from '../../src/engine';
+import { readPageAnnotations } from '../../src/engine/annotations-import';
 import { fixtureSource, nodeAssetBase } from '../helpers/pdfjs-node';
 
 const assetBaseUrl = nodeAssetBase();

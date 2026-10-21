@@ -12,3 +12,4 @@ export { buildIncrementalUpdate, openForSave, type IncrementalInput, type Increm
 export { DeltaWriter, finishDelta, reserveXref, startDelta, type FinishDeltaOptions, type XrefRow } from './delta-writer';
 export * from './image';
 export { concatSource } from './concat-source';
+export { needsUserPassword } from './password-probe';

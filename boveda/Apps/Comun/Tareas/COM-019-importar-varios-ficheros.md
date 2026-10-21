@@ -3,12 +3,12 @@ tipo: tarea
 id: COM-019
 titulo: Platform.importFiles - elegir varios ficheros a la vez
 app: comun
-estado: pendiente
+estado: hecha
 depende_de: [COM-018]
 intentos: 0
 skills: [stack-tauri, stack-typescript-react]
 creado: 2026-10-19
-actualizado: 2026-10-19
+actualizado: 2026-10-20
 tags: [tarea, comun, plataforma]
 ---
 
@@ -51,3 +51,29 @@ importFiles(filters: readonly FileFilter[], maxBytesEach: number, maxCount: numb
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-20
+- Ficheros cambiados: `packages/platform/src/types.ts`, `packages/platform/src/web/platform-web.ts`, `packages/platform/src/web/web-env.ts` (nuevo `pickManyWithInput`), `packages/platform/src/tauri/platform-tauri.ts`, `packages/platform/rust/src/commands.rs` (`suite_open_dialog_multiple`, `register_all` y 2 tests), `packages/platform/tests/web/fakes.ts`, `packages/platform/tests/web/platform-web-import-many.test.ts` (nuevo), `packages/platform/tests/tauri/import-many-tauri.test.ts` (nuevo), `apps/lector-pdf/tests/helpers/fake-platform.ts` y `save-harness.ts` (`importFiles` por defecto `ok(null)`). Ficha: `estado`, `actualizado`.
+- Qué he hecho: `importFiles` en la interfaz `Platform` con sus tres implementaciones (web con picker o `<input multiple>`, Tauri con el comando nuevo que devuelve el DTO existente `FileInfoDto` en lugar de un tipo `OpenedDto` nuevo, y los fakes). Comprueba número y tamaños antes de leer; cierra todos los tokens en Tauri en `finally`. Si falla el registro de una ruta, el comando Rust libera las ya registradas. Sin cambios en capabilities: el permiso de abrir del plugin cubre `blocking_pick_files`.
+- Comandos ejecutados y resultado:
+  - `pnpm lint`: OK.
+  - `pnpm --filter @suite/platform exec vitest run`: 263 tests OK (incluye 13 nuevos).
+  - `pnpm --filter @suite/platform typecheck`: OK.
+  - `cargo fmt --check`: OK. `cargo clippy --workspace --all-targets --all-features -- -D warnings`: OK. `cargo test --workspace --all-features`: OK (todos los suites en verde).
+  - `pnpm exec vitest run --coverage --coverage.reportsDirectory=<scratchpad>/cov`: OK, líneas 98.31 %. Se usó otro directorio porque `pnpm coverage` lo tenía bloqueado otro proceso vitest (pid 1735) en ese momento.
+  - `pnpm typecheck` (raíz): FALLA en `apps/lector-pdf` (`src/core/doc-ops/ops/index.ts`, `src/core/redact/apply.ts`, `tests/unit/redact/apply.test.ts`: `imageReplacements` y `u0`/`v0` posiblemente `undefined`). No son mis ficheros: hay cambios sin commit de otro trabajo en esos ficheros (redact). Mis cambios no introducen errores de tipos.
+- Dudas o cosas que no he podido hacer: (1) Nombre del DTO: la ficha pide `OpenedDto`; he reutilizado `FileInfoDto` (mismo formato). (2) Tests de Rust de la ficha: se han añadido sobre `register_all`, no sobre el comando completo (el diálogo no es testeable sin la app). (3) No commiteo los cambios de redact de otros trabajos: el commit incluye solo los ficheros de COM-019.
+
+### [revisor] ronda 1 — 2026-10-20 — APROBADO
+- Lint y tests de `@suite/platform` (263) en verde; diff cumple los criterios (web con picker e input, comprobación previa de número y tamaños, Tauri con `remember: false` y tokens cerrados en `finally`, Rust con liberación en fallo parcial).
+- El fallo de `pnpm typecheck` en `apps/lector-pdf` (redact) viene de cambios sin commit ajenos a esta ficha; no bloquea.
+- (opcional) `register_all` se prueba, pero el comando completo no (el diálogo no es testeable sin app): aceptable.
+
+### [tester] ronda 1 — 2026-10-20 — PASA
+| Criterio | Resultado | Evidencia |
+|---|---|---|
+| Web (picker, input, orden, recientes, cancelar, maxCount) | OK | `platform-web-import-many.test.ts` (7 tests) en verde |
+| Tauri (`remember:false`, tokens cerrados también con error E/S) | OK | `import-many-tauri.test.ts` (6 tests) en verde |
+| cargo fmt / clippy -D warnings / test | OK | código 0 |
+| lint / typecheck / coverage | OK | líneas 98.31 % |
+Tests añadidos: ninguno (la cobertura existente basta). Rendimiento: no aplica.

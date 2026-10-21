@@ -204,6 +204,24 @@ describe('buildAppearance · freetext', () => {
     expect(contentOf(ap).startsWith('/GS0 gs')).toBe(true);
     expect(resourcesOf(ap)).toContain('/ExtGState');
   });
+
+  it('dibuja el borde (re S y RG) salvo que el texto sea borderless (PDF-149)', () => {
+    const withBorder = contentOf(
+      buildAppearance(annot('freetext', { rect, contents: 'x', fontSize: 12, textColor: [0, 0, 0], color: [1, 0, 0] })),
+    );
+    expect(withBorder).toContain(' re S');
+    expect(withBorder).toContain('1 0 0 RG');
+
+    const borderless = contentOf(
+      buildAppearance(
+        annot('freetext', { rect, contents: 'x', fontSize: 12, textColor: [0, 0, 0], color: [1, 0, 0], borderless: true }),
+      ),
+    );
+    expect(borderless).not.toContain(' re S');
+    expect(borderless).not.toContain(' RG');
+    expect(borderless).toContain('re W n');
+    expect(borderless).toContain('(x) Tj');
+  });
 });
 
 describe('buildAppearance · ink', () => {

@@ -1,4 +1,4 @@
-import { createLogger, type AppError, type Result } from '@suite/shared';
+import { createLogger, err, type AppError, type Result } from '@suite/shared';
 import { platformError, type FileFilter, type OpenedFile } from '@suite/platform';
 import { initialExpanded } from '../core/outline';
 import { getOutline } from '../engine/outline';
@@ -96,9 +96,6 @@ export function currentPassword(): string | null {
   return session?.password ?? null;
 }
 
-function isPasswordError(code: string): boolean {
-  return code === 'password-required' || code === 'password-incorrect';
-}
 
 function showError(error: AppError, name: string | null): void {
   useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, status: 'error', error, loadingName: name });
@@ -207,31 +204,27 @@ async function runOpen(
     if (seq !== openSeq) return;
     useViewer.setState({ loadProgress: total > 0 ? Math.min(1, loaded / total) : null });
   };
-  let password: string | undefined = opts?.password;
-  let result = await loadPdf(file.source, {
-    assetBaseUrl,
-    signal: controller.signal,
-    onProgress,
-    ...(password === undefined ? {} : { password }),
-  });
-
-  while (!result.ok && isPasswordError(result.error.code)) {
-    const entered = await askPassword(file.name, result.error.code === 'password-incorrect');
-    if (seq !== openSeq) {
-      // Otra apertura o cierre ha tomado el relevo mientras se pedía la contraseña.
-      await closeOpened(file);
-      return;
+  // Sondeo previo (ADR-0043): si hace falta contraseña de usuario, se pide antes de cargar, una sola vez.
+  let password = opts?.password;
+  let cancelledBeforeLoad = false;
+  if (password === undefined) {
+    const { needsUserPassword } = await import('../core/pdf/password-probe');
+    if (await needsUserPassword(file.source)) {
+      const answer = seq === openSeq ? await askPassword(file.name, false) : null;
+      password = answer ?? undefined;
+      cancelledBeforeLoad = answer === null;
     }
-    if (entered === null) {
-      // Cancelado por el usuario: estado vacío, sin mensaje de error (igual que cancelar una apertura).
-      if (opening === controller) opening = null;
-      useViewer.setState({ ...initialViewerState, viewMode: useViewer.getState().viewMode, dimsVersion: useViewer.getState().dimsVersion });
-      await closeOpened(file);
-      return;
-    }
-    password = entered;
-    result = await loadPdf(file.source, { assetBaseUrl, signal: controller.signal, onProgress, password });
   }
+  // Una sola carga: si la contraseña previa no vale, pdf.js vuelve a pedirla sobre la misma tarea (ADR-0043).
+  const result = cancelledBeforeLoad
+    ? err(pdfError('cancelled'))
+    : await loadPdf(file.source, {
+      assetBaseUrl,
+      signal: controller.signal,
+      onProgress,
+      ...(password === undefined ? {} : { password }),
+      requestPassword: (incorrect) => (seq === openSeq ? askPassword(file.name, incorrect) : Promise.resolve(null)),
+    });
 
   if (seq !== openSeq) {
     // Una apertura posterior ha tomado el relevo: este resultado se descarta sin tocar el store.
@@ -265,7 +258,9 @@ async function runOpen(
   }
 
   const pageMode = await readPageMode(loaded);
-  const permissions = permissionsFrom(await readPermissions(loaded.doc));
+  // Un PDF cifrado devuelve sus banderas de `/P`; sin cifrado, `null` (PDF-132).
+  const flags = await readPermissions(loaded.doc);
+  const permissions = permissionsFrom(flags);
 
   if (seq !== openSeq) {
     await loaded.destroy();
@@ -296,7 +291,7 @@ async function runOpen(
   const stopListening = loaded.onIoError((error) => {
     if (session?.pdf === loaded) useViewer.setState({ ioError: error });
   });
-  session = { file, pdf: loaded, stopListening, scan, password: password ?? null };
+  session = { file, pdf: loaded, stopListening, scan, password: loaded.password };
 
   expectRestore(opts?.restore ?? null);
   useViewer.setState({
@@ -308,6 +303,7 @@ async function runOpen(
     dimsVersion: useViewer.getState().dimsVersion + 1,
     sidebar: sidebarForOpenedDocument(pageMode),
     permissions,
+    encrypted: flags !== null,
   });
   platform.setTitle(windowTitle(file.name, false));
   startAnnotationSession(loaded, scan.signal, file.source);

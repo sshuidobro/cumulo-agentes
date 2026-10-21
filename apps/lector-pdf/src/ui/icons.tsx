@@ -95,6 +95,15 @@ export function IconRotateLeft() {
   );
 }
 
+export function IconInsertPage() {
+  return (
+    <Svg>
+      <path d="M5 2.5h6l3.5 3.5v11.5H5z" />
+      <path d="M10 8v5M7.5 10.5h5" />
+    </Svg>
+  );
+}
+
 export function IconRotateRight() {
   return (
     <Svg>
@@ -367,6 +376,27 @@ export function IconWarning() {
   return (
     <Svg>
       <path d="M10 3.5L18 16.5H2L10 3.5zM10 8.5v3.5M10 14.2v.3" />
+    </Svg>
+  );
+}
+
+/** Imagen con montaña y sol: «Añadir imagen» (PDF-130). */
+export function IconPageImage() {
+  return (
+    <Svg>
+      <rect x="3" y="4" width="14" height="12" rx="1.5" />
+      <path d="M4 14l3.5-3.5 2.5 2.5 2-2L16 14" />
+      <circle cx="13" cy="7.5" r="1.2" />
+    </Svg>
+  );
+}
+
+/** Herramienta «Redactar» (PDF-137): un bloque negro sobre una línea de texto. */
+export function IconRedact() {
+  return (
+    <Svg>
+      <rect x="3" y="4" width="14" height="5" rx="1" />
+      <rect x="3" y="11" width="9" height="5" rx="1" fill="currentColor" />
     </Svg>
   );
 }

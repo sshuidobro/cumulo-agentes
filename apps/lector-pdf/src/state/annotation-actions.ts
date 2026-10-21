@@ -1,5 +1,5 @@
 import { createLogger, UndoStack, type Command } from '@suite/shared';
-import type { ByteSource, KeyValueStore } from '@suite/platform';
+import type { ByteSource, FileFilter, KeyValueStore } from '@suite/platform';
 import {
   addAnnotationCommand,
   deleteAnnotationCommand,
@@ -16,6 +16,7 @@ import {
   rectFromPaths,
   type Annotation,
   type AnnotationEdits,
+  isFlattened,
   type FreeTextAnnotation,
   type InkAnnotation,
   type RectPt,
@@ -27,6 +28,7 @@ import { keyboardNoteRect, newNoteAnnotation } from '../core/annotations/note';
 import {
   keyboardSignatureCenter,
   newSignatureAnnotation,
+  PAGE_IMAGE_WIDTH_PT,
   signatureRectAt,
 } from '../core/signature/signature';
 import {
@@ -41,7 +43,7 @@ import {
 import { windowTitle } from '../core/title';
 import { organizeDirty } from './organize-store';
 import type { ObjectReader } from '../core/pdf/object-reader';
-import { readPageAnnotations, scanAnnotations, type LoadedPdf } from '../engine';
+import type { LoadedPdf } from '../engine';
 import { setFileAnnotationHidden } from '../engine/annotation-visibility';
 import {
   initialAnnotationState,
@@ -57,6 +59,8 @@ import { useViewer } from './viewer-store';
 import { currentScanSignal } from './document-actions';
 import { registerTabParticipant, type TabParticipant } from './tabs';
 import { securityMsg } from '../ui/messages-security';
+import { editMsg } from '../ui/messages-edit';
+import { signatureFromImageFile } from '../ui/signature/image-art';
 
 const log = createLogger('annotation-actions');
 
@@ -75,7 +79,7 @@ interface IndexedPage {
 /** Herramientas de color que ya existían: sus colores guardados son obligatorios en la preferencia. */
 const LEGACY_COLOR_TOOLS: readonly ColorTool[] = ['highlight', 'underline', 'strikeout', 'note', 'freetext', 'ink'];
 /** Todas las herramientas de color; las formas (PDF-108) pueden faltar en una preferencia antigua. */
-const COLOR_TOOLS: readonly ColorTool[] = [...LEGACY_COLOR_TOOLS, 'square', 'circle', 'line', 'arrow', 'polygon'];
+const COLOR_TOOLS: readonly ColorTool[] = [...LEGACY_COLOR_TOOLS, 'square', 'circle', 'line', 'arrow', 'polygon', 'page-text'];
 
 /** Clave de cada preferencia (el almacén ya antepone el prefijo de la app). */
 const PREF = {
@@ -184,6 +188,7 @@ function prefs(): KeyValueStore {
 export function startAnnotationSession(pdf: LoadedPdf, signal: AbortSignal, source?: ByteSource): void {
   endAnnotationSession();
   restrictedNoticeShown = false;
+  contentNoticeShown = false;
   const stop = linkedController(signal);
   const reader: Promise<ObjectReader | null> = source === undefined
     ? Promise.resolve(null)
@@ -227,7 +232,8 @@ function scanFrom(current: Session, from: number): void {
     .then((opened) => {
       // Una sesión suspendida (cambio de pestaña) mientras se abría el lector no empieza a escanear.
       if (current.stop.signal.aborted) return 'cancelled';
-      return scanAnnotations(current.pdf.doc, {
+      // Importación de anotaciones en diferido: no entra en el JavaScript de arranque (ADR-0041).
+      return import('../engine/annotations-import').then(({ scanAnnotations }) => scanAnnotations(current.pdf.doc, {
         from,
         signal: current.stop.signal,
         fallbackDate: nowIso(),
@@ -237,7 +243,7 @@ function scanFrom(current: Session, from: number): void {
           mergePages(current.imported, pages);
           current.imported += pages.length;
         },
-      });
+      }));
     })
     .then((outcome) => {
       if (session !== current || outcome !== 'done') return;
@@ -268,6 +274,7 @@ export function endAnnotationSession(): void {
     fontSize: prev.fontSize,
     author: prev.author,
     commentBarOpen: prev.commentBarOpen,
+    editBarOpen: prev.editBarOpen,
     pendingStamp: prev.pendingStamp,
   });
 }
@@ -302,7 +309,7 @@ interface AnnotationsSnapshot {
   /** Estado del store sin las preferencias (estas son globales y no se guardan aquí). */
   readonly state: Omit<
     AnnotationState,
-    'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen' | 'pendingStamp'
+    'author' | 'colors' | 'inkWidth' | 'shapeWidth' | 'fontSize' | 'commentBarOpen' | 'editBarOpen' | 'pendingStamp'
   >;
   /** Páginas ya importadas por el escaneo de la sesión. */
   readonly importedPages: number;
@@ -355,6 +362,7 @@ const annotationsParticipant: TabParticipant<AnnotationsSnapshot> = {
       inkWidth: live.inkWidth,
       fontSize: live.fontSize,
       commentBarOpen: live.commentBarOpen,
+      editBarOpen: live.editBarOpen,
       pendingStamp: live.pendingStamp,
     });
     const saved = snapshot.session;
@@ -413,6 +421,7 @@ async function importLazyPage(current: Session, pageIndex: number): Promise<void
 async function readLazyPage(current: Session, pageIndex: number): Promise<ImportedPage | null> {
   try {
     const page = await current.pdf.doc.getPage(pageIndex + 1);
+    const { readPageAnnotations } = await import('../engine/annotations-import');
     const imported = await readPageAnnotations(page, nowIso(), await current.reader);
     if (session !== current || current.stop.signal.aborted) return null;
     return imported;
@@ -536,19 +545,30 @@ function apply(change: () => void, kind: ChangeKind = 'annotate'): void {
   if (stack.doc !== before) warnIfRestricted(kind);
 }
 
-/** Qué hace un cambio: anotar (comentarios, marcas, dibujos) o rellenar un campo de formulario. */
-type ChangeKind = 'annotate' | 'fill';
+/**
+ * Qué hace un cambio: anotar (comentarios, marcas, dibujos), rellenar un campo de formulario o cambiar el contenido
+ * de la página (texto e imagen añadidos, PDF-130).
+ */
+type ChangeKind = 'annotate' | 'fill' | 'content';
 
 /** Si ya se ha avisado de que el PDF no permite el cambio en este documento (PDF-048). */
 let restrictedNoticeShown = false;
+/** Si ya se ha avisado de que el PDF no permite modificar su contenido en este documento (PDF-130). */
+let contentNoticeShown = false;
 
 /**
- * Aviso una sola vez por documento cuando el PDF no permite comentar (o rellenar). No bloquea nada: el cambio
- * se hace y se guardará en la copia.
+ * Aviso una sola vez por documento cuando el PDF no permite comentar, rellenar o modificar el contenido. No bloquea
+ * nada: el cambio se hace y se guardará en la copia.
  */
 function warnIfRestricted(kind: ChangeKind): void {
-  if (restrictedNoticeShown) return;
   const permissions = useViewer.getState().permissions;
+  if (kind === 'content') {
+    if (contentNoticeShown || permissions.modify) return;
+    contentNoticeShown = true;
+    showNotice(editMsg.modifyAnyway);
+    return;
+  }
+  if (restrictedNoticeShown) return;
   const allowed = kind === 'annotate' ? permissions.annotate : permissions.fillForms;
   if (allowed) return;
   restrictedNoticeShown = true;
@@ -645,7 +665,12 @@ function addPage(pages: Set<number>, index: number | undefined): void {
 export function addAnnotation(a: Annotation): void {
   apply(() => {
     stack.execute(addAnnotationCommand(a));
-  });
+  }, changeKindOf(a));
+}
+
+/** Un cambio sobre una anotación aplanada toca el contenido de la página; el resto, las anotaciones (PDF-130). */
+function changeKindOf(a: Annotation): ChangeKind {
+  return isFlattened(a) ? 'content' : 'annotate';
 }
 
 /** Añade varias anotaciones con una única entrada de deshacer. */
@@ -661,7 +686,7 @@ export function addAnnotations(label: string, list: readonly Annotation[]): void
 export function updateAnnotation(next: Annotation, label?: string, mergeKey?: string): void {
   apply(() => {
     stack.execute(updateAnnotationCommand(next, label, mergeKey));
-  });
+  }, changeKindOf(next));
 }
 
 /**
@@ -693,21 +718,26 @@ export function deleteAnnotation(id: string): void {
 
 /**
  * Abre el editor en el sitio de un cuadro de texto libre nuevo (PDF-034). El cuadro todavía no es una anotación: se
- * crea al confirmar, si tiene texto. `floor` es el borde inferior de la página (puntos PDF).
+ * crea al confirmar, si tiene texto. `floor` es el borde inferior de la página (puntos PDF). Con la herramienta
+ * «Añadir texto» (`page-text`, PDF-130) el texto se aplica como contenido de la página: sin borde y aplanado.
  */
 export function beginFreeText(pageIndex: number, rect: RectPt, floor: number): void {
-  const { colors, author, fontSize } = useAnnotations.getState();
+  const { colors, author, fontSize, tool } = useAnnotations.getState();
   stack.closeGroup();
-  const base = newFreeTextAnnotation({
+  const pageText = tool === 'page-text';
+  const color = pageText ? colors['page-text'] : colors.freetext;
+  const created = newFreeTextAnnotation({
     id: newAnnotationId(),
     pageIndex,
     rect,
     fontSize,
-    color: colors.freetext,
-    textColor: colors.freetext,
+    color,
+    textColor: color,
     author,
     now: nowIso(),
+    ...(pageText ? { borderless: true as const } : {}),
   });
+  const base: FreeTextAnnotation = pageText ? { ...created, flatten: true } : created;
   useAnnotations.setState({ editing: { base, inStore: false, floor }, selectedId: null });
 }
 
@@ -893,20 +923,48 @@ export function chooseSignature(art: SignatureArt): void {
   useAnnotations.setState({ pendingSignature: art, tool: 'signature' });
 }
 
+/** Tipos de fichero que admite «Añadir imagen» (PDF-130). */
+export const PAGE_IMAGE_FILTERS: readonly FileFilter[] = [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg'] }];
+/** Tamaño máximo de la imagen que se añade a la página, en bytes (PDF-130). */
+export const MAX_PAGE_IMAGE_BYTES = 20 * 1024 * 1024;
+
+/**
+ * «Añadir imagen» (PDF-130): elige un PNG o JPEG y lo deja pendiente de colocar con la herramienta `page-image`. Usa
+ * el mismo tratamiento que la firma de imagen (PDF-086). Sin documento, no hace nada.
+ */
+export async function choosePageImage(): Promise<void> {
+  if (useViewer.getState().pdf === null) return;
+  const picked = await services().platform.importFile(PAGE_IMAGE_FILTERS, MAX_PAGE_IMAGE_BYTES);
+  if (!picked.ok) {
+    showNotice(picked.error.code === 'out-of-range' ? editMsg.imageTooBig : picked.error.message);
+    return;
+  }
+  if (picked.value === null) return;
+  const result = await signatureFromImageFile(new Blob([picked.value.bytes as Uint8Array<ArrayBuffer>]));
+  if (!result.ok) {
+    showNotice(result.error.message);
+    return;
+  }
+  useAnnotations.setState({ pendingSignature: result.value, tool: 'page-image' });
+}
+
 /**
  * Coloca la firma pendiente centrada en `center` (puntos PDF) de la página `pageIndex`, dentro de `pageBox`. La
  * selecciona y devuelve la herramienta a «ninguna», como con una nota. Devuelve su id, o `null` si no hay firma pendiente.
+ * Con la herramienta `page-image` (PDF-130) la imagen se coloca con `PAGE_IMAGE_WIDTH_PT` de ancho y se aplana al guardar.
  */
 export function placeSignature(pageIndex: number, center: readonly [number, number], pageBox: RectPt): string | null {
-  const { pendingSignature, author } = useAnnotations.getState();
+  const { pendingSignature, author, tool } = useAnnotations.getState();
   if (pendingSignature === null) return null;
+  const image = tool === 'page-image';
   const signature = newSignatureAnnotation({
     id: newAnnotationId(),
     pageIndex,
-    rect: signatureRectAt(pendingSignature, center, pageBox),
+    rect: signatureRectAt(pendingSignature, center, pageBox, image ? PAGE_IMAGE_WIDTH_PT : undefined),
     art: pendingSignature,
     author,
     now: nowIso(),
+    ...(image ? { flatten: true as const } : {}),
   });
   addAnnotation(signature);
   setTool('none');
@@ -1015,9 +1073,28 @@ export function setAuthor(name: string): void {
   useAnnotations.setState({ author });
 }
 
+/** Abre o cierra la barra «Comentar». Al abrirla se cierra la barra «Editar» (PDF-130). */
 export function setCommentBarOpen(open: boolean): void {
   prefs().set(PREF.commentBarOpen, open);
+  if (open) leaveEditTools();
   useAnnotations.setState({ commentBarOpen: open });
+}
+
+/** Abre o cierra la barra «Editar» (PDF-130). Al abrirla se cierra la de «Comentar»; al cerrarla se deja la herramienta. */
+export function setEditBarOpen(open: boolean): void {
+  if (open) {
+    setCommentBarOpen(false);
+    useAnnotations.setState({ editBarOpen: true });
+  } else {
+    leaveEditTools();
+  }
+}
+
+/** Sale de «Añadir texto» y «Añadir imagen»: cierra la barra «Editar» y devuelve la herramienta a «ninguna». */
+function leaveEditTools(): void {
+  const { tool } = useAnnotations.getState();
+  if (tool === 'page-text' || tool === 'page-image') setTool('none');
+  useAnnotations.setState({ editBarOpen: false });
 }
 
 /** Marca el estado actual como guardado: deja de estar «sucio» (la pila no se vacía). */

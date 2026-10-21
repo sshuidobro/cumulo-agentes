@@ -5,9 +5,20 @@ import { printMsg } from '../messages-print';
 import { exportMsg } from '../messages-export';
 import { propertiesMsg } from '../messages-properties';
 import { compareMsg } from '../messages-compare';
+import { organizeMsg } from '../messages-organize';
+import { IMAGES_MENU_ITEM, requestImagesDialog } from '../../state/images-dialog-store';
 import { openPrintDialog } from '../../state/print-actions';
 import { openExportDialog } from '../../state/export-actions';
+import { openOcrDialog } from '../../state/ocr-actions';
+import { ocrMsg } from '../messages-ocr';
 import { startCompare } from '../../state/compare-actions';
+import { openOrganize } from '../../state/organize-actions';
+import { openCombineDialog } from '../../state/combine-actions';
+import { openExtractDialog, openSplitDialog } from '../../state/extract-actions';
+import { openProtectDialog, removeProtection } from '../../state/protect-actions';
+import { securityMsg } from '../messages-security';
+import { digitalSignMsg } from '../messages-digital-signature';
+import { openSignDialog } from '../../state/digital-signature-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -18,6 +29,7 @@ export function DocumentMenu() {
   const ready = useViewer((s) => s.status === 'ready');
   const printAllowed = useViewer((s) => s.permissions.print);
   const copyAllowed = useViewer((s) => s.permissions.copy);
+  const encrypted = useViewer((s) => s.encrypted);
   return (
     <MenuButton
       label={propertiesMsg.moreActions}
@@ -43,10 +55,65 @@ export function DocumentMenu() {
         },
         {
           kind: 'action',
+          label: organizeMsg.menuItem,
+          disabled: !ready,
+          onSelect: () => { void openOrganize(); },
+        },
+        {
+          kind: 'action',
+          label: organizeMsg.combine,
+          onSelect: () => { openCombineDialog(); },
+        },
+        {
+          kind: 'action',
+          label: IMAGES_MENU_ITEM,
+          onSelect: requestImagesDialog,
+        },
+        {
+          kind: 'action',
+          label: organizeMsg.extractMenu,
+          disabled: !copyAllowed,
+          disabledReason: organizeMsg.extractBlocked,
+          onSelect: () => { openExtractDialog(); },
+        },
+        {
+          kind: 'action',
+          label: organizeMsg.splitMenu,
+          disabled: !copyAllowed,
+          disabledReason: organizeMsg.extractBlocked,
+          onSelect: () => { openSplitDialog(); },
+        },
+        {
+          kind: 'action',
+          label: securityMsg.protectMenu,
+          disabled: !ready,
+          onSelect: () => { openProtectDialog(); },
+        },
+        {
+          kind: 'action',
+          label: securityMsg.unprotectMenu,
+          disabled: !encrypted,
+          disabledReason: securityMsg.unprotectDisabled,
+          onSelect: () => { void removeProtection(); },
+        },
+        {
+          kind: 'action',
+          label: digitalSignMsg.menuItem,
+          disabled: !ready,
+          onSelect: () => { openSignDialog(); },
+        },
+        {
+          kind: 'action',
           label: exportMsg.menuItem,
           disabled: !copyAllowed,
           disabledReason: exportMsg.blocked,
           onSelect: () => { openExportDialog(); },
+        },
+        {
+          kind: 'action',
+          label: ocrMsg.menuItem,
+          disabled: !ready,
+          onSelect: () => { openOcrDialog(); },
         },
       ]}
     >

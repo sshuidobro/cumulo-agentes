@@ -6,6 +6,8 @@ import type { RectPt, Rgb, SignatureAnnotation, SignatureArt } from '../annotati
 
 /** Ancho con el que aparece una firma recién colocada, en puntos PDF. */
 export const DEFAULT_SIGNATURE_WIDTH_PT = 150;
+/** Ancho con el que aparece una imagen colocada en la página (PDF-130), en puntos PDF. */
+export const PAGE_IMAGE_WIDTH_PT = 200;
 /** Ancho mínimo de una firma al redimensionarla, en puntos PDF. */
 export const MIN_SIGNATURE_WIDTH_PT = 20;
 /** Comentario de las firmas (aparece en el panel de comentarios). */
@@ -19,12 +21,16 @@ export function signatureAspect(art: SignatureArt): number {
 }
 
 /**
- * Rectángulo de una firma de `DEFAULT_SIGNATURE_WIDTH_PT` de ancho y la proporción de `art`, centrado en `center`.
- * Si queda fuera de `pageBox`, se desplaza para entrar en la página.
+ * Rectángulo de una firma de `width` de ancho (por defecto `DEFAULT_SIGNATURE_WIDTH_PT`) y la proporción de `art`,
+ * centrado en `center`. Si queda fuera de `pageBox`, se desplaza para entrar en la página.
  */
-export function signatureRectAt(art: SignatureArt, center: readonly [number, number], pageBox: RectPt): RectPt {
+export function signatureRectAt(
+  art: SignatureArt,
+  center: readonly [number, number],
+  pageBox: RectPt,
+  width = DEFAULT_SIGNATURE_WIDTH_PT,
+): RectPt {
   const [cx, cy] = center;
-  const width = DEFAULT_SIGNATURE_WIDTH_PT;
   const height = width / signatureAspect(art);
   const [bx1, by1, bx2, by2] = pageBox;
   const x1 = inside(cx - width / 2, bx1, bx2, width);
@@ -109,6 +115,8 @@ export interface NewSignatureInput {
   readonly author: string;
   /** Instante de creación en ISO 8601. */
   readonly now: string;
+  /** Imagen de la página (PDF-130): se aplana como contenido al guardar (ADR-0036). */
+  readonly flatten?: true;
 }
 
 /** Firma nueva: negra, opacidad plena, comentario «Firma». Se guarda como `/Stamp` (ADR-0020). */
@@ -126,5 +134,6 @@ export function newSignatureAnnotation(input: NewSignatureInput): SignatureAnnot
     modified: input.now,
     created: input.now,
     origin: { kind: 'new' },
+    ...(input.flatten === true ? { flatten: true as const } : {}),
   };
 }

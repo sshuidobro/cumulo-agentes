@@ -256,7 +256,7 @@ function NoteShape({ a }: { readonly a: NoteAnnotation }): ReactElement {
   );
 }
 
-/** Texto libre: borde de 1 pt, texto Helvetica ajustado al rectángulo y recortado a él. */
+/** Texto libre: borde de 1 pt (salvo `borderless`, PDF-149), texto Helvetica ajustado al rectángulo y recortado a él. */
 function FreeTextShape({ a }: { readonly a: FreeTextAnnotation }): ReactElement {
   const [x1, y1, x2, y2] = a.rect;
   const width = x2 - x1;
@@ -285,7 +285,9 @@ function FreeTextShape({ a }: { readonly a: FreeTextAnnotation }): ReactElement 
   });
   return (
     <g opacity={a.opacity}>
-      <rect x={x1 + 0.5} y={y1 + 0.5} width={width - 1} height={height - 1} fill="none" stroke={cssColor(a.color)} strokeWidth={1} />
+      {a.borderless === true ? null : (
+        <rect x={x1 + 0.5} y={y1 + 0.5} width={width - 1} height={height - 1} fill="none" stroke={cssColor(a.color)} strokeWidth={1} />
+      )}
       <clipPath id={clipId}>
         <rect x={x1} y={y1} width={width} height={height} />
       </clipPath>

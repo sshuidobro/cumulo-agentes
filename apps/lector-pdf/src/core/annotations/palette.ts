@@ -33,6 +33,8 @@ export const DEFAULT_TOOL_COLORS = {
   line: RED,
   arrow: RED,
   polygon: RED,
+  /** Texto añadido a la página (PDF-130): negro por defecto. */
+  'page-text': [0, 0, 0],
 } as const satisfies Record<string, Rgb>;
 
 /** Grosores de trazo permitidos (pt). */
