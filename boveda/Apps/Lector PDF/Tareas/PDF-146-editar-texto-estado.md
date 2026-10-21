@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-146
 titulo: Editar texto - localizar la línea con pdf.js, ediciones pendientes con deshacer y guardado
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-145, PDF-137]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -108,3 +108,9 @@ export function registerEditTextParticipant(): void;      // { id: 'edit-text', 
 Lint, typecheck y tests de los dos ficheros OK; cobertura line-hint 100 %, edit-text-actions 99,3 % líneas. Resto de criterios cubiertos.
 1. `apps/lector-pdf/src/state/edit-text-actions.ts:146-147` — `pdf.doc.getPage`/`getPageTextContent` pueden rechazar y `beginLineEdit` solo tiene `try/finally`: la promesa rechaza (error sin tratar, sin aviso al usuario), y `editTextMsg.readFailed` está definido pero no se usa en ningún sitio — añadir `catch` que haga `log.warn` y `showNotice(editTextMsg.readFailed)` (sin lanzar; solo si `gen === generation`), con un test que simule el fallo de `getTextContent`.
 2. (opcional) `beginLineEdit` no impide dos consultas simultáneas (`status === 'probing'`); un doble clic rápido lanza dos probes. Considerar `if (status !== 'idle') return`.
+
+### [programador] ronda 2 — 2026-10-21
+- Ficheros cambiados: `apps/lector-pdf/src/state/edit-text-actions.ts`, `apps/lector-pdf/tests/unit/edit-text-actions.test.ts`.
+- Qué he hecho: (1) `beginLineEdit` con `catch` que registra `log.warn` y muestra `editTextMsg.readFailed` (solo si la generación no ha cambiado), sin lanzar; test con `getTextContent` rechazado. (2) Opcional: `beginLineEdit` retorna si `status !== 'idle'`, para no lanzar dos consultas en un doble clic; test que comprueba una sola llamada a `edit-text-probe`.
+- Comandos ejecutados y resultado: `pnpm lint` exit 0. `pnpm typecheck` exit 0. `pnpm coverage` exit 0: 4158 tests pasan. `line-hint.ts` 100 % líneas; `edit-text-actions.ts` cubierto por la suite. Una ejecución anterior de `pnpm lint`/`pnpm coverage` dio 3 errores de ESLint y 1 test fallido en ficheros de firma digital (de otro agente, sin commit); en la repetición no reaparecieron.
+- Dudas o cosas que no he podido hacer: ninguna en esta ronda.

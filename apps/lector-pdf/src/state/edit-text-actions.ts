@@ -124,7 +124,7 @@ export function setEditTextTool(active: boolean, currentText?: string): void {
  * con ese punto; si no, localiza la línea con pdf.js y pregunta al Worker si es editable.
  */
 export async function beginLineEdit(pageIndex: number, point: readonly [number, number]): Promise<void> {
-  if (!mutable()) return;
+  if (!mutable() || useEditText.getState().status !== 'idle') return;
   const own = useEditText.getState().edits.find((edit) => edit.pageIndex === pageIndex && contains(edit.line.bounds, point));
   if (own !== undefined) {
     useEditText.setState({
@@ -169,6 +169,10 @@ export async function beginLineEdit(pageIndex: number, point: readonly [number, 
     useEditText.setState({
       editing: { pageIndex, hint: located.hint, line: probe.line, original: located.text, editId: null },
     });
+  } catch (error: unknown) {
+    if (gen !== generation) return;
+    log.warn('probe', error instanceof Error ? error.message : String(error));
+    showNotice(editTextMsg.readFailed);
   } finally {
     if (gen === generation) useEditText.setState({ status: 'idle' });
   }

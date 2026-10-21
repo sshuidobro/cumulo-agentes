@@ -126,6 +126,37 @@ describe('validateLineText', () => {
 });
 
 describe('beginLineEdit', () => {
+  it('si pdf.js no puede leer el texto de la página avisa, no lanza y deja el estado en reposo', async () => {
+    await openFixture();
+    const page = { getTextContent: () => Promise.reject(new Error('fallo de lectura')) };
+    useViewer.setState({ pdf: { doc: { getPage: () => Promise.resolve(page) } } as unknown as LoadedPdf });
+    await expect(beginLineEdit(0, POINT)).resolves.toBeUndefined();
+    expect(useViewer.getState().notice?.text).toBe(editTextMsg.readFailed);
+    expect(useEditText.getState().editing).toBeNull();
+    expect(useEditText.getState().status).toBe('idle');
+    expect(callsOf('edit-text-probe')).toEqual([]);
+  });
+
+  it('una segunda petición mientras se consulta la línea no lanza otra consulta', async () => {
+    await openView();
+    let release: (() => void) | undefined;
+    handle('edit-text-probe', () => new Promise((resolve) => {
+      release = () => resolve(ok({ line: editableLine() }));
+    }));
+    const first = beginLineEdit(0, POINT);
+    await vi.waitFor(() => {
+      expect(useEditText.getState().status).toBe('probing');
+    });
+    await beginLineEdit(0, POINT);
+    await vi.waitFor(() => {
+      expect(release).toBeDefined();
+    });
+    release?.();
+    await first;
+    expect(callsOf('edit-text-probe')).toHaveLength(1);
+    expect(useEditText.getState().editing?.original).toBe('Hola');
+  });
+
   it('con un motivo de la consulta avisa con su mensaje y no abre el cuadro', async () => {
     await openView();
     handle('edit-text-probe', () => Promise.resolve(ok({ issue: 'rotated' })));
