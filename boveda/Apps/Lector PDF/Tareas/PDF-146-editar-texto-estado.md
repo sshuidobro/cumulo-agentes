@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-146
 titulo: Editar texto - localizar la línea con pdf.js, ediciones pendientes con deshacer y guardado
 app: pdf
-estado: pendiente
+estado: en-revision
 depende_de: [PDF-145, PDF-137]
 intentos: 0
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-20
-actualizado: 2026-10-20
+actualizado: 2026-10-21
 tags: [tarea, pdf, iteracion-6, edicion]
 ---
 
@@ -92,3 +92,14 @@ export function registerEditTextParticipant(): void;      // { id: 'edit-text', 
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-21
+- Ficheros cambiados: `apps/lector-pdf/src/engine/line-hint.ts` (nuevo), `apps/lector-pdf/src/state/edit-text-store.ts` (nuevo), `apps/lector-pdf/src/state/edit-text-actions.ts` (nuevo), `apps/lector-pdf/src/ui/messages-edit-text.ts` (nuevo), `apps/lector-pdf/tests/unit/line-hint.test.ts` (nuevo), `apps/lector-pdf/tests/unit/edit-text-actions.test.ts` (nuevo).
+- Qué he hecho: `lineHintAt` según la especificación (ítems pulsables sin blancos ni girados, línea por línea base, hueco ≤ 1 altura, espacios entre ítems, `hint` con f0). Store `useEditText` y acciones: localizar la línea (caché de edición existente, `otherPending`, probe), confirmar/cancelar, quitar, deshacer/rehacer (`UndoStack` de 100), `saveTextEdits` (verify-signatures, confirmación, op `edit-text`, `writeDocument` replace, progreso con `beginJob` y cancelación), participante de pestañas (orden 42) y vaciado al cambiar de fichero (sin vaciar en cambios de pestaña, como Redactar).
+- Comandos ejecutados y resultado: `pnpm lint` OK (exit 0). `pnpm typecheck` OK (exit 0). `pnpm coverage` exit 0: 323 ficheros, 4153 tests pasan. Cobertura por módulo (medida con `--coverage.include` desde `apps/lector-pdf`, porque la cobertura raíz solo mide `src/core`): `line-hint.ts` 100 % líneas; `edit-text-actions.ts` 99,3 % líneas, 93 % ramas.
+- Dudas o cosas que no he podido hacer:
+  1. **`setEditTextTool`**: la ficha no dice de dónde sale el texto del cuadro al desactivar la herramienta, y el store no lo guarda. He añadido un parámetro opcional: `setEditTextTool(active, currentText?)`. Si se pasa, confirma el texto (o mantiene el cuadro si no es válido). Sin él, el cuadro se cierra sin confirmar. **PDF-147 debe pasar el texto del cuadro.**
+  2. **Mensajes fuera de la lista de la ficha** en `messages-edit-text.ts`: `undoEdit`, `undoRestore` (etiquetas de «Deshacer»), `readFailed` (fallo de pdf.js) y `progress` (texto del progreso). Además, `done(1)` y `edited(1)` van en singular («1 línea editada»).
+  3. **Progreso**: `EditTextState` no tiene campo de progreso, así que el progreso va por `beginJob`/`useDocOpJob` (el mismo overlay que Extraer).
+  4. **Cambios de otra herramienta**: `registerPendingChanges` lanza si ya hay otro registrado. Si el usuario abre Organizar o Redactar con ediciones de texto pendientes, esa llamada fallará. PDF-147 debe impedirlo o el líder debe decidir cómo tratarlo.
+  5. **Árbol de trabajo compartido**: durante la ronda había cambios sin commit de otros agentes (firma digital, `main.tsx`, `App.tsx`). Solo commiteo mis ficheros.
