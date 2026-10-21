@@ -43,6 +43,19 @@
         "role": "Viewer",
         "mimeType": "application/pdf"
       }
-    ]
+    ],
+    "publisher": "Cúmulo",
+    "category": "Productivity",
+    "shortDescription": "Lector y editor de PDF",
+    "longDescription": "Lee, anota, rellena, firma y organiza documentos PDF sin conexión.",
+    "windows": {
+      "webviewInstallMode": { "type": "embedBootstrapper" },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Spanish"],
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico"
+      }
+    }
   }
 }
