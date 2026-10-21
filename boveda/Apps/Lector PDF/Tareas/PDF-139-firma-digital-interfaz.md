@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-139
 titulo: Firma digital - firmar con certificado y panel de firmas
 app: pdf
-estado: en-revision
+estado: en-test
 depende_de: [PDF-138, PDF-137, COM-018]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -101,3 +101,6 @@ Lint, typecheck y `pnpm coverage` OK (98,34 % líneas); tests de la ficha en ver
   - `pnpm --filter lector-pdf e2e -- tests/e2e/digital-signature.spec.ts` → 10/10.
   - `pnpm coverage` → exit 0: 323 ficheros, 4158/4158 tests, 98,34 % líneas.
 - Dudas o cosas que no he podido hacer: otra ejecución de Vitest con cobertura compartía el directorio `coverage/` y bloqueó la primera llamada a `pnpm coverage`; esperé a que terminara y la repetí sin cambios. No he ejecutado `bundle:check` porque el cambio no añade código de arranque relevante (solo lógica del diálogo ya diferido).
+
+### [revisor] ronda 2 — 2026-10-21 — APROBADO
+Lint, typecheck y los 31 tests de la ficha en verde. Los 3 puntos de la ronda 1 resueltos: contraseña vaciada al cerrar y al cambiar de certificado (cuerpo desmontado + test), espía del almacén de borradores, E2E de teclado de principio a fin. 0 problemas.
