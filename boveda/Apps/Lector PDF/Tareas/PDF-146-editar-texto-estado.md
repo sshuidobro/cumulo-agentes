@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-146
 titulo: Editar texto - localizar la línea con pdf.js, ediciones pendientes con deshacer y guardado
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-145, PDF-137]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-20
 actualizado: 2026-10-21
@@ -103,3 +103,8 @@ export function registerEditTextParticipant(): void;      // { id: 'edit-text', 
   3. **Progreso**: `EditTextState` no tiene campo de progreso, así que el progreso va por `beginJob`/`useDocOpJob` (el mismo overlay que Extraer).
   4. **Cambios de otra herramienta**: `registerPendingChanges` lanza si ya hay otro registrado. Si el usuario abre Organizar o Redactar con ediciones de texto pendientes, esa llamada fallará. PDF-147 debe impedirlo o el líder debe decidir cómo tratarlo.
   5. **Árbol de trabajo compartido**: durante la ronda había cambios sin commit de otros agentes (firma digital, `main.tsx`, `App.tsx`). Solo commiteo mis ficheros.
+
+### [revisor] ronda 1 — 2026-10-21 — CAMBIOS
+Lint, typecheck y tests de los dos ficheros OK; cobertura line-hint 100 %, edit-text-actions 99,3 % líneas. Resto de criterios cubiertos.
+1. `apps/lector-pdf/src/state/edit-text-actions.ts:146-147` — `pdf.doc.getPage`/`getPageTextContent` pueden rechazar y `beginLineEdit` solo tiene `try/finally`: la promesa rechaza (error sin tratar, sin aviso al usuario), y `editTextMsg.readFailed` está definido pero no se usa en ningún sitio — añadir `catch` que haga `log.warn` y `showNotice(editTextMsg.readFailed)` (sin lanzar; solo si `gen === generation`), con un test que simule el fallo de `getTextContent`.
+2. (opcional) `beginLineEdit` no impide dos consultas simultáneas (`status === 'probing'`); un doble clic rápido lanza dos probes. Considerar `if (status !== 'idle') return`.
