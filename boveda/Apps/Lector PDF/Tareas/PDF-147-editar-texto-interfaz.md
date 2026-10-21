@@ -3,9 +3,9 @@ tipo: tarea
 id: PDF-147
 titulo: Editar texto - herramienta en la barra Editar, cuadro sobre la línea y E2E
 app: pdf
-estado: en-revision
+estado: cambios-pedidos
 depende_de: [PDF-146, PDF-139]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-20
 actualizado: 2026-10-21
@@ -65,3 +65,9 @@ El usuario activa «Editar texto» en la barra «Editar», hace doble clic en un
   5. `EditTextLayer` se monta en cada página y devuelve `null` si no hay nada que mostrar (no se monta condicionalmente desde `PageView`).
   6. El icono del botón reutiliza `IconEdit` (no hay icono propio de «Editar texto»).
 
+### [revisor] ronda 1 — 2026-10-21 — CAMBIOS
+1. `tests/e2e/edit-text.spec.ts` — falta el E2E del aviso de texto oculto (capa OCR / PDF con `3 Tr`), criterio explícito de la ficha — añadirlo (PDF construido en el test si hace falta) y comprobar que el aviso aparece.
+2. `tests/e2e/edit-text.spec.ts` — faltan zoom 125 % y 150 % con alineación del cuadro ± 2 px respecto a la línea — añadir E2E; si la línea base de 0,8 em no cumple ± 2 px, corregir la geometría en `edit-text-box.ts`.
+3. `tests/ui/edit-text-tool.test.tsx` — F2 con texto seleccionado a mano sin probar (solo con resultado de búsqueda) — añadir test con selección.
+4. Tema claro/oscuro sin verificar (criterio de accesibilidad) — probar la herramienta activa y el cuadro abierto en tema oscuro, con axe.
+5. axe: la exclusión de `page-has-heading-one` y `region` es aceptable si es la misma que usan los otros E2E de axe del proyecto; indicarlo en el Registro. Modo noche (color del texto nuevo con poco contraste) (opcional): valorar con el líder.
