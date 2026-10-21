@@ -8,6 +8,9 @@ import { DropOverlay } from './open/DropOverlay';
 import { EmptyState } from './open/EmptyState';
 import { ErrorState } from './open/ErrorState';
 import { IoErrorBanner } from './open/IoErrorBanner';
+import { SignatureBanner } from './signature/SignatureBanner';
+import { SignaturePlacementKeys } from './signature/SignaturePlacement';
+import { useSignDialog } from '../state/digital-signature-actions';
 import { LoadingState } from './open/LoadingState';
 import { Viewer } from './viewer/Viewer';
 import { SelectionActions } from './viewer/SelectionActions';
@@ -73,6 +76,8 @@ const ExportProgress = lazy(() => import('./export/ExportProgress').then((m) => 
 const PrintProgress = lazy(() => import('./print/PrintProgress').then((m) => ({ default: m.PrintProgress })));
 // Proteger con contraseña (PDF-132): el diálogo solo se carga al abrirlo.
 const ProtectDialog = lazy(() => import('./security/ProtectDialog').then((m) => ({ default: m.ProtectDialog })));
+// Firmar con certificado (PDF-139): el diálogo solo se carga al abrirlo.
+const DigitalSignDialog = lazy(() => import('./signature/DigitalSignDialog').then((m) => ({ default: m.DigitalSignDialog })));
 
 /** Atajos de vista: solo actúan con un documento abierto. */
 const VIEW_SHORTCUTS = {
@@ -168,6 +173,7 @@ export function App() {
   const combineOpen = useCombineDialog((s) => s.open);
   const imagesOpen = useImagesDialog((s) => s.open);
   const protectOpen = useProtectDialog((s) => s.open);
+  const signOpen = useSignDialog((s) => s.open);
   const fullscreen = useFullscreen((s) => s.on);
   const compareStatus = useCompare((s) => s.status);
   const organizeOpen = useOrganize((s) => s.open);
@@ -213,6 +219,8 @@ export function App() {
         </Suspense>
       )}
       <IoErrorBanner />
+      <SignatureBanner />
+      <SignaturePlacementKeys />
       <main id={TAB_PANEL_ID} className={status === 'ready' ? styles.mainReady : styles.main}>
         {status === 'empty' && <EmptyState />}
         {status === 'loading' && <LoadingState />}
@@ -295,6 +303,11 @@ export function App() {
       {protectOpen && (
         <Suspense fallback={null}>
           <ProtectDialog />
+        </Suspense>
+      )}
+      {signOpen && (
+        <Suspense fallback={null}>
+          <DigitalSignDialog />
         </Suspense>
       )}
       {docOpRunning && (

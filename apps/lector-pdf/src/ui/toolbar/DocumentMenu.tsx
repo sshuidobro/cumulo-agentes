@@ -17,6 +17,8 @@ import { openCombineDialog } from '../../state/combine-actions';
 import { openExtractDialog, openSplitDialog } from '../../state/extract-actions';
 import { openProtectDialog, removeProtection } from '../../state/protect-actions';
 import { securityMsg } from '../messages-security';
+import { digitalSignMsg } from '../messages-digital-signature';
+import { openSignDialog } from '../../state/digital-signature-actions';
 import { openProperties } from '../../state/properties-store';
 import { services } from '../../state/services';
 import { useViewer } from '../../state/viewer-store';
@@ -93,6 +95,12 @@ export function DocumentMenu() {
           disabled: !encrypted,
           disabledReason: securityMsg.unprotectDisabled,
           onSelect: () => { void removeProtection(); },
+        },
+        {
+          kind: 'action',
+          label: digitalSignMsg.menuItem,
+          disabled: !ready,
+          onSelect: () => { openSignDialog(); },
         },
         {
           kind: 'action',
