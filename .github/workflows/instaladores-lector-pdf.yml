@@ -31,7 +31,7 @@ jobs:
       - id: pick
         shell: bash
         run: |
-          win='{"os":"windows-latest","bundles":"nsis,msi"}'
+          win='{"os":"windows-latest","bundles":"nsis"}'
           lin='{"os":"ubuntu-22.04","bundles":"deb,appimage"}'
           mac='{"os":"macos-latest","bundles":"dmg"}'
           case "${{ inputs.sistemas }}" in
@@ -91,7 +91,6 @@ jobs:
           retention-days: 7
           path: |
             target/release/bundle/nsis/*.exe
-            target/release/bundle/msi/*.msi
             target/release/bundle/deb/*.deb
             target/release/bundle/appimage/*.AppImage
             target/release/bundle/dmg/*.dmg
@@ -115,19 +114,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
+          # Nombre fijo para Windows: el enlace .../releases/latest/download/Instalar-Lector-PDF.exe no cambia entre versiones.
+          for f in instaladores/*-setup.exe; do mv "$f" instaladores/Instalar-Lector-PDF.exe; done
           files=(instaladores/*)
           if [ ${#files[@]} -eq 0 ]; then echo "No hay instaladores que publicar"; exit 1; fi
           version=$(node -p "require('./apps/lector-pdf/src-tauri/tauri.conf.json').version")
           tag="lector-pdf-v$version"
           notes="Instaladores del Lector PDF $version fabricados a partir de ${GITHUB_SHA::7}.
 
-          - Windows: descarga el archivo que termina en -setup.exe y ábrelo. Si aparece «Windows protegió su PC», pulsa Más información › Ejecutar de todas formas (el instalador no está firmado).
+          - Windows: descarga Instalar-Lector-PDF.exe y ábrelo con doble clic. Si aparece «Windows protegió su PC», pulsa Más información › Ejecutar de todas formas (el instalador no está firmado).
           - Linux: el .deb se instala con sudo apt install ./archivo.deb; el AppImage funciona con doble clic.
           - macOS: abre el .dmg y arrastra Lector PDF a Aplicaciones."
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release edit "$tag" --notes "$notes"
             gh release upload "$tag" "${files[@]}" --clobber
           else
-            gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --prerelease \
+            gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --latest \
               --title "Lector PDF $version" --notes "$notes"
           fi

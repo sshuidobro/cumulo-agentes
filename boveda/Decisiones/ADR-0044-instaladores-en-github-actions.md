@@ -23,12 +23,21 @@ El usuario quiere instalar el Lector PDF en su escritorio sin compilarlo él (Ru
 
 ## Decisión
 Opción **A** en `.github/workflows/instaladores-lector-pdf.yml`:
-- Por defecto solo **Windows** (NSIS `-setup.exe` y MSI). Linux (`.deb`, AppImage) y macOS (`.dmg`) se eligen en el desplegable; macOS solo si el usuario lo pide, por su coste.
+- Por defecto solo **Windows**, con un único instalador NSIS publicado como `Instalar-Lector-PDF.exe` (sin MSI, para no confundir). Linux (`.deb`, AppImage) y macOS (`.dmg`) se eligen en el desplegable; macOS solo si el usuario lo pide, por su coste.
 - Caché de Rust con `Swatinem/rust-cache` para que las siguientes fabricaciones tarden mucho menos.
-- Publica en la release `lector-pdf-v<versión de tauri.conf.json>` como *prerelease*; si ya existe, reemplaza los ficheros.
+- Publica en la release `lector-pdf-v<versión de tauri.conf.json>`, marcada como la última, para que `releases/latest/download/Instalar-Lector-PDF.exe` sea un enlace fijo; si ya existe, reemplaza los ficheros.
 - Sin acciones de terceros más allá de las oficiales de GitHub y la caché de Rust.
+
+## Revisión 2026-10-21 · instalable por cualquiera
+El usuario quiere pasárselo a su madre: doble clic y aceptar, y autoriza hacer público el repositorio. En `tauri.conf.json`:
+- `nsis.installMode: currentUser`: se instala en la carpeta del usuario, sin pedir permisos de administrador.
+- Instalador solo en español, sin selector de idioma.
+- `webviewInstallMode: embedBootstrapper`: si el equipo no tiene WebView2 (Windows 10 antiguo), lo instala sin pasos extra.
+- Editor, categoría y descripción rellenos para que aparezcan bien en «Aplicaciones instaladas».
+
+Con el repositorio público, la descarga no pide cuenta de GitHub y los minutos de Actions son gratis.
 
 ## Consecuencias
 - Los instaladores **no están firmados**: Windows muestra SmartScreen y macOS Gatekeeper la primera vez. Firmar exige un certificado de pago (decisión de producto del usuario si algún día se quiere).
-- El repositorio es privado: la release solo la descarga quien tenga acceso.
+- Mientras el repositorio sea privado, la release solo la descarga quien tenga acceso.
 - La guía de instalación pasa a ofrecer primero la descarga y deja la compilación como alternativa.
