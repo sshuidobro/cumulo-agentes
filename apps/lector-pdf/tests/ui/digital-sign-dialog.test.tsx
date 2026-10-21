@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { err, ok } from '@suite/shared';
@@ -97,6 +97,32 @@ describe('DigitalSignDialog', () => {
     expect(screen.getByText('Autoridad de prueba', { selector: 'dd' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: digitalSignMsg.sign })).toBeEnabled();
     expect(useSignDialog.getState().form.password).toBe(TEST_P12_PASSWORD);
+  });
+
+  it('cancelar y reabrir el diálogo deja la contraseña escrita fuera: el campo vuelve vacío', async () => {
+    setForm({ p12: { name: 'mi-firma.p12', bytes: certFixtures().rsaAes } });
+    const user = userEvent.setup();
+    render(<DigitalSignDialog />);
+    await user.type(screen.getByLabelText(digitalSignMsg.passwordLabel), 'escrita-sin-enviar');
+    await user.click(screen.getByRole('button', { name: digitalSignMsg.cancel }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    act(() => {
+      setForm({ p12: { name: 'mi-firma.p12', bytes: certFixtures().rsaAes } });
+    });
+    expect(screen.getByLabelText(digitalSignMsg.passwordLabel)).toHaveValue('');
+  });
+
+  it('elegir otro certificado con el diálogo abierto borra la contraseña escrita para el anterior', async () => {
+    setForm({ p12: { name: 'mi-firma.p12', bytes: certFixtures().rsaAes } });
+    const user = userEvent.setup();
+    render(<DigitalSignDialog />);
+    await user.type(screen.getByLabelText(digitalSignMsg.passwordLabel), 'contra-del-primero');
+    act(() => {
+      const form = useSignDialog.getState().form;
+      useSignDialog.setState({ form: { ...form, p12: { name: 'otro.p12', bytes: certFixtures().rsaAes } } });
+    });
+    expect(screen.getByText('otro.p12')).toBeInTheDocument();
+    expect(screen.getByLabelText(digitalSignMsg.passwordLabel)).toHaveValue('');
   });
 
   it('un certificado caducado avisa y no se puede firmar con él', () => {

@@ -111,6 +111,46 @@ test('firma invisible: el PDF descargado valida con pdfsig y la pestaña Firmas 
   await expect(page.getByText(digitalSignMsg.validSignature)).toBeVisible();
 });
 
+/** Lleva el foco con Tab hasta `target` (límite de pulsaciones) sin usar el ratón. */
+async function tabTo(page: Page, target: Locator): Promise<void> {
+  for (let i = 0; i < 25; i++) {
+    if (await target.evaluate((el) => el === document.activeElement)) return;
+    await page.keyboard.press('Tab');
+  }
+  throw new Error('El foco no llega al control con Tab.');
+}
+
+test('teclado de principio a fin: abrir desde el menú, elegir, desbloquear, y firmar sin ratón', async ({ page }) => {
+  await openWithDownloads(page, fixture('basic-5.pdf'));
+  // Menú «Más acciones» y su opción, activados con Intro.
+  await page.getByRole('button', { name: propertiesMsg.moreActions, exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: digitalSignMsg.menuItem, exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(signDialog(page)).toBeVisible();
+
+  // «Elegir certificado…» con Intro abre el selector de ficheros.
+  const chooseButton = signDialog(page).getByRole('button', { name: digitalSignMsg.chooseCertificate, exact: true });
+  await chooseButton.focus();
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.keyboard.press('Enter')]);
+  await chooser.setFiles(signingFile(SIGNING_FILES.p12));
+  await expect(signDialog(page).getByText('prueba.p12')).toBeVisible();
+
+  // Contraseña: escribir y Intro desbloquea.
+  const password = signDialog(page).getByLabel(digitalSignMsg.passwordLabel, { exact: true });
+  await password.focus();
+  await page.keyboard.type(TEST_P12_PASSWORD);
+  await page.keyboard.press('Enter');
+  await expect(signDialog(page).getByText(digitalSignMsg.unlocked)).toBeVisible();
+
+  // Firma invisible (opción por defecto): Tab hasta «Firmar» e Intro.
+  const path = await downloadSigned(page, async () => {
+    await tabTo(page, signButton(page));
+    await page.keyboard.press('Enter');
+  });
+  expect(pdfsig(path)).toContain('Signature is Valid.');
+});
+
 test('contraseña del certificado errónea: mensaje en el diálogo y Firmar deshabilitado', async ({ page }) => {
   await openWithDownloads(page, fixture('basic-5.pdf'));
   await openSignDialog(page);

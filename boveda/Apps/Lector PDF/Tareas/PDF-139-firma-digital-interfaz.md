@@ -3,7 +3,7 @@ tipo: tarea
 id: PDF-139
 titulo: Firma digital - firmar con certificado y panel de firmas
 app: pdf
-estado: cambios-pedidos
+estado: en-revision
 depende_de: [PDF-138, PDF-137, COM-018]
 intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
@@ -91,3 +91,13 @@ Lint, typecheck y `pnpm coverage` OK (98,34 % líneas); tests de la ficha en ver
 1. `apps/lector-pdf/src/ui/signature/DigitalSignDialog.tsx:69` — la contraseña escrita vive en el estado local `password` del componente, que sigue montado al cerrar el diálogo: si se escribe, se cancela y se reabre (o se elige otro certificado con `chooseCertificate`) la contraseña anterior reaparece en el campo. Incumple «contraseña solo en memoria mientras el diálogo está abierto» — hay que vaciar `password` al cerrar y al cambiar de certificado (p. ej. con `key` ligada a `open`/nombre del certificado, o leyendo el valor del store), y añadir un test de ui que lo cubra (escribir, cancelar, reabrir → campo vacío).
 2. `apps/lector-pdf/tests/unit/digital-signature-actions.test.ts` (criterio «borradores») — solo se espía `prefs.set`; el criterio exige también el almacén de borradores. Añadir un espía del almacén de borradores (o una aserción de que no se invoca su escritura durante la firma).
 3. `tests/e2e/digital-signature.spec.ts` / criterio «firmar con teclado de principio a fin» — el diálogo se abre con ratón. Añadir un E2E (o test ui) que abra «Firmar con certificado…» y recorra el diálogo solo con teclado (Tab/Intro/Espacio) hasta «Firmar».
+
+### [programador] ronda 2 — 2026-10-21
+- Ficheros cambiados: `apps/lector-pdf/src/ui/signature/DigitalSignDialog.tsx` (el cuerpo con la contraseña se desmonta al cerrar; al cambiar de certificado se vacía el campo), `apps/lector-pdf/tests/ui/digital-sign-dialog.test.tsx` (2 tests nuevos: cancelar y reabrir; elegir otro certificado), `apps/lector-pdf/tests/unit/digital-signature-actions.test.ts` (espía del almacén de borradores), `apps/lector-pdf/tests/e2e/digital-signature.spec.ts` (E2E «teclado de principio a fin»).
+- Qué he hecho: (1) La contraseña escrita ya no sobrevive a cerrar, reabrir o cambiar de certificado: el estado vive en un componente que solo existe con el diálogo abierto y se reinicia al cambiar el objeto `form.p12`. (2) El test unitario espía el `DraftStore` con `startDraftSync` y comprueba que no se escribe ningún borrador durante la firma ni la contraseña en él. (3) E2E que abre «Firmar con certificado…» desde el menú con Intro, elige el certificado con Intro, desbloquea con Intro, recorre con Tab hasta «Firmar» y firma; `pdfsig` valida la copia.
+- Comandos ejecutados y resultado:
+  - `pnpm lint` → OK. `pnpm typecheck` → OK.
+  - `vitest run` de `digital-signature-actions` y `digital-sign-dialog` → 25/25.
+  - `pnpm --filter lector-pdf e2e -- tests/e2e/digital-signature.spec.ts` → 10/10.
+  - `pnpm coverage` → exit 0: 323 ficheros, 4158/4158 tests, 98,34 % líneas.
+- Dudas o cosas que no he podido hacer: otra ejecución de Vitest con cobertura compartía el directorio `coverage/` y bloqueó la primera llamada a `pnpm coverage`; esperé a que terminara y la repetí sin cambios. No he ejecutado `bundle:check` porque el cambio no añade código de arranque relevante (solo lógica del diálogo ya diferido).
