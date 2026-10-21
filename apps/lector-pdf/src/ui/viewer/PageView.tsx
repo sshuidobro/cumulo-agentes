@@ -18,6 +18,7 @@ import { useViewer } from '../../state/viewer-store';
 import { msg } from '../messages';
 import { AnnotationLayer } from './AnnotationLayer';
 import { RedactLayer } from './RedactLayer';
+import { SignaturePlaceLayer } from '../signature/SignaturePlacement';
 import { LinkLayer } from './LinkLayer';
 import { PageFrame } from './PageFrame';
 import { SearchHighlights } from './SearchHighlights';
@@ -315,6 +316,7 @@ export const PageView = memo(function PageView({
       <TextLayerView index={index} zoom={zoom} rotation={rotation} />
       {viewport !== null && <AnnotationLayer pageIndex={index} viewport={viewport} />}
       {viewport !== null && <RedactLayer pageIndex={index} viewport={viewport} />}
+      {viewport !== null && <SignaturePlaceLayer pageIndex={index} viewport={viewport} />}
       {viewport !== null && hasForms && (
         <Suspense fallback={null}>
           <FormLayer pageIndex={index} viewport={viewport} />

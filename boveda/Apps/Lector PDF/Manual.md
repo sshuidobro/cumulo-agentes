@@ -95,6 +95,17 @@ En macOS, Ctrl es ⌘.
 - La velocidad y la voz elegidas se recuerdan.
 - Chrome y Edge pueden reservar Ctrl+Mayús+C (herramientas de desarrollo) y Ctrl+Mayús+B (marcadores). En ese caso usa los botones de la barra.
 
+## Firmar con certificado
+- «Más acciones → Firmar con certificado…» firma el documento con un certificado personal `.p12` o `.pfx` (1 MiB como máximo).
+- Elige el certificado, escribe su contraseña y pulsa «Desbloquear». Se muestran el titular, el emisor y las fechas de validez. Si el certificado está caducado o aún no es válido, no se puede firmar con él.
+- Firma **invisible** (sin recuadro) o **visible**: en la visible, arrastra un recuadro sobre la página (mínimo 60×20 puntos). Con el teclado, Intro lo coloca en el centro de la página actual y Escape cancela.
+- Motivo y lugar son opcionales. La firma se hace en este equipo; no se usa ningún servicio externo ni sello de tiempo.
+- El certificado y su contraseña solo viven en memoria mientras firmas: no se guardan en preferencias ni en borradores.
+- El resultado se guarda como copia (o en el propio fichero si el navegador o el escritorio lo permiten), como en cualquier guardado.
+- Al abrir un PDF firmado aparece un aviso («Este documento está firmado digitalmente»). «Ver firmas» abre la pestaña «Firmas» del panel lateral, con cada firma: titular, fecha, motivo, lugar y su estado. Clic en una firma: va a la página de su recuadro.
+- Estados: «Firma válida» (la identidad del firmante no se ha verificado: no se comprueba la cadena de confianza ni la revocación); «No válida» (el documento se ha modificado después de firmarlo, o la firma no es correcta); «No comprobada» (tipo de firma no admitido para validar). «Se han hecho cambios después de firmar.» indica que hay cambios posteriores a la firma, aunque la firma sea válida: el banner aparece en rojo solo si alguna firma no es válida.
+- No se firman documentos cifrados con contraseña (quítales la protección antes), ni se firman campos de firma vacíos ya existentes (la firma crea un campo nuevo). No hay certificados del almacén del sistema ni DNIe.
+
 ## Limitaciones actuales
 - PDFs con contraseña: iteración 4. Formularios: se ven, pero no se rellenan (iteración 3). Imprimir: iteración 3.
 - Tras guardar no se puede deshacer lo anterior (el historial empieza de nuevo).
@@ -111,6 +122,13 @@ Para confirmar que lo guardado se ve igual en Adobe (pendiente de hacer por el u
 5. Responder a una nota en Adobe y guardar (Ctrl+S) sin mensajes de error.
 6. Reabrir el fichero en el Lector PDF: las anotaciones siguen ahí; en `estandar-annotated.pdf` también las que ya traía el fichero y en `estandar-form.pdf` el formulario.
 7. Con el Lector PDF, en una copia de `estandar-basic-5.pdf`: dibujar un polígono y colocar los sellos «APROBADO» y «NO APROBADO», guardar (Ctrl+S) y abrir el fichero con Adobe. El panel de comentarios de Adobe debe listar el sello como «Sello» y el polígono como «Polígono», y el sello «APROBADO» debe verse con su texto.
+
+## Comprobación manual de la firma en Adobe Acrobat Reader
+Pendiente de hacer por el usuario (no la ejecuta el equipo):
+1. Firmar `basic-5.pdf` con un certificado de prueba (invisible) y guardar la copia.
+2. Abrir la copia con Adobe Acrobat Reader: el panel de firmas muestra la firma y la integridad correcta («el documento no se ha modificado»).
+3. Con aviso de identidad desconocida si el certificado no es de confianza (es lo esperado con un certificado de prueba).
+4. Repetir con una firma visible en la página 2 y comprobar que el recuadro «Firmado digitalmente por» aparece en esa página.
 
 ## Comprobación manual de la lectura en voz alta
 Con una voz española real de Windows o macOS, sin conexión a internet (pendiente de hacer por el usuario; no bloquea la ficha PDF-114):

@@ -10,6 +10,7 @@ import { openRequested, registerDocumentParticipant } from './state/document-act
 import { registerAnnotationParticipant } from './state/annotation-actions';
 import { registerOrganizeParticipant } from './state/organize-actions';
 import { registerRedactParticipant } from './state/redact-actions';
+import { registerSignatureParticipant } from './state/digital-signature-actions';
 import { registerFormsParticipant } from './state/form-actions';
 import { initServices } from './state/services';
 import { startPositionSync } from './state/position-sync';
@@ -33,6 +34,7 @@ registerDocumentParticipant();
 registerAnnotationParticipant();
 registerOrganizeParticipant();
 registerRedactParticipant();
+registerSignatureParticipant();
 registerFormsParticipant();
 registerHistoryParticipant();
 registerSearchParticipant();

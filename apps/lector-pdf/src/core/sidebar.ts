@@ -2,7 +2,7 @@ import type { PageDimsTable } from './page-dims';
 import type { Rotation } from './rotation';
 
 /** Estados del panel lateral: cerrado o con una pestaña. */
-export const SIDEBAR_STATES = ['none', 'thumbnails', 'outline', 'comments'] as const;
+export const SIDEBAR_STATES = ['none', 'thumbnails', 'outline', 'comments', 'signatures'] as const;
 export type SidebarState = (typeof SIDEBAR_STATES)[number];
 /** Pestañas del panel (todo estado distinto de `none`). */
 export type SidebarTab = Exclude<SidebarState, 'none'>;
