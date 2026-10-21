@@ -1,0 +1,27 @@
+/* Ediciones de texto pendientes en la barra «Editar» (PDF-147): contador y «Guardar». */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+}
+
+.count {
+  font-size: 0.85rem;
+}
+
+.save {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--color-control-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.save:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

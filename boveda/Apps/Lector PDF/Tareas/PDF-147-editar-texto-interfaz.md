@@ -3,12 +3,12 @@ tipo: tarea
 id: PDF-147
 titulo: Editar texto - herramienta en la barra Editar, cuadro sobre la línea y E2E
 app: pdf
-estado: pendiente
+estado: en-curso
 depende_de: [PDF-146, PDF-139]
-intentos: 0
+intentos: 1
 skills: [stack-typescript-react, calidad-profesional, pruebas-calidad]
 creado: 2026-10-20
-actualizado: 2026-10-20
+actualizado: 2026-10-21
 tags: [tarea, pdf, iteracion-6, edicion]
 ---
 
@@ -52,3 +52,22 @@ El usuario activa «Editar texto» en la barra «Editar», hace doble clic en un
 
 ## Registro
 <!-- Cada agente añade aquí su entrada al terminar; no borrar las anteriores. -->
+
+### [programador] ronda 1 — 2026-10-21
+- Ficheros cambiados: `apps/lector-pdf/src/state/edit-text-actions.ts` (herramienta exclusiva con `setTool`, `editSelectedLine` para F2 y selección/búsqueda, suscripción a cambios de herramienta); `src/ui/App.tsx` (deshacer/rehacer, Escape, F2); `src/ui/shortcuts.ts` (`'edit-line'` = F2); `src/ui/messages-edit-text.ts`; `src/ui/toolbar/EditToolbar.tsx` (+ `EditTextBar.tsx`/`.module.css` nuevos); `src/ui/viewer/PageView.tsx`; `src/ui/viewer/SelectionActions.tsx`; `src/main.tsx` (`registerEditTextParticipant`). Nuevos: `src/ui/viewer/EditTextLayer.tsx`, `LineEditor.tsx`, `edit-text-box.ts` (geometría pura y familias de fuente) y sus `.module.css`; `tests/ui/edit-text-tool.test.tsx`; `tests/e2e/edit-text.spec.ts`.
+- Qué he hecho: botón «Editar texto» (aria-pressed, tooltip) en la barra «Editar» con contador y «Guardar» de las ediciones; doble clic abre un `input` sobre la línea con su letra, tamaño, color y fondo de papel (blanco o modo noche), girado con `viewport.transform`; las ediciones se muestran encima de la línea original con nombre accesible, Enter/Supr. Atajos: deshacer/rehacer, Escape desactiva la herramienta, F2 abre la línea de la selección o del resultado de búsqueda actual; «Editar texto» en la barra de selección.
+- Comandos ejecutados y resultado: `pnpm lint` OK; `pnpm typecheck` OK; `pnpm coverage` OK (324 ficheros, 4170 tests; cobertura 95,06 % líneas-sentencias, umbrales cumplidos); `pnpm --filter lector-pdf e2e --project=chromium tests/e2e/edit-text.spec.ts` 7/7 OK (incluye guardado y `pdftotext`); `pnpm --filter lector-pdf e2e` completo: 392 OK, código 0 (antes del último ajuste de F2, que solo acota el atajo a «listo, sin organizar y sin pantalla completa»; los tests de App y de atajos se han vuelto a ejecutar OK).
+- Dudas o cosas que no he podido hacer:
+  1. **Sin test** de los criterios: aviso de texto oculto (OCR `3 Tr`, ni `scanned-es-3.pdf` ni PDF construido); zoom 125 % y 150 % con alineación ±2 px; tema oscuro de la interfaz; F2 con texto seleccionado a mano (solo se probó con resultado de búsqueda).
+  2. **axe**: el criterio pide «sin violaciones». El test excluye `page-has-heading-one` y `region` (estructura de la aplicación, no de esta herramienta); el resto de reglas sí cuentan. Revisar si se acepta la exclusión.
+  3. La línea base vertical se aproxima con 0,8 em (no medida con las métricas de la fuente): la alineación fina queda sin verificar a zoom distinto del 125 %.
+  4. Modo noche: el texto nuevo usa `line.style.color` tal cual manda la ficha; sobre papel oscuro puede verse con poco contraste. Decisión pendiente.
+  5. `EditTextLayer` se monta en cada página y devuelve `null` si no hay nada que mostrar (no se monta condicionalmente desde `PageView`).
+  6. El icono del botón reutiliza `IconEdit` (no hay icono propio de «Editar texto»).
+
+### [revisor] ronda 1 — 2026-10-21 — CAMBIOS
+1. `tests/e2e/edit-text.spec.ts` — falta el E2E del aviso de texto oculto (capa OCR / PDF con `3 Tr`), criterio explícito de la ficha — añadirlo (PDF construido en el test si hace falta) y comprobar que el aviso aparece.
+2. `tests/e2e/edit-text.spec.ts` — faltan zoom 125 % y 150 % con alineación del cuadro ± 2 px respecto a la línea — añadir E2E; si la línea base de 0,8 em no cumple ± 2 px, corregir la geometría en `edit-text-box.ts`.
+3. `tests/ui/edit-text-tool.test.tsx` — F2 con texto seleccionado a mano sin probar (solo con resultado de búsqueda) — añadir test con selección.
+4. Tema claro/oscuro sin verificar (criterio de accesibilidad) — probar la herramienta activa y el cuadro abierto en tema oscuro, con axe.
+5. axe: la exclusión de `page-has-heading-one` y `region` es aceptable si es la misma que usan los otros E2E de axe del proyecto; indicarlo en el Registro. Modo noche (color del texto nuevo con poco contraste) (opcional): valorar con el líder.
