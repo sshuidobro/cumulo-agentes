@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { memorySource, platformError, type OpenedFile } from '@suite/platform';
+import { memorySource, platformError, type DraftStore, type OpenedFile } from '@suite/platform';
 import { err, ok } from '@suite/shared';
 import { pdfError } from '../../src/core/errors';
+import { startDraftSync } from '../../src/state/draft-sync';
 import { inProcessDocOps, setDocOpsRunner } from '../../src/state/doc-ops';
 import {
   cancelPlacing,
@@ -168,6 +169,30 @@ describe('firma digital: estado del diálogo y del certificado', () => {
     expect(written).not.toContain(TEST_P12_PASSWORD);
     expect(written).not.toContain('prueba.p12');
     set.mockRestore();
+  });
+
+  it('la contraseña y los bytes del certificado nunca se escriben en el almacén de borradores', async () => {
+    const put = vi.fn<(key: string, value: unknown) => Promise<void>>(async () => undefined);
+    const store: DraftStore = {
+      put,
+      get: vi.fn<(key: string) => Promise<unknown>>(async () => undefined),
+      delete: vi.fn<(key: string) => Promise<void>>(async () => undefined),
+      keys: vi.fn<() => Promise<string[]>>(async () => []),
+    };
+    const stopSync = startDraftSync(store);
+    try {
+      await openFixture();
+      pickTestCertificate();
+      await chooseCertificate();
+      await unlockCertificate(TEST_P12_PASSWORD);
+      expect(await signInvisible()).toBe('saved');
+      expect(h.save).toHaveBeenCalledTimes(1);
+      // Sin anotaciones editadas no se escribe ningún borrador durante la firma.
+      expect(put).not.toHaveBeenCalled();
+      expect(JSON.stringify(put.mock.calls)).not.toContain(TEST_P12_PASSWORD);
+    } finally {
+      stopSync();
+    }
   });
 });
 

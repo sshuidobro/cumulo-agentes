@@ -60,13 +60,26 @@ function CertificateDetails({ info }: CertificateDetailsProps) {
 
 /**
  * «Firmar con certificado» (PDF-139): elegir un .p12/.pfx, desbloquearlo con su contraseña y firmar, visible (con
- * recuadro que se coloca en la página) o invisible. La contraseña vive solo en este componente hasta desbloquear.
+ * recuadro que se coloca en la página) o invisible. La contraseña escrita vive solo en `SignDialogBody`, que se
+ * desmonta al cerrar el diálogo: al reabrirlo el campo aparece vacío.
  */
 export function DigitalSignDialog() {
+  const open = useSignDialog((s) => s.open);
+  if (!open) return null;
+  return <SignDialogBody />;
+}
+
+function SignDialogBody() {
   const open = useSignDialog((s) => s.open);
   const form = useSignDialog((s) => s.form);
   const error = useSignDialog((s) => s.error);
   const [password, setPassword] = useState('');
+  // Al elegir otro certificado (objeto nuevo en `form.p12`) se borra la contraseña escrita para el anterior.
+  const [passwordFor, setPasswordFor] = useState(form.p12);
+  if (passwordFor !== form.p12) {
+    setPasswordFor(form.p12);
+    setPassword('');
+  }
   const [busy, setBusy] = useState(false);
   const certId = useId();
   const passId = useId();
