@@ -1,7 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import type { OpenedFile } from '@suite/platform';
 import { createLogger, type Result } from '@suite/shared';
-import { CompareSession, type CompareProgress, type PageComparison } from '../core/compare/compare';
+import type { CompareProgress, CompareSession, PageComparison } from '../core/compare/compare';
 import { loadPdf, type LoadedPdf } from '../engine';
 import { createPageTextSource } from '../engine/search-source';
 import { PDF_FILTERS } from './document-actions';
@@ -81,7 +81,8 @@ export async function startCompare(): Promise<CompareOutcome> {
   run = current;
   useCompare.setState({ ...IDLE, status: 'loading', otherName: file.name });
 
-  const loaded = await loadOther(current);
+  // El algoritmo de comparación se carga en diferido, mientras se abre el segundo PDF: no entra en el arranque (ADR-0041).
+  const [loaded, compare] = await Promise.all([loadOther(current), import('../core/compare/compare')]);
   if (!isCurrent(current)) return 'cancelled';
   if (loaded === 'cancelled') {
     await endRun(current);
@@ -103,7 +104,7 @@ export async function startCompare(): Promise<CompareOutcome> {
   current.pdf = other;
   const total = Math.max(aPdf.numPages, other.numPages);
   useCompare.setState({ status: 'running', progress: { pagesDone: 0, totalPages: total, changedPages: 0 } });
-  current.session = new CompareSession(
+  current.session = new compare.CompareSession(
     { numPages: aPdf.numPages, source: createPageTextSource(aPdf.doc) },
     { numPages: other.numPages, source: createPageTextSource(other.doc) },
     {

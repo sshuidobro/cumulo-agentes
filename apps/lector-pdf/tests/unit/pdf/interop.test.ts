@@ -15,7 +15,8 @@ import {
   type Annotation,
   type PdfObjRef,
 } from '../../../src/core/annotations';
-import { loadPdf, readPageAnnotations } from '../../../src/engine';
+import { loadPdf } from '../../../src/engine';
+import { readPageAnnotations } from '../../../src/engine/annotations-import';
 import { CORPUS_DIR, FIXTURES_DIR } from '../../fixtures/paths';
 import { nodeAssetBase } from '../../helpers/pdfjs-node';
 import { qpdfAnnotations, qpdfCheck, qpdfObjects, qpdfVersion, type QpdfObjects } from '../../support/qpdf';

@@ -20,6 +20,8 @@ vi.mock('../../src/engine', () => ({
   readPageDims: async () => ({ index: 0, width: 595, height: 842, rotation: 0 }),
   scanPageDims: async () => 'done',
   readPermissions: async () => null,
+}));
+vi.mock('../../src/engine/annotations-import', () => ({
   scanAnnotations: async () => 'done',
 }));
 

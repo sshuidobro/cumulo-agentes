@@ -9,7 +9,8 @@ import {
   type FieldValue,
   type FormField,
 } from '../../src/core/forms';
-import { loadPdf, readPageAnnotations, type LoadedPdf } from '../../src/engine';
+import { loadPdf, type LoadedPdf } from '../../src/engine';
+import { readPageAnnotations } from '../../src/engine/annotations-import';
 import { fixtureSource, nodeAssetBase } from '../helpers/pdfjs-node';
 
 const assetBaseUrl = nodeAssetBase();

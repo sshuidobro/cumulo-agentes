@@ -43,7 +43,7 @@ import {
 import { windowTitle } from '../core/title';
 import { organizeDirty } from './organize-store';
 import type { ObjectReader } from '../core/pdf/object-reader';
-import { readPageAnnotations, scanAnnotations, type LoadedPdf } from '../engine';
+import type { LoadedPdf } from '../engine';
 import { setFileAnnotationHidden } from '../engine/annotation-visibility';
 import {
   initialAnnotationState,
@@ -232,7 +232,8 @@ function scanFrom(current: Session, from: number): void {
     .then((opened) => {
       // Una sesión suspendida (cambio de pestaña) mientras se abría el lector no empieza a escanear.
       if (current.stop.signal.aborted) return 'cancelled';
-      return scanAnnotations(current.pdf.doc, {
+      // Importación de anotaciones en diferido: no entra en el JavaScript de arranque (ADR-0041).
+      return import('../engine/annotations-import').then(({ scanAnnotations }) => scanAnnotations(current.pdf.doc, {
         from,
         signal: current.stop.signal,
         fallbackDate: nowIso(),
@@ -242,7 +243,7 @@ function scanFrom(current: Session, from: number): void {
           mergePages(current.imported, pages);
           current.imported += pages.length;
         },
-      });
+      }));
     })
     .then((outcome) => {
       if (session !== current || outcome !== 'done') return;
@@ -420,6 +421,7 @@ async function importLazyPage(current: Session, pageIndex: number): Promise<void
 async function readLazyPage(current: Session, pageIndex: number): Promise<ImportedPage | null> {
   try {
     const page = await current.pdf.doc.getPage(pageIndex + 1);
+    const { readPageAnnotations } = await import('../engine/annotations-import');
     const imported = await readPageAnnotations(page, nowIso(), await current.reader);
     if (session !== current || current.stop.signal.aborted) return null;
     return imported;

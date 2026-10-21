@@ -1,16 +1,9 @@
 import type { ImportedPage } from '../core/annotations/import';
 import type { AnnotationEdits } from '../core/annotations/model';
-import {
-  effectiveValue,
-  isFillable,
-  mergeFields,
-  setFieldCommand,
-  storageValue,
-  valueEquals,
-  type FieldValue,
-  type FormField,
-  type FormWidget,
-} from '../core/forms';
+import { setFieldCommand } from '../core/forms/commands';
+import { effectiveValue, storageValue } from '../core/forms/effective';
+import { mergeFields } from '../core/forms/import';
+import { isFillable, valueEquals, type FieldValue, type FormField, type FormWidget } from '../core/forms/model';
 import type { LoadedPdf, PDFDocumentProxy } from '../engine';
 import { setWidgetStorageValue } from '../engine/form-storage';
 import { bumpPageVersions, executeEdit, onEditsPublished, onPagesImported } from './annotation-actions';

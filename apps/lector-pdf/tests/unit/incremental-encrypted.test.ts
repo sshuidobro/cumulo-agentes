@@ -16,7 +16,8 @@ import { buildIncrementalUpdate, openForSave } from '../../src/core/pdf/incremen
 import { ObjectReader } from '../../src/core/pdf/object-reader';
 import type { SecurityHandler } from '../../src/core/pdf/crypto';
 import { bytesString, dict, dictGet, name, ref, stream, type PdfDict, type PdfString, type PdfValue } from '../../src/core/pdf/objects';
-import { loadPdf, readPageAnnotations } from '../../src/engine';
+import { loadPdf } from '../../src/engine';
+import { readPageAnnotations } from '../../src/engine/annotations-import';
 import { appendIncrementalUpdate } from '../fixtures/pdf-builder';
 import { FIXTURES_DIR } from '../fixtures/paths';
 import { run } from '../support/qpdf';

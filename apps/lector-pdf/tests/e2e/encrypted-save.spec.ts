@@ -4,7 +4,8 @@ import { expect, test, type BrowserContext, type Locator, type Page } from '@pla
 import { memorySource } from '@suite/platform';
 import { printMsg } from '../../src/ui/messages-print.ts';
 import { type ImportedPage } from '../../src/core/annotations/index.ts';
-import { loadPdf, readPageAnnotations } from '../../src/engine/index.ts';
+import { loadPdf } from '../../src/engine/index.ts';
+import { readPageAnnotations } from '../../src/engine/annotations-import.ts';
 import { nodeAssetBase } from '../helpers/pdfjs-node.ts';
 import { qpdfEncrypt } from '../fixtures/encrypted.ts';
 import { qpdfCheck } from '../support/qpdf.ts';

@@ -22,7 +22,8 @@ import {
   type NoteAnnotation,
   type PdfObjRef,
 } from '../../../src/core/annotations';
-import { loadPdf, readPageAnnotations } from '../../../src/engine';
+import { loadPdf } from '../../../src/engine';
+import { readPageAnnotations } from '../../../src/engine/annotations-import';
 import { FIXTURES_DIR } from '../../fixtures/paths';
 import { nodeAssetBase } from '../../helpers/pdfjs-node';
 import { qpdfCheck, qpdfObjects, run } from '../../support/qpdf';

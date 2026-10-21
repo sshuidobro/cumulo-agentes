@@ -22,7 +22,8 @@ import {
   type RectPt,
 } from '../../../src/core/annotations';
 import { openForSave } from '../../../src/core/pdf/incremental';
-import { loadPdf, readPageAnnotations } from '../../../src/engine';
+import { loadPdf } from '../../../src/engine';
+import { readPageAnnotations } from '../../../src/engine/annotations-import';
 import { FIXTURES_DIR } from '../../fixtures/paths';
 import { nodeAssetBase } from '../../helpers/pdfjs-node';
 import { qpdfCheck, qpdfObjects } from '../../support/qpdf';
