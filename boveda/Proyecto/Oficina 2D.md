@@ -3,11 +3,13 @@ tipo: manual
 app: equipo
 estado: hecha
 creado: 2026-10-17
-actualizado: 2026-10-17
+actualizado: 2026-11-03
 tags: [equipo, herramienta, oficina-2d]
 ---
 
 # Oficina 2D del equipo
+
+> **Retirada el 2026-11-03.** El código de `herramientas/oficina-2d/` ya no está en el repositorio, así que los comandos de esta nota no funcionan. Se conserva como conocimiento; el código sigue en el historial de git.
 
 Diseño del equipo: [[Diseno del equipo]] · Fichas: [[Tareas.base]]
 
