@@ -17,6 +17,7 @@ import { pickAndOpen } from '../../state/document-actions';
 import { goBack, goForward } from '../../state/history';
 import { chooseSignature, redo, setCommentBarOpen, setEditBarOpen, setTool, undo } from '../../state/annotation-actions';
 import { useAnnotations, type AnnotationTool } from '../../state/annotation-store';
+import { useEditText } from '../../state/edit-text-store';
 import { save, saveAs, useSaving } from '../../state/save-actions';
 import { services } from '../../state/services';
 import { useAppearance } from '../../state/appearance-store';
@@ -53,6 +54,7 @@ export function MainToolbar() {
   const annotationTool = useAnnotations((s) => s.tool);
   const commentBarOpen = useAnnotations((s) => s.commentBarOpen);
   const editBarOpen = useAnnotations((s) => s.editBarOpen);
+  const editTextActive = useEditText((s) => s.active);
   const tool = useViewer((s) => s.tool);
   const history = useViewer((s) => s.historyState);
   const sidebar = useViewer((s) => s.sidebar);
@@ -148,7 +150,7 @@ export function MainToolbar() {
         <IconButton
           label={msg.toolSelect}
           shortcut={formatShortcut('tool-select', platform.isMac)}
-          pressed={tool === 'select'}
+          pressed={tool === 'select' && annotationTool === 'none' && !editTextActive}
           disabled={!ready}
           onClick={() => { setViewTool('select'); }}
         >
