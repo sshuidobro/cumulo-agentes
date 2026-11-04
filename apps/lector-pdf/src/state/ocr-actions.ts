@@ -36,7 +36,8 @@ export interface OcrForm {
 
 type RememberedOcr = Pick<OcrForm, 'lang' | 'skipText'>;
 
-const DEFAULT_FORM: OcrForm = { pages: 'all', range: '', lang: 'spa', skipText: true };
+// Los dos idiomas: el modelo de español solo confunde dígitos (lee 2026-0042 como 2026-0047).
+const DEFAULT_FORM: OcrForm = { pages: 'all', range: '', lang: 'spa+eng', skipText: true };
 
 /** Diálogo «Reconocer texto» (lo pinta `ui/ocr/OcrDialog`). */
 export const useOcrDialog = create<{ readonly open: boolean; readonly form: OcrForm }>()(() => ({

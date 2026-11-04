@@ -1,6 +1,10 @@
 import { nextZoom, wheelZoom, type ZoomMode } from '../core/zoom';
 import { normalizeRotation } from '../core/rotation';
 import { DEFAULT_VIEW_MODE, isViewMode, rowFirstPage, type ViewMode } from '../core/view-mode';
+import { setTool } from './annotation-actions';
+import { useAnnotations } from './annotation-store';
+import { setEditTextTool } from './edit-text-actions';
+import { useEditText } from './edit-text-store';
 import { goToPage } from './navigation';
 import { services } from './services';
 import { registerTabParticipant, type TabParticipant } from './tabs';
@@ -90,7 +94,20 @@ export function rotateView(direction: 1 | -1): void {
 /** Cambia la herramienta del puntero (seleccionar o mano). */
 export function setViewTool(tool: ViewTool): void {
   useViewer.setState({ tool });
+  setTool('none');
+  if (useEditText.getState().active) setEditTextTool(false);
 }
+
+/* Solo una herramienta a la vez: al activar una de anotación o «Editar texto», la mano deja de estar activa. */
+function leaveHand(): void {
+  if (useViewer.getState().tool === 'hand') useViewer.setState({ tool: 'select' });
+}
+useAnnotations.subscribe((next, prev) => {
+  if (next.tool !== prev.tool && next.tool !== 'none') leaveHand();
+});
+useEditText.subscribe((next, prev) => {
+  if (next.active && !prev.active) leaveHand();
+});
 
 /** Carga el modo de vista guardado. Un valor no válido cuenta como ausente. Se llama al arrancar. */
 export function loadViewMode(): void {

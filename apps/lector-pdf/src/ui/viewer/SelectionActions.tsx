@@ -6,7 +6,7 @@ import { markupSelection, type MarkupType } from '../../state/markup-actions';
 import { markSelection } from '../../state/redact-actions';
 import { setTool } from '../../state/annotation-actions';
 import { editSelectedLine } from '../../state/edit-text-actions';
-import { normalizeUnicode } from '../../engine/text';
+import { selectionText } from './selection-text';
 import { IconCopy, IconEdit, IconHighlight, IconRedact, IconStrikeout, IconUnderline } from '../icons';
 import { IconButton } from '../kit/IconButton';
 import { msg } from '../messages';
@@ -61,8 +61,7 @@ function placementFor(sel: Selection | null): Placement | null {
 function copySelection(): void {
   const sel = document.getSelection();
   if (sel === null) return;
-  const text = normalizeUnicode(sel.toString()).replace(/\0/g, '');
-  navigator.clipboard.writeText(text).catch((cause: unknown) => {
+  navigator.clipboard.writeText(selectionText(sel)).catch((cause: unknown) => {
     log.warn('no se ha podido copiar la selección', cause);
   });
 }

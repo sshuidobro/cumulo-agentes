@@ -53,12 +53,16 @@
   cursor: default;
 }
 
-.textLayer ::selection {
-  background: color-mix(in srgb, AccentColor, transparent 50%);
+/*
+ * Color propio, no `AccentColor`: el del sistema puede ser claro y dejar texto claro sobre fondo claro en el modo noche.
+ * `:root` para ganar a las mismas reglas de pdf_viewer.css (engine/styles.ts), sea cual sea el orden de carga.
+ */
+:root .textLayer ::selection {
+  background: var(--text-selection, rgb(10 88 202 / 30%));
   color: transparent;
 }
 
-.textLayer br::selection {
+:root .textLayer br::selection {
   background: transparent;
 }
 

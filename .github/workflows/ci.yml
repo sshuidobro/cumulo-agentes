@@ -1,0 +1,39 @@
+# Lint, tipos, tests y build en cada PR hacia main. Las pruebas de navegador (e2e) no entran: tardan mucho más.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  comprobar:
+    # Versión fija: el catálogo de PDF cifrados y sus huellas de referencia dependen de la versión de qpdf (aquí, la 11).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: pnpm (versión del packageManager)
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: Herramientas de los tests (PDF cifrados, firmas y fuente del escaneado de prueba)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf poppler-utils openssl fonts-dejavu-core
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter lector-pdf build

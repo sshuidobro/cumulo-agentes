@@ -97,6 +97,8 @@
 .night {
   --color-paper: #1f1f23;
   --color-paper-text: #c7c7cc;
+  /* Sobre el papel oscuro queda un azul oscuro: el texto claro del lienzo se sigue leyendo al seleccionarlo. */
+  --text-selection: rgb(60 120 216 / 35%);
 }
 
 .marker {

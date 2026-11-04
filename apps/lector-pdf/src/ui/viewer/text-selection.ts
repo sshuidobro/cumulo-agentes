@@ -1,8 +1,8 @@
 // Adaptado de pdf.js, web/text_layer_builder.js, Apache-2.0 (comportamiento de selección de la capa de texto).
-import { normalizeUnicode } from '../../engine/text';
 import { showNotice } from '../../state/notice';
 import { useViewer } from '../../state/viewer-store';
 import { securityMsg } from '../messages-security';
+import { selectionText } from './selection-text';
 import * as registry from './text-layer-registry';
 
 const END_CLASS = 'endOfContent';
@@ -142,7 +142,7 @@ function disableGlobalListeners(): void {
 
 /**
  * Dota a una capa de texto de su comportamiento de selección: añade `endOfContent`, marca `selecting` al
- * empezar a seleccionar y copia el texto normalizado (Unicode NFKC de pdf.js, sin caracteres nulos).
+ * empezar a seleccionar y copia el texto por párrafos y normalizado (ver `selectionText`).
  * Devuelve la función que desregistra la capa; al quitar la última se retiran también los oyentes globales.
  */
 export function attachSelectionBehavior(textLayerDiv: HTMLElement): () => void {
@@ -160,8 +160,8 @@ export function attachSelectionBehavior(textLayerDiv: HTMLElement): () => void {
       showNotice(securityMsg.copyBlocked);
       return;
     }
-    const text = document.getSelection()?.toString() ?? '';
-    event.clipboardData?.setData('text/plain', normalizeUnicode(text).replace(/\0/g, ''));
+    const selection = document.getSelection();
+    event.clipboardData?.setData('text/plain', selection === null ? '' : selectionText(selection));
     event.preventDefault();
   };
   textLayerDiv.addEventListener('mousedown', onMouseDown);
