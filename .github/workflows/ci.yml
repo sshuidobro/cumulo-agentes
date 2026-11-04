@@ -14,7 +14,8 @@ concurrency:
 
 jobs:
   comprobar:
-    runs-on: ubuntu-latest
+    # Versión fija: el catálogo de PDF cifrados y sus huellas de referencia dependen de la versión de qpdf (aquí, la 11).
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -28,8 +29,8 @@ jobs:
           corepack enable
           pnpm --version
 
-      - name: Herramientas de los tests (PDF cifrados y firmas)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf poppler-utils openssl
+      - name: Herramientas de los tests (PDF cifrados, firmas y fuente del escaneado de prueba)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf poppler-utils openssl fonts-dejavu-core
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
