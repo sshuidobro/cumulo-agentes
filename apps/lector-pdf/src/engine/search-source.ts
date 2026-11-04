@@ -9,11 +9,8 @@ export function createPageTextSource(doc: PDFDocumentProxy): PageTextSource {
       if (signal.aborted) throw new DOMException('Búsqueda cancelada.', 'AbortError');
       const page = await doc.getPage(pageIndex + 1);
       const content = await getPageTextContent(page);
-      const items: { readonly str: string; readonly hasEOL: boolean }[] = [];
-      for (const item of content.items) {
-        if ('str' in item) items.push({ str: item.str, hasEOL: item.hasEOL });
-      }
-      return items;
+      // Se conserva el ítem con su posición: la exportación a TXT la usa para deducir los párrafos.
+      return content.items.filter((item) => 'str' in item);
     },
   };
 }

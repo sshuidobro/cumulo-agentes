@@ -4,6 +4,7 @@ import { createLogger } from '@suite/shared';
 import type { PDFDocumentProxy } from '../engine';
 import { createPageTextSource } from '../engine/search-source';
 import { renderPageImage } from '../engine/print-render';
+import { normalizeUnicode } from '../engine/text';
 import {
   buildTxt,
   buildZip,
@@ -251,7 +252,8 @@ async function exportText(
   for (const [k, index] of indices.entries()) {
     if (signal.aborted) return 'cancelled';
     const items = await textSource.getPageItems(index, signal);
-    pages.push(pageTextForExport(items));
+    // La normalización deshace las ligaduras y otras formas de presentación, igual que al copiar.
+    pages.push(normalizeUnicode(pageTextForExport(items)).replace(/\0/g, ''));
     useExportJob.setState({ job: { status: 'running', done: k + 1, total: indices.length } });
     if ((k + 1) % TEXT_YIELD_EVERY === 0) await nextTask();
   }

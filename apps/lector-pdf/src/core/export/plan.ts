@@ -1,6 +1,7 @@
 import { zipSync } from 'fflate';
 import { buildPageText, type TextItemLike } from '../search/page-text';
 import { printScale } from '../print/plan';
+import { layoutItemFromPdf, paragraphText, type PdfTextItem } from '../text/paragraphs';
 
 export type ExportFormat = 'png' | 'jpeg' | 'txt';
 
@@ -66,8 +67,19 @@ export function estimateImagesBytes(sizes: readonly { readonly widthPt: number; 
   return Math.ceil(bytes);
 }
 
-/** Texto de una página para TXT: `buildPageText(items).raw` con espacios finales de cada línea quitados. */
-export function pageTextForExport(items: readonly TextItemLike[]): string {
+function isPositioned(item: TextItemLike | PositionedItem): item is PositionedItem {
+  return 'transform' in item;
+}
+
+type PositionedItem = TextItemLike & PdfTextItem;
+
+/**
+ * Texto de una página para TXT: por párrafos y en orden de lectura si los ítems traen su posición (los de pdf.js).
+ * Sin posiciones, `buildPageText(items).raw` con espacios finales de cada línea quitados.
+ */
+export function pageTextForExport(items: readonly (TextItemLike | PositionedItem)[]): string {
+  const positioned = items.filter(isPositioned);
+  if (positioned.length > 0 && positioned.length === items.length) return paragraphText(positioned.map(layoutItemFromPdf));
   return buildPageText(items).raw.replace(/[^\S\n]+$/gmu, '');
 }
 
