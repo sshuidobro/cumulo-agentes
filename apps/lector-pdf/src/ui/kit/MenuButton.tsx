@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
+import { placeMenu } from './menu-placement';
 import buttonStyles from './IconButton.module.css';
 import styles from './MenuButton.module.css';
 
@@ -91,6 +92,30 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, onOpe
     setOpen(false);
     if (restoreFocus) buttonRef.current?.focus();
   };
+
+  // Antes de pintarse, el menú se coloca dentro de la ventana; al cambiar su tamaño se vuelve a colocar.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = (): void => {
+      const menu = menuRef.current;
+      const button = buttonRef.current;
+      if (menu === null || button === null) return;
+      // Se mide sin el tope de altura de la colocación anterior.
+      menu.style.maxHeight = '';
+      const { left, top, maxHeight } = placeMenu(button.getBoundingClientRect(), menu.getBoundingClientRect(), {
+        width: document.documentElement.clientWidth,
+        height: window.innerHeight,
+      });
+      menu.style.left = `${String(left)}px`;
+      menu.style.top = `${String(top)}px`;
+      menu.style.maxHeight = `${String(maxHeight)}px`;
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('resize', place);
+    };
+  }, [open]);
 
   // Al abrir, el foco va al primer elemento del menú.
   useEffect(() => {
@@ -196,6 +221,10 @@ export function MenuButton({ label, entries, children, disabled, tabIndex, onOpe
                 title={menuItemTitle(entry)}
                 className={styles.item}
                 disabled={entry.kind === 'action' && entry.disabled === true}
+                // El ratón mueve el foco: nunca quedan dos entradas resaltadas (la enfocada y la señalada).
+                onMouseEnter={(event) => {
+                  event.currentTarget.focus();
+                }}
                 onClick={(event) => {
                   // `detail` es 0 cuando la activación llega del teclado o de un lector de pantalla.
                   entry.onSelect(event.detail === 0);
